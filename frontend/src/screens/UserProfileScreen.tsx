@@ -42,6 +42,7 @@ import {
   OptimizedImage,
   TopTabBar,
   AnimatedChip,
+  chipRowStyle,
 } from "../components/ui";
 import { ImageSize } from "../utils/imageUtils";
 import {
@@ -186,9 +187,18 @@ const UserProfileScreen = () => {
   const [myStores, setMyStores] = useState<UserSubmittedStore[]>([]);
   const [contribLoading, setContribLoading] = useState(false);
   const [contribLoaded, setContribLoaded] = useState(false);
-  const [sellingProducts, setSellingProducts] = useState<StoreProduct[]>([]);
+  type SellingBucket = {
+    products: StoreProduct[];
+    total: number;
+    loaded: boolean;
+  };
+  const [sellingData, setSellingData] = useState<Record<"active" | "sold", SellingBucket>>({
+    active: { products: [], total: 0, loaded: false },
+    sold: { products: [], total: 0, loaded: false },
+  });
   const [sellingLoading, setSellingLoading] = useState(false);
-  const [sellingLoaded, setSellingLoaded] = useState(false);
+  const sellingProducts = sellingData[sellingSubTab].products;
+  const sellingLoaded = sellingData[sellingSubTab].loaded;
 
   const tabBarAnchorY = useSharedValue(9999);
   const topPanelProgress = useSharedValue(1);
@@ -242,10 +252,27 @@ const UserProfileScreen = () => {
 
   const sellingSubTabs = React.useMemo(
     () => [
-      { id: "active" as const, label: t("trading.myListings.tabActive") },
-      { id: "sold" as const, label: t("trading.myListings.tabSold") },
+      {
+        id: "active" as const,
+        label: t("trading.myListings.tabActive"),
+        count: sellingData.active.total,
+      },
+      {
+        id: "sold" as const,
+        label: t("trading.myListings.tabSold"),
+        count: sellingData.sold.total,
+      },
     ],
-    [t],
+    [t, sellingData.active.total, sellingData.sold.total],
+  );
+
+  const contribSubTabs = React.useMemo(
+    () => [
+      { id: "show" as ContribSubTab, label: t("profileContrib.show"), count: myShows.length },
+      { id: "brand" as ContribSubTab, label: t("profileContrib.brand"), count: myBrands.length },
+      { id: "store" as ContribSubTab, label: t("profileContrib.store"), count: myStores.length },
+    ],
+    [myShows.length, myBrands.length, myStores.length, t],
   );
 
   const privacyReady = isCurrentUser || privacySettings !== null;
@@ -525,27 +552,42 @@ const UserProfileScreen = () => {
     }
   }, [currentUser, isCurrentUser, userId]);
 
+  // 同时拉取 active / sold 两个 bucket。每个 status 独立 setState, 永不交叉。
+  // 简单直白 —— chip 切换只触发一次（在 topTab=selling 进入时）, 后续切换 chip
+  // 直接用缓存 (`sellingData[chip].products`)。
   const loadSellingListings = useCallback(
-    async (force = false) => {
-      if (!force && sellingLoaded) return;
+    async () => {
       setSellingLoading(true);
+      const fetchOne = async (status: "active" | "sold") => {
+        try {
+          const res = await listUserPublicListings(userId, {
+            status,
+            page: 1,
+            pageSize: 40,
+          });
+          setSellingData((prev) => ({
+            ...prev,
+            [status]: {
+              products: res.products || [],
+              total: res.total ?? (res.products?.length ?? 0),
+              loaded: true,
+            },
+          }));
+        } catch (err) {
+          console.error(`Error loading user ${status} listings:`, err);
+          setSellingData((prev) => ({
+            ...prev,
+            [status]: { products: [], total: 0, loaded: true },
+          }));
+        }
+      };
       try {
-        const res = await listUserPublicListings(userId, {
-          status: sellingSubTab,
-          page: 1,
-          pageSize: 40,
-        });
-        setSellingProducts(res.products || []);
-        setSellingLoaded(true);
-      } catch (err) {
-        console.error("Error loading user listings:", err);
-        setSellingProducts([]);
-        setSellingLoaded(true);
+        await Promise.all([fetchOne("active"), fetchOne("sold")]);
       } finally {
         setSellingLoading(false);
       }
     },
-    [userId, sellingSubTab, sellingLoaded],
+    [userId],
   );
 
   useEffect(() => {
@@ -565,7 +607,10 @@ const UserProfileScreen = () => {
       wishlist: { ...initialTabState },
     });
     setContribLoaded(false);
-    setSellingLoaded(false);
+    setSellingData({
+      active: { products: [], total: 0, loaded: false },
+      sold: { products: [], total: 0, loaded: false },
+    });
     setTopTab("notes");
     setNotesSubTab("posts");
   }, [userId]);
@@ -586,21 +631,20 @@ const UserProfileScreen = () => {
     };
   }, [userId]);
 
-  useEffect(() => {
-    setSellingLoaded(false);
-  }, [sellingSubTab]);
-
+  // 切换 sub-chip 不再触发请求 —— 进入 selling tab 时一次性 prefetch 两个 bucket。
   useEffect(() => {
     if (topTab === "archive") {
       if (!contribLoaded) loadContributions();
     } else if (topTab === "selling") {
-      loadSellingListings();
+      if (!sellingData.active.loaded || !sellingData.sold.loaded) {
+        loadSellingListings();
+      }
     } else if (topTab === "wishlist") {
       fetchTabData("wishlist");
     } else if (topTab === "notes") {
       fetchTabData(notesSubTab);
     }
-  }, [topTab, notesSubTab, sellingSubTab, userId]);
+  }, [topTab, notesSubTab, userId]);
 
   useFocusEffect(
     useCallback(() => {
@@ -615,7 +659,7 @@ const UserProfileScreen = () => {
       if (topTab === "archive") {
         loadContributions();
       } else if (topTab === "selling") {
-        loadSellingListings(true);
+        loadSellingListings();
       } else if (topTab === "wishlist") {
         fetchTabData("wishlist", true);
       } else if (topTab === "notes") {
@@ -638,7 +682,7 @@ const UserProfileScreen = () => {
     if (topTab === "archive") {
       tasks.push(loadContributions());
     } else if (topTab === "selling") {
-      tasks.push(loadSellingListings(true));
+      tasks.push(loadSellingListings());
     } else if (topTab === "wishlist") {
       tasks.push(fetchTabData("wishlist", true));
     } else if (topTab === "notes") {
@@ -875,12 +919,6 @@ const UserProfileScreen = () => {
   };
 
   const renderContributionContent = () => {
-    const subTabs: { id: ContribSubTab; label: string; count: number }[] = [
-      { id: "show", label: t("profileContrib.show"), count: myShows.length },
-      { id: "brand", label: t("profileContrib.brand"), count: myBrands.length },
-      { id: "store", label: t("profileContrib.store"), count: myStores.length },
-    ];
-
     const getData = () => {
       switch (contribSubTab) {
         case "show": return myShows;
@@ -890,7 +928,6 @@ const UserProfileScreen = () => {
     };
     const data = getData();
 
-    const displayName = userInfo?.username || username || t("profile.user");
     const emptyIcons: Record<ContribSubTab, string> = {
       show: "film-outline",
       brand: "pricetag-outline",
@@ -940,20 +977,7 @@ const UserProfileScreen = () => {
     };
 
     return (
-      <VStack>
-        {/* Sub filter buttons */}
-        <HStack px="$md" py="$sm" style={{ gap: 8, flexWrap: "wrap" }}>
-          {subTabs.map((st) => (
-            <AnimatedChip
-              key={st.id}
-              label={st.label}
-              count={st.count}
-              isActive={contribSubTab === st.id}
-              onPress={() => setContribSubTab(st.id)}
-            />
-          ))}
-        </HStack>
-
+      <VStack alignItems="stretch" style={{ width: "100%" }}>
         {/* Content */}
         {contribLoading ? (
           <VStack alignItems="center" justifyContent="center" py="$xl" style={{ minHeight: 200 }}>
@@ -1201,15 +1225,17 @@ const UserProfileScreen = () => {
     return null;
   };
 
+  const chipStripWrap = {
+    backgroundColor: appTheme.colors.card,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: appTheme.colors.border,
+    paddingHorizontal: appTheme.spacing.md,
+    paddingVertical: 10,
+  } as const;
+
   const renderNotesChips = () => (
-    <View
-      style={{
-        backgroundColor: appTheme.colors.card,
-        borderBottomWidth: StyleSheet.hairlineWidth,
-        borderBottomColor: appTheme.colors.border,
-      }}
-    >
-      <HStack px="$md" py="$sm" style={{ gap: 8, flexWrap: "wrap" }}>
+    <View style={chipStripWrap}>
+      <View style={chipRowStyle}>
         {notesSubTabs.map((chip) => (
           <AnimatedChip
             key={chip.id}
@@ -1219,28 +1245,39 @@ const UserProfileScreen = () => {
             onPress={() => setNotesSubTab(chip.id)}
           />
         ))}
-      </HStack>
+      </View>
     </View>
   );
 
   const renderSellingChips = () => (
-    <View
-      style={{
-        backgroundColor: appTheme.colors.card,
-        borderBottomWidth: StyleSheet.hairlineWidth,
-        borderBottomColor: appTheme.colors.border,
-      }}
-    >
-      <HStack px="$md" py="$sm" style={{ gap: 8, flexWrap: "wrap" }}>
+    <View style={chipStripWrap}>
+      <View style={chipRowStyle}>
         {sellingSubTabs.map((chip) => (
           <AnimatedChip
             key={chip.id}
             label={chip.label}
+            count={chip.count}
             isActive={sellingSubTab === chip.id}
             onPress={() => setSellingSubTab(chip.id)}
           />
         ))}
-      </HStack>
+      </View>
+    </View>
+  );
+
+  const renderContribChips = () => (
+    <View style={chipStripWrap}>
+      <View style={chipRowStyle}>
+        {contribSubTabs.map((chip) => (
+          <AnimatedChip
+            key={chip.id}
+            label={chip.label}
+            count={chip.count}
+            isActive={contribSubTab === chip.id}
+            onPress={() => setContribSubTab(chip.id)}
+          />
+        ))}
+      </View>
     </View>
   );
 
@@ -1624,6 +1661,7 @@ const UserProfileScreen = () => {
         <Animated.View style={topPanelAnimStyle}>
           {topTab === "notes" && renderNotesChips()}
           {topTab === "selling" && renderSellingChips()}
+          {topTab === "archive" && renderContribChips()}
 
           <Animated.View
             style={[

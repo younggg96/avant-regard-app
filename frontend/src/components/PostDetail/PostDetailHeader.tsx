@@ -179,18 +179,12 @@ export const PostDetailHeader: React.FC<PostDetailHeaderProps> = ({
           ) : null}
         </View>
 
-        {/* Row 2: timestamp + community/store */}
+        {/* Row 2: timestamp (+ store badge when applicable) */}
         <View style={h.metaRow}>
           <Text fontSize={11} style={[h.timestamp, { color: theme.colors.gray600 }]}>
             {post.timestamp ? formatTimestamp(post.timestamp) : ""}
           </Text>
-          {post.communityName ? (
-            <View style={h.metaBadge}>
-              <Text fontSize={10} style={{ color: theme.colors.gray600 }} numberOfLines={1}>
-                # {post.communityName}
-              </Text>
-            </View>
-          ) : post.storeName && post.storeId ? (
+          {post.storeName && post.storeId ? (
             <TouchableOpacity
               onPress={(e: any) => {
                 e?.stopPropagation?.();

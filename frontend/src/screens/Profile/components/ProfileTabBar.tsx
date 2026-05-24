@@ -6,10 +6,11 @@ import {
   Dimensions,
   LayoutChangeEvent,
   ScrollView as RNScrollView,
+  View,
 } from "react-native";
 import { useAppTheme } from "../../../theme";
 import { TabType } from "../types";
-import { AnimatedChip } from "../../../components/ui";
+import { AnimatedChip, chipRowStyle } from "../../../components/ui";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -57,10 +58,10 @@ export const ProfileTabBar = ({
       contentContainerStyle={{
         paddingHorizontal: theme.spacing.md,
         paddingVertical: 10,
-        gap: 8,
-        alignItems: "center",
+        alignItems: "flex-start",
       }}
     >
+      <View style={chipRowStyle}>
       {tabs.map((tab) => (
         <AnimatedChip
           key={tab.id}
@@ -76,6 +77,7 @@ export const ProfileTabBar = ({
           }}
         />
       ))}
+      </View>
     </RNScrollView>
   );
 };

@@ -39,7 +39,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 
-import { Box, HStack, VStack, Text } from "../../../components/ui";
+import { Box, VStack, Text } from "../../../components/ui";
 import {
   useAppTheme,
   useThemedStyles,
@@ -57,7 +57,7 @@ import {
   SELLING_FILTER_TO_STATUSES,
 } from "../types";
 import { OrderCard } from "./OrderCard";
-import { AnimatedChip } from "../../../components/ui";
+import { AnimatedChip, chipRowStyle } from "../../../components/ui";
 
 type Mode = "buying" | "selling";
 
@@ -224,7 +224,7 @@ export const TradingContent: React.FC<Props> = ({
     <VStack>
       {/* 状态 chip 条 —— 与「笔记」chip 视觉一致, 同色系填充 */}
       <View style={styles.chipScrollRow}>
-        <HStack space="xs" style={styles.chipRow}>
+        <View style={chipRowStyle}>
           {(mode === "buying" ? buyingFilters : sellingFilters).map((chip) => {
             const isActive =
               mode === "buying" ? buyingFilter === chip : sellingFilter === chip;
@@ -255,7 +255,7 @@ export const TradingContent: React.FC<Props> = ({
                 />
               );
           })}
-        </HStack>
+        </View>
       </View>
 
       {/* 列表 —— chip 切换时淡入 */}
@@ -341,7 +341,6 @@ const makeStyles = (t: AppTheme) =>
       paddingVertical: 10,
       paddingHorizontal: t.spacing.md,
     },
-    chipRow: { flexWrap: "wrap" },
     chipItem: {
       marginBottom: 6,
     },

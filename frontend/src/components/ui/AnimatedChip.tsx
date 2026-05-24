@@ -21,6 +21,17 @@ import Animated, {
 import { Pressable } from "./pressable";
 import { useAppTheme, useThemedStyles, type AppTheme } from "../../theme";
 
+/** chip 行容器 —— 左对齐、可换行 */
+export const chipRowStyle: ViewStyle = {
+  flexDirection: "row",
+  flexWrap: "wrap",
+  alignItems: "flex-start",
+  justifyContent: "flex-start",
+  alignSelf: "stretch",
+  width: "100%",
+  gap: 8,
+};
+
 export interface AnimatedChipProps {
   label: string;
   count?: number;
@@ -54,7 +65,9 @@ export const AnimatedChip: React.FC<AnimatedChipProps> = ({
   const activeBorder = theme.colors.text;
   const inactiveLabel = theme.colors.text;
   const activeLabel = theme.colors.textInverted;
-  const inactiveCount = theme.colors.textSecondary;
+  // inactive count 用 gray400：dark #CFCFCF / light #444444，在 card 底上都有足够对比度。
+  // textSecondary 在嵌套 Animated.Text 里偶发继承异常，导致 dark 下几乎看不见。
+  const inactiveCount = theme.colors.gray400;
   const activeCount = theme.colors.textInverted;
 
   const chipAnimStyle = useAnimatedStyle(() => ({
@@ -86,7 +99,7 @@ export const AnimatedChip: React.FC<AnimatedChipProps> = ({
       [0, 1],
       [inactiveCount, activeCount],
     ),
-    opacity: interpolate(progress.value, [0, 1], [1, 0.75]),
+    opacity: interpolate(progress.value, [0, 1], [0.85, 0.7]),
   }));
 
   const handlePressIn = () => {
@@ -99,6 +112,7 @@ export const AnimatedChip: React.FC<AnimatedChipProps> = ({
 
   return (
     <Pressable
+      style={{ alignSelf: "flex-start" }}
       onPress={onPress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
@@ -107,15 +121,12 @@ export const AnimatedChip: React.FC<AnimatedChipProps> = ({
       <Animated.View style={[styles.chip, chipAnimStyle, style]}>
         <Animated.Text style={[styles.chipText, labelAnimStyle]}>
           {label}
-          {count != null && count > 0 ? (
-            <>
-              {" "}
-              <Animated.Text style={[styles.chipCount, countAnimStyle]}>
-                {count}
-              </Animated.Text>
-            </>
-          ) : null}
         </Animated.Text>
+        {count != null && count > 0 ? (
+          <Animated.Text style={[styles.chipCount, countAnimStyle]}>
+            {count}
+          </Animated.Text>
+        ) : null}
       </Animated.View>
     </Pressable>
   );
@@ -125,6 +136,9 @@ AnimatedChip.displayName = "AnimatedChip";
 const makeChipStyles = (t: AppTheme) =>
   StyleSheet.create({
     chip: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
       paddingHorizontal: 12,
       paddingVertical: 5,
       borderRadius: 14,
@@ -134,12 +148,10 @@ const makeChipStyles = (t: AppTheme) =>
     },
     chipText: {
       fontSize: 13,
-      color: t.colors.text,
       fontWeight: "500",
     },
     chipCount: {
       fontSize: 11,
-      color: t.colors.textSecondary,
       fontWeight: "600",
     },
   });
