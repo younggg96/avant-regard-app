@@ -154,7 +154,7 @@ const SettingsScreen = () => {
   );
 
   const handlePrivacyToggle = async (
-    key: "hideFollowing" | "hideFollowers" | "hideLikes" | "hideWishlist",
+    key: "hideFollowing" | "hideFollowers" | "hideLikes" | "hideWishlist" | "hideSales",
     value: boolean
   ) => {
     if (!user?.userId || updatingPrivacy) return;
@@ -350,6 +350,14 @@ const SettingsScreen = () => {
           onToggle: (value) => handlePrivacyToggle("hideWishlist", value),
         },
         {
+          id: "hideSales",
+          label: t("settings.hideSales"),
+          icon: "eye-off-outline",
+          toggle: true,
+          value: privacySettings?.hideSales ?? false,
+          onToggle: (value) => handlePrivacyToggle("hideSales", value),
+        },
+        {
           id: "blockedUsers",
           label: t("settings.blockedUsers"),
           icon: "ban-outline",
@@ -363,10 +371,78 @@ const SettingsScreen = () => {
         },
       ],
     },
-    // 商家中心 / 交易类入口已迁移到「我的购物 (MyShoppingScreen)」与
-    // 「卖家中心 (MySellerCenterScreen)」两个独立 hub, Profile 主页的
-    // ShoppingEntryCard 提供一步直达入口, 设置页只保留账号 / 隐私 /
-    // 协议 / 缓存 / 账户管理这些「真正的设置」。
+    // 商家中心 —— 订单 / 销售已通过 Profile 页的「交易」一级 tab 内嵌
+    // 展示, 这里保留作为「全量入口/直达页」的备份: 比如点 「我的钱包」
+    // 进入完整的余额/提现页, 走 Profile tab 看不到那个层级的功能。
+    // PRD: 交易大厅 与 发布新单品 已分别从主 Tab「交易」和底部「+」按钮
+    // 入口走, 这里不重复挂入口避免认知负担。
+    {
+      title: t("settings.merchantCenter"),
+      items: [
+        {
+          id: "merchant",
+          label: t("settings.myStores"),
+          icon: "storefront-outline",
+          onPress: () => (navigation as any).navigate("MyMerchantStores"),
+          rightText: t("settings.merchantEntry"),
+          rightColor: "#F57C00",
+        },
+        {
+          id: "sellerListings",
+          label: t("settings.myListings"),
+          icon: "pricetag-outline",
+          onPress: () => (navigation as any).navigate("SellerListings"),
+        },
+        {
+          id: "myCollections",
+          label: t("settings.myCollections"),
+          icon: "bookmark-outline",
+          onPress: () => (navigation as any).navigate("MyCollections"),
+        },
+        {
+          id: "myOrders",
+          label: t("settings.myOrders"),
+          icon: "receipt-outline",
+          onPress: () => (navigation as any).navigate("MyOrders"),
+        },
+        {
+          id: "mySales",
+          label: t("settings.mySales"),
+          icon: "cash-outline",
+          onPress: () => (navigation as any).navigate("MySales"),
+        },
+        {
+          id: "myOffers",
+          label: t("settings.myOffers"),
+          icon: "swap-horizontal-outline",
+          onPress: () => (navigation as any).navigate("MyOffers"),
+        },
+        {
+          id: "myWallet",
+          label: t("trading.profile.walletEntry"),
+          icon: "wallet-outline",
+          onPress: () => (navigation as any).navigate("MyWallet"),
+        },
+        {
+          id: "authentication",
+          label: t("settings.authentication"),
+          icon: "shield-checkmark-outline",
+          onPress: () => (navigation as any).navigate("Authentication"),
+        },
+        {
+          id: "myArchive",
+          label: t("settings.myArchive"),
+          icon: "albums-outline",
+          onPress: () => (navigation as any).navigate("MyArchive"),
+        },
+        {
+          id: "plusSubscribe",
+          label: t("settings.plusSubscribe"),
+          icon: "star-outline",
+          onPress: () => (navigation as any).navigate("PlusSubscribe"),
+        },
+      ],
+    },
     {
       title: t("settings.support"),
       items: [

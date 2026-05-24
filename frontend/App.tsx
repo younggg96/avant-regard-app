@@ -94,10 +94,6 @@ import PublishFromPostPickerScreen from "./src/screens/PublishListing/PublishFro
 import SellerListingsScreen from "./src/screens/SellerListingsScreen";
 import MarketplaceScreen from "./src/screens/Marketplace/MarketplaceScreen";
 import MyCollectionsScreen from "./src/screens/MyCollectionsScreen";
-// 「我的购物 / 卖家中心」hub: 把原本散落在「设置 → 商家中心」里的
-// 买卖入口集中在 Profile tab 一步直达, 不再走 Settings。
-import MyShoppingScreen from "./src/screens/MyShoppingScreen";
-import MySellerCenterScreen from "./src/screens/MySellerCenterScreen";
 import UserCollectionDetailScreen from "./src/screens/UserCollectionDetailScreen";
 // Trading System (PRD Phase 4) Screens
 import CheckoutScreen from "./src/screens/Trading/CheckoutScreen";
@@ -938,17 +934,6 @@ function AppNavigator({
         <Stack.Screen
           name="Marketplace"
           component={MarketplaceScreen}
-          options={{ headerShown: false }}
-        />
-        {/* 买家「我的购物」hub + 卖家「卖家中心」hub */}
-        <Stack.Screen
-          name="MyShopping"
-          component={MyShoppingScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="MySellerCenter"
-          component={MySellerCenterScreen}
           options={{ headerShown: false }}
         />
         {/* PRD 模块三 · 多收藏夹 */}

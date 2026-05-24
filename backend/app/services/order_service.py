@@ -777,6 +777,38 @@ class OrderService:
             return None
         return self._format_order(res.data[0])
 
+    def _build_product_brief_map(self, product_ids: List[int]) -> Dict[int, dict]:
+        """批量预取一批 product_id 的卡片摘要 (id / title / brand / cover / 标价)。
+
+        ProfileScreen 的「交易」tab 一次会展示多张订单卡片, 每张卡片要的
+        都只是「品牌 + 标题 + 封面图 + 标价」这套展示性字段。把它做成
+        批量预取, 避免对每个订单各打一次 ``store_products`` 查询造成的
+        N+1 抖动。返回 dict 的 key 是 product_id, 命中 0 个不会抛错。
+        """
+        if not product_ids:
+            return {}
+        unique = list({pid for pid in product_ids if pid})
+        if not unique:
+            return {}
+        res = (
+            self.db.table("store_products")
+            .select("id, title, brand, price_cents, currency, images")
+            .in_("id", unique)
+            .execute()
+        )
+        out: Dict[int, dict] = {}
+        for row in res.data or []:
+            images = row.get("images") or []
+            out[row["id"]] = {
+                "productId": row["id"],
+                "title": row.get("title"),
+                "brand": row.get("brand"),
+                "priceCents": row.get("price_cents"),
+                "currency": row.get("currency", "CNY"),
+                "coverImage": images[0] if images else None,
+            }
+        return out
+
     def status_summary(
         self,
         *,

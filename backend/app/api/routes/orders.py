@@ -294,6 +294,24 @@ async def submit_inspection(
     return success({"ok": True})
 
 
+def _enrich_orders_with_product(orders) -> list:
+    """给一批订单挂上 product 摘要, 返回可直接 jsonable 的字典列表。
+
+    Profile「交易」tab 与设置页 MyOrders/MySales 都要在卡片上同时展示
+    商品封面 / 品牌 / 标题, 不能只看订单本身。改成在路由层批量预取一次,
+    避免客户端按需补拉时遇到 N 张卡 = N 次请求的回流。
+    """
+    if not orders:
+        return []
+    pid_map = order_service._build_product_brief_map([o.productId for o in orders])
+    out = []
+    for o in orders:
+        d = o.dict()
+        d["product"] = pid_map.get(o.productId)
+        out.append(d)
+    return out
+
+
 @orders_router.get("/me")
 async def list_my_orders(
     status: Optional[str] = None,
@@ -304,7 +322,12 @@ async def list_my_orders(
     orders, total = order_service.list_orders(
         buyer_user_id=user_id, status=status, page=page, page_size=pageSize
     )
-    return success({"items": [o.dict() for o in orders], "total": total, "page": page, "pageSize": pageSize})
+    return success({
+        "items": _enrich_orders_with_product(orders),
+        "total": total,
+        "page": page,
+        "pageSize": pageSize,
+    })
 
 
 @orders_router.get("/me/summary")
@@ -357,7 +380,10 @@ async def list_my_sales(
         if merchant
         else ([], 0)
     )
-    items = [o.dict() for o in user_orders] + [o.dict() for o in merch_orders]
+    items = (
+        _enrich_orders_with_product(user_orders)
+        + _enrich_orders_with_product(merch_orders)
+    )
     items.sort(key=lambda x: x.get("createdAt") or "", reverse=True)
     return success(
         {

@@ -27,6 +27,7 @@ from app.api.deps import get_current_user, get_current_user_optional, get_curren
 from app.services.store_product_service import store_product_service
 from app.services.store_merchant_service import store_merchant_service
 from app.services.seller_profile_service import seller_profile_service
+from app.services.user_service import user_service
 from app.services.feature_flags_service import feature_flags_service
 from app.schemas.store_product import (
     StoreProductCreate,
@@ -321,6 +322,53 @@ async def list_my_listings(
         total += t
 
     # 排序：created_at desc（如果时间戳缺失则保留入参顺序）
+    products_all.sort(key=lambda x: x.createdAt or "", reverse=True)
+    return success(
+        {
+            "products": [p.model_dump() for p in products_all],
+            "total": total,
+            "page": page,
+            "pageSize": pageSize,
+        }
+    )
+
+
+@sellers_router.get("/{user_id}/listings")
+async def list_user_public_listings(
+    user_id: int,
+    status: str = Query("active", description="active / sold —— 他人主页仅公开这两种"),
+    page: int = Query(1, ge=1),
+    pageSize: int = Query(20, ge=1, le=100),
+    current_user_id: Optional[int] = Depends(get_current_user_optional),
+):
+    """他人主页「在售」tab —— 公开 listing 列表。
+
+    隐私：目标用户开启 hide_sales 且访问者不是本人时返回 403。
+    仅返回 active / sold，避免草稿/审核中泄露。
+    """
+    if current_user_id != user_id:
+        privacy = user_service.get_privacy_settings(user_id)
+        if privacy and privacy.hideSales:
+            raise HTTPException(status_code=403, detail="用户已隐藏在售列表")
+
+    if status not in ("active", "sold"):
+        status = "active"
+
+    merchant = store_merchant_service.get_merchant_by_user(user_id)
+    products_all: list = []
+    total = 0
+    p, t = store_product_service.list_seller_listings(
+        seller_user_id=user_id, status=status, page=page, page_size=pageSize
+    )
+    products_all.extend(p)
+    total += t
+    if merchant and merchant.status == "APPROVED":
+        p2, t2 = store_product_service.list_seller_listings(
+            merchant_id=merchant.id, status=status, page=page, page_size=pageSize
+        )
+        products_all.extend(p2)
+        total += t2
+
     products_all.sort(key=lambda x: x.createdAt or "", reverse=True)
     return success(
         {

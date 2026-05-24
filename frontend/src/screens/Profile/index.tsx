@@ -4,6 +4,7 @@ import {
   ScrollView as RNScrollView,
   View,
   StatusBar,
+  StyleSheet,
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -27,7 +28,12 @@ import { postService, likePost, unlikePost } from "../../services/postService";
 import { Show } from "../../services/showService";
 import { BrandSubmission } from "../../services/brandService";
 import { UserSubmittedStore } from "../../services/buyerStoreService";
-import { TabType } from "./types";
+import {
+  TabType,
+  TopTabType,
+  BuyingFilterType,
+  SellingFilterType,
+} from "./types";
 import {
   COVER_HEIGHT,
   HEADER_CONTENT_HEIGHT,
@@ -43,8 +49,9 @@ import { ProfileInfo } from "./components/ProfileInfo";
 import { FollowedBrands } from "./components/FollowedBrands";
 import { LevelProgressCard } from "./components/LevelProgressCard";
 import { ArchiveEntryCard } from "./components/ArchiveEntryCard";
-import { ShoppingEntryCard } from "./components/ShoppingEntryCard";
-import { ProfileTabBar, StickyTabBar } from "./components/ProfileTabBar";
+import { ProfileTabBar } from "./components/ProfileTabBar";
+import { TopTabBar } from "../../components/ui";
+import { TradingContent } from "./components/TradingContent";
 import { PostsContent } from "./components/PostsContent";
 import { DeletePostDialog } from "./components/DeletePostDialog";
 import { AvatarPreviewModal } from "../../components/AvatarPreviewModal";
@@ -74,6 +81,11 @@ const ProfileScreen = () => {
   const headerFadeThreshold = COVER_HEIGHT - headerTotalHeight;
 
   const [activeTab, setActiveTab] = useState<TabType>("published");
+  // 一级 tab —— 默认进入「笔记」侧, 与历史行为保持一致;切到「购买」/
+  // 「在售」时由 TradingContent 自己懒加载对应订单列表, 不影响首屏。
+  const [topTab, setTopTab] = useState<TopTabType>("notes");
+  const [buyingFilter, setBuyingFilter] = useState<BuyingFilterType>("all");
+  const [sellingFilter, setSellingFilter] = useState<SellingFilterType>("all");
   const [refreshing, setRefreshing] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [postToDelete, setPostToDelete] = useState<DisplayPost | null>(null);
@@ -84,6 +96,9 @@ const ProfileScreen = () => {
   const tabBarAnchorY = useSharedValue(9999);
   const tabScrollViewRef = useRef<RNScrollView>(null);
   const scrollY = useSharedValue(0);
+  // 一级 tab / 笔记 sub-tab 切换时内容区淡入 + 轻微上移。
+  const topPanelProgress = useSharedValue(1);
+  const notesPanelProgress = useSharedValue(1);
 
   const {
     userInfo,
@@ -139,6 +154,51 @@ const ProfileScreen = () => {
     { id: "draft" as TabType, label: t("profile.draft"), count: tabsData.draft.count },
     { id: "archive" as TabType, label: t("profile.contributions") },
   ];
+
+  useEffect(() => {
+    topPanelProgress.value = 0;
+    topPanelProgress.value = withTiming(1, {
+      duration: 220,
+      easing: Easing.out(Easing.cubic),
+    });
+  }, [topTab, topPanelProgress]);
+
+  useEffect(() => {
+    if (topTab !== "notes") return;
+    notesPanelProgress.value = 0;
+    notesPanelProgress.value = withTiming(1, {
+      duration: 180,
+      easing: Easing.out(Easing.cubic),
+    });
+  }, [activeTab, topTab, notesPanelProgress]);
+
+  const topPanelAnimStyle = useAnimatedStyle(() => ({
+    opacity: topPanelProgress.value,
+    transform: [
+      {
+        translateY: interpolate(
+          topPanelProgress.value,
+          [0, 1],
+          [8, 0],
+          Extrapolation.CLAMP,
+        ),
+      },
+    ],
+  }));
+
+  const notesPanelAnimStyle = useAnimatedStyle(() => ({
+    opacity: notesPanelProgress.value,
+    transform: [
+      {
+        translateY: interpolate(
+          notesPanelProgress.value,
+          [0, 1],
+          [6, 0],
+          Extrapolation.CLAMP,
+        ),
+      },
+    ],
+  }));
 
   useEffect(() => {
     loadAllProfileData();
@@ -468,13 +528,26 @@ const ProfileScreen = () => {
         onAvatarPress={() => setAvatarPreviewVisible(true)}
       />
 
-      <StickyTabBar
-        tabs={tabs}
-        activeTab={activeTab}
-        onTabPress={setActiveTab}
-        headerTotalHeight={headerTotalHeight}
-        animatedStyle={stickyTabBarAnimatedStyle}
-      />
+      {/* 一级 tab (笔记 / 购买 / 在售) 的 sticky 版。当用户向下滚动
+          越过下方 inline TopTabBar 时由 stickyTabBarAnimatedStyle 渐显。
+          一级 tab 设为 sticky, chip 条跟随内容滚动 —— 这样用户即使
+          在订单列表深处也能一键切回「笔记」。 */}
+      <Animated.View
+        style={[styles.stickyTabBar, { top: headerTotalHeight }, stickyTabBarAnimatedStyle]}
+        pointerEvents="box-none"
+      >
+        <View style={{ flex: 1, backgroundColor: appTheme.colors.card }}>
+          <TopTabBar
+            tabs={[
+              { id: "notes", label: t("profile.tabNotes") },
+              { id: "buying", label: t("profile.tabBuying") },
+              { id: "selling", label: t("profile.tabSelling") },
+            ]}
+            activeTab={topTab}
+            onTabPress={setTopTab}
+          />
+        </View>
+      </Animated.View>
 
       <AnimatedScrollView
         style={styles.scrollView}
@@ -525,11 +598,11 @@ const ProfileScreen = () => {
         {/* PDF p.11 + p.19 · MY ARCHIVE 入口卡片（仅增加不减少） */}
         <ArchiveEntryCard isOwnProfile />
 
-        {/* 购物 / 卖家两个 hub 入口；从「设置 → 商家中心」抽出来的快捷入口。 */}
-        <ShoppingEntryCard isOwnProfile />
-
         <LevelProgressCard />
 
+        {/* Inline 一级 tab bar (笔记 / 购买 / 在售)。
+            sticky 版用此处的 onLayout 作为锚点 —— 滚到这里之上时,
+            上面的 sticky 版本透明度切换到 1, 接管屏幕顶部。 */}
         <Animated.View
           style={[styles.tabBarContainer, inlineTabBarAnimatedStyle, { backgroundColor: appTheme.colors.card }]}
           onLayout={(event) => {
@@ -539,45 +612,80 @@ const ProfileScreen = () => {
             }
           }}
         >
-          <ProfileTabBar
-            tabs={tabs}
-            activeTab={activeTab}
-            onTabPress={setActiveTab}
-            scrollViewRef={tabScrollViewRef}
+          <TopTabBar
+            tabs={[
+              { id: "notes", label: t("profile.tabNotes") },
+              { id: "buying", label: t("profile.tabBuying") },
+              { id: "selling", label: t("profile.tabSelling") },
+            ]}
+            activeTab={topTab}
+            onTabPress={setTopTab}
           />
         </Animated.View>
 
-        <View style={[styles.postsContainer, { minHeight: contentMinHeight, backgroundColor: appTheme.colors.background }]}>
-          <PostsContent
-            activeTab={activeTab}
-            tabsData={tabsData}
-            contribSubTab={contribSubTab}
-            setContribSubTab={setContribSubTab}
-            contribLoading={contribLoading}
-            myShows={myShows}
-            myBrands={myBrands}
-            myStores={myStores}
-            storeActivitySubTab={storeActivitySubTab}
-            setStoreActivitySubTab={setStoreActivitySubTab}
-            storeActivity={storeActivity}
-            storeActivityLoading={storeActivityLoading}
-            productActivitySubTab={productActivitySubTab}
-            setProductActivitySubTab={setProductActivitySubTab}
-            productLikes={productLikes}
-            productSaved={productSaved}
-            productWanted={productWanted}
-            loadProductActivity={loadProductActivity}
-            onProductPress={handleProductPress}
-            user={user}
-            onPostPress={handlePostPress}
-            onDeletePost={handleDeletePost}
-            onLike={handleLike}
-            onShowPress={handleShowPress}
-            onBrandSubmissionPress={handleBrandSubmissionPress}
-            onStoreCardPress={handleStoreCardPress}
-            onStoreActivityPress={handleStoreActivityPress}
-          />
-        </View>
+        <Animated.View style={topPanelAnimStyle}>
+        {topTab === "notes" ? (
+          <>
+            {/* 笔记下原 9 个 sub-tab —— chip 样式 + 切换动效 */}
+            <View
+              style={{
+                backgroundColor: appTheme.colors.card,
+                borderBottomWidth: StyleSheet.hairlineWidth,
+                borderBottomColor: appTheme.colors.border,
+              }}
+            >
+              <ProfileTabBar
+                tabs={tabs}
+                activeTab={activeTab}
+                onTabPress={setActiveTab}
+                scrollViewRef={tabScrollViewRef}
+              />
+            </View>
+
+            <Animated.View style={[styles.postsContainer, notesPanelAnimStyle, { minHeight: contentMinHeight, backgroundColor: appTheme.colors.background }]}>
+              <PostsContent
+                activeTab={activeTab}
+                tabsData={tabsData}
+                contribSubTab={contribSubTab}
+                setContribSubTab={setContribSubTab}
+                contribLoading={contribLoading}
+                myShows={myShows}
+                myBrands={myBrands}
+                myStores={myStores}
+                storeActivitySubTab={storeActivitySubTab}
+                setStoreActivitySubTab={setStoreActivitySubTab}
+                storeActivity={storeActivity}
+                storeActivityLoading={storeActivityLoading}
+                productActivitySubTab={productActivitySubTab}
+                setProductActivitySubTab={setProductActivitySubTab}
+                productLikes={productLikes}
+                productSaved={productSaved}
+                productWanted={productWanted}
+                loadProductActivity={loadProductActivity}
+                onProductPress={handleProductPress}
+                user={user}
+                onPostPress={handlePostPress}
+                onDeletePost={handleDeletePost}
+                onLike={handleLike}
+                onShowPress={handleShowPress}
+                onBrandSubmissionPress={handleBrandSubmissionPress}
+                onStoreCardPress={handleStoreCardPress}
+                onStoreActivityPress={handleStoreActivityPress}
+              />
+            </Animated.View>
+          </>
+        ) : (
+          <View style={[styles.postsContainer, { minHeight: contentMinHeight, backgroundColor: appTheme.colors.background }]}>
+            <TradingContent
+              mode={topTab === "buying" ? "buying" : "selling"}
+              buyingFilter={buyingFilter}
+              setBuyingFilter={setBuyingFilter}
+              sellingFilter={sellingFilter}
+              setSellingFilter={setSellingFilter}
+            />
+          </View>
+        )}
+        </Animated.View>
       </AnimatedScrollView>
 
       <DeletePostDialog

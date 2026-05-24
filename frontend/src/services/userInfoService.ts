@@ -78,6 +78,7 @@ export interface UserPrivacySettings {
   hideFollowers: boolean;
   hideLikes: boolean;
   hideWishlist: boolean;
+  hideSales: boolean;
 }
 
 // 更新隐私设置请求参数
@@ -86,6 +87,7 @@ export interface UpdatePrivacySettingsParams {
   hideFollowers?: boolean;
   hideLikes?: boolean;
   hideWishlist?: boolean;
+  hideSales?: boolean;
 }
 
 // 通用请求方法

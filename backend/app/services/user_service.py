@@ -454,7 +454,7 @@ class UserService:
 
     def get_privacy_settings(self, user_id: int) -> Optional[UserPrivacySettings]:
         """获取用户隐私设置"""
-        info_result = self.db.table("user_info").select("hide_following, hide_followers, hide_likes, hide_wishlist").eq("user_id", user_id).execute()
+        info_result = self.db.table("user_info").select("hide_following, hide_followers, hide_likes, hide_wishlist, hide_sales").eq("user_id", user_id).execute()
         if not info_result.data:
             return None
         info = info_result.data[0]
@@ -465,6 +465,7 @@ class UserService:
             hideFollowers=info.get("hide_followers", False),
             hideLikes=info.get("hide_likes", False),
             hideWishlist=info.get("hide_wishlist", False),
+            hideSales=info.get("hide_sales", False),
         )
 
     def update_privacy_settings(self, user_id: int, **kwargs) -> Optional[UserPrivacySettings]:
@@ -479,6 +480,8 @@ class UserService:
             update_data["hide_likes"] = kwargs["hideLikes"]
         if "hideWishlist" in kwargs and kwargs["hideWishlist"] is not None:
             update_data["hide_wishlist"] = kwargs["hideWishlist"]
+        if "hideSales" in kwargs and kwargs["hideSales"] is not None:
+            update_data["hide_sales"] = kwargs["hideSales"]
 
         if update_data:
             self.db.table("user_info").update(update_data).eq("user_id", user_id).execute()

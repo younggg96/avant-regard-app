@@ -314,39 +314,13 @@ const makeProfileStyles = (t: AppTheme) =>
       maxWidth: 100,
       fontFamily: PF.medium,
     },
+    // tabBarContainer 是一级 TopTabBar (`components/ui`) 的外层容器,
+    // 提供分割线 + 行布局; chip 样式由 AnimatedChip 自管。
     tabBarContainer: {
       borderBottomWidth: 1,
       borderBottomColor: t.colors.border,
       flexDirection: "row",
       alignItems: "center",
-    },
-    tabScrollContent: {
-      paddingHorizontal: 12,
-    },
-    tabItem: {
-      paddingVertical: 8,
-      marginRight: 14,
-      position: "relative",
-    },
-    tabText: {
-      fontSize: 14,
-      color: t.colors.gray600,
-      fontWeight: "500",
-      fontFamily: PF.medium,
-    },
-    tabTextActive: {
-      color: t.colors.text,
-      fontWeight: "600",
-      fontFamily: PF.medium,
-    },
-    tabIndicator: {
-      position: "absolute",
-      bottom: 0,
-      left: 0,
-      right: 0,
-      height: 2,
-      backgroundColor: t.colors.text,
-      borderRadius: 1,
     },
     postsContainer: {
       paddingBottom: t.spacing.xl,
@@ -383,7 +357,7 @@ const makeContribStyles = (t: AppTheme) =>
     },
     filterChipText: {
       fontSize: 13,
-      color: t.colors.gray600,
+      color: t.colors.text,
       fontWeight: "500",
       fontFamily: PF.medium,
     },
@@ -393,11 +367,13 @@ const makeContribStyles = (t: AppTheme) =>
     filterChipCount: {
       fontSize: 11,
       fontWeight: "600",
-      color: t.colors.gray400,
+      color: t.colors.textSecondary,
       fontFamily: PF.bold,
     },
     filterChipCountActive: {
-      color: "rgba(255,255,255,0.7)",
+      // 跟随 textInverted, 避免 dark 模式下选中 chip 白底 + 白字看不见。
+      color: t.colors.textInverted,
+      opacity: 0.75,
     },
   });
 

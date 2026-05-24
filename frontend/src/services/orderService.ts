@@ -28,7 +28,19 @@ export type OfferStatus =
   | "expired"
   | "withdrawn";
 
+export interface OrderProductBrief {
+  productId: number;
+  title?: string | null;
+  brand?: string | null;
+  priceCents?: number | null;
+  currency?: string | null;
+  coverImage?: string | null;
+}
+
 export interface Order {
+  /** 后端 `/api/orders/me` 系列接口附带的商品摘要;客户端用来渲染订单卡片
+   * 上的封面 / 品牌 / 标题, 避免再 N 次 round trip 拉详情。可空。 */
+  product?: OrderProductBrief | null;
   id: number;
   orderNo: string;
   productId: number;

@@ -942,6 +942,25 @@ export const listMyListings = async (params: {
   );
 };
 
+/** GET /api/sellers/{userId}/listings — 他人主页「在售」tab。 */
+export const listUserPublicListings = async (
+  userId: number,
+  params: {
+    status?: Extract<ProductStatus, "active" | "sold">;
+    page?: number;
+    pageSize?: number;
+  } = {},
+): Promise<StoreProductListResponse> => {
+  const qs = new URLSearchParams();
+  qs.append("status", params.status ?? "active");
+  qs.append("page", String(params.page ?? 1));
+  qs.append("pageSize", String(params.pageSize ?? 20));
+  return request<StoreProductListResponse>(
+    `/api/sellers/${userId}/listings?${qs.toString()}`,
+    { method: "GET" },
+  );
+};
+
 // ============================================================================
 // 卖家档案（PRD 3.2 信用浮层数据源）
 // ============================================================================

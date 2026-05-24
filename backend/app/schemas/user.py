@@ -79,6 +79,7 @@ class UserPrivacySettings(BaseModel):
     hideFollowers: bool = True
     hideLikes: bool = True
     hideWishlist: bool = False
+    hideSales: bool = False
 
 
 class UpdatePrivacySettingsRequest(BaseModel):
@@ -87,6 +88,7 @@ class UpdatePrivacySettingsRequest(BaseModel):
     hideFollowers: Optional[bool] = None
     hideLikes: Optional[bool] = None
     hideWishlist: Optional[bool] = None
+    hideSales: Optional[bool] = None
 
 
 class UpdateLanguageRequest(BaseModel):

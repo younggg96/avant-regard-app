@@ -13,3 +13,7 @@ export { UserAvatar } from "./UserAvatar";
 export { NotificationBadge } from "./NotificationBadge";
 export { ActionSheet } from "./ActionSheet";
 export type { ActionSheetAction } from "./ActionSheet";
+export { AnimatedChip } from "./AnimatedChip";
+export type { AnimatedChipProps } from "./AnimatedChip";
+export { TopTabBar } from "./TopTabBar";
+export type { TopTabItem, TopTabBarProps } from "./TopTabBar";

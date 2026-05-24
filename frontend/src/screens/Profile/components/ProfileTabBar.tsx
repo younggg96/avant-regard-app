@@ -1,16 +1,15 @@
+/**
+ * ProfileTabBar —— 「笔记」一级 tab 下的 9 个 sub-tab (chip 样式 + 动效)。
+ */
 import React, { useEffect, useRef } from "react";
 import {
   Dimensions,
   LayoutChangeEvent,
-  View,
-  Text as RNText,
   ScrollView as RNScrollView,
 } from "react-native";
-import Animated from "react-native-reanimated";
-import { Pressable } from "../../../components/ui";
-import { TabType } from "../types";
-import { useProfileStyles } from "../styles";
 import { useAppTheme } from "../../../theme";
+import { TabType } from "../types";
+import { AnimatedChip } from "../../../components/ui";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -33,7 +32,7 @@ export const ProfileTabBar = ({
   onTabPress,
   scrollViewRef,
 }: ProfileTabBarProps) => {
-  const styles = useProfileStyles();
+  const theme = useAppTheme();
   const innerRef = useRef<RNScrollView>(null);
   const scrollRef = scrollViewRef ?? innerRef;
   const tabLayoutsRef = useRef<
@@ -45,7 +44,7 @@ export const ProfileTabBar = ({
     if (!layout || !scrollRef.current) return;
     const targetX = Math.max(
       0,
-      layout.x - SCREEN_WIDTH / 2 + layout.width / 2
+      layout.x - SCREEN_WIDTH / 2 + layout.width / 2,
     );
     scrollRef.current.scrollTo({ x: targetX, animated: true });
   }, [activeTab, scrollRef]);
@@ -55,12 +54,19 @@ export const ProfileTabBar = ({
       ref={scrollRef}
       horizontal
       showsHorizontalScrollIndicator={false}
-      contentContainerStyle={styles.tabScrollContent}
+      contentContainerStyle={{
+        paddingHorizontal: theme.spacing.md,
+        paddingVertical: 10,
+        gap: 8,
+        alignItems: "center",
+      }}
     >
       {tabs.map((tab) => (
-        <Pressable
+        <AnimatedChip
           key={tab.id}
-          style={styles.tabItem}
+          label={tab.label}
+          count={tab.count}
+          isActive={activeTab === tab.id}
           onPress={() => onTabPress(tab.id)}
           onLayout={(e: LayoutChangeEvent) => {
             tabLayoutsRef.current[tab.id] = {
@@ -68,49 +74,8 @@ export const ProfileTabBar = ({
               width: e.nativeEvent.layout.width,
             };
           }}
-        >
-          <RNText
-            style={[styles.tabText, activeTab === tab.id && styles.tabTextActive]}
-            numberOfLines={1}
-          >
-            {tab.label}
-          </RNText>
-          {activeTab === tab.id && <View style={styles.tabIndicator} />}
-        </Pressable>
+        />
       ))}
     </RNScrollView>
-  );
-};
-
-interface StickyTabBarProps extends ProfileTabBarProps {
-  headerTotalHeight: number;
-  animatedStyle: any;
-}
-
-export const StickyTabBar = ({
-  tabs,
-  activeTab,
-  onTabPress,
-  headerTotalHeight,
-  animatedStyle,
-}: StickyTabBarProps) => {
-  const styles = useProfileStyles();
-  const theme = useAppTheme();
-  return (
-    <Animated.View
-      style={[styles.stickyTabBar, { top: headerTotalHeight }, animatedStyle]}
-      pointerEvents="box-none"
-    >
-      <View
-        style={{
-          flex: 1,
-          flexDirection: "row",
-          alignItems: "center",
-          backgroundColor: theme.colors.card,
-        }}
-      >
-        <ProfileTabBar tabs={tabs} activeTab={activeTab} onTabPress={onTabPress} />
-      </View>
-    </Animated.View>
   );
 };

@@ -40,6 +40,8 @@ import {
   VStack,
   HStack,
   OptimizedImage,
+  TopTabBar,
+  AnimatedChip,
 } from "../components/ui";
 import { ImageSize } from "../utils/imageUtils";
 import {
@@ -87,8 +89,17 @@ import { ShareToChatModal } from "../components/ShareToChatModal";
 import { LevelBadge } from "../components/level";
 import { levelService } from "../services/levelService";
 import { titlesShownOnProfile } from "./Profile/components/UserTitlesSection";
+import {
+  formatPrice,
+  listUserPublicListings,
+  type StoreProduct,
+} from "../services/storeProductService";
 
-type TabType = "posts" | "forum" | "saved" | "liked" | "archive" | "wishlist";
+/** 他人主页一级 tab */
+type UserProfileTopTab = "notes" | "selling" | "wishlist" | "archive";
+/** 「笔记」下的 sub-tab (chip) */
+type NotesSubTab = "posts" | "forum" | "saved" | "liked";
+type PostsTabType = NotesSubTab | "wishlist";
 
 type TabData = {
   posts: DisplayPost[];
@@ -151,7 +162,9 @@ const UserProfileScreen = () => {
   const [followLoading, setFollowLoading] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
-  const [activeTab, setActiveTab] = useState<TabType>("posts");
+  const [topTab, setTopTab] = useState<UserProfileTopTab>("notes");
+  const [notesSubTab, setNotesSubTab] = useState<NotesSubTab>("posts");
+  const [sellingSubTab, setSellingSubTab] = useState<"active" | "sold">("active");
   const [refreshing, setRefreshing] = useState(false);
   const [coverImage, setCoverImage] = useState<string | null>(null);
   const [showCropper, setShowCropper] = useState(false);
@@ -173,23 +186,26 @@ const UserProfileScreen = () => {
   const [myStores, setMyStores] = useState<UserSubmittedStore[]>([]);
   const [contribLoading, setContribLoading] = useState(false);
   const [contribLoaded, setContribLoaded] = useState(false);
+  const [sellingProducts, setSellingProducts] = useState<StoreProduct[]>([]);
+  const [sellingLoading, setSellingLoading] = useState(false);
+  const [sellingLoaded, setSellingLoaded] = useState(false);
 
   const tabBarAnchorY = useSharedValue(9999);
-  const tabScrollViewRef = useRef<RNScrollView>(null);
+  const topPanelProgress = useSharedValue(1);
+  const notesPanelProgress = useSharedValue(1);
   const isCurrentUser = currentUser?.userId === userId;
   const scrollY = useSharedValue(0);
 
-  const [tabsData, setTabsData] = useState<Record<TabType, TabData>>({
+  const [tabsData, setTabsData] = useState<Record<PostsTabType, TabData>>({
     posts: { ...initialTabState },
     forum: { ...initialTabState },
     saved: { ...initialTabState },
     liked: { ...initialTabState },
-    archive: { ...initialTabState },
     wishlist: { ...initialTabState },
   });
 
   const updateTabState = useCallback(
-    (tab: TabType, updates: Partial<TabData>) => {
+    (tab: PostsTabType, updates: Partial<TabData>) => {
       setTabsData((prev) => ({
         ...prev,
         [tab]: { ...prev[tab], ...updates },
@@ -198,25 +214,64 @@ const UserProfileScreen = () => {
     []
   );
 
-  const allTabs: { id: TabType; label: string }[] = [
-    { id: "posts", label: t("profile.published") },
-    { id: "forum", label: t("profile.forum") },
-    { id: "saved", label: t("profile.saved") },
-    { id: "liked", label: t("profile.liked") },
-    { id: "wishlist", label: t("profile.wishlist") },
-    { id: "archive", label: t("profile.contributions") },
-  ];
+  const topTabs = React.useMemo(() => {
+    const items: { id: UserProfileTopTab; label: string }[] = [
+      { id: "notes", label: t("profile.tabNotes") },
+    ];
+    if (isCurrentUser || !privacySettings?.hideSales) {
+      items.push({ id: "selling", label: t("profile.tabSelling") });
+    }
+    if (isCurrentUser || !privacySettings?.hideWishlist) {
+      items.push({ id: "wishlist", label: t("profile.wishlist") });
+    }
+    items.push({ id: "archive", label: t("profile.contributions") });
+    return items;
+  }, [isCurrentUser, privacySettings, t]);
+
+  const notesSubTabs = React.useMemo(() => {
+    const chips: { id: NotesSubTab; label: string; count?: number }[] = [
+      { id: "posts", label: t("profile.published"), count: tabsData.posts.count },
+      { id: "forum", label: t("profile.forum"), count: tabsData.forum.count },
+      { id: "saved", label: t("profile.saved"), count: tabsData.saved.count },
+    ];
+    if (isCurrentUser || !privacySettings?.hideLikes) {
+      chips.push({ id: "liked", label: t("profile.liked"), count: tabsData.liked.count });
+    }
+    return chips;
+  }, [isCurrentUser, privacySettings, tabsData, t]);
+
+  const sellingSubTabs = React.useMemo(
+    () => [
+      { id: "active" as const, label: t("trading.myListings.tabActive") },
+      { id: "sold" as const, label: t("trading.myListings.tabSold") },
+    ],
+    [t],
+  );
 
   const privacyReady = isCurrentUser || privacySettings !== null;
 
-  const tabs = isCurrentUser
-    ? allTabs
-    : allTabs.filter((tab) => {
-      if (tab.id === "saved") return true;
-      if (tab.id === "liked") return !privacySettings?.hideLikes;
-      if (tab.id === "wishlist") return !privacySettings?.hideWishlist;
-      return true;
+  useEffect(() => {
+    if (!topTabs.some((tab) => tab.id === topTab)) {
+      setTopTab("notes");
+    }
+  }, [topTabs, topTab]);
+
+  useEffect(() => {
+    topPanelProgress.value = 0;
+    topPanelProgress.value = withTiming(1, {
+      duration: 220,
+      easing: Easing.out(Easing.cubic),
     });
+  }, [topTab, topPanelProgress]);
+
+  useEffect(() => {
+    if (topTab !== "notes") return;
+    notesPanelProgress.value = 0;
+    notesPanelProgress.value = withTiming(1, {
+      duration: 180,
+      easing: Easing.out(Easing.cubic),
+    });
+  }, [notesSubTab, topTab, notesPanelProgress]);
 
   const convertToDisplayPost = (
     apiPost: ApiPost,
@@ -347,8 +402,7 @@ const UserProfileScreen = () => {
   };
 
   const fetchTabData = useCallback(
-    async (targetTab: TabType, isRefresh = false) => {
-      if (targetTab === "archive") return;
+    async (targetTab: PostsTabType, isRefresh = false) => {
       if (!isRefresh && tabsData[targetTab].hasLoaded) {
         return;
       }
@@ -471,6 +525,29 @@ const UserProfileScreen = () => {
     }
   }, [currentUser, isCurrentUser, userId]);
 
+  const loadSellingListings = useCallback(
+    async (force = false) => {
+      if (!force && sellingLoaded) return;
+      setSellingLoading(true);
+      try {
+        const res = await listUserPublicListings(userId, {
+          status: sellingSubTab,
+          page: 1,
+          pageSize: 40,
+        });
+        setSellingProducts(res.products || []);
+        setSellingLoaded(true);
+      } catch (err) {
+        console.error("Error loading user listings:", err);
+        setSellingProducts([]);
+        setSellingLoaded(true);
+      } finally {
+        setSellingLoading(false);
+      }
+    },
+    [userId, sellingSubTab, sellingLoaded],
+  );
+
   useEffect(() => {
     loadUserInfo();
     loadUserProfile();
@@ -485,10 +562,12 @@ const UserProfileScreen = () => {
       forum: { ...initialTabState },
       saved: { ...initialTabState },
       liked: { ...initialTabState },
-      archive: { ...initialTabState },
       wishlist: { ...initialTabState },
     });
     setContribLoaded(false);
+    setSellingLoaded(false);
+    setTopTab("notes");
+    setNotesSubTab("posts");
   }, [userId]);
 
   useEffect(() => {
@@ -508,12 +587,20 @@ const UserProfileScreen = () => {
   }, [userId]);
 
   useEffect(() => {
-    if (activeTab === "archive") {
+    setSellingLoaded(false);
+  }, [sellingSubTab]);
+
+  useEffect(() => {
+    if (topTab === "archive") {
       if (!contribLoaded) loadContributions();
-    } else {
-      fetchTabData(activeTab);
+    } else if (topTab === "selling") {
+      loadSellingListings();
+    } else if (topTab === "wishlist") {
+      fetchTabData("wishlist");
+    } else if (topTab === "notes") {
+      fetchTabData(notesSubTab);
     }
-  }, [activeTab, userId]);
+  }, [topTab, notesSubTab, sellingSubTab, userId]);
 
   useFocusEffect(
     useCallback(() => {
@@ -525,12 +612,16 @@ const UserProfileScreen = () => {
       loadFollowedBrands();
       loadUserTitles();
       loadPostStats();
-      if (activeTab === "archive") {
+      if (topTab === "archive") {
         loadContributions();
-      } else {
-        fetchTabData(activeTab, true);
+      } else if (topTab === "selling") {
+        loadSellingListings(true);
+      } else if (topTab === "wishlist") {
+        fetchTabData("wishlist", true);
+      } else if (topTab === "notes") {
+        fetchTabData(notesSubTab, true);
       }
-    }, [activeTab, userId])
+    }, [topTab, notesSubTab, userId])
   );
 
   const onRefresh = async () => {
@@ -544,17 +635,17 @@ const UserProfileScreen = () => {
       loadUserTitles(),
       loadPostStats(),
     ];
-    if (activeTab === "archive") {
+    if (topTab === "archive") {
       tasks.push(loadContributions());
-    } else {
-      tasks.push(fetchTabData(activeTab, true));
+    } else if (topTab === "selling") {
+      tasks.push(loadSellingListings(true));
+    } else if (topTab === "wishlist") {
+      tasks.push(fetchTabData("wishlist", true));
+    } else if (topTab === "notes") {
+      tasks.push(fetchTabData(notesSubTab, true));
     }
     await Promise.all(tasks);
     setRefreshing(false);
-  };
-
-  const handleTabPress = (tabId: TabType) => {
-    setActiveTab(tabId);
   };
 
   const handleFollowToggle = async () => {
@@ -722,6 +813,34 @@ const UserProfileScreen = () => {
     return { opacity: 1 };
   });
 
+  const topPanelAnimStyle = useAnimatedStyle(() => ({
+    opacity: topPanelProgress.value,
+    transform: [
+      {
+        translateY: interpolate(
+          topPanelProgress.value,
+          [0, 1],
+          [8, 0],
+          Extrapolation.CLAMP,
+        ),
+      },
+    ],
+  }));
+
+  const notesPanelAnimStyle = useAnimatedStyle(() => ({
+    opacity: notesPanelProgress.value,
+    transform: [
+      {
+        translateY: interpolate(
+          notesPanelProgress.value,
+          [0, 1],
+          [6, 0],
+          Extrapolation.CLAMP,
+        ),
+      },
+    ],
+  }));
+
   const contentMinHeight = SCREEN_HEIGHT - headerTotalHeight - TAB_BAR_HEIGHT;
 
   const handleShowPress = (show: Show) => {
@@ -823,24 +942,16 @@ const UserProfileScreen = () => {
     return (
       <VStack>
         {/* Sub filter buttons */}
-        <HStack px="$md" py="$sm" style={{ gap: 8 }}>
-          {subTabs.map((st) => {
-            const isActive = contribSubTab === st.id;
-            return (
-              <Pressable
-                key={st.id}
-                style={[contribStyles.filterChip, isActive && contribStyles.filterChipActive]}
-                onPress={() => setContribSubTab(st.id)}
-              >
-                <RNText style={[contribStyles.filterChipText, isActive && contribStyles.filterChipTextActive]}>
-                  {st.label}
-                </RNText>
-                <RNText style={[contribStyles.filterChipCount, isActive && contribStyles.filterChipCountActive]}>
-                  {st.count}
-                </RNText>
-              </Pressable>
-            );
-          })}
+        <HStack px="$md" py="$sm" style={{ gap: 8, flexWrap: "wrap" }}>
+          {subTabs.map((st) => (
+            <AnimatedChip
+              key={st.id}
+              label={st.label}
+              count={st.count}
+              isActive={contribSubTab === st.id}
+              onPress={() => setContribSubTab(st.id)}
+            />
+          ))}
         </HStack>
 
         {/* Content */}
@@ -908,7 +1019,7 @@ const UserProfileScreen = () => {
 
       setTabsData((prev) => {
         const next = { ...prev };
-        for (const key of Object.keys(next) as TabType[]) {
+        for (const key of Object.keys(next) as PostsTabType[]) {
           next[key] = { ...next[key], posts: next[key].posts.map(updatePost) };
         }
         return next;
@@ -940,7 +1051,7 @@ const UserProfileScreen = () => {
 
         setTabsData((prev) => {
           const next = { ...prev };
-          for (const key of Object.keys(next) as TabType[]) {
+          for (const key of Object.keys(next) as PostsTabType[]) {
             next[key] = { ...next[key], posts: next[key].posts.map(rollbackPost) };
           }
           return next;
@@ -950,35 +1061,85 @@ const UserProfileScreen = () => {
     [tabsData, currentUser]
   );
 
-  const renderPostsContent = () => {
-    if (activeTab === "archive") return renderContributionContent();
+  const renderSellingContent = () => {
+    if (sellingLoading && !sellingLoaded) {
+      return (
+        <VStack alignItems="center" justifyContent="center" py="$xl" style={{ minHeight: 200 }}>
+          <RNImage source={profileLoadingGif} style={styles.loadingGif} resizeMode="contain" />
+        </VStack>
+      );
+    }
 
-    const currentTabData = tabsData[activeTab as Exclude<TabType, "archive">];
+    if (sellingProducts.length === 0) {
+      return (
+        <VStack alignItems="center" justifyContent="center" py="$xl" style={{ minHeight: 200 }}>
+          <Ionicons name="pricetag-outline" size={24} color={theme.colors.gray300} />
+          <Text style={[{ fontFamily: playfairFonts.regular, textAlign: "center" }, { color: theme.colors.gray400 }]} mt="$md">
+            {t("profile.noSellingListings")}
+          </Text>
+        </VStack>
+      );
+    }
+
+    return (
+      <View style={styles.sellingGrid}>
+        {sellingProducts.map((product) => {
+          const cover = product.images?.[0];
+          return (
+            <Pressable
+              key={product.id}
+              style={styles.sellingCard}
+              onPress={() =>
+                (navigation as any).navigate("StoreProductDetail", { productId: product.id })
+              }
+            >
+              <View style={styles.sellingCover}>
+                {cover ? (
+                  <OptimizedImage uri={cover} size={ImageSize.MEDIUM} style={styles.sellingImage} contentFit="cover" lazy />
+                ) : (
+                  <View style={[styles.sellingImage, styles.sellingImagePlaceholder]}>
+                    <Ionicons name="image-outline" size={28} color={theme.colors.gray300} />
+                  </View>
+                )}
+              </View>
+              <VStack px="$sm" py="$sm" gap={3}>
+                <Text fontSize={13} fontWeight="$semibold" numberOfLines={2} style={{ color: appTheme.colors.text }}>
+                  {product.title}
+                </Text>
+                {!!product.brand && (
+                  <Text fontSize={10} numberOfLines={1} style={{ color: appTheme.colors.gray400 }}>
+                    {product.brand}
+                  </Text>
+                )}
+                <Text fontSize={13} fontWeight="$bold" style={{ color: appTheme.colors.text }}>
+                  {formatPrice(product.priceCents, product.currency)}
+                </Text>
+              </VStack>
+            </Pressable>
+          );
+        })}
+      </View>
+    );
+  };
+
+  const renderPostsForTab = (tabKey: PostsTabType) => {
+    const currentTabData = tabsData[tabKey];
     const shouldShowLoading = currentTabData.isLoading && !currentTabData.hasLoaded;
 
     if (shouldShowLoading) {
       return (
         <VStack alignItems="center" justifyContent="center" py="$xl" style={{ minHeight: 200 }}>
-          <RNImage
-            source={profileLoadingGif}
-            style={styles.loadingGif}
-            resizeMode="contain"
-          />
+          <RNImage source={profileLoadingGif} style={styles.loadingGif} resizeMode="contain" />
         </VStack>
       );
     }
 
     if (currentTabData.posts.length > 0) {
-      // 论坛帖子使用单列竖排列表布局
-      if (activeTab === "forum") {
+      if (tabKey === "forum") {
         return (
-          <View style={{ width: '100%' }}>
+          <View style={{ width: "100%" }}>
             {currentTabData.posts.map((post) => (
-              <Pressable
-                key={post.id}
-                onPress={() => handlePostPress(post)}
-                style={{ width: '100%' }}
-              >
+              <Pressable key={post.id} onPress={() => handlePostPress(post)} style={{ width: "100%" }}>
                 <ForumPostCard post={post} onPress={() => handlePostPress(post)} />
               </Pressable>
             ))}
@@ -986,25 +1147,18 @@ const UserProfileScreen = () => {
         );
       }
 
-      // 其他 tab 使用双列瀑布流：每列独立纵向流动，告别 flex-wrap
-      // 把相邻卡片强制对齐到同一行顶部造成的空白间隙。卡片本身按媒体自
-      // 然比例渲染（见 PostCard 的 useMediaAspectRatio），所以布局随内容
-      // 真实高度起伏，视觉上接近小红书 / 瀑布流。
       const postColumns = splitIntoMasonryColumns(
         currentTabData.posts,
-        (post) => post.content?.images?.[0] || post.image
+        (post) => post.content?.images?.[0] || post.image,
       );
       return (
         <HStack px="$md" pt="$sm" alignItems="flex-start" space="sm">
           {postColumns.map((column, colIndex) => (
             <VStack key={colIndex} flex={1} space="sm">
               {column.map((post) => (
-                <PostCard
-                  key={post.id}
-                  post={post}
-                  onPress={handlePostPress}
-                  onLike={handleLike}
-                />
+                <Pressable key={post.id} onPress={() => handlePostPress(post)}>
+                  <PostCard post={post} onPress={() => handlePostPress(post)} onLike={handleLike} />
+                </Pressable>
               ))}
             </VStack>
           ))}
@@ -1013,30 +1167,91 @@ const UserProfileScreen = () => {
     }
 
     if (currentTabData.hasLoaded) {
+      const emptyIcon =
+        tabKey === "saved"
+          ? "bookmark-outline"
+          : tabKey === "liked"
+            ? "heart-outline"
+            : tabKey === "wishlist"
+              ? "bag-handle-outline"
+              : tabKey === "forum"
+                ? "chatbubbles-outline"
+                : "camera-outline";
+      const emptyText =
+        tabKey === "posts"
+          ? t("profile.noPublishedPosts")
+          : tabKey === "forum"
+            ? t("profile.noForumPosts")
+            : tabKey === "saved"
+              ? t("profile.noSavedPosts")
+              : tabKey === "liked"
+                ? t("profile.noLikedPosts")
+                : t("profile.noWishlist");
+
       return (
         <VStack alignItems="center" justifyContent="center" py="$xl" style={{ minHeight: 200 }}>
-          <Ionicons
-            name={
-              activeTab === "saved" ? "bookmark-outline" :
-                activeTab === "liked" ? "heart-outline" :
-                  activeTab === "wishlist" ? "bag-handle-outline" :
-                    activeTab === "forum" ? "chatbubbles-outline" : "camera-outline"
-            }
-            size={24}
-            color={theme.colors.gray300}
-          />
+          <Ionicons name={emptyIcon as any} size={24} color={theme.colors.gray300} />
           <Text style={[{ fontFamily: playfairFonts.regular, textAlign: "center" }, { color: theme.colors.gray400 }]} mt="$md">
-            {activeTab === "posts" && t("profile.noPublishedPosts")}
-            {activeTab === "forum" && t("profile.noForumPosts")}
-            {activeTab === "saved" && t("profile.noSavedPosts")}
-            {activeTab === "liked" && t("profile.noLikedPosts")}
-            {activeTab === "wishlist" && t("profile.noWishlist")}
+            {emptyText}
           </Text>
         </VStack>
       );
     }
+
     return null;
   };
+
+  const renderNotesChips = () => (
+    <View
+      style={{
+        backgroundColor: appTheme.colors.card,
+        borderBottomWidth: StyleSheet.hairlineWidth,
+        borderBottomColor: appTheme.colors.border,
+      }}
+    >
+      <HStack px="$md" py="$sm" style={{ gap: 8, flexWrap: "wrap" }}>
+        {notesSubTabs.map((chip) => (
+          <AnimatedChip
+            key={chip.id}
+            label={chip.label}
+            count={chip.count}
+            isActive={notesSubTab === chip.id}
+            onPress={() => setNotesSubTab(chip.id)}
+          />
+        ))}
+      </HStack>
+    </View>
+  );
+
+  const renderSellingChips = () => (
+    <View
+      style={{
+        backgroundColor: appTheme.colors.card,
+        borderBottomWidth: StyleSheet.hairlineWidth,
+        borderBottomColor: appTheme.colors.border,
+      }}
+    >
+      <HStack px="$md" py="$sm" style={{ gap: 8, flexWrap: "wrap" }}>
+        {sellingSubTabs.map((chip) => (
+          <AnimatedChip
+            key={chip.id}
+            label={chip.label}
+            isActive={sellingSubTab === chip.id}
+            onPress={() => setSellingSubTab(chip.id)}
+          />
+        ))}
+      </HStack>
+    </View>
+  );
+
+  const renderMainContent = () => {
+    if (topTab === "archive") return renderContributionContent();
+    if (topTab === "selling") return renderSellingContent();
+    if (topTab === "wishlist") return renderPostsForTab("wishlist");
+    return renderPostsForTab(notesSubTab);
+  };
+
+  const renderPostsContent = () => renderMainContent();
 
   const avatarUri = userInfo?.avatarUrl || avatar;
   const profileTitlesShown = titlesShownOnProfile(userTitles);
@@ -1067,7 +1282,9 @@ const UserProfileScreen = () => {
           <Pressable style={styles.headerButton} onPress={() => navigation.goBack()}>
             <Ionicons name="chevron-back" size={24} color={appTheme.colors.text} />
           </Pressable>
-          <View style={styles.collapsedAvatarContainer}>
+
+          {/* 头像绝对居中 —— 左右按钮数量/宽度不对称时仍保持视觉居中。 */}
+          <View style={styles.collapsedAvatarContainer} pointerEvents="box-none">
             {avatarUri ? (
               <Pressable
                 onPress={() => setAvatarPreviewVisible(true)}
@@ -1089,39 +1306,16 @@ const UserProfileScreen = () => {
               </View>
             )}
           </View>
+
           <View style={styles.headerRightButtons}>
             {!isCurrentUser && (
-              <>
-                <Pressable
-                  style={[styles.followButtonSmall, isFollowing && styles.followingButtonSmall]}
-                  onPress={handleFollowToggle}
-                  disabled={followLoading}
-                >
-                  {followLoading ? (
-                    <ActivityIndicator
-                      color={isFollowing ? appTheme.colors.gray400 : appTheme.colors.textInverted}
-                      size="small"
-                    />
-                  ) : (
-                    <RNText
-                      style={[
-                        styles.followButtonTextSmall,
-                        isFollowing && styles.followingButtonTextSmall,
-                      ]}
-                    >
-                      {isFollowing ? t("profile.unfollow") : t("profile.followUser")}
-                    </RNText>
-                  )}
-                </Pressable>
-                <Pressable
-                  style={styles.headerButton}
-                  onPress={() => setShowShareToChat(true)}
-                >
-                  <Ionicons name="share-outline" size={20} color={appTheme.colors.text} />
-                </Pressable>
-              </>
+              <Pressable
+                style={styles.headerButton}
+                onPress={() => setShowShareToChat(true)}
+              >
+                <Ionicons name="share-outline" size={20} color={appTheme.colors.text} />
+              </Pressable>
             )}
-            {/* 在白色 Header 显示深色编辑按钮 */}
             {isCurrentUser && (
               <Pressable
                 style={styles.headerButton}
@@ -1144,25 +1338,12 @@ const UserProfileScreen = () => {
           ]}
           pointerEvents="box-none"
         >
-          <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: appTheme.colors.card }}>
-            <RNScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.tabScrollContent}
-            >
-              {tabs.map((tab) => (
-                <Pressable
-                  key={tab.id}
-                  style={styles.tabItem}
-                  onPress={() => handleTabPress(tab.id)}
-                >
-                  <RNText style={[styles.tabText, activeTab === tab.id && styles.tabTextActive]}>
-                    {tab.label}
-                  </RNText>
-                  {activeTab === tab.id && <View style={styles.tabIndicator} />}
-                </Pressable>
-              ))}
-            </RNScrollView>
+          <View style={{ flex: 1, backgroundColor: appTheme.colors.card }}>
+            <TopTabBar
+              tabs={topTabs}
+              activeTab={topTab}
+              onTabPress={setTopTab}
+            />
           </View>
         </Animated.View>
       )}
@@ -1432,28 +1613,28 @@ const UserProfileScreen = () => {
               }
             }}
           >
-            <RNScrollView
-              ref={tabScrollViewRef}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.tabScrollContent}
-            >
-              {tabs.map((tab) => (
-                <Pressable key={tab.id} style={styles.tabItem} onPress={() => handleTabPress(tab.id)}>
-                  <RNText style={[styles.tabText, activeTab === tab.id && styles.tabTextActive]}>
-                    {tab.label}
-                  </RNText>
-                  {activeTab === tab.id && <View style={styles.tabIndicator} />}
-                </Pressable>
-              ))}
-            </RNScrollView>
+            <TopTabBar
+              tabs={topTabs}
+              activeTab={topTab}
+              onTabPress={setTopTab}
+            />
           </Animated.View>
         )}
 
-        {/* 帖子列表 */}
-        <View style={[styles.postsContainer, { minHeight: contentMinHeight, backgroundColor: appTheme.colors.background }]}>
-          {renderPostsContent()}
-        </View>
+        <Animated.View style={topPanelAnimStyle}>
+          {topTab === "notes" && renderNotesChips()}
+          {topTab === "selling" && renderSellingChips()}
+
+          <Animated.View
+            style={[
+              styles.postsContainer,
+              { minHeight: contentMinHeight, backgroundColor: appTheme.colors.background },
+              topTab === "notes" && notesPanelAnimStyle,
+            ]}
+          >
+            {renderPostsContent()}
+          </Animated.View>
+        </Animated.View>
       </AnimatedScrollView>
 
       {/* Modal */}
@@ -1571,6 +1752,7 @@ const makeStyles = (t: AppTheme) =>
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 12,
+    position: "relative",
   },
   headerButton: {
     width: 36,
@@ -1580,10 +1762,11 @@ const makeStyles = (t: AppTheme) =>
     alignItems: "center",
   },
   collapsedAvatarContainer: {
-    flex: 1,
+    position: "absolute",
+    left: 0,
+    right: 0,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 40,
   },
   collapsedUsername: {
     fontSize: 16,
@@ -1890,6 +2073,32 @@ const makeStyles = (t: AppTheme) =>
   loadingGif: {
     width: SCREEN_WIDTH,
     height: SCREEN_WIDTH,
+  },
+  sellingGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    paddingHorizontal: t.spacing.md,
+    paddingTop: t.spacing.sm,
+    gap: t.spacing.sm,
+  },
+  sellingCard: {
+    width: (SCREEN_WIDTH - t.spacing.md * 2 - t.spacing.sm) / 2,
+    borderRadius: t.borderRadius.md,
+    overflow: "hidden",
+    backgroundColor: t.colors.card,
+  },
+  sellingCover: {
+    width: "100%",
+    aspectRatio: 1,
+    backgroundColor: t.colors.skeleton,
+  },
+  sellingImage: {
+    width: "100%",
+    height: "100%",
+  },
+  sellingImagePlaceholder: {
+    justifyContent: "center",
+    alignItems: "center",
   },
 });
 
