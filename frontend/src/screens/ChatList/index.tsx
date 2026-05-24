@@ -9,6 +9,7 @@ import ScreenHeader from "../../components/ScreenHeader";
 import { useChatStore } from "../../store/chatStore";
 import { Conversation } from "../../services/chatService";
 import { ConversationItem } from "./components/ConversationItem";
+import { getConversationChatParams } from "../../utils/chatNavigationUtils";
 import { useChatListStyles } from "./styles";
 
 const ChatListScreen = () => {
@@ -44,12 +45,7 @@ const ChatListScreen = () => {
   }, []);
 
   const handleConversationPress = (conversation: Conversation) => {
-    (navigation.navigate as any)("Chat", {
-      conversationId: conversation.id,
-      otherUserName: conversation.otherUser?.username || t('chat.title'),
-      otherUserAvatar: conversation.otherUser?.avatarUrl,
-      otherUserId: conversation.otherUser?.userId,
-    });
+    (navigation.navigate as any)("Chat", getConversationChatParams(conversation, t));
   };
 
   const renderEmpty = () => (

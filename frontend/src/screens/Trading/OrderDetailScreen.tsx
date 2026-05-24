@@ -46,6 +46,7 @@ import {
   contactSupportForOrderWithIssue,
   AftersalesIssue,
 } from "../../services/aftersalesService";
+import { getCustomerServiceChatParams } from "../../utils/chatNavigationUtils";
 import { ActionSheet, ActionSheetAction } from "../../components/ui/ActionSheet";
 import { useAppTheme, useThemedStyles, type AppTheme } from "../../theme";
 
@@ -341,10 +342,11 @@ export default function OrderDetailScreen() {
         const res = issue
           ? await contactSupportForOrderWithIssue(order.id, issue)
           : await contactSupportForOrder(order.id);
-        navigation.navigate("Chat", {
-          conversationId: res.conversationId,
-          otherUserId: res.csUserId,
-        });
+        navigation.navigate("Chat", getCustomerServiceChatParams(
+          res.conversationId,
+          res.csUserId,
+          t,
+        ));
       } catch (e: any) {
         Alert.alert(
           t("common.failed"),

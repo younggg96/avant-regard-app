@@ -88,8 +88,14 @@ export interface OrderStatusCard {
 export interface DisputeCard {
   disputeId: number;
   orderId: number;
+  /** 已经在后端做过中文化的展示文案（i18n 友好），缺省时回落到 rawReason */
   reason: string;
+  /** 已经在后端做过中文化的展示文案，缺省时回落到 rawStatus */
   status: string;
+  /** Enum 原值，便于前端按 key 做多语言或图标切换 */
+  rawReason?: string;
+  rawStatus?: string;
+  note?: string | null;
 }
 
 // ---------- parse helpers ----------
@@ -453,6 +459,19 @@ export function DisputeCardView({
   const { t } = useTranslation();
   const theme = useAppTheme();
   const styles = useThemedStyles(makeStyles);
+
+  // 优先用 raw enum 做多语言；缺省时回落到后端给的展示文案
+  const reasonText = data.rawReason
+    ? t(`trading.cards.disputeReasons.${data.rawReason}`, {
+        defaultValue: data.reason,
+      })
+    : data.reason;
+  const statusText = data.rawStatus
+    ? t(`trading.cards.disputeStatuses.${data.rawStatus}`, {
+        defaultValue: data.status,
+      })
+    : data.status;
+
   return (
     <TouchableOpacity
       style={[
@@ -473,12 +492,17 @@ export function DisputeCardView({
           {t("trading.cards.disputeHeader", { id: data.disputeId })}
         </Text>
         <Text style={[styles.statusPill, { color: theme.colors.error }]}>
-          {data.status}
+          {statusText}
         </Text>
       </View>
       <Text style={styles.title}>
-        {t("trading.cards.disputeReason", { reason: data.reason })}
+        {t("trading.cards.disputeReason", { reason: reasonText })}
       </Text>
+      {data.note ? (
+        <Text style={styles.muted} numberOfLines={2}>
+          {data.note}
+        </Text>
+      ) : null}
       <Text style={styles.muted}>
         {t("trading.cards.disputeOrderRef", { id: data.orderId })}
       </Text>

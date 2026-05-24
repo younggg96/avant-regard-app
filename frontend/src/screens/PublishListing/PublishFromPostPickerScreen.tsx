@@ -233,11 +233,12 @@ const makeStyles = (t: AppTheme) =>
     // Hint banner（顶部信息条）
     banner: {
       marginHorizontal: 16,
-      marginTop: 12,
+      marginTop: 8,
+      marginBottom: 8,
       paddingHorizontal: 12,
       paddingVertical: 10,
       backgroundColor: t.colors.surface,
-      borderRadius: 10,
+      borderRadius: 4,
     },
     bannerText: {
       flex: 1,
@@ -247,7 +248,7 @@ const makeStyles = (t: AppTheme) =>
     },
 
     // 列表
-    listContent: { padding: 16, paddingBottom: 40 },
+    listContent: { paddingHorizontal: 16, paddingBottom: 40 },
     card: {
       backgroundColor: t.colors.cardElevated,
       borderRadius: 12,

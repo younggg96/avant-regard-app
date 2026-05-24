@@ -18,6 +18,7 @@ import ScreenHeader from "../components/ScreenHeader";
 import { useChatStore } from "../store/chatStore";
 import { Conversation } from "../services/chatService";
 import { ConversationRow } from "./Interaction/components/ConversationRow";
+import { getConversationChatParams } from "../utils/chatNavigationUtils";
 import { isStrangerConversation } from "./Interaction/utils";
 
 const StrangerMessagesScreen = () => {
@@ -116,14 +117,9 @@ const StrangerMessagesScreen = () => {
         toggleSelect(c.id);
         return;
       }
-      (navigation.navigate as any)("Chat", {
-        conversationId: c.id,
-        otherUserName: c.otherUser?.username || t("chat.title"),
-        otherUserAvatar: c.otherUser?.avatarUrl,
-        otherUserId: c.otherUser?.userId,
-      });
+      (navigation.navigate as any)("Chat", getConversationChatParams(c, t));
     },
-    [navigation, editMode, toggleSelect]
+    [navigation, editMode, toggleSelect, t]
   );
 
   const handleLongPress = useCallback(

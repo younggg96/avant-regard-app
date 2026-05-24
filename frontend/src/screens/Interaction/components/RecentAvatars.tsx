@@ -1,22 +1,21 @@
 import React, { useCallback, useState } from "react";
 import { StyleSheet, Alert, ScrollView as RNScrollView } from "react-native";
-import { Image as ExpoImage } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { Box, Text, Pressable } from "../../../components/ui";
 import { UserAvatar } from "../../../components/ui/UserAvatar";
+import { CustomerServiceAvatar } from "../../../components/ui/CustomerServiceAvatar";
 import { Conversation, createConversation } from "../../../services/chatService";
 import { theme, useThemedStyles, type AppTheme } from "../../../theme";
-import { CS_USER_ID } from "../constants";
+import { CS_USER_ID } from "../../../constants/customerService";
+import { getConversationChatParams, getCustomerServiceChatParams } from "../../../utils/chatNavigationUtils";
 import { isStrangerConversation } from "../utils";
 
 const AVATAR_SIZE = 56;
 const RING_SIZE = AVATAR_SIZE + 4;
 const ITEM_WIDTH = 64;
 const MAX_VISIBLE = 20;
-
-const APP_LOGO = require("../../../../assets/images/logo.jpg");
 
 interface RecentAvatarsProps {
   conversations: Conversation[];
@@ -36,12 +35,7 @@ export const RecentAvatars: React.FC<RecentAvatarsProps> = ({
 
   const handleConversationPress = useCallback(
     (c: Conversation) => {
-      (navigation.navigate as any)("Chat", {
-        conversationId: c.id,
-        otherUserName: c.otherUser?.username || t("chat.title"),
-        otherUserAvatar: c.otherUser?.avatarUrl,
-        otherUserId: c.otherUser?.userId,
-      });
+      (navigation.navigate as any)("Chat", getConversationChatParams(c, t));
     },
     [navigation, t]
   );
@@ -51,11 +45,10 @@ export const RecentAvatars: React.FC<RecentAvatarsProps> = ({
     setCsLoading(true);
     try {
       const { conversationId } = await createConversation(CS_USER_ID);
-      (navigation.navigate as any)("Chat", {
-        conversationId,
-        otherUserName: t("interaction.csDisplayName"),
-        otherUserId: CS_USER_ID,
-      });
+      (navigation.navigate as any)(
+        "Chat",
+        getCustomerServiceChatParams(conversationId, CS_USER_ID, t),
+      );
     } catch {
       Alert.alert(t("common.hint"), t("interaction.csUnavailable"));
     } finally {
@@ -76,11 +69,7 @@ export const RecentAvatars: React.FC<RecentAvatarsProps> = ({
       >
         <Pressable style={styles.item} onPress={handleCsPress}>
           <Box style={styles.csRing}>
-            <ExpoImage
-              source={APP_LOGO}
-              style={styles.csAvatar}
-              contentFit="cover"
-            />
+            <CustomerServiceAvatar size={AVATAR_SIZE} />
           </Box>
           <Text style={styles.name} numberOfLines={1}>
             {t("interaction.csLabel")}
@@ -153,11 +142,6 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
     borderColor: t.colors.gray200,
     justifyContent: "center",
     alignItems: "center",
-  },
-  csAvatar: {
-    width: AVATAR_SIZE,
-    height: AVATAR_SIZE,
-    borderRadius: AVATAR_SIZE / 2,
   },
   addRing: {
     width: RING_SIZE,

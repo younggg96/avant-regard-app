@@ -13,7 +13,6 @@ import {
   FlatList,
   RefreshControl,
   StyleSheet,
-  TouchableOpacity,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -262,16 +261,21 @@ const SellerListingsScreen: React.FC = () => {
   const menuActions = useMemo(() => {
     if (!menuProduct) return [];
     const actions: Array<{ label: string; onPress: () => void; destructive?: boolean }> = [];
+
+    const goEdit = () => {
+      setMenuProduct(null);
+      usePublishListingStore.getState().hydrateFromListing(menuProduct);
+      // @ts-expect-error - navigation types
+      navigation.navigate("PublishListingStep1");
+    };
+    const goDetail = () => {
+      setMenuProduct(null);
+      // @ts-expect-error - navigation types
+      navigation.navigate("StoreProductDetail", { productId: menuProduct.id });
+    };
+
     if (menuProduct.status === "draft" || menuProduct.status === "rejected") {
-      actions.push({
-        label: t("trading.myListings.actionEdit"),
-        onPress: () => {
-          setMenuProduct(null);
-          usePublishListingStore.getState().hydrateFromListing(menuProduct);
-          // @ts-expect-error - navigation types
-          navigation.navigate("PublishListingStep1");
-        },
-      });
+      actions.push({ label: t("trading.myListings.actionEdit"), onPress: goEdit });
       actions.push({
         label: t("trading.myListings.actionDelete"),
         destructive: true,
@@ -282,26 +286,13 @@ const SellerListingsScreen: React.FC = () => {
         label: t("trading.myListings.actionDelist"),
         onPress: () => handleSingleOffline(menuProduct.id),
       });
-      actions.push({
-        label: t("trading.myListings.actionView"),
-        onPress: () => {
-          setMenuProduct(null);
-          // @ts-expect-error - navigation types
-          navigation.navigate("StoreProductDetail", { productId: menuProduct.id });
-        },
-      });
+      actions.push({ label: t("trading.myListings.actionView"), onPress: goDetail });
     } else {
-      actions.push({
-        label: t("trading.myListings.actionView"),
-        onPress: () => {
-          setMenuProduct(null);
-          // @ts-expect-error - navigation types
-          navigation.navigate("StoreProductDetail", { productId: menuProduct.id });
-        },
-      });
+      actions.push({ label: t("trading.myListings.actionView"), onPress: goDetail });
     }
     return actions;
-  }, [menuProduct, navigation, t]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [menuProduct, navigation, t, reloadAll]);
 
   const renderHeaderRight = () => {
     if (!showManageAction) return undefined;
@@ -424,7 +415,7 @@ const SellerListingsScreen: React.FC = () => {
           </Text>
           <HStack space="sm">
             {canBatchOffline && (
-              <TouchableOpacity
+              <Pressable
                 style={styles.batchBtn}
                 onPress={handleBatchOffline}
                 disabled={selectedIds.size === 0}
@@ -432,10 +423,10 @@ const SellerListingsScreen: React.FC = () => {
                 <Text style={styles.batchBtnText}>
                   {t("trading.myListings.offline")}
                 </Text>
-              </TouchableOpacity>
+              </Pressable>
             )}
             {canBatchDelete && (
-              <TouchableOpacity
+              <Pressable
                 style={[styles.batchBtn, styles.batchBtnDanger]}
                 onPress={handleBatchDelete}
                 disabled={selectedIds.size === 0}
@@ -443,21 +434,10 @@ const SellerListingsScreen: React.FC = () => {
                 <Text style={[styles.batchBtnText, styles.batchBtnDangerText]}>
                   {t("trading.myListings.delete")}
                 </Text>
-              </TouchableOpacity>
+              </Pressable>
             )}
           </HStack>
         </Box>
-      )}
-
-      {!selectionMode && (
-        <TouchableOpacity
-          style={styles.fab}
-          onPress={handleNewListing}
-          activeOpacity={0.85}
-          accessibilityLabel={t("trading.myListings.publishItem")}
-        >
-          <Ionicons name="add" size={28} color={theme.colors.textInverted} />
-        </TouchableOpacity>
       )}
 
       <ActionSheet
@@ -662,7 +642,6 @@ const makeStyles = (t: AppTheme) =>
       fontSize: 12,
       color: t.colors.textSecondary,
       textAlign: "center",
-      marginTop: -4,
     },
     row: {
       flexDirection: "row",
@@ -719,8 +698,8 @@ const makeStyles = (t: AppTheme) =>
       padding: 32,
     },
     emptyText: { color: t.colors.textSecondary, fontSize: 14 },
-    listContent: { paddingBottom: 96 },
-    listEmptyContent: { flexGrow: 1, paddingBottom: 96 },
+    listContent: { paddingBottom: 32 },
+    listEmptyContent: { flexGrow: 1, paddingBottom: 32 },
     batchBar: {
       flexDirection: "row",
       justifyContent: "space-between",
@@ -746,22 +725,6 @@ const makeStyles = (t: AppTheme) =>
     },
     batchBtnText: { color: t.colors.text, fontSize: 14, fontWeight: "500" },
     batchBtnDangerText: { color: t.colors.textInverted },
-    fab: {
-      position: "absolute",
-      right: 20,
-      bottom: 24,
-      width: 56,
-      height: 56,
-      borderRadius: CARD_RADIUS,
-      backgroundColor: t.colors.text,
-      justifyContent: "center",
-      alignItems: "center",
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.2,
-      shadowRadius: 6,
-      elevation: 6,
-    },
   });
 
 export default SellerListingsScreen;

@@ -568,6 +568,37 @@ class NotificationService:
             action_data=action_data,
         )
 
+    def notify_new_listing_from_followee(
+        self,
+        recipient_user_id: int,
+        *,
+        seller_user_id: int,
+        seller_username: str,
+        product_id: int,
+        product_title: str,
+        product_image: Optional[str] = None,
+    ) -> None:
+        """关注的卖家上架了新单品。
+
+        统一走 NotificationType.SYSTEM, action_data 跳到商品详情;
+        push 文案带上卖家用户名, 让接收端能一眼分辨.
+        """
+        action_data = {
+            "navigateTo": "StoreProductDetail",
+            "navigateParams": {"productId": product_id},
+            "sellerUserId": seller_user_id,
+            "post_image": product_image,
+        }
+        truncated_title = product_title[:60] + ("..." if len(product_title) > 60 else "")
+        display_name = seller_username or f"用户#{seller_user_id}"
+        self.create_notification(
+            user_id=recipient_user_id,
+            notification_type=NotificationType.SYSTEM,
+            title=f"{display_name} 上架了新单品",
+            message=truncated_title,
+            action_data=action_data,
+        )
+
     def notify_favorited_product_price_changed(
         self,
         recipient_user_id: int,

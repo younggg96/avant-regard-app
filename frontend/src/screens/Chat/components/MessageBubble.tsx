@@ -10,6 +10,8 @@ import { useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { theme, useThemedStyles, type AppTheme } from "../../../theme";
 import { UserAvatar } from "../../../components/ui/UserAvatar";
+import { CustomerServiceAvatar } from "../../../components/ui/CustomerServiceAvatar";
+import { isCustomerServiceUser } from "../../../constants/customerService";
 import { OptimizedImage } from "../../../components/ui/OptimizedImage";
 import { ImageSize } from "../../../utils/imageUtils";
 import { ActionSheet } from "../../../components/ui/ActionSheet";
@@ -91,6 +93,7 @@ export const MessageBubble = ({
 }: MessageBubbleProps) => {
   const { t } = useTranslation();
   const isMine = message.isMine;
+  const isCsSender = isCustomerServiceUser(message.senderId);
   const [showMenu, setShowMenu] = useState(false);
   const navigation = useNavigation();
   const styles = useChatStyles();
@@ -746,16 +749,20 @@ export const MessageBubble = ({
       >
         {!isMine && (
           <View style={styles.senderAvatarContainer}>
-            <UserAvatar
-              uri={message.senderAvatar}
-              name={message.senderName}
-              size={36}
-            />
+            {isCsSender ? (
+              <CustomerServiceAvatar size={36} />
+            ) : (
+              <UserAvatar
+                uri={message.senderAvatar}
+                name={message.senderName}
+                size={36}
+              />
+            )}
           </View>
         )}
 
         <View style={isMine ? styles.bubbleGroupRight : styles.bubbleGroupLeft}>
-          {!isMine && message.senderTitle ? (
+          {!isMine && message.senderTitle && !isCsSender ? (
             <View style={titleStyles.badge}>
               <Text style={titleStyles.badgeText}>{message.senderTitle}</Text>
             </View>

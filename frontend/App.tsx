@@ -100,8 +100,6 @@ import UserCollectionDetailScreen from "./src/screens/UserCollectionDetailScreen
 // Trading System (PRD Phase 4) Screens
 import CheckoutScreen from "./src/screens/Trading/CheckoutScreen";
 import PaymentScreen from "./src/screens/Trading/PaymentScreen";
-import MyOrdersScreen from "./src/screens/Trading/MyOrdersScreen";
-import MySalesScreen from "./src/screens/Trading/MySalesScreen";
 import OrderDetailScreen from "./src/screens/Trading/OrderDetailScreen";
 import MyOffersScreen from "./src/screens/Trading/MyOffersScreen";
 // 确认收货 / 结算 / 钱包 (PRD 补充)
@@ -969,16 +967,6 @@ function AppNavigator({
         <Stack.Screen
           name="Payment"
           component={PaymentScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="MyOrders"
-          component={MyOrdersScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="MySales"
-          component={MySalesScreen}
           options={{ headerShown: false }}
         />
         <Stack.Screen

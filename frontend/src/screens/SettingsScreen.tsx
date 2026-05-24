@@ -37,6 +37,7 @@ import {
   ActionSheet,
 } from "../components/ui";
 import { Modal } from "../components/ui/modal";
+import { getCustomerServiceChatParams } from "../utils/chatNavigationUtils";
 
 interface SettingItem {
   id: string;
@@ -45,6 +46,12 @@ interface SettingItem {
   onPress?: () => void;
   rightText?: string;
   rightColor?: string;
+}
+
+interface SettingSection {
+  id: string;
+  title: string;
+  items: SettingItem[];
 }
 
 const SettingsScreen = () => {
@@ -208,8 +215,9 @@ const SettingsScreen = () => {
     }
   };
 
-  const baseSections: { title: string; items: SettingItem[] }[] = [
+  const baseSections: SettingSection[] = [
     {
+      id: "account",
       title: t("settings.account"),
       items: [
         {
@@ -259,6 +267,71 @@ const SettingsScreen = () => {
       ],
     },
     {
+      id: "shopping",
+      title: t("settings.shopping"),
+      items: [
+        {
+          id: "myOrders",
+          label: t("settings.myOrders"),
+          icon: "receipt-outline",
+          onPress: () =>
+            (navigation as any).navigate("Main", {
+              screen: "Profile",
+              params: { initialTopTab: "buying" },
+            }),
+        },
+        {
+          id: "myOffers",
+          label: t("settings.myOffers"),
+          icon: "swap-horizontal-outline",
+          onPress: () => (navigation as any).navigate("MyOffers"),
+        },
+        {
+          id: "authentication",
+          label: t("settings.authentication"),
+          icon: "shield-checkmark-outline",
+          onPress: () => (navigation as any).navigate("Authentication"),
+        },
+      ],
+    },
+    {
+      id: "merchantCenter",
+      title: t("settings.merchantCenter"),
+      items: [
+        {
+          id: "merchant",
+          label: t("settings.myStores"),
+          icon: "storefront-outline",
+          onPress: () => (navigation as any).navigate("MyMerchantStores"),
+          rightText: t("settings.merchantEntry"),
+          rightColor: "#F57C00",
+        },
+        {
+          id: "sellerListings",
+          label: t("settings.myListings"),
+          icon: "pricetag-outline",
+          onPress: () => (navigation as any).navigate("SellerListings"),
+        },
+        {
+          id: "mySales",
+          label: t("settings.mySales"),
+          icon: "cash-outline",
+          onPress: () =>
+            (navigation as any).navigate("Main", {
+              screen: "Profile",
+              params: { initialTopTab: "selling" },
+            }),
+        },
+        {
+          id: "myArchive",
+          label: t("settings.myArchive"),
+          icon: "albums-outline",
+          onPress: () => (navigation as any).navigate("MyArchive"),
+        },
+      ],
+    },
+    {
+      id: "privacy",
       title: t("settings.privacy"),
       items: [
         {
@@ -281,66 +354,15 @@ const SettingsScreen = () => {
         },
       ],
     },
-    // 商家中心 —— 订单 / 销售已通过 Profile 页的「交易」一级 tab 内嵌
-    // 展示, 这里保留作为「全量入口/直达页」的备份: 比如点 「我的钱包」
-    // 进入完整的余额/提现页, 走 Profile tab 看不到那个层级的功能。
-    // PRD: 交易大厅 与 发布新单品 已分别从主 Tab「交易」和底部「+」按钮
-    // 入口走, 这里不重复挂入口避免认知负担。
     {
-      title: t("settings.merchantCenter"),
+      id: "commonServices",
+      title: t("settings.commonServices"),
       items: [
-        {
-          id: "merchant",
-          label: t("settings.myStores"),
-          icon: "storefront-outline",
-          onPress: () => (navigation as any).navigate("MyMerchantStores"),
-          rightText: t("settings.merchantEntry"),
-          rightColor: "#F57C00",
-        },
-        {
-          id: "sellerListings",
-          label: t("settings.myListings"),
-          icon: "pricetag-outline",
-          onPress: () => (navigation as any).navigate("SellerListings"),
-        },
-        // 「我的收藏」入口已迁移到 Profile 一级 tab「收藏」, 这里不再重复挂入口。
-        // 旧的 MyCollections / UserCollectionDetail 路由仍然保留 (App.tsx),
-        // 给 Profile 中的「产品收藏夹」卡片点击作为详情页入口。
-        {
-          id: "myOrders",
-          label: t("settings.myOrders"),
-          icon: "receipt-outline",
-          onPress: () => (navigation as any).navigate("MyOrders"),
-        },
-        {
-          id: "mySales",
-          label: t("settings.mySales"),
-          icon: "cash-outline",
-          onPress: () => (navigation as any).navigate("MySales"),
-        },
-        {
-          id: "myOffers",
-          label: t("settings.myOffers"),
-          icon: "swap-horizontal-outline",
-          onPress: () => (navigation as any).navigate("MyOffers"),
-        },
         {
           id: "myWallet",
           label: t("trading.profile.walletEntry"),
           icon: "wallet-outline",
           onPress: () => (navigation as any).navigate("MyWallet"),
-        },
-        {
-          id: "authentication",
-          label: t("settings.authentication"),
-          icon: "shield-checkmark-outline",
-          onPress: () => (navigation as any).navigate("Authentication"),
-        },
-        {
-          id: "myArchive",
-          label: t("settings.myArchive"),
-          icon: "albums-outline",
-          onPress: () => (navigation as any).navigate("MyArchive"),
         },
         {
           id: "plusSubscribe",
@@ -351,6 +373,7 @@ const SettingsScreen = () => {
       ],
     },
     {
+      id: "support",
       title: t("settings.support"),
       items: [
         {
@@ -364,10 +387,10 @@ const SettingsScreen = () => {
                 "../services/aftersalesService"
               );
               const res = await contactSupportGeneral();
-              (navigation as any).navigate("Chat", {
-                conversationId: res.conversationId,
-                otherUserId: res.csUserId,
-              });
+              (navigation as any).navigate(
+                "Chat",
+                getCustomerServiceChatParams(res.conversationId, res.csUserId, t),
+              );
             } catch (e) {
               console.warn("[settings] contact support failed", e);
             }
@@ -400,6 +423,7 @@ const SettingsScreen = () => {
       ],
     },
     {
+      id: "storage",
       title: t("settings.storage"),
       items: [
         {
@@ -413,6 +437,7 @@ const SettingsScreen = () => {
       ],
     },
     {
+      id: "accountManagement",
       title: t("settings.accountManagement"),
       items: [
         {
@@ -433,9 +458,10 @@ const SettingsScreen = () => {
     },
   ];
 
-  const settingSections = user?.is_admin
+  const settingSections: SettingSection[] = user?.is_admin
     ? [
       {
+        id: "admin",
         title: t("settings.admin"),
         items: [
           {
@@ -464,7 +490,7 @@ const SettingsScreen = () => {
         showsVerticalScrollIndicator={false}
       >
         {settingSections.map((section) => (
-          <Box key={section.title} style={styles.section}>
+          <Box key={section.id} style={styles.section}>
             <Text style={styles.sectionTitle}>{section.title}</Text>
             <Box style={styles.sectionCard}>
               {section.items.map((item, idx) => (

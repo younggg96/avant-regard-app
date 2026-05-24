@@ -8,7 +8,7 @@ import {
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useNavigation, useFocusEffect } from "@react-navigation/native";
+import { useNavigation, useFocusEffect, useRoute, RouteProp } from "@react-navigation/native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -63,9 +63,14 @@ import { useNotificationStore } from "../../store/notificationStore";
 
 const AnimatedScrollView = Animated.createAnimatedComponent(RNScrollView);
 
+type ProfileRouteParams = {
+  Profile: { initialTopTab?: TopTabType } | undefined;
+};
+
 const ProfileScreen = () => {
   const { t } = useTranslation();
   const navigation = useNavigation();
+  const route = useRoute<RouteProp<ProfileRouteParams, "Profile">>();
   const insets = useSafeAreaInsets();
   const styles = useProfileStyles();
   const appTheme = useAppTheme();
@@ -84,7 +89,19 @@ const ProfileScreen = () => {
   const [activeTab, setActiveTab] = useState<TabType>("published");
   // 一级 tab —— 默认进入「笔记」侧, 与历史行为保持一致;切到「购买」/
   // 「在售」时由 TradingContent 自己懒加载对应订单列表, 不影响首屏。
-  const [topTab, setTopTab] = useState<TopTabType>("notes");
+  // 设置页等外部入口可通过 route.params.initialTopTab 跳过来时预选「购买」
+  // 或「在售」一级 tab, 避免用户再手动点一下。
+  const [topTab, setTopTab] = useState<TopTabType>(
+    route.params?.initialTopTab ?? "notes",
+  );
+
+  useEffect(() => {
+    const next = route.params?.initialTopTab;
+    if (next) {
+      setTopTab(next);
+      navigation.setParams({ initialTopTab: undefined } as never);
+    }
+  }, [route.params?.initialTopTab, navigation]);
   const [buyingFilter, setBuyingFilter] = useState<BuyingFilterType>("all");
   const [sellingFilter, setSellingFilter] = useState<SellingFilterType>("all");
   const [refreshing, setRefreshing] = useState(false);

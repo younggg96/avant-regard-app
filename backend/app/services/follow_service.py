@@ -156,6 +156,27 @@ class FollowService:
             print(f"Error in get_followers for user {user_id}: {e}")
             raise
 
+    def get_follower_ids(self, user_id: int) -> List[int]:
+        """轻量获取某用户的全部粉丝 user_id 列表，用于群发通知。
+
+        不 join users 表，避免 N+1；只取 follower_id 列。
+        """
+        try:
+            result = (
+                self.db.table("user_follows")
+                .select("follower_id")
+                .eq("following_id", user_id)
+                .execute()
+            )
+            return [
+                row["follower_id"]
+                for row in (result.data or [])
+                if row.get("follower_id")
+            ]
+        except Exception as e:
+            print(f"Error in get_follower_ids for user {user_id}: {e}")
+            return []
+
     def get_following_count(self, user_id: int) -> int:
         """获取用户关注的用户数量"""
         result = (

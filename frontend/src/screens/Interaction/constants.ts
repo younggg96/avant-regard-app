@@ -1,8 +1,6 @@
 import { theme } from "../../theme";
 
-/** Backend user ID for the customer-service / admin account */
-export const CS_USER_ID = 1;
-export const CS_DISPLAY_NAME = "Avant Regard 客服";
+export { CS_USER_ID } from "../../constants/customerService";
 
 export type SubTab = "messages" | "map";
 

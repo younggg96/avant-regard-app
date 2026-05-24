@@ -19,11 +19,6 @@ const makeInteractionStyles = (t: AppTheme) =>
     rowUnread: {
       backgroundColor: `${t.colors.accent}05`,
     },
-    csAvatar: {
-      width: 48,
-      height: 48,
-      borderRadius: 24,
-    },
   });
 
 export const useInteractionStyles = () => useThemedStyles(makeInteractionStyles);

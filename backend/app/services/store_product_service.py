@@ -802,6 +802,12 @@ class StoreProductService:
             except Exception as e:
                 print(f"[store_products] provenance seed skipped: {e}")
 
+            # 通知卖家粉丝：你关注的卖家上架了新单品
+            try:
+                self._notify_followers_new_listing(product_id, raw)
+            except Exception as e:
+                print(f"[store_products] notify followers skipped pid={product_id}: {e}")
+
         # 审核轨迹（reviewing → active / rejected）
         if src == "reviewing" and target in (ProductStatus.ACTIVE, ProductStatus.REJECTED):
             decision = "approved" if target == ProductStatus.ACTIVE else "rejected"
@@ -2657,6 +2663,96 @@ class StoreProductService:
             except Exception as e:
                 print(
                     f"[store_products] notify {kind} to uid={uid} pid={product_id} failed: {e}"
+                )
+
+    def _resolve_seller_user_id(self, raw: dict) -> Optional[int]:
+        """从 product raw 行解析出 seller 的 userId.
+
+        - 个人卖家: seller_user_id 直接给出
+        - 买手店: 查 store_merchants.user_id
+        """
+        seller_user_id = raw.get("seller_user_id")
+        if seller_user_id:
+            try:
+                return int(seller_user_id)
+            except (TypeError, ValueError):
+                pass
+        merchant_id = raw.get("merchant_id")
+        if not merchant_id:
+            return None
+        try:
+            res = (
+                self.db_admin.table("store_merchants")
+                .select("user_id")
+                .eq("id", merchant_id)
+                .limit(1)
+                .execute()
+            )
+            if res.data and res.data[0].get("user_id"):
+                return int(res.data[0]["user_id"])
+        except Exception as e:
+            print(f"[store_products] resolve merchant user_id failed mid={merchant_id}: {e}")
+        return None
+
+    def _notify_followers_new_listing(self, product_id: int, raw: dict) -> None:
+        """新单品成功上架后, 给「卖家的全部粉丝」推送通知.
+
+        与 _notify_interested_users 走同一套 notification_service 接口, 失败静默.
+        """
+        seller_user_id = self._resolve_seller_user_id(raw)
+        if not seller_user_id:
+            return
+
+        try:
+            from app.services.follow_service import follow_service
+            follower_ids = follow_service.get_follower_ids(seller_user_id)
+        except Exception as e:
+            print(f"[store_products] get_follower_ids failed uid={seller_user_id}: {e}")
+            return
+
+        if not follower_ids:
+            return
+
+        try:
+            from app.services.notification_service import notification_service
+        except Exception as e:
+            print(f"[store_products] notification_service import failed: {e}")
+            return
+
+        # 取卖家展示名（粉丝在通知里需要看到「谁」上新了）
+        seller_username = ""
+        try:
+            ures = (
+                self.db_admin.table("users")
+                .select("username")
+                .eq("id", seller_user_id)
+                .limit(1)
+                .execute()
+            )
+            if ures.data:
+                seller_username = ures.data[0].get("username") or ""
+        except Exception as e:
+            print(f"[store_products] read seller username failed uid={seller_user_id}: {e}")
+
+        title = raw.get("title") or "新单品"
+        images = raw.get("images") or []
+        first_image = images[0] if images else None
+
+        for uid in follower_ids:
+            if uid == seller_user_id:
+                continue
+            try:
+                notification_service.notify_new_listing_from_followee(
+                    uid,
+                    seller_user_id=seller_user_id,
+                    seller_username=seller_username,
+                    product_id=product_id,
+                    product_title=title,
+                    product_image=first_image,
+                )
+            except Exception as e:
+                print(
+                    f"[store_products] notify new listing to uid={uid} pid={product_id} failed: {e}"
                 )
 
     def favorite_product(self, product_id: int, user_id: int) -> bool:

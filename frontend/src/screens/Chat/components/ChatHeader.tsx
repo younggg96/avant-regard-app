@@ -13,6 +13,8 @@ import { theme, useThemedStyles, type AppTheme, useAppTheme } from "../../../the
 import { Box, Pressable, HStack, VStack, ActionSheet } from "../../../components/ui";
 import type { ActionSheetAction } from "../../../components/ui";
 import { UserAvatar } from "../../../components/ui/UserAvatar";
+import { CustomerServiceAvatar } from "../../../components/ui/CustomerServiceAvatar";
+import { isCustomerServiceUser } from "../../../constants/customerService";
 import { moderationService } from "../../../services/moderationService";
 import { Alert } from "../../../utils/Alert";
 import { useChatStyles } from "../styles";
@@ -41,6 +43,7 @@ export const ChatHeader = ({
   const [blocking, setBlocking] = useState(false);
   const chatStyles = useChatStyles();
   const styles = useThemedStyles(makeStyles);
+  const isCs = isCustomerServiceUser(otherUserId);
 
   const handleBlock = async () => {
     if (!otherUserId || blocking) return;
@@ -70,7 +73,7 @@ export const ChatHeader = ({
       destructive: true,
       onPress: () => setShowBlockConfirm(true),
     },
-  ], [onProfile, t]);
+  ], [onProfile, t, theme.colors.black, theme.colors.error]);
 
   return (
     <>
@@ -86,9 +89,16 @@ export const ChatHeader = ({
             <Ionicons name="arrow-back" size={22} color={theme.colors.text} />
           </Pressable>
 
-          <Pressable onPress={onProfile} style={chatStyles.headerUserInfo}>
+          <Pressable
+            onPress={isCs ? undefined : onProfile}
+            style={chatStyles.headerUserInfo}
+          >
             <HStack alignItems="center" space="sm">
-              <UserAvatar uri={avatar} name={name} size={38} />
+              {isCs ? (
+                <CustomerServiceAvatar size={38} />
+              ) : (
+                <UserAvatar uri={avatar} name={name} size={38} />
+              )}
               <VStack>
                 <Box>
                   <Text style={styles.headerName} numberOfLines={1}>
@@ -99,7 +109,7 @@ export const ChatHeader = ({
             </HStack>
           </Pressable>
 
-          {otherUserId ? (
+          {otherUserId && !isCs ? (
             <Pressable
               w={40}
               h={40}

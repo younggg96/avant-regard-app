@@ -2,6 +2,8 @@ import React from "react";
 import { View, Text, TouchableOpacity } from "react-native";
 import { useTranslation } from "react-i18next";
 import { UserAvatar } from "../../../components/ui/UserAvatar";
+import { CustomerServiceAvatar } from "../../../components/ui/CustomerServiceAvatar";
+import { isCustomerServiceUser } from "../../../constants/customerService";
 import { NotificationBadge } from "../../../components/ui/NotificationBadge";
 import { Conversation } from "../../../services/chatService";
 import { formatTime, formatLastMessage } from "../utils";
@@ -19,6 +21,10 @@ export const ConversationItem = ({
   const { t } = useTranslation();
   const other = conversation.otherUser;
   const hasUnread = conversation.unreadCount > 0;
+  const isCs = isCustomerServiceUser(other?.userId);
+  const displayName = isCs
+    ? t("interaction.csDisplayName")
+    : (other?.username || t("interaction.unknownUser"));
 
   return (
     <TouchableOpacity
@@ -27,7 +33,11 @@ export const ConversationItem = ({
       activeOpacity={0.7}
     >
       <View style={styles.avatarWrapper}>
-        <UserAvatar uri={other?.avatarUrl} name={other?.username} size={52} />
+        {isCs ? (
+          <CustomerServiceAvatar size={52} />
+        ) : (
+          <UserAvatar uri={other?.avatarUrl} name={other?.username} size={52} />
+        )}
         {hasUnread && (
           <NotificationBadge count={conversation.unreadCount} size="md" showBorder />
         )}
@@ -37,9 +47,9 @@ export const ConversationItem = ({
         <View style={styles.conversationHeader}>
           <View style={{ flexDirection: "row", alignItems: "center", flex: 1, marginRight: 8 }}>
             <Text style={[styles.conversationName, { flex: 0, flexShrink: 1 }]} numberOfLines={1}>
-              {other?.username || t("interaction.unknownUser")}
+              {displayName}
             </Text>
-            {other?.primaryTitle ? (
+            {!isCs && other?.primaryTitle ? (
               <View style={styles.titleBadge}>
                 <Text style={styles.titleBadgeText} numberOfLines={1}>
                   {other.primaryTitle}

@@ -31,7 +31,7 @@ import {
   ShareContentPickerModal,
   SharePayload,
 } from "./components/ShareContentPickerModal";
-import { useChatStyles } from "./styles";
+import { isCustomerServiceUser } from "../../constants/customerService";
 
 type ReportTarget =
   | { type: "MESSAGE"; messageId: number; senderId: number }
@@ -45,10 +45,15 @@ const ChatScreen = () => {
   const styles = useChatStyles();
   const {
     conversationId,
-    otherUserName = t("chat.title"),
+    otherUserName: routeOtherUserName = t("chat.title"),
     otherUserAvatar,
     otherUserId,
   } = route.params;
+
+  const isCsChat = isCustomerServiceUser(otherUserId);
+  const otherUserName = isCsChat
+    ? t("interaction.csDisplayName")
+    : routeOtherUserName;
 
   const {
     messages,
@@ -203,10 +208,10 @@ const ChatScreen = () => {
   }, [navigation]);
 
   const navigateToProfile = useCallback(() => {
-    if (otherUserId) {
+    if (otherUserId && !isCsChat) {
       (navigation.navigate as any)("UserProfile", { userId: otherUserId });
     }
-  }, [navigation, otherUserId]);
+  }, [navigation, otherUserId, isCsChat]);
 
   const handleReportMessage = useCallback((msg: Message) => {
     setReportTarget({ type: "MESSAGE", messageId: msg.id, senderId: msg.senderId });

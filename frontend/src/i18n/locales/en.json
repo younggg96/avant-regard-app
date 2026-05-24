@@ -348,8 +348,10 @@
     "hideSales": "Hide Listings for Sale",
     "blockedUsers": "Blocked Users",
     "myReports": "My Reports",
+    "shopping": "Shopping",
     "merchantCenter": "Merchant Center",
-    "myStores": "My Stores",
+    "commonServices": "My Services",
+    "myStores": "My Select Shop",
     "merchantEntry": "Merchant",
     "myListings": "My Listings",
     "myCollections": "My Collections",
@@ -735,7 +737,7 @@
   },
   "merchant": {
     "title": "Merchant",
-    "myStores": "My Stores",
+    "myStores": "My Select Shop",
     "noStores": "No stores yet",
     "addStore": "Add Store",
     "manage": "Manage Store",
@@ -3554,6 +3556,20 @@
       "disputeHeader": "Dispute #{{id}}",
       "disputeReason": "Reason: {{reason}}",
       "disputeOrderRef": "Order #{{id}}",
+      "disputeReasons": {
+        "not_as_described": "Not as described",
+        "damaged": "Item damaged",
+        "not_received": "Not received",
+        "fake": "Possible counterfeit",
+        "other": "Other issue"
+      },
+      "disputeStatuses": {
+        "open": "Opened",
+        "investigating": "Investigating",
+        "resolved_refund": "Resolved · refund",
+        "resolved_release": "Resolved · release",
+        "withdrawn": "Withdrawn"
+      },
       "expiresAt": "Expires {{date}}",
       "signedAt": "Received on {{date}}",
       "tapToViewOrder": "Tap to view order details"

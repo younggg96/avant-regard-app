@@ -8,6 +8,7 @@ PRD 模块 5 · 鉴定服务三档 SKU。
 """
 from __future__ import annotations
 
+import logging
 import secrets
 from typing import List, Optional, Tuple
 from datetime import datetime
@@ -19,14 +20,58 @@ from app.schemas.disputes import (
 )
 from app.services.payment import get_payment_provider
 
+logger = logging.getLogger(__name__)
+
 
 def _gen_no() -> str:
     return "AUTH" + datetime.utcnow().strftime("%y%m%d%H%M%S") + secrets.token_hex(2).upper()
 
 
+_RESULT_LABEL = {
+    "authentic": "正品",
+    "fake": "非正品",
+    "inconclusive": "无法判定",
+    "pending": "待审核",
+}
+
+
+def _result_label(result: str) -> str:
+    return _RESULT_LABEL.get(result, result)
+
+
 class AuthenticationService:
     def __init__(self) -> None:
         self.db = get_supabase_admin()
+
+    # ------------------------------------------------------------------
+    # Notification helpers
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _notify_user(
+        *,
+        user_id: int,
+        title: str,
+        message: str,
+        order_id: int,
+    ) -> None:
+        """In-app notification + push，深链跳到鉴定列表页（MVP 只有列表）。"""
+        try:
+            from app.services.notification_service import notification_service
+            from app.schemas.notification import NotificationType
+            notification_service.create_notification(
+                user_id=user_id,
+                notification_type=NotificationType.SYSTEM,
+                title=title,
+                message=message,
+                action_data={
+                    "navigateTo": "Authentication",
+                    "navigateParams": {"focusAuthOrderId": order_id},
+                },
+                send_push=True,
+            )
+        except Exception as e:  # noqa: BLE001
+            logger.warning("[authentication] notify failed: %s", e)
 
     # ------------------------------------------------------------------
     # Packages
@@ -144,6 +189,13 @@ class AuthenticationService:
         row.update(
             {"payment_provider": intent.provider, "payment_intent_id": intent.intent_id}
         )
+
+        self._notify_user(
+            user_id=user_id,
+            title="鉴定订单已创建",
+            message=f"订单 #{order_no} 已生成，请尽快完成支付。",
+            order_id=row["id"],
+        )
         return self._format(row)
 
     def pay_mock(self, order_id: int, user_id: int) -> AuthenticationOrder:
@@ -157,6 +209,13 @@ class AuthenticationService:
             {"status": "reviewing", "paid_at": now}
         ).eq("id", order_id).execute()
         row.update({"status": "reviewing", "paid_at": now})
+
+        self._notify_user(
+            user_id=user_id,
+            title="鉴定费已收款，专家审核中",
+            message=f"订单 #{row['order_no']} 已开始鉴定，请耐心等待报告。",
+            order_id=order_id,
+        )
         return self._format(row)
 
     def submit_decision(
@@ -193,6 +252,13 @@ class AuthenticationService:
                 "certificate_url": certificate_url,
                 "completed_at": now,
             }
+        )
+
+        self._notify_user(
+            user_id=row["user_id"],
+            title=f"鉴定结果：{_result_label(result)}",
+            message=f"订单 #{row['order_no']} 已完成鉴定，点击查看详细报告。",
+            order_id=order_id,
         )
         return self._format(row)
 

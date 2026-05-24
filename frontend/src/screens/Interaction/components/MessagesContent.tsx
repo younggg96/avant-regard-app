@@ -15,6 +15,7 @@ import { ActivityEntry } from "./ActivityEntry";
 import { SystemEntry } from "./SystemEntry";
 import { StrangerEntry } from "./StrangerEntry";
 import { RecentAvatars } from "./RecentAvatars";
+import { getConversationChatParams } from "../../../utils/chatNavigationUtils";
 import { isStrangerConversation } from "../utils";
 
 export const MessagesContent = () => {
@@ -70,14 +71,9 @@ export const MessagesContent = () => {
 
   const handleConvPress = useCallback(
     (c: Conversation) => {
-      (navigation.navigate as any)("Chat", {
-        conversationId: c.id,
-        otherUserName: c.otherUser?.username || t("chat.title"),
-        otherUserAvatar: c.otherUser?.avatarUrl,
-        otherUserId: c.otherUser?.userId,
-      });
+      (navigation.navigate as any)("Chat", getConversationChatParams(c, t));
     },
-    [navigation]
+    [navigation, t]
   );
 
   const handleActivityPress = useCallback(() => {

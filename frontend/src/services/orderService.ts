@@ -325,23 +325,6 @@ export async function listMyOrders(params: {
   );
 }
 
-export interface OrderStatusSummary {
-  /** 各状态下的订单数量；缺省字段视为 0。 */
-  counts: Partial<Record<OrderStatus, number>>;
-  /** counts 求和，前端在「全部订单」入口角标上直接复用，省一次客户端计算。 */
-  total: number;
-}
-
-/** 买家「我的购物」首页顶部 4 个状态卡片用 (待付款 / 待发货 / 待收货 / 待评价)。 */
-export async function getMyOrdersSummary(): Promise<OrderStatusSummary> {
-  return request<OrderStatusSummary>("/api/orders/me/summary");
-}
-
-/** 卖家中心首页顶部状态卡片用 (待发货 / 进行中 / 待结算)；个人卖家 + 买手店两口径合并。 */
-export async function getMySalesSummary(): Promise<OrderStatusSummary> {
-  return request<OrderStatusSummary>("/api/orders/me/sales/summary");
-}
-
 export async function listMySales(params: {
   status?: OrderStatus;
   page?: number;

@@ -1,17 +1,15 @@
 import React from "react";
-import { Image as ExpoImage } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { theme, useAppTheme } from "../../../theme";
 import { Box, Text, Pressable, HStack, VStack } from "../../../components/ui";
 import { UserAvatar } from "../../../components/ui/UserAvatar";
+import { CustomerServiceAvatar } from "../../../components/ui/CustomerServiceAvatar";
 import { NotificationBadge } from "../../../components/ui/NotificationBadge";
 import { Conversation } from "../../../services/chatService";
-import { CS_USER_ID, CS_DISPLAY_NAME } from "../constants";
+import { isCustomerServiceUser } from "../../../constants/customerService";
 import { formatTime, formatLastMessage } from "../utils";
 import { useInteractionStyles } from "../styles";
-
-const APP_LOGO = require("../../../../assets/images/logo.jpg");
 
 interface ConversationRowProps {
   item: Conversation;
@@ -25,8 +23,10 @@ export const ConversationRow = ({ item, onPress, onLongPress }: ConversationRowP
   const styles = useInteractionStyles();
   const other = item.otherUser;
   const hasUnread = item.unreadCount > 0;
-  const isCs = other?.userId === CS_USER_ID;
-  const displayName = isCs ? CS_DISPLAY_NAME : (other?.username || t("interaction.unknownUser"));
+  const isCs = isCustomerServiceUser(other?.userId);
+  const displayName = isCs
+    ? t("interaction.csDisplayName")
+    : (other?.username || t("interaction.unknownUser"));
 
   return (
     <Pressable
@@ -37,7 +37,7 @@ export const ConversationRow = ({ item, onPress, onLongPress }: ConversationRowP
       <HStack alignItems="center" flex={1}>
         <Box position="relative" mr="$md">
           {isCs ? (
-            <ExpoImage source={APP_LOGO} style={styles.csAvatar} contentFit="cover" />
+            <CustomerServiceAvatar size={48} />
           ) : (
             <UserAvatar uri={other?.avatarUrl} name={other?.username} size={48} />
           )}

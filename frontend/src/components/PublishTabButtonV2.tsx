@@ -275,11 +275,6 @@ const makeStyles = (t: AppTheme) =>
       justifyContent: "center",
       alignItems: "center",
     },
-    sheetItemTitleRow: {},
-    sheetItemTitleWrap: {},
-    sheetItemTitleInner: {},
-    sheetItemTitleBlock: {},
-    sheetItemArrow: {},
   });
 
 export default PublishTabButtonV2;

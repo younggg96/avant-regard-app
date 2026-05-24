@@ -348,8 +348,10 @@
     "hideSales": "隐藏在售列表",
     "blockedUsers": "屏蔽用户管理",
     "myReports": "我的举报",
+    "shopping": "购物",
     "merchantCenter": "商家中心",
-    "myStores": "我的店铺",
+    "commonServices": "我的服务",
+    "myStores": "我的买手店",
     "merchantEntry": "商家入口",
     "myListings": "我的在售",
     "myCollections": "我的收藏",
@@ -735,7 +737,7 @@
   },
   "merchant": {
     "title": "商家管理",
-    "myStores": "我的店铺",
+    "myStores": "我的买手店",
     "noStores": "暂无店铺",
     "addStore": "添加店铺",
     "manage": "管理店铺",
@@ -3554,6 +3556,20 @@
       "disputeHeader": "争议 #{{id}}",
       "disputeReason": "原因：{{reason}}",
       "disputeOrderRef": "订单 #{{id}}",
+      "disputeReasons": {
+        "not_as_described": "与描述不符",
+        "damaged": "商品损坏",
+        "not_received": "未收到货",
+        "fake": "疑似假货",
+        "other": "其他问题"
+      },
+      "disputeStatuses": {
+        "open": "已发起",
+        "investigating": "处理中",
+        "resolved_refund": "已裁决退款",
+        "resolved_release": "已裁决放款",
+        "withdrawn": "已撤销"
+      },
       "expiresAt": "到期 {{date}}",
       "signedAt": "{{date}} 已签收",
       "tapToViewOrder": "点击查看订单详情"
