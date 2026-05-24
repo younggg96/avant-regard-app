@@ -200,6 +200,9 @@ export const TradingContent: React.FC<Props> = ({
   const goOrderDetail = (orderId: number) =>
     navigation.navigate("OrderDetail", { orderId });
 
+  const goOrderReviews = (orderId: number) =>
+    navigation.navigate("OrderReviews", { orderId });
+
   const renderEmpty = () => (
     <View style={styles.empty}>
       <Ionicons
@@ -292,7 +295,7 @@ export const TradingContent: React.FC<Props> = ({
                   }
                   onReview={
                     order.status === "completed" || order.status === "settled"
-                      ? () => goOrderDetail(order.id)
+                      ? () => goOrderReviews(order.id)
                       : undefined
                   }
                 />

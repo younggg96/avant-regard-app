@@ -887,11 +887,11 @@ export default function OrderDetailScreen() {
           <Pressable
             style={styles.linkBtn}
             onPress={() =>
-              navigation.navigate("TradeReview", { orderId: order.id })
+              navigation.navigate("OrderReviews", { orderId: order.id })
             }
           >
             <Text style={styles.linkBtnText}>
-              {t("trading.review.headerTitle")}
+              {t("trading.tradingTab.viewReview")}
             </Text>
           </Pressable>
         ) : null}

@@ -159,66 +159,69 @@ export const OrderCard: React.FC<OrderCardProps> = ({
   });
 
   return (
-    <Pressable style={styles.card} onPress={onPress}>
-      {/* 顶部状态 pill —— 与图 2 一致放在卡片左上方, 不放在封面上是为了
-          dark 模式下深色封面 + 浅色 pill 视觉对比更稳。 */}
-      <View style={styles.statusRow}>
-        <View style={[styles.statusPill, { backgroundColor: pillStyle.pillBg }]}>
-          <Text style={[styles.statusPillText, { color: pillStyle.pillFg }]}>
-            {formatOrderStatus(order.status)}
-          </Text>
-        </View>
-        {!!order.createdAt && (
-          <Text style={styles.timeText}>{order.createdAt.slice(5, 10)}</Text>
-        )}
-      </View>
-
-      <HStack alignItems="center" space="md" style={styles.body}>
-        <Box style={styles.coverWrap}>
-          {cover ? (
-            <OptimizedImage
-              uri={cover}
-              size={ImageSize.THUMBNAIL}
-              style={styles.cover}
-              contentFit="cover"
-              lazy
-            />
-          ) : (
-            <View style={[styles.cover, styles.coverPlaceholder]}>
-              <Ionicons
-                name="image-outline"
-                size={26}
-                color={theme.colors.gray300}
-              />
-            </View>
-          )}
-        </Box>
-
-        <VStack flex={1} space="xs">
-          {!!brand && (
-            <Text style={styles.brand} numberOfLines={1}>
-              {brand}
+    <View style={styles.card}>
+      <Pressable onPress={onPress}>
+        <View style={styles.statusRow}>
+          <View style={[styles.statusPill, { backgroundColor: pillStyle.pillBg }]}>
+            <Text style={[styles.statusPillText, { color: pillStyle.pillFg }]}>
+              {formatOrderStatus(order.status)}
             </Text>
+          </View>
+          {!!order.createdAt && (
+            <Text style={styles.timeText}>{order.createdAt.slice(5, 10)}</Text>
           )}
-          <Text style={styles.title} numberOfLines={2}>
-            {title}
-          </Text>
-          <Text style={styles.price}>{formatPrice(price, currency)}</Text>
-        </VStack>
+        </View>
 
-        {primaryAction ? (
-          <Pressable
-            style={styles.actionBtn}
-            onPress={(e: any) => {
-              e?.stopPropagation?.();
-              primaryAction.onPress();
-            }}
-          >
-            <Text style={styles.actionBtnText}>{primaryAction.label}</Text>
-          </Pressable>
-        ) : null}
-      </HStack>
-    </Pressable>
+        <HStack alignItems="center" space="md" style={styles.body}>
+          <Box style={styles.coverWrap}>
+            {cover ? (
+              <OptimizedImage
+                uri={cover}
+                size={ImageSize.THUMBNAIL}
+                style={styles.cover}
+                contentFit="cover"
+                lazy
+              />
+            ) : (
+              <View style={[styles.cover, styles.coverPlaceholder]}>
+                <Ionicons
+                  name="image-outline"
+                  size={26}
+                  color={theme.colors.gray300}
+                />
+              </View>
+            )}
+          </Box>
+
+          <VStack flex={1} space="xs">
+            {!!brand && (
+              <Text style={styles.brand} numberOfLines={1}>
+                {brand}
+              </Text>
+            )}
+            <Text style={styles.title} numberOfLines={2}>
+              {title}
+            </Text>
+            <Text style={styles.price}>{formatPrice(price, currency)}</Text>
+          </VStack>
+
+          {primaryAction ? (
+            <View style={styles.actionBtnSpacer} />
+          ) : null}
+        </HStack>
+      </Pressable>
+
+      {primaryAction ? (
+        <Pressable
+          style={styles.actionBtn}
+          onPress={primaryAction.onPress}
+        >
+          <Text style={styles.actionBtnText} numberOfLines={1}>
+            {primaryAction.label}
+          </Text>
+        </Pressable>
+      ) : null}
+    </View>
   );
 };
 OrderCard.displayName = "OrderCard";
@@ -232,6 +235,7 @@ const makeStyles = (t: AppTheme) =>
       marginBottom: 10,
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: t.colors.border,
+      position: "relative",
     },
     statusRow: {
       flexDirection: "row",
@@ -282,16 +286,24 @@ const makeStyles = (t: AppTheme) =>
       color: t.colors.text,
       marginTop: 2,
     },
+    actionBtnSpacer: {
+      width: 68,
+    },
     actionBtn: {
-      paddingHorizontal: 12,
-      paddingVertical: 7,
+      position: "absolute",
+      right: 12,
+      bottom: 12,
+      paddingHorizontal: 8,
+      paddingVertical: 5,
       borderRadius: 4,
       backgroundColor: t.colors.text,
+      maxWidth: 72,
     },
     actionBtnText: {
-      fontSize: 12,
+      fontSize: 11,
       fontWeight: "600",
       color: t.colors.textInverted,
+      textAlign: "center",
     },
   });
 

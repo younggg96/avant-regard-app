@@ -2969,7 +2969,14 @@
       "celebrateTitle": "Congrats on the new piece!",
       "celebrateSubtitle": "Review submitted. It will reveal once the other party rates too.\nReady to enshrine it into MY ARCHIVE?",
       "addToArchive": "Add to my archive",
-      "later": "Maybe later"
+      "later": "Maybe later",
+      "viewTitle": "Order Reviews",
+      "roleBuyer": "Buyer review",
+      "roleSeller": "Seller review",
+      "hiddenHint": "Revealed after both parties rate",
+      "yourReviewPending": "Submitted — waiting for the other party",
+      "noReviewYet": "No review yet",
+      "writeReview": "Write a review"
     },
     "archive": {
       "headerTitle": "My Archive",

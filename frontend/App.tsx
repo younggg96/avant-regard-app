@@ -115,6 +115,7 @@ import PayoutAccountsScreen from "./src/screens/Trading/PayoutAccountsScreen";
 import DisputeOpenScreen from "./src/screens/Trading/DisputeOpenScreen";
 import AuthenticationScreen from "./src/screens/Trading/AuthenticationScreen";
 import TradeReviewScreen from "./src/screens/Trading/TradeReviewScreen";
+import OrderReviewsScreen from "./src/screens/Trading/OrderReviewsScreen";
 // My Archive & Plus (PRD Phase 6) Screens
 import MyArchiveScreen from "./src/screens/Trading/MyArchiveScreen";
 import ArchiveDetailScreen from "./src/screens/Trading/ArchiveDetailScreen";
@@ -1033,6 +1034,11 @@ function AppNavigator({
         <Stack.Screen
           name="TradeReview"
           component={TradeReviewScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="OrderReviews"
+          component={OrderReviewsScreen}
           options={{ headerShown: false }}
         />
         {/* PRD Phase 6 · My Archive & Plus */}
