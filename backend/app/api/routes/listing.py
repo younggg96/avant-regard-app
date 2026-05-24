@@ -21,6 +21,7 @@ PRD 模块一对应的服务接口，区别于旧的「买手店商品 CRUD」�
 """
 from fastapi import APIRouter, Depends, HTTPException, Query
 from typing import Optional
+from pydantic import BaseModel
 
 from app.core.response import success
 from app.api.deps import get_current_user, get_current_user_optional, get_current_admin_user
@@ -52,14 +53,43 @@ marketplace_router = APIRouter(prefix="/marketplace", tags=["交易系统 / 交�
 # ==========================================================================
 
 
+def _split_csv(value: Optional[str]) -> Optional[list]:
+    """把 ?brand=A,B,C 这种逗号串解成 trim 后的非空列表；空串/None → None."""
+    if value is None:
+        return None
+    parts = [p.strip() for p in value.split(",") if p.strip()]
+    return parts or None
+
+
+def _split_csv_int(value: Optional[str]) -> Optional[list]:
+    """逗号串解成整数列表；非整数项忽略。"""
+    raw = _split_csv(value)
+    if not raw:
+        return None
+    out: list[int] = []
+    for r in raw:
+        try:
+            out.append(int(r))
+        except (TypeError, ValueError):
+            continue
+    return out or None
+
+
 @marketplace_router.get("/listings")
 async def marketplace_listings(
     q: Optional[str] = Query(None, description="关键词"),
-    brand: Optional[str] = Query(None),
-    categoryId: Optional[int] = Query(None),
-    size: Optional[str] = Query(None),
-    color: Optional[str] = Query(None),
-    condition: Optional[str] = Query(None, description="BNWT / NEW_99 / NEW_95 / USED_8 / FLAW"),
+    brand: Optional[str] = Query(None, description="单值或 CSV: nike,adidas"),
+    categoryId: Optional[str] = Query(None, description="单值或 CSV 整数 ID 列表"),
+    category: Optional[str] = Query(
+        None,
+        description="按 PRD 6 大类名称(外套/上衣/裤装/鞋履/包袋/配饰)模糊匹配 store_product_categories.name；CSV",
+    ),
+    size: Optional[str] = Query(None, description="单值或 CSV: M,L,42"),
+    color: Optional[str] = Query(None, description="单值或 CSV"),
+    condition: Optional[str] = Query(
+        None,
+        description="BNWT / NEW_99 / NEW_95 / USED_8 / FLAW；支持 CSV 多选",
+    ),
     sellerKind: Optional[str] = Query(None, description="merchant / individual"),
     priceMinCents: Optional[int] = Query(None, ge=0),
     priceMaxCents: Optional[int] = Query(None, ge=0),
@@ -71,13 +101,19 @@ async def marketplace_listings(
     pageSize: int = Query(20, ge=1, le=100),
     current_user_id: Optional[int] = Depends(get_current_user_optional),
 ):
+    """Marketplace 列表查询 —— 全部维度都支持单值或 CSV 多选。
+
+    多选语义：所有命中任一选项的单品都返回（OR 语义），与 PRD 设计稿
+    "可多选" 一致。
+    """
     products, total = store_product_service.search_marketplace(
         keyword=q,
-        brand=brand,
-        category_id=categoryId,
-        size=size,
-        color=color,
-        condition=condition,
+        brands=_split_csv(brand),
+        category_ids=_split_csv_int(categoryId),
+        category_kinds=_split_csv(category),
+        sizes=_split_csv(size),
+        colors=_split_csv(color),
+        conditions=_split_csv(condition),
         seller_kind=sellerKind,
         price_min_cents=priceMinCents,
         price_max_cents=priceMaxCents,
@@ -96,18 +132,112 @@ async def marketplace_listings(
     )
 
 
+@marketplace_router.get("/search-suggestions")
+async def marketplace_search_suggestions(
+    q: str = Query(..., min_length=1, description="搜索关键词（支持品牌/单品/秀场模糊匹配）"),
+    limit: int = Query(8, ge=1, le=20, description="建议条数"),
+):
+    """交易大厅搜索下拉建议。
+
+    聚合品牌名、款式系列、秀场关键词（FW07 等）、单品标题，按热度排序。
+    """
+    items = store_product_service.get_marketplace_search_suggestions(
+        keyword=q,
+        limit=limit,
+    )
+    return success({"suggestions": [s.model_dump() for s in items]})
+
+
 @marketplace_router.get("/popular-brands")
 async def marketplace_popular_brands(
     limit: int = Query(6, ge=1, le=20, description="返回品牌数量"),
+    rotate: bool = Query(
+        True,
+        description="是否按当前 UTC 日期对前 30 名候选池洗牌；默认 True，保证每天首屏顺序不同",
+    ),
 ):
     """交易大厅顶部「热门品牌」列表。
 
-    按当前在售单品数量降序，仅返回真实有在售商品的品牌。
+    按当前在售单品数量降序取前 30 名为候选池，再按当天 UTC 日期为种子打乱后取
+    前 ``limit``。这样保证每天首屏顺序不同，但当天内多次刷新顺序一致。
     每项含 ``name / brandId / imageUrl / listingCount``，前端用于渲染
     PDF 设计稿中横向滚动的圆形品牌头像列表。
     """
-    items = store_product_service.get_popular_brands(limit=limit)
+    items = store_product_service.get_popular_brands(limit=limit, daily_rotate=rotate)
     return success({"brands": items})
+
+
+@marketplace_router.get("/curated")
+async def marketplace_curated(
+    limit: int = Query(10, ge=1, le=20, description="返回单品数量"),
+    current_user_id: Optional[int] = Depends(get_current_user_optional),
+):
+    """交易大厅顶部「大家都在看」 —— 管理员手动策展的精选单品。
+
+    返回管理员通过 admin 后台标记 ``is_curated=TRUE`` 的 active 单品，
+    按 ``curated_sort_order`` asc 排序。前端展示在 marketplace 顶部、热门品牌下方。
+    """
+    items = store_product_service.list_curated_products(
+        limit=limit, user_id=current_user_id
+    )
+    return success({"products": [p.model_dump() for p in items]})
+
+
+# ==========================================================================
+# 智能定价 / 客服联系（PRD 1.4 + 1.6）
+# ==========================================================================
+
+
+@marketplace_router.get("/brand-price-range")
+async def brand_price_range(
+    brand: str = Query(..., description="品牌名"),
+    condition: Optional[str] = Query(
+        None,
+        description="成色（BNWT / NEW_99 / NEW_95 / USED_8 / FLAW）；可空",
+    ),
+    _user_id: Optional[int] = Depends(get_current_user_optional),
+):
+    """根据品牌 (+ 可选成色) 返回 P25 / P50 / P75 历史价格区间。
+
+    数据源是 brand_price_history 视图（active + sold 的真实成交价）。
+    无历史样本时返回 ``source: 'fallback'`` 占位区间，前端走兜底 UI。
+    """
+    result = store_product_service.suggest_brand_price_range(
+        brand=brand, condition=condition
+    )
+    return success(result.model_dump())
+
+
+@marketplace_router.get("/support-contact")
+async def get_support_contact():
+    """找不到品牌 / 秀场时引导联系小客服。"""
+    info = store_product_service.get_support_contact()
+    return success(info.model_dump())
+
+
+@marketplace_router.get("/all-brands")
+async def marketplace_all_brands(
+    keyword: Optional[str] = Query(None, description="关键词（品牌名/创始人/国家）"),
+    page: int = Query(1, ge=1),
+    pageSize: int = Query(50, ge=1, le=200),
+):
+    """平台已录入的所有品牌列表（marketplace 顶部「更多」展开模态框用）。
+
+    每项含 ``brandId / name / imageUrl / category / country / listingCount``。
+    与 ``GET /api/brands`` 的区别：本接口顺手把每个品牌的在售单品数算出来，
+    避免前端 N+1 拉取。
+    """
+    items, total = store_product_service.list_all_platform_brands(
+        keyword=keyword, page=page, page_size=pageSize
+    )
+    return success(
+        {
+            "brands": items,
+            "total": total,
+            "page": page,
+            "pageSize": pageSize,
+        }
+    )
 
 
 # ==========================================================================
@@ -380,6 +510,18 @@ async def list_user_public_listings(
     )
 
 
+@sellers_router.get("/me/drafts/count")
+async def my_draft_count(
+    current_user_id: int = Depends(get_current_user),
+):
+    """返回当前用户的 individual 草稿数量 + 上限。
+
+    用于发布入口提示 "草稿 (3 / 5)"，超限时按钮置灰。
+    """
+    count = store_product_service._count_open_drafts(current_user_id)
+    return success({"count": count, "limit": 5})
+
+
 @sellers_router.get("/me/profile")
 async def get_my_seller_profile(
     current_user_id: int = Depends(get_current_user),
@@ -511,5 +653,38 @@ async def admin_review(
             reason=decision.reason,
         )
         return success(product.model_dump(), message="审核已记录")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+# ==========================================================================
+# 「大家都在看」管理员策展（migration 065）
+# ==========================================================================
+
+
+class _CuratedSetBody(BaseModel):
+    """管理员设置/取消「大家都在看」 的请求体。"""
+    isCurated: bool
+    sortOrder: Optional[int] = None  # is_curated=True 时可选；None 自动追加到末尾
+
+
+@admin_router.put("/{product_id}/curated")
+async def admin_set_curated(
+    product_id: int,
+    payload: _CuratedSetBody,
+    _admin_id: int = Depends(get_current_admin_user),
+):
+    """管理员把单品标记为「大家都在看」 / 取消标记。
+
+    - is_curated=True 时，可选 sortOrder（asc，越小越靠前）；不传则自动追加到末尾。
+    - is_curated=False 时，sortOrder 一并清空。
+    """
+    try:
+        product = store_product_service.admin_set_curated(
+            product_id,
+            is_curated=payload.isCurated,
+            sort_order=payload.sortOrder,
+        )
+        return success(product.model_dump(), message="策展状态已更新")
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

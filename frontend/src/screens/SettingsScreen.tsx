@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { Switch, StyleSheet, useColorScheme } from "react-native";
+import { StyleSheet, useColorScheme } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation, useFocusEffect } from "@react-navigation/native";
+import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { Image as ExpoImage } from "expo-image";
@@ -18,7 +18,6 @@ import ScreenHeader from "../components/ScreenHeader";
 import { Alert } from "../utils/Alert";
 import {
   userInfoService,
-  UserPrivacySettings,
 } from "../services/userInfoService";
 import {
   TermsContent,
@@ -46,9 +45,6 @@ interface SettingItem {
   onPress?: () => void;
   rightText?: string;
   rightColor?: string;
-  toggle?: boolean;
-  value?: boolean;
-  onToggle?: (value: boolean) => void;
 }
 
 const SettingsScreen = () => {
@@ -79,11 +75,6 @@ const SettingsScreen = () => {
     }
   };
 
-  const [privacySettings, setPrivacySettings] =
-    useState<UserPrivacySettings | null>(null);
-  const [privacyLoading, setPrivacyLoading] = useState(false);
-  const [updatingPrivacy, setUpdatingPrivacy] = useState<string | null>(null);
-
   const [showAgreementModal, setShowAgreementModal] = useState(false);
   const [agreementType, setAgreementType] = useState<"terms" | "privacy" | "guidelines" | "minor">("terms");
 
@@ -91,19 +82,6 @@ const SettingsScreen = () => {
     setAgreementType(type);
     setShowAgreementModal(true);
   };
-
-  const loadPrivacySettings = useCallback(async () => {
-    if (!user?.userId) return;
-    setPrivacyLoading(true);
-    try {
-      const settings = await userInfoService.getPrivacySettings(user.userId);
-      setPrivacySettings(settings);
-    } catch (error) {
-      console.error("Error loading privacy settings:", error);
-    } finally {
-      setPrivacyLoading(false);
-    }
-  }, [user?.userId]);
 
   const syncLanguageFromServer = useCallback(async () => {
     if (!user?.userId) return;
@@ -133,9 +111,8 @@ const SettingsScreen = () => {
   }, [user?.userId, updateUser]);
 
   useEffect(() => {
-    loadPrivacySettings();
     syncLanguageFromServer();
-  }, [loadPrivacySettings, syncLanguageFromServer]);
+  }, [syncLanguageFromServer]);
 
   useEffect(() => {
     if (
@@ -146,39 +123,6 @@ const SettingsScreen = () => {
       setThemePreference(user.preferredTheme);
     }
   }, [user?.preferredTheme]);
-
-  useFocusEffect(
-    useCallback(() => {
-      loadPrivacySettings();
-    }, [loadPrivacySettings])
-  );
-
-  const handlePrivacyToggle = async (
-    key: "hideFollowing" | "hideFollowers" | "hideLikes" | "hideWishlist" | "hideSales",
-    value: boolean
-  ) => {
-    if (!user?.userId || updatingPrivacy) return;
-    setUpdatingPrivacy(key);
-
-    setPrivacySettings((prev) =>
-      prev ? { ...prev, [key]: value } : null
-    );
-
-    try {
-      const updated = await userInfoService.updatePrivacySettings(user.userId, {
-        [key]: value,
-      });
-      setPrivacySettings(updated);
-    } catch (error) {
-      console.error("Error updating privacy settings:", error);
-      setPrivacySettings((prev) =>
-        prev ? { ...prev, [key]: !value } : null
-      );
-      Alert.show(t("privacy.updateFailed"));
-    } finally {
-      setUpdatingPrivacy(null);
-    }
-  };
 
   const getThemeOptionLabel = (pref: ThemePreference) => {
     if (pref === "light") return t("settings.themeLight");
@@ -318,44 +262,10 @@ const SettingsScreen = () => {
       title: t("settings.privacy"),
       items: [
         {
-          id: "hideFollowing",
-          label: t("settings.hideFollowing"),
+          id: "privacySettings",
+          label: t("settings.privacySettings"),
           icon: "eye-off-outline",
-          toggle: true,
-          value: privacySettings?.hideFollowing ?? false,
-          onToggle: (value) => handlePrivacyToggle("hideFollowing", value),
-        },
-        {
-          id: "hideFollowers",
-          label: t("settings.hideFollowers"),
-          icon: "eye-off-outline",
-          toggle: true,
-          value: privacySettings?.hideFollowers ?? false,
-          onToggle: (value) => handlePrivacyToggle("hideFollowers", value),
-        },
-        {
-          id: "hideLikes",
-          label: t("settings.hideLikes"),
-          icon: "eye-off-outline",
-          toggle: true,
-          value: privacySettings?.hideLikes ?? false,
-          onToggle: (value) => handlePrivacyToggle("hideLikes", value),
-        },
-        {
-          id: "hideWishlist",
-          label: t("settings.hideWishlist"),
-          icon: "eye-off-outline",
-          toggle: true,
-          value: privacySettings?.hideWishlist ?? false,
-          onToggle: (value) => handlePrivacyToggle("hideWishlist", value),
-        },
-        {
-          id: "hideSales",
-          label: t("settings.hideSales"),
-          icon: "eye-off-outline",
-          toggle: true,
-          value: privacySettings?.hideSales ?? false,
-          onToggle: (value) => handlePrivacyToggle("hideSales", value),
+          onPress: () => (navigation as any).navigate("PrivacySettings"),
         },
         {
           id: "blockedUsers",
@@ -564,7 +474,6 @@ const SettingsScreen = () => {
                 <Pressable
                   key={item.id}
                   onPress={item.onPress}
-                  disabled={item.toggle}
                   style={[
                     styles.menuItem,
                     idx < section.items.length - 1 && {
@@ -584,17 +493,7 @@ const SettingsScreen = () => {
                   </Box>
 
                   <Box style={{ alignItems: "center" }}>
-                    {item.toggle ? (
-                      <Switch
-                        value={item.value}
-                        onValueChange={item.onToggle}
-                        trackColor={{
-                          false: activeTheme.colors.gray200,
-                          true: activeTheme.colors.accent,
-                        }}
-                        thumbColor={activeTheme.colors.white}
-                      />
-                    ) : item.rightText ? (
+                    {item.rightText ? (
                       <Text
                         style={{
                           ...theme.typography.caption,

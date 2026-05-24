@@ -244,7 +244,34 @@ export interface StoreProduct {
   publishedAt?: string | null;
   createdAt?: string | null;
   updatedAt?: string | null;
+  // 「大家都在看」管理员策展 + 信息完整度评分（migration 065）
+  isCurated?: boolean;
+  curatedSortOrder?: number | null;
+  completenessScore?: number;
+  // PRD 单品 Phase 2
+  styleName?: string | null;
+  yearDecade?: string | null;
+  accessoriesNote?: string | null;
+  shipFromCountry?: string | null;
+  shipFromState?: string | null;
+  shipFromCity?: string | null;
+  shippingFeeMode?: "cod" | "free";
+  /** 平台抽佣率，单位 bps；100 = 1%。 */
+  commissionRateBps?: number;
 }
+
+/** PRD 单品 Phase 2 年代选项。 */
+export const YEAR_DECADE_OPTIONS = [
+  "1950s",
+  "1960s",
+  "1970s",
+  "1980s",
+  "1990s",
+  "2000s",
+  "2010s",
+  "2020s",
+] as const;
+export type YearDecade = (typeof YEAR_DECADE_OPTIONS)[number];
 
 export interface StoreProductListResponse {
   products: StoreProduct[];
@@ -786,6 +813,14 @@ export interface ListingPatchBody {
   originalAcquiredAt?: string | null;
   acceptOffer?: boolean;
   photoAngles?: PhotoAngles;
+  // PRD 单品 Phase 2
+  styleName?: string | null;
+  yearDecade?: string | null;
+  accessoriesNote?: string | null;
+  shipFromCountry?: string | null;
+  shipFromState?: string | null;
+  shipFromCity?: string | null;
+  shippingFeeMode?: "cod" | "free";
 }
 
 export interface ListingCreateBody extends ListingPatchBody {
@@ -860,13 +895,36 @@ export const batchDeleteListings = async (
 // PRD Phase 2: Marketplace 交易大厅（公开查询，含富过滤器）
 // ============================================================================
 
+/**
+ * Marketplace 大厅查询的过滤器。
+ *
+ * 全部多值维度都支持数组（OR 语义）；保留旧的单值字段是为了兼容历史
+ * 调用方（`BrandDetailScreen.loadBrandListings` 等）。新代码请优先使用
+ * 复数字段（`brands` / `categoryIds` / `sizes` / `colors` / `conditions`）。
+ *
+ * 此外按 PRD 6 大类（外套/上衣/裤装/鞋履/包袋/配饰）筛选时使用
+ * ``categoryKinds``，后端会反查 ``store_product_categories.name`` 命中
+ * 的分类 ID 后再过滤。
+ */
 export interface MarketplaceFilter {
   q?: string;
+  /** @deprecated 用 `brands` 替代 */
   brand?: string;
+  brands?: string[];
+  /** @deprecated 用 `categoryIds` 替代 */
   categoryId?: number | null;
+  categoryIds?: number[];
+  /** PRD 6 大类名称数组（外套/上衣/裤装/鞋履/包袋/配饰） */
+  categoryKinds?: string[];
+  /** @deprecated 用 `sizes` 替代 */
   size?: string;
+  sizes?: string[];
+  /** @deprecated 用 `colors` 替代 */
   color?: string;
+  colors?: string[];
+  /** @deprecated 用 `conditions` 替代 */
   condition?: ProductCondition;
+  conditions?: ProductCondition[];
   sellerKind?: SellerKind;
   priceMinCents?: number;
   priceMaxCents?: number;
@@ -882,16 +940,61 @@ export interface PopularBrand {
   listingCount: number;
 }
 
+export type MarketplaceSearchSuggestionType =
+  | "brand"
+  | "product"
+  | "show"
+  | "keyword";
+
+export interface MarketplaceSearchSuggestion {
+  label: string;
+  type: MarketplaceSearchSuggestionType;
+  query: string;
+  brand?: string | null;
+  brandId?: number | null;
+  showId?: string | null;
+  productId?: number | null;
+  imageUrl?: string | null;
+  listingCount?: number | null;
+}
+
 /**
- * GET /api/marketplace/popular-brands?limit=N
+ * GET /api/marketplace/search-suggestions?q=Rick&limit=8
  *
- * 交易大厅顶部「热门品牌」横滑列表。按当前在售单品数量降序，仅返回
- * 真实有在售商品的品牌。
+ * 交易大厅搜索下拉建议：品牌 / 款式系列 / 秀场 / 单品标题。
+ */
+export const getMarketplaceSearchSuggestions = async (
+  query: string,
+  limit: number = 8,
+): Promise<MarketplaceSearchSuggestion[]> => {
+  const trimmed = query.trim();
+  if (!trimmed) return [];
+  const qs = new URLSearchParams({
+    q: trimmed,
+    limit: String(limit),
+  });
+  const res = await request<{ suggestions: MarketplaceSearchSuggestion[] }>(
+    `/api/marketplace/search-suggestions?${qs.toString()}`,
+    { method: "GET" },
+  );
+  return res?.suggestions ?? [];
+};
+
+/**
+ * GET /api/marketplace/popular-brands?limit=N&rotate=true
+ *
+ * 交易大厅顶部「热门品牌」横滑列表。按当前在售单品数量降序取前 30 名为
+ * 候选池，再按当天 UTC 日期为种子打乱后取前 ``limit``。这样保证每天首屏顺序
+ * 不同，但当天内多次刷新顺序一致。
  */
 export const getPopularBrands = async (
-  limit: number = 6
+  limit: number = 6,
+  rotate: boolean = true
 ): Promise<PopularBrand[]> => {
-  const qs = new URLSearchParams({ limit: String(limit) });
+  const qs = new URLSearchParams({
+    limit: String(limit),
+    rotate: rotate ? "true" : "false",
+  });
   const res = await request<{ brands: PopularBrand[] }>(
     `/api/marketplace/popular-brands?${qs.toString()}`,
     { method: "GET" }
@@ -899,17 +1002,126 @@ export const getPopularBrands = async (
   return res?.brands ?? [];
 };
 
+// ============================================================================
+// 「大家都在看」管理员策展（migration 065）
+// ============================================================================
+
+/**
+ * GET /api/marketplace/curated?limit=N
+ *
+ * 管理员标记的「大家都在看」单品列表。按 ``curated_sort_order`` asc 排序，
+ * 仅返回 active 状态。前端展示在 marketplace 顶部，与「热门品牌」并列。
+ */
+export const getCuratedProducts = async (
+  limit: number = 10
+): Promise<StoreProduct[]> => {
+  const qs = new URLSearchParams({ limit: String(limit) });
+  const res = await request<{ products: StoreProduct[] }>(
+    `/api/marketplace/curated?${qs.toString()}`,
+    { method: "GET" }
+  );
+  return res?.products ?? [];
+};
+
+/**
+ * PUT /api/admin/listings/{productId}/curated
+ *
+ * 管理员把单品标记 / 取消「大家都在看」。
+ *   - isCurated=true 时，sortOrder 可选；不传自动追加到末尾。
+ *   - isCurated=false 时，sortOrder 会被清空。
+ */
+export const adminSetListingCurated = async (
+  productId: number,
+  isCurated: boolean,
+  sortOrder?: number | null
+): Promise<StoreProduct> => {
+  return request<StoreProduct>(`/api/admin/listings/${productId}/curated`, {
+    method: "PUT",
+    body: JSON.stringify({
+      isCurated,
+      sortOrder: sortOrder ?? null,
+    }),
+  });
+};
+
+// ============================================================================
+// 平台所有「录入品牌」列表（marketplace 顶部「更多」展开模态框用）
+// ============================================================================
+
+export interface PlatformBrand {
+  brandId: number | null;
+  name: string;
+  imageUrl: string | null;
+  category?: string | null;
+  country?: string | null;
+  listingCount: number;
+}
+
+export interface PlatformBrandListResponse {
+  brands: PlatformBrand[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+/**
+ * GET /api/marketplace/all-brands
+ *
+ * 平台所有已录入品牌的分页列表，含每个品牌的在售单品数。
+ * 用于 marketplace 顶部「更多」按钮展开的全品牌网格。
+ */
+export const getAllPlatformBrands = async (
+  params: { keyword?: string; page?: number; pageSize?: number } = {}
+): Promise<PlatformBrandListResponse> => {
+  const qs = new URLSearchParams();
+  if (params.keyword) qs.append("keyword", params.keyword);
+  qs.append("page", String(params.page ?? 1));
+  qs.append("pageSize", String(params.pageSize ?? 50));
+  return request<PlatformBrandListResponse>(
+    `/api/marketplace/all-brands?${qs.toString()}`,
+    { method: "GET" }
+  );
+};
+
+/** 把数组+单值字段合并成一份去重后的数组（保留入参顺序）。 */
+const mergeMultiField = <T,>(arr?: T[], single?: T | null): T[] => {
+  const out: T[] = [];
+  const seen = new Set<string>();
+  const push = (v: T | null | undefined) => {
+    if (v == null) return;
+    const key = typeof v === "string" ? v : JSON.stringify(v);
+    if (seen.has(key)) return;
+    seen.add(key);
+    out.push(v);
+  };
+  (arr ?? []).forEach(push);
+  push(single ?? undefined);
+  return out;
+};
+
 export const searchMarketplace = async (
   filter: MarketplaceFilter
 ): Promise<StoreProductListResponse> => {
   const qs = new URLSearchParams();
   if (filter.q) qs.append("q", filter.q);
-  if (filter.brand) qs.append("brand", filter.brand);
-  if (filter.categoryId != null)
-    qs.append("categoryId", String(filter.categoryId));
-  if (filter.size) qs.append("size", filter.size);
-  if (filter.color) qs.append("color", filter.color);
-  if (filter.condition) qs.append("condition", filter.condition);
+
+  const brands = mergeMultiField(filter.brands, filter.brand);
+  if (brands.length) qs.append("brand", brands.join(","));
+
+  const categoryIds = mergeMultiField(filter.categoryIds, filter.categoryId);
+  if (categoryIds.length) qs.append("categoryId", categoryIds.join(","));
+  if (filter.categoryKinds?.length)
+    qs.append("category", filter.categoryKinds.join(","));
+
+  const sizes = mergeMultiField(filter.sizes, filter.size);
+  if (sizes.length) qs.append("size", sizes.join(","));
+
+  const colors = mergeMultiField(filter.colors, filter.color);
+  if (colors.length) qs.append("color", colors.join(","));
+
+  const conditions = mergeMultiField(filter.conditions, filter.condition);
+  if (conditions.length) qs.append("condition", conditions.join(","));
+
   if (filter.sellerKind) qs.append("sellerKind", filter.sellerKind);
   if (filter.priceMinCents != null)
     qs.append("priceMinCents", String(filter.priceMinCents));
@@ -1077,19 +1289,53 @@ export const adminReviewListing = async (
 };
 
 // ============================================================================
-// PRD 1.4 智能定价工具：参考价区间 + 抽佣计算
+// PRD 1.4 智能定价：服务端返回的品牌历史价格区间 + 1% 抽佣
 // ============================================================================
-//
-// Phase 1 占位实现：仅根据 condition 给出 ±20%/-40% 的参考区间。
-// Phase 3 将用真实 6 个月历史成交价 (product_price_history) 替代。
+
+/** 后端返回的品牌价格区间（P25 / P50 / P75，单位：分）。 */
+export interface BrandPriceRange {
+  brand: string;
+  condition: ProductCondition | string | null;
+  sampleSize: number;
+  lowCents: number;
+  medianCents: number;
+  highCents: number;
+  minCents: number;
+  maxCents: number;
+  /** "history": 真实历史样本；"fallback": 无样本占位 */
+  source: "history" | "fallback";
+}
+
+/**
+ * GET /api/marketplace/brand-price-range?brand=...&condition=...
+ *
+ * 拉取品牌（+ 可选成色）的历史价格区间。
+ * 无历史样本时返回 source: "fallback" 占位，让前端走兜底文案。
+ */
+export const getBrandPriceRange = async (
+  brand: string,
+  condition?: ProductCondition | null
+): Promise<BrandPriceRange> => {
+  const qs = new URLSearchParams({ brand });
+  if (condition) qs.set("condition", condition);
+  return request<BrandPriceRange>(
+    `/api/marketplace/brand-price-range?${qs.toString()}`,
+    { method: "GET" }
+  );
+};
 
 export interface PriceSuggestion {
   low: number; // cents
   high: number; // cents
 }
 
+/**
+ * 离线兜底：服务端区间拉不到时仅按 condition 给一个粗糙范围。
+ * Phase 2 起优先 await `getBrandPriceRange`；仅在请求失败或 source=fallback 时
+ * 用此函数补一个保守的默认值。
+ */
 export const suggestPriceRange = (
-  brand: string | null | undefined,
+  _brand: string | null | undefined,
   condition: ProductCondition | null | undefined,
   basePriceCents: number
 ): PriceSuggestion => {
@@ -1110,16 +1356,54 @@ export const suggestPriceRange = (
 };
 
 /**
- * 计算扣除抽佣后的预计到手价。
- * - Plus 用户：6%
- * - 普通用户：8%
- * Phase 8 之前 isPlus 由调用方判断；目前没有订阅系统，默认 false。
+ * PRD 单品发布抽佣率：1%（=100 bps）。
+ *
+ * 与 backend migration 063 中 ``orders.commission_rate_bps DEFAULT 100`` 对齐，
+ * 同时也是 ``store_products.commission_rate_bps`` 的默认值（migration 066）。
+ */
+export const PLATFORM_COMMISSION_BPS = 100;
+
+/**
+ * 计算扣除 1% 抽佣后的预计到手价（cents）。
+ * 调用方可显式传入 rateBps 覆盖默认（如未来 Plus 订阅或后端动态下发）。
  */
 export const calculateExpectedPayout = (
   priceCents: number,
-  isPlus: boolean = false
+  rateBps: number = PLATFORM_COMMISSION_BPS
 ): number => {
   if (!priceCents) return 0;
-  const rate = isPlus ? 0.06 : 0.08;
+  const rate = Math.max(0, Math.min(rateBps, 10_000)) / 10_000;
   return Math.round(priceCents * (1 - rate));
+};
+
+// ============================================================================
+// PRD 1.6 草稿数量 / 客服联系
+// ============================================================================
+
+export interface DraftCountResponse {
+  count: number;
+  limit: number;
+}
+
+/** GET /api/sellers/me/drafts/count — 当前用户的 individual 草稿数量 + 上限。 */
+export const getMyDraftCount = async (): Promise<DraftCountResponse> => {
+  return request<DraftCountResponse>(`/api/sellers/me/drafts/count`, {
+    method: "GET",
+  });
+};
+
+export interface SupportContactInfo {
+  weekdayHours: string;
+  weekendHours: string;
+  timezone: string;
+  wechatId?: string | null;
+  email?: string | null;
+  notice?: string | null;
+}
+
+/** GET /api/marketplace/support-contact — 找不到品牌 / 秀场时引导联系小客服。 */
+export const getSupportContact = async (): Promise<SupportContactInfo> => {
+  return request<SupportContactInfo>(`/api/marketplace/support-contact`, {
+    method: "GET",
+  });
 };

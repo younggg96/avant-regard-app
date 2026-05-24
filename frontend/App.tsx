@@ -60,6 +60,7 @@ import BrandDetailScreen from "./src/screens/BrandDetailScreen";
 // Auth Screens
 import AuthScreen from "./src/screens/AuthScreen";
 import SettingsScreen from "./src/screens/SettingsScreen";
+import PrivacySettingsScreen from "./src/screens/PrivacySettingsScreen";
 import EditProfileScreen from "./src/screens/EditProfileScreen";
 import UserProfileScreen from "./src/screens/UserProfileScreen";
 import FavoritesScreen from "./src/screens/FavoritesScreen";
@@ -90,6 +91,7 @@ import PublishV2ForumSelectScreen from "./src/screens/PublishV2/PublishV2ForumSe
 import PublishListingStep1Screen from "./src/screens/PublishListing/PublishListingStep1Screen";
 import PublishListingStep2Screen from "./src/screens/PublishListing/PublishListingStep2Screen";
 import PublishListingStep3Screen from "./src/screens/PublishListing/PublishListingStep3Screen";
+import PublishListingStep4Screen from "./src/screens/PublishListing/PublishListingStep4Screen";
 import PublishFromPostPickerScreen from "./src/screens/PublishListing/PublishFromPostPickerScreen";
 import SellerListingsScreen from "./src/screens/SellerListingsScreen";
 import MarketplaceScreen from "./src/screens/Marketplace/MarketplaceScreen";
@@ -770,6 +772,11 @@ function AppNavigator({
           options={{ headerShown: false }}
         />
         <Stack.Screen
+          name="PrivacySettings"
+          component={PrivacySettingsScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
           name="EditProfile"
           component={EditProfileScreen}
           options={{ headerShown: false }}
@@ -925,6 +932,11 @@ function AppNavigator({
         <Stack.Screen
           name="PublishListingStep3"
           component={PublishListingStep3Screen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="PublishListingStep4"
+          component={PublishListingStep4Screen}
           options={{ headerShown: false }}
         />
         <Stack.Screen

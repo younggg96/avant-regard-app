@@ -16,6 +16,7 @@ import {
   adminCreateProduct,
   adminUpdateProduct,
   adminDeleteProduct,
+  adminSetListingCurated,
   formatPrice,
   centsToPriceInput,
   parsePriceInputToCents,
@@ -285,6 +286,29 @@ const ProductManagementTab = () => {
     } catch (error) {
       Alert.show(
         error instanceof Error ? error.message : t("admin.updateFailed"),
+      );
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // ==================== 策展（「大家都在看」） ====================
+  // 管理员一键把单品标记 / 取消「大家都在看」（migration 065 新增）。
+  // 标记后该单品会出现在 marketplace 顶部 popular picks 段，按 curated_sort_order asc。
+  const handleToggleCurated = async (product: StoreProduct) => {
+    try {
+      setActionLoading(true);
+      await adminSetListingCurated(product.id, !product.isCurated);
+      Alert.show(t("admin.productMgmt.curatedToggleSuccess"));
+      // 局部更新避免整页 refetch 抖动
+      setProducts((list) =>
+        list.map((p) =>
+          p.id === product.id ? { ...p, isCurated: !product.isCurated } : p,
+        ),
+      );
+    } catch (error) {
+      Alert.show(
+        error instanceof Error ? error.message : t("admin.operationFailed"),
       );
     } finally {
       setActionLoading(false);
@@ -700,6 +724,24 @@ const ProductManagementTab = () => {
                     {product.title}
                   </Text>
                 </Box>
+                {product.isCurated ? (
+                  <Box style={[styles.statusBadge, styles.curatedBadge]}>
+                    <Ionicons
+                      name="star"
+                      size={10}
+                      color={theme.colors.accent}
+                      style={{ marginRight: 2 }}
+                    />
+                    <Text
+                      style={[
+                        styles.statusBadgeText,
+                        { color: theme.colors.accent },
+                      ]}
+                    >
+                      {t("admin.productMgmt.curatedBadge")}
+                    </Text>
+                  </Box>
+                ) : null}
                 <Box
                   style={[
                     styles.statusBadge,
@@ -798,6 +840,40 @@ const ProductManagementTab = () => {
               </Text>
 
               <HStack style={sharedStyles.actionButtons}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onPress={() => handleToggleCurated(product)}
+                  disabled={actionLoading}
+                  leftIcon={
+                    <Ionicons
+                      name={product.isCurated ? "star" : "star-outline"}
+                      size={16}
+                      color={
+                        product.isCurated
+                          ? theme.colors.accent
+                          : theme.colors.text
+                      }
+                    />
+                  }
+                  style={[
+                    styles.editButton,
+                    product.isCurated && styles.curatedActiveButton,
+                  ]}
+                >
+                  <ButtonText
+                    style={{
+                      color: product.isCurated
+                        ? theme.colors.accent
+                        : theme.colors.text,
+                      fontSize: 12,
+                    }}
+                  >
+                    {product.isCurated
+                      ? t("admin.productMgmt.unsetCurated")
+                      : t("admin.productMgmt.setCurated")}
+                  </ButtonText>
+                </Button>
                 <Button
                   size="sm"
                   variant="outline"
@@ -967,6 +1043,16 @@ const makeStyles = (t: AppTheme) =>
     statusBadgeText: {
       fontSize: 11,
       fontWeight: "600",
+    },
+    curatedBadge: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: t.colors.accent + "20",
+      marginRight: 6,
+    },
+    curatedActiveButton: {
+      borderColor: t.colors.accent,
+      backgroundColor: t.colors.accent + "10",
     },
     metaRow: {
       flexWrap: "wrap",

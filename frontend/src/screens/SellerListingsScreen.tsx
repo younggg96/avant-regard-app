@@ -108,12 +108,12 @@ const SellerListingsScreen: React.FC = () => {
     if (selectedIds.size === 0) return;
     try {
       const r = await batchOfflineListings(Array.from(selectedIds));
-      Alert.show(`已下架 ${r.updated} 件`);
+      Alert.show(t("trading.myListings.offlineSuccess", { count: r.updated }));
       setSelectedIds(new Set());
       setSelectionMode(false);
       await load();
     } catch (e) {
-      Alert.show(e instanceof Error ? e.message : "操作失败");
+      Alert.show(e instanceof Error ? e.message : t("common.operationFailed"));
     }
   };
 
@@ -121,12 +121,12 @@ const SellerListingsScreen: React.FC = () => {
     if (selectedIds.size === 0) return;
     try {
       const r = await batchDeleteListings(Array.from(selectedIds));
-      Alert.show(`已删除 ${r.deleted} 件`);
+      Alert.show(t("trading.myListings.deleteSuccess", { count: r.deleted }));
       setSelectedIds(new Set());
       setSelectionMode(false);
       await load();
     } catch (e) {
-      Alert.show(e instanceof Error ? e.message : "操作失败");
+      Alert.show(e instanceof Error ? e.message : t("common.operationFailed"));
     }
   };
 

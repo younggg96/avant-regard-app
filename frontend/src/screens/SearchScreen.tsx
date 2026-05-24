@@ -22,7 +22,13 @@ import { searchPosts, likePost, unlikePost, Post as PostData } from "../services
 import { searchUsers, UserInfo } from "../services/userInfoService";
 import { searchBrands, Brand } from "../services/brandService";
 import { getStoresPaginated, BuyerStore } from "../services/buyerStoreService";
-import { searchProductsGlobal, StoreProduct, formatPrice } from "../services/storeProductService";
+import {
+  searchProductsGlobal,
+  StoreProduct,
+  formatPrice,
+  getMarketplaceSearchSuggestions,
+  type MarketplaceSearchSuggestion,
+} from "../services/storeProductService";
 import { useAuthStore } from "../store/authStore";
 import { OptimizedImage } from "../components/ui/OptimizedImage";
 import { ImageSize } from "../utils/imageUtils";
@@ -75,12 +81,53 @@ const SearchScreen = () => {
   const storePageRef = useRef(1);
   const productPageRef = useRef(1);
 
+  // 输入下拉建议（PRD: 搜索框支持品牌名/单品名/秀场关键词的模糊匹配，
+  // 输入"Rick"时下拉提示 Rick Owens / Rick Owens DRKSHDW / Rick Owens FW07）
+  const [suggestions, setSuggestions] = useState<MarketplaceSearchSuggestion[]>([]);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+  const suggestRequestIdRef = useRef(0);
+  const suggestDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const POST_PAGE_SIZE = 20;
 
   // 加载搜索历史
   useEffect(() => {
     setSearchHistory([]);
   }, []);
+
+  // 输入即拉取建议；防抖 280ms 避免每个字符都打一次接口。
+  // 一旦用户回车 / 点搜索按钮（isSearching=true），下拉收起，结果区接管。
+  useEffect(() => {
+    const trimmed = searchQuery.trim();
+    if (suggestDebounceRef.current) {
+      clearTimeout(suggestDebounceRef.current);
+      suggestDebounceRef.current = null;
+    }
+    if (!trimmed || isSearching) {
+      setSuggestions([]);
+      setLoadingSuggestions(false);
+      return;
+    }
+    setLoadingSuggestions(true);
+    const requestId = ++suggestRequestIdRef.current;
+    suggestDebounceRef.current = setTimeout(async () => {
+      try {
+        const items = await getMarketplaceSearchSuggestions(trimmed, 8);
+        if (requestId !== suggestRequestIdRef.current) return;
+        setSuggestions(items);
+      } catch {
+        if (requestId !== suggestRequestIdRef.current) return;
+        setSuggestions([]);
+      } finally {
+        if (requestId === suggestRequestIdRef.current) {
+          setLoadingSuggestions(false);
+        }
+      }
+    }, 280);
+    return () => {
+      if (suggestDebounceRef.current) clearTimeout(suggestDebounceRef.current);
+    };
+  }, [searchQuery, isSearching]);
 
   const STORE_PAGE_SIZE = 20;
   const PRODUCT_PAGE_SIZE = 20;
@@ -246,6 +293,16 @@ const SearchScreen = () => {
     [searchQuery, isSearching]
   );
 
+  // 用户在输入框编辑时，把搜索回退到输入态：
+  // - 退出"已搜索"状态，让下拉建议重新显示
+  // - 不清空已得到的结果集，避免下次"X"清除前出现空白闪烁
+  const handleQueryChange = useCallback((text: string) => {
+    setSearchQuery(text);
+    if (isSearching) {
+      setIsSearching(false);
+    }
+  }, [isSearching]);
+
   // 清除搜索
   const handleClearSearch = useCallback(() => {
     setSearchQuery("");
@@ -265,6 +322,81 @@ const SearchScreen = () => {
     storePageRef.current = 1;
     productPageRef.current = 1;
   }, []);
+
+  // 点击下拉建议
+  // - 品牌建议：尽量切到"品牌"tab 让用户拿到品牌主页入口；
+  // - 秀场 / 系列 / 单品标题建议：切到"商品"tab，复用 marketplace 关键词搜索
+  //   （后端会自动反查 shows 表把该秀场对应的单品也带回来）。
+  const handleSuggestionClick = useCallback(
+    (item: MarketplaceSearchSuggestion) => {
+      const keyword = item.query || item.label;
+      setSearchQuery(keyword);
+
+      let nextType: SearchType = searchType;
+      if (item.type === "brand" && allowedTypes.includes("brands")) {
+        nextType = "brands";
+      } else if (allowedTypes.includes("products")) {
+        nextType = "products";
+      }
+      if (nextType !== searchType) {
+        setSearchType(nextType);
+      }
+
+      Keyboard.dismiss();
+      setIsSearching(true);
+      setIsLoading(true);
+      setSuggestions([]);
+
+      (async () => {
+        try {
+          if (nextType === "posts") {
+            postOffsetRef.current = 0;
+            const result = await searchPosts(keyword, POST_PAGE_SIZE, 0);
+            setPostResults(result.posts);
+            setPostTotal(result.total);
+            setHasMorePosts(result.posts.length < result.total);
+            postOffsetRef.current = result.posts.length;
+          } else if (nextType === "users") {
+            const users = await searchUsers(keyword);
+            setUserResults(users);
+          } else if (nextType === "brands") {
+            const brands = await searchBrands(keyword);
+            setBrandResults(brands);
+          } else if (nextType === "stores") {
+            storePageRef.current = 1;
+            const result = await getStoresPaginated({ page: 1, pageSize: STORE_PAGE_SIZE, searchQuery: keyword });
+            setStoreResults(result.stores);
+            setStoreTotal(result.total);
+            setHasMoreStores(result.stores.length < result.total);
+          } else if (nextType === "products") {
+            productPageRef.current = 1;
+            const result = await searchProductsGlobal(keyword, 1, PRODUCT_PAGE_SIZE);
+            setProductResults(result.products);
+            setProductTotal(result.total);
+            setHasMoreProducts(result.products.length < result.total);
+          }
+
+          // 同步落历史
+          const newHistoryItem: SearchHistory = {
+            id: Date.now().toString(),
+            keyword,
+            timestamp: Date.now(),
+          };
+          setSearchHistory((prev) => {
+            const filtered = prev.filter(
+              (h) => h.keyword.toLowerCase() !== keyword.toLowerCase()
+            );
+            return [newHistoryItem, ...filtered].slice(0, 10);
+          });
+        } catch (error) {
+          console.error("Suggestion search failed:", error);
+        } finally {
+          setIsLoading(false);
+        }
+      })();
+    },
+    [searchType, allowedTypes]
+  );
 
   // 点击历史记录
   const handleHistoryClick = useCallback(
@@ -531,6 +663,119 @@ const SearchScreen = () => {
     postResults,
     (item) => item.imageUrls?.[0],
   );
+
+  // 下拉建议项类型标签 & 图标
+  const suggestionTypeLabel = (type: MarketplaceSearchSuggestion["type"]) => {
+    switch (type) {
+      case "brand":
+        return t("search.suggestionTypeBrand");
+      case "product":
+        return t("search.suggestionTypeProduct");
+      case "show":
+        return t("search.suggestionTypeShow");
+      default:
+        return t("search.suggestionTypeKeyword");
+    }
+  };
+
+  const suggestionIcon = (type: MarketplaceSearchSuggestion["type"]) => {
+    switch (type) {
+      case "brand":
+        return "pricetag-outline";
+      case "product":
+        return "bag-outline";
+      case "show":
+        return "sparkles-outline";
+      default:
+        return "search-outline";
+    }
+  };
+
+  // 输入态下拉建议列表
+  const renderSuggestionList = () => {
+    if (loadingSuggestions && suggestions.length === 0) {
+      return (
+        <VStack flex={1} justifyContent="center" alignItems="center" py="$xl">
+          <ActivityIndicator size="small" color={theme.colors.gray400} />
+        </VStack>
+      );
+    }
+    if (suggestions.length === 0) {
+      return (
+        <VStack flex={1} justifyContent="center" alignItems="center" px="$xl" py="$xl">
+          <Ionicons name="search-outline" size={48} color={theme.colors.gray300} />
+          <Text fontSize="$md" style={{ color: theme.colors.gray600 }} mt="$md" textAlign="center">
+            {t("search.noSuggestions")}
+          </Text>
+          <Text fontSize="$sm" style={{ color: theme.colors.gray400 }} mt="$xs" textAlign="center">
+            {t("search.suggestionsHint")}
+          </Text>
+        </VStack>
+      );
+    }
+    return (
+      <FlatList
+        data={suggestions}
+        keyExtractor={(item, idx) => `${item.type}_${item.label}_${idx}`}
+        keyboardShouldPersistTaps="handled"
+        renderItem={({ item }) => (
+          <Pressable
+            onPress={() => handleSuggestionClick(item)}
+            px="$md"
+            py="$sm"
+          >
+            <HStack alignItems="center" space="md">
+              {item.imageUrl ? (
+                <OptimizedImage
+                  uri={item.imageUrl}
+                  size={ImageSize.THUMBNAIL}
+                  style={styles.suggestionThumb}
+                  contentFit="cover"
+                  lazy
+                />
+              ) : (
+                <Box style={styles.suggestionIconWrap}>
+                  <Ionicons
+                    name={suggestionIcon(item.type) as any}
+                    size={18}
+                    color={theme.colors.gray500}
+                  />
+                </Box>
+              )}
+              <VStack flex={1} space="xs">
+                <Text
+                  fontSize="$md"
+                  style={{ color: theme.colors.text }}
+                  numberOfLines={1}
+                >
+                  {item.label}
+                </Text>
+                <HStack alignItems="center" space="xs">
+                  <Text fontSize="$xs" style={{ color: theme.colors.gray400 }}>
+                    {suggestionTypeLabel(item.type)}
+                  </Text>
+                  {item.listingCount != null && item.listingCount > 0 ? (
+                    <Text fontSize="$xs" style={{ color: theme.colors.gray400 }}>
+                      · {t("search.suggestionListingCount", { count: item.listingCount })}
+                    </Text>
+                  ) : null}
+                </HStack>
+              </VStack>
+              <Ionicons
+                name="arrow-up-outline"
+                size={16}
+                color={theme.colors.gray300}
+                style={{ transform: [{ rotate: "-45deg" }] }}
+              />
+            </HStack>
+          </Pressable>
+        )}
+        ItemSeparatorComponent={() => (
+          <Box height={StyleSheet.hairlineWidth} mx="$md" style={{ backgroundColor: theme.colors.gray100 }} />
+        )}
+      />
+    );
+  };
 
   // 渲染历史记录项
   const renderHistoryItem = ({ item }: { item: SearchHistory }) => (
@@ -1112,7 +1357,7 @@ const SearchScreen = () => {
             }
             placeholderTextColor={theme.colors.gray400}
             value={searchQuery}
-            onChangeText={setSearchQuery}
+            onChangeText={handleQueryChange}
             onSubmitEditing={handleSearch}
             returnKeyType="search"
             autoFocus
@@ -1149,7 +1394,12 @@ const SearchScreen = () => {
       {renderSearchTypeTabs()}
 
       {/* Content Area */}
-      {!isSearching ? (
+      {!isSearching && searchQuery.trim().length > 0 ? (
+        // 输入中：展示下拉建议（品牌 / 系列 / 秀场 / 单品标题）
+        <VStack flex={1}>
+          {renderSuggestionList()}
+        </VStack>
+      ) : !isSearching ? (
         // 显示搜索历史
         <VStack flex={1}>
           {searchHistory.length > 0 && (
@@ -1293,6 +1543,20 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   },
   tabPillInactive: {
     backgroundColor: t.colors.gray100,
+  },
+  suggestionThumb: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: t.colors.gray100,
+  },
+  suggestionIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: t.colors.gray100,
+    alignItems: "center",
+    justifyContent: "center",
   },
 });
 

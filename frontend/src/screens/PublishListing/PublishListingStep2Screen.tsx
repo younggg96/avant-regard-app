@@ -1,8 +1,13 @@
 /**
- * PRD 模块一 · Step 2：规范化 5 视角图 + 最多 4 张额外图。
+ * PRD 单品发布 · Step 2 / 4：规范化 5 视角图 + 最多 7 张额外图。
  *
- * 5 个必填卡槽：正面 / 背面 / 洗标 / 领标 / 瑕疵细节。
- * 无瑕疵也要拍一张兜底证明（PRD 1.3）。
+ * 5 个必填卡槽：正面 / 背面 / 细节 / 领标 / 洗标
+ * - 点击空槽时弹 PhotoSlotGuide，先讲清楚构图要求再让卖家拍。
+ * - 已上传的图可重新点击替换；长按移除。
+ * - extras 上限 7 张，让总数最多 12 张（PRD 建议）。
+ *
+ * 注意：旧 schema 把"瑕疵细节"作为第 5 个槽 (flaw)，本版本改为更通用的
+ * "细节" (detail)；为了向后兼容，仍把图 URL 存在 photoAngles.flaw 字段。
  */
 import React, { useMemo, useState } from "react";
 import {
@@ -17,41 +22,55 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
+import { useTranslation } from "react-i18next";
 import * as ImagePicker from "expo-image-picker";
 
 import { Box, HStack, Pressable, Text } from "../../components/ui";
 import { OptimizedImage } from "../../components/ui/OptimizedImage";
 import ScreenHeader from "../../components/ScreenHeader";
+import WizardStepper from "../../components/WizardStepper";
+import PhotoSlotGuide, {
+  type PhotoAngleKey as GuideAngle,
+} from "../../components/PhotoSlotGuide";
 import { useAppTheme, useThemedStyles, type AppTheme } from "../../theme";
 import { Alert } from "../../utils/Alert";
 import { uploadImageFromUri } from "../admin/adminUtils";
-import { usePublishListingStore } from "../../store/publishListingStore";
+import {
+  usePublishListingStore,
+  TOTAL_PUBLISH_STEPS,
+} from "../../store/publishListingStore";
 import type { PhotoAngles } from "../../services/storeProductService";
+import { FeeNotice } from "./PublishListingStep1Screen";
 
-type AngleKey = keyof Pick<
+// 数据层 key 与 UI 层 key 的桥接：UI 里"细节"对应 DB 里的 flaw 字段（兼容旧数据）。
+type StoreAngleKey = keyof Pick<
   PhotoAngles,
   "front" | "back" | "wash_label" | "brand_label" | "flaw"
 >;
 
-const ANGLE_LABELS: Record<AngleKey, { title: string; tip: string }> = {
-  front: { title: "正面", tip: "整件正面清晰图" },
-  back: { title: "背面", tip: "整件背面清晰图" },
-  wash_label: { title: "洗标", tip: "成分 / 产地标签" },
-  brand_label: { title: "领标", tip: "品牌标 / 内标" },
-  flaw: { title: "瑕疵细节", tip: "无瑕疵也需拍一张兜底证明" },
-};
+const SLOT_ORDER: Array<{
+  storeKey: StoreAngleKey;
+  guideKey: GuideAngle;
+  titleKey: string;
+  tipKey: string;
+}> = [
+  { storeKey: "front",        guideKey: "front",        titleKey: "front",       tipKey: "frontTip" },
+  { storeKey: "back",         guideKey: "back",         titleKey: "back",        tipKey: "backTip" },
+  { storeKey: "flaw",         guideKey: "detail",       titleKey: "detail",      tipKey: "detailTip" },
+  { storeKey: "brand_label",  guideKey: "brand_label",  titleKey: "brandLabel",  tipKey: "brandLabelTip" },
+  { storeKey: "wash_label",   guideKey: "wash_label",   titleKey: "washLabel",   tipKey: "washLabelTip" },
+];
 
-const ORDER: AngleKey[] = ["front", "back", "wash_label", "brand_label", "flaw"];
+const MAX_EXTRAS = 7;
 
 const { width: SCREEN_W } = Dimensions.get("window");
-const ANGLE_PAGE_PADDING = 16;
-const ANGLE_TILE_GAP = 12;
-// 3 列 grid —— 5 张图最后一行剩 1 个空位，比 2×3 视觉更紧凑
-const ANGLE_TILE_W =
-  (SCREEN_W - ANGLE_PAGE_PADDING * 2 - ANGLE_TILE_GAP * 2) / 3;
+const PAGE_PADDING = 16;
+const GAP = 12;
+const TILE_W = (SCREEN_W - PAGE_PADDING * 2 - GAP * 2) / 3;
 
 const PublishListingStep2Screen: React.FC = () => {
-  const navigation = useNavigation();
+  const { t } = useTranslation();
+  const navigation = useNavigation<any>();
   const styles = useThemedStyles(makeStyles);
   const theme = useAppTheme();
 
@@ -59,11 +78,30 @@ const PublishListingStep2Screen: React.FC = () => {
   const patch = usePublishListingStore((s) => s.patch);
 
   const [uploadingKey, setUploadingKey] = useState<string | null>(null);
+  const [guideKey, setGuideKey] = useState<GuideAngle | null>(null);
+  const [pendingStoreKey, setPendingStoreKey] = useState<StoreAngleKey | null>(
+    null
+  );
 
-  const handlePickAngle = async (key: AngleKey) => {
+  const stepLabels = useMemo(
+    () => [
+      t("trading.publishListing.steps.basics"),
+      t("trading.publishListing.steps.photos"),
+      t("trading.publishListing.steps.pricing"),
+      t("trading.publishListing.steps.logistics"),
+    ],
+    [t]
+  );
+
+  const allComplete = useMemo(
+    () => SLOT_ORDER.every(({ storeKey }) => !!photoAngles[storeKey]),
+    [photoAngles]
+  );
+
+  const launchPicker = async (storeKey: StoreAngleKey) => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      Alert.show("需要相册访问权限");
+      Alert.show(t("common.photoPermissionRequired"));
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -73,23 +111,35 @@ const PublishListingStep2Screen: React.FC = () => {
       quality: 0.85,
     });
     if (result.canceled || !result.assets[0]) return;
-    setUploadingKey(key);
+    setUploadingKey(storeKey);
     try {
       const url = await uploadImageFromUri(result.assets[0].uri);
-      patch({
-        photoAngles: { ...photoAngles, [key]: url },
-      });
+      patch({ photoAngles: { ...photoAngles, [storeKey]: url } });
     } catch (e) {
-      Alert.show(e instanceof Error ? e.message : "上传失败");
+      Alert.show(e instanceof Error ? e.message : t("common.uploadFailed"));
     } finally {
       setUploadingKey(null);
     }
   };
 
+  const handleSlotPress = (storeKey: StoreAngleKey, guideAngle: GuideAngle) => {
+    // 首次点开（槽是空的）→ 先讲构图要求；已有图 → 直接换图
+    if (!photoAngles[storeKey]) {
+      setPendingStoreKey(storeKey);
+      setGuideKey(guideAngle);
+      return;
+    }
+    launchPicker(storeKey);
+  };
+
+  const handleRemoveSlot = (storeKey: StoreAngleKey) => {
+    patch({ photoAngles: { ...photoAngles, [storeKey]: null } });
+  };
+
   const handlePickExtra = async () => {
     const extras = photoAngles.extras ?? [];
-    if (extras.length >= 4) {
-      Alert.show("最多 4 张额外图");
+    if (extras.length >= MAX_EXTRAS) {
+      Alert.show(t("trading.publishListing.photos.extraLimit", { max: MAX_EXTRAS }));
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -105,7 +155,7 @@ const PublishListingStep2Screen: React.FC = () => {
         photoAngles: { ...photoAngles, extras: [...extras, url] },
       });
     } catch (e) {
-      Alert.show(e instanceof Error ? e.message : "上传失败");
+      Alert.show(e instanceof Error ? e.message : t("common.uploadFailed"));
     } finally {
       setUploadingKey(null);
     }
@@ -121,35 +171,44 @@ const PublishListingStep2Screen: React.FC = () => {
     });
   };
 
-  const allComplete = useMemo(
-    () => ORDER.every((k) => !!photoAngles[k]),
-    [photoAngles]
-  );
-
   const handleNext = () => {
     if (!allComplete) {
-      Alert.show("5 视角图全部为必填项");
+      Alert.show(t("trading.publishListing.photos.allRequired"));
       return;
     }
-    // @ts-expect-error - navigation types
     navigation.navigate("PublishListingStep3");
   };
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
-      <ScreenHeader title="发布单品 · 5 视角图" showBack />
+      <ScreenHeader title={t("trading.publishListing.title")} showBack />
+      <WizardStepper
+        total={TOTAL_PUBLISH_STEPS}
+        current={2}
+        labels={stepLabels}
+        onJumpTo={(s) => {
+          if (s === 1) navigation.navigate("PublishListingStep1");
+        }}
+      />
+      <FeeNotice />
       <ScrollView contentContainerStyle={styles.scroll}>
-        <Text style={styles.sectionTitle}>2 / 3 · 图片（必填 5 张 + 可选 4 张）</Text>
+        <Text style={styles.section}>
+          {t("trading.publishListing.photos.requiredHeader")}
+        </Text>
+        <Text style={styles.sectionHint}>
+          {t("trading.publishListing.photos.requiredHint")}
+        </Text>
 
         <View style={styles.angleGrid}>
-          {ORDER.map((k) => {
-            const url = photoAngles[k];
-            const isUploading = uploadingKey === k;
+          {SLOT_ORDER.map(({ storeKey, guideKey: gk, titleKey }) => {
+            const url = photoAngles[storeKey];
+            const isUploading = uploadingKey === storeKey;
             return (
               <Pressable
-                key={k}
+                key={storeKey}
                 style={styles.angleTile}
-                onPress={() => handlePickAngle(k)}
+                onPress={() => handleSlotPress(storeKey, gk)}
+                onLongPress={() => url && handleRemoveSlot(storeKey)}
                 disabled={isUploading}
               >
                 <Box style={styles.angleThumb}>
@@ -157,11 +216,7 @@ const PublishListingStep2Screen: React.FC = () => {
                     <>
                       <OptimizedImage uri={url} style={styles.angleImage} />
                       <View style={styles.angleEditOverlay}>
-                        <Ionicons
-                          name="camera-outline"
-                          size={14}
-                          color="#FFFFFF"
-                        />
+                        <Ionicons name="camera-outline" size={14} color="#fff" />
                       </View>
                     </>
                   ) : (
@@ -172,11 +227,11 @@ const PublishListingStep2Screen: React.FC = () => {
                         <>
                           <Ionicons
                             name="add"
-                            size={28}
+                            size={26}
                             color={theme.colors.textSecondary}
                           />
-                          <Text style={styles.angleEmptyTip} numberOfLines={2}>
-                            {ANGLE_LABELS[k].tip}
+                          <Text style={styles.angleEmptyHint}>
+                            {t(`trading.publishListing.photoGuide.${titleKey}`)}
                           </Text>
                         </>
                       )}
@@ -184,15 +239,18 @@ const PublishListingStep2Screen: React.FC = () => {
                   )}
                 </Box>
                 <Text style={styles.angleTitle} numberOfLines={1}>
-                  {ANGLE_LABELS[k].title}
+                  {t(`trading.publishListing.photoGuide.${titleKey}`)}
                 </Text>
               </Pressable>
             );
           })}
         </View>
 
-        <Text style={[styles.sectionTitle, { marginTop: 24 }]}>
-          额外图（可选，最多 4 张）
+        <Text style={[styles.section, { marginTop: 24 }]}>
+          {t("trading.publishListing.photos.extraHeader", { max: MAX_EXTRAS })}
+        </Text>
+        <Text style={styles.sectionHint}>
+          {t("trading.publishListing.photos.extraHint")}
         </Text>
         <HStack flexWrap="wrap" style={{ gap: 8 } as any}>
           {(photoAngles.extras ?? []).map((url, i) => (
@@ -202,9 +260,12 @@ const PublishListingStep2Screen: React.FC = () => {
               onLongPress={() => handleRemoveExtra(i)}
             >
               <OptimizedImage uri={url} style={styles.extraImage} />
+              <View style={styles.angleEditOverlay}>
+                <Ionicons name="trash-outline" size={12} color="#fff" />
+              </View>
             </Pressable>
           ))}
-          {(photoAngles.extras ?? []).length < 4 && (
+          {(photoAngles.extras ?? []).length < MAX_EXTRAS && (
             <Pressable style={styles.extraAdd} onPress={handlePickExtra}>
               {uploadingKey === "extras" ? (
                 <ActivityIndicator />
@@ -214,7 +275,9 @@ const PublishListingStep2Screen: React.FC = () => {
             </Pressable>
           )}
         </HStack>
-        <Text style={styles.hintSmall}>长按额外图可移除</Text>
+        <Text style={styles.hintSmall}>
+          {t("trading.publishListing.photos.longPressRemove")}
+        </Text>
       </ScrollView>
 
       <Box style={styles.footer}>
@@ -224,9 +287,26 @@ const PublishListingStep2Screen: React.FC = () => {
           activeOpacity={0.8}
           disabled={!allComplete}
         >
-          <Text style={styles.nextButtonText}>下一步 · 定价</Text>
+          <Text style={styles.nextButtonText}>
+            {t("trading.publishListing.nextToPricing")}
+          </Text>
         </TouchableOpacity>
       </Box>
+
+      <PhotoSlotGuide
+        visible={!!guideKey}
+        angle={guideKey ?? "front"}
+        onClose={() => {
+          setGuideKey(null);
+          setPendingStoreKey(null);
+        }}
+        onPickPhoto={() => {
+          const target = pendingStoreKey;
+          setGuideKey(null);
+          setPendingStoreKey(null);
+          if (target) launchPicker(target);
+        }}
+      />
     </SafeAreaView>
   );
 };
@@ -234,27 +314,32 @@ const PublishListingStep2Screen: React.FC = () => {
 const makeStyles = (t: AppTheme) =>
   StyleSheet.create({
     container: { flex: 1, backgroundColor: t.colors.background },
-    scroll: { padding: 16, paddingBottom: 32 },
-    sectionTitle: {
+    scroll: { padding: PAGE_PADDING, paddingBottom: 32 },
+    section: {
       fontSize: 13,
+      color: t.colors.text,
+      fontWeight: "600",
+      marginBottom: 4,
+    },
+    sectionHint: {
+      fontSize: 12,
       color: t.colors.textSecondary,
       marginBottom: 12,
-      letterSpacing: 1,
     },
     angleGrid: {
       flexDirection: "row",
       flexWrap: "wrap",
-      marginHorizontal: -ANGLE_TILE_GAP / 2,
+      marginHorizontal: -GAP / 2,
     },
     angleTile: {
-      width: ANGLE_TILE_W,
-      marginHorizontal: ANGLE_TILE_GAP / 2,
-      marginBottom: ANGLE_TILE_GAP + 4,
+      width: TILE_W,
+      marginHorizontal: GAP / 2,
+      marginBottom: GAP + 4,
     },
     angleThumb: {
       width: "100%",
       aspectRatio: 4 / 5,
-      borderRadius: 10,
+      borderRadius: t.borderRadius.sm,
       overflow: "hidden",
       backgroundColor: t.colors.surface,
       borderWidth: StyleSheet.hairlineWidth,
@@ -265,10 +350,10 @@ const makeStyles = (t: AppTheme) =>
       position: "absolute",
       right: 6,
       bottom: 6,
-      width: 22,
-      height: 22,
-      borderRadius: 11,
-      backgroundColor: "rgba(0,0,0,0.45)",
+      width: 20,
+      height: 20,
+      borderRadius: 10,
+      backgroundColor: "rgba(0,0,0,0.55)",
       alignItems: "center",
       justifyContent: "center",
     },
@@ -277,45 +362,52 @@ const makeStyles = (t: AppTheme) =>
       height: "100%",
       justifyContent: "center",
       alignItems: "center",
-      paddingHorizontal: 8,
+      paddingHorizontal: 6,
       gap: 4,
     },
-    angleEmptyTip: {
+    angleEmptyHint: {
       fontSize: 11,
       color: t.colors.textSecondary,
       textAlign: "center",
-      lineHeight: 14,
     },
     angleTitle: {
-      fontSize: 13,
+      fontSize: 12,
       fontWeight: "600",
       color: t.colors.text,
-      marginTop: 8,
+      marginTop: 6,
+      textAlign: "center",
     },
-    extraTile: { width: 80, height: 80, borderRadius: 6, overflow: "hidden" },
+    extraTile: {
+      width: 80,
+      height: 80,
+      borderRadius: t.borderRadius.sm,
+      overflow: "hidden",
+      position: "relative",
+    },
     extraImage: { width: "100%", height: "100%" },
     extraAdd: {
       width: 80,
       height: 80,
-      borderRadius: 6,
+      borderRadius: t.borderRadius.sm,
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: t.colors.border,
       backgroundColor: t.colors.surface,
       justifyContent: "center",
       alignItems: "center",
     },
-    extraAddText: { fontSize: 28, color: t.colors.textSecondary },
-    hintSmall: { fontSize: 12, color: t.colors.textSecondary, marginTop: 8 },
+    extraAddText: { fontSize: 24, color: t.colors.textSecondary },
+    hintSmall: { fontSize: 11, color: t.colors.textSecondary, marginTop: 8 },
     footer: {
       padding: 16,
-      paddingBottom: Platform.OS === "ios" ? 32 : 16,
+      paddingBottom: Platform.OS === "ios" ? 28 : 16,
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: t.colors.border,
+      backgroundColor: t.colors.background,
     },
     nextButton: {
       backgroundColor: t.colors.accent,
       paddingVertical: 14,
-      borderRadius: 8,
+      borderRadius: t.borderRadius.sm,
       alignItems: "center",
     },
     nextButtonDisabled: { opacity: 0.4 },

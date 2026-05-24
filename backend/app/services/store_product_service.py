@@ -19,6 +19,8 @@
 
 from typing import Optional, List, Tuple, Iterable
 from datetime import datetime
+import hashlib
+
 from app.db.supabase import get_supabase, get_supabase_admin, execute_with_retry
 from app.schemas.store_product import (
     StoreProduct,
@@ -30,7 +32,14 @@ from app.schemas.store_product import (
     ProductCondition,
     SellerKind,
     PhotoAngles,
+    BrandPriceRange,
+    SupportContactInfo,
+    MarketplaceSearchSuggestion,
 )
+
+
+# PRD 1.6 草稿数量上限 —— 跨设备同步草稿，但不允许无限制存。
+LISTING_DRAFT_LIMIT = 5
 
 
 # ===== 状态机 =====
@@ -38,8 +47,9 @@ from app.schemas.store_product import (
 # 直接 UPDATE status 字段会绕过校验，禁止使用。
 _LISTING_TRANSITIONS: dict[ProductStatus, set[ProductStatus]] = {
     ProductStatus.DRAFT: {ProductStatus.REVIEWING, ProductStatus.OFFLINE},
+    # active → reviewing：图片改了之后由 service 内部触发，重新进入审核。
     ProductStatus.REVIEWING: {ProductStatus.ACTIVE, ProductStatus.REJECTED, ProductStatus.DRAFT},
-    ProductStatus.ACTIVE: {ProductStatus.FROZEN, ProductStatus.OFFLINE, ProductStatus.SOLD},
+    ProductStatus.ACTIVE: {ProductStatus.FROZEN, ProductStatus.OFFLINE, ProductStatus.SOLD, ProductStatus.REVIEWING},
     ProductStatus.FROZEN: {ProductStatus.ACTIVE, ProductStatus.SOLD},  # 30 分钟未付款回 active；付款成功 → sold（P4 才会触发）
     ProductStatus.REJECTED: {ProductStatus.DRAFT, ProductStatus.OFFLINE},
     ProductStatus.OFFLINE: {ProductStatus.DRAFT},  # 下架后可重新进入草稿编辑
@@ -130,6 +140,204 @@ class StoreProductService:
             publishedAt=row.get("published_at"),
             createdAt=row.get("created_at"),
             updatedAt=row.get("updated_at"),
+            isCurated=bool(row.get("is_curated") or False),
+            curatedSortOrder=row.get("curated_sort_order"),
+            completenessScore=int(row.get("completeness_score") or 0),
+            # PRD 单品 Phase 2
+            styleName=row.get("style_name"),
+            yearDecade=row.get("year_decade"),
+            accessoriesNote=row.get("accessories_note"),
+            shipFromCountry=row.get("ship_from_country"),
+            shipFromState=row.get("ship_from_state"),
+            shipFromCity=row.get("ship_from_city"),
+            shippingFeeMode=row.get("shipping_fee_mode") or "cod",
+            commissionRateBps=row.get("commission_rate_bps") or 100,
+        )
+
+    # ------------------------------------------------------------------
+    # 单品防重复 / 草稿上限工具（PRD 1.6）
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _make_dedup_signature(
+        *,
+        brand: Optional[str],
+        style_name: Optional[str],
+        size: Optional[str],
+        color: Optional[str],
+    ) -> Optional[str]:
+        """品牌 + 款式 + 尺码 + 颜色的小写归一指纹。
+
+        任意一项为空都返回 None：同一卖家发 2 件信息都没填的草稿不算重复。
+        """
+        if not brand or not size or not color:
+            return None
+        raw = "|".join(
+            (
+                (brand or "").strip().lower(),
+                (style_name or "").strip().lower(),
+                (size or "").strip().lower(),
+                (color or "").strip().lower(),
+            )
+        )
+        return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:32]
+
+    def _count_open_drafts(self, seller_user_id: int) -> int:
+        """返回该用户当前 individual 草稿数。"""
+        try:
+            res = (
+                self.db.table("store_products")
+                .select("id", count="exact")
+                .eq("seller_user_id", seller_user_id)
+                .eq("seller_kind", "individual")
+                .eq("status", "draft")
+                .limit(1)
+                .execute()
+            )
+            return res.count or 0
+        except Exception:
+            return 0
+
+    def _find_active_duplicate(
+        self,
+        *,
+        seller_user_id: Optional[int],
+        merchant_id: Optional[int],
+        signature: Optional[str],
+        exclude_product_id: Optional[int] = None,
+    ) -> Optional[int]:
+        """根据指纹查找同卖家未售出的重复 listing，命中返回 product_id。"""
+        if not signature:
+            return None
+        try:
+            q = (
+                self.db.table("store_products")
+                .select("id, status")
+                .eq("dedup_signature", signature)
+                .in_("status", ("draft", "reviewing", "active", "frozen"))
+            )
+            if seller_user_id is not None:
+                q = q.eq("seller_user_id", seller_user_id)
+            elif merchant_id is not None:
+                q = q.eq("merchant_id", merchant_id)
+            else:
+                return None
+            rows = q.execute().data or []
+        except Exception:
+            return None
+        for r in rows:
+            if exclude_product_id is not None and int(r.get("id")) == int(exclude_product_id):
+                continue
+            return int(r.get("id"))
+        return None
+
+    # ------------------------------------------------------------------
+    # 品牌历史价格区间（PRD 1.4）
+    # ------------------------------------------------------------------
+
+    def suggest_brand_price_range(
+        self,
+        *,
+        brand: str,
+        condition: Optional[str] = None,
+    ) -> BrandPriceRange:
+        """读 ``brand_price_history`` 视图，命中时按 P25 / P50 / P75 返回区间。
+
+        - 当 condition 也命中、且样本量 >= 3 时优先返回那条；
+        - 否则按品牌聚合所有 condition 的样本（加权 P25/50/75）；
+        - 完全没有历史样本时返回 source=fallback 占位 (lowCents=0)。
+        """
+        brand_key = (brand or "").strip().lower()
+        if not brand_key:
+            return BrandPriceRange(brand=brand or "", source="fallback")
+
+        try:
+            rows = (
+                self.db.table("brand_price_history")
+                .select("*")
+                .eq("brand_key", brand_key)
+                .execute()
+                .data
+                or []
+            )
+        except Exception as e:
+            print(f"[brand_price_history] query failed brand={brand}: {e}")
+            rows = []
+
+        if not rows:
+            return BrandPriceRange(brand=brand, condition=condition, source="fallback")
+
+        match: Optional[dict] = None
+        if condition:
+            for r in rows:
+                if (r.get("condition") or "") == condition and (r.get("sample_size") or 0) >= 3:
+                    match = r
+                    break
+
+        if match:
+            return BrandPriceRange(
+                brand=brand,
+                condition=condition,
+                sampleSize=int(match.get("sample_size") or 0),
+                lowCents=int(match.get("p25_cents") or 0),
+                medianCents=int(match.get("p50_cents") or 0),
+                highCents=int(match.get("p75_cents") or 0),
+                minCents=int(match.get("min_cents") or 0),
+                maxCents=int(match.get("max_cents") or 0),
+                source="history",
+            )
+
+        total = sum((r.get("sample_size") or 0) for r in rows)
+        if total <= 0:
+            return BrandPriceRange(brand=brand, condition=condition, source="fallback")
+        p25 = sum(((r.get("p25_cents") or 0) * (r.get("sample_size") or 0)) for r in rows) / total
+        p50 = sum(((r.get("p50_cents") or 0) * (r.get("sample_size") or 0)) for r in rows) / total
+        p75 = sum(((r.get("p75_cents") or 0) * (r.get("sample_size") or 0)) for r in rows) / total
+        mn = min((r.get("min_cents") or 0) for r in rows)
+        mx = max((r.get("max_cents") or 0) for r in rows)
+        return BrandPriceRange(
+            brand=brand,
+            condition=condition,
+            sampleSize=int(total),
+            lowCents=int(p25),
+            medianCents=int(p50),
+            highCents=int(p75),
+            minCents=int(mn),
+            maxCents=int(mx),
+            source="history",
+        )
+
+    # ------------------------------------------------------------------
+    # 客服联系配置
+    # ------------------------------------------------------------------
+
+    def get_support_contact(self) -> SupportContactInfo:
+        try:
+            res = (
+                self.db.table("support_contact_config")
+                .select("*")
+                .eq("id", 1)
+                .limit(1)
+                .execute()
+            )
+            row = (res.data or [None])[0]
+        except Exception:
+            row = None
+        if not row:
+            return SupportContactInfo(
+                weekdayHours="09:00 - 21:00",
+                weekendHours="10:00 - 18:00",
+                timezone="Asia/Shanghai",
+                email="support@avantregard.com",
+                notice="工作日 09:00-21:00 · 周末 10:00-18:00",
+            )
+        return SupportContactInfo(
+            weekdayHours=row.get("weekday_hours") or "09:00 - 21:00",
+            weekendHours=row.get("weekend_hours") or "10:00 - 18:00",
+            timezone=row.get("timezone") or "Asia/Shanghai",
+            wechatId=row.get("wechat_id"),
+            email=row.get("email"),
+            notice=row.get("notice"),
         )
 
     def create_product(
@@ -184,6 +392,30 @@ class StoreProductService:
             else data.photoAngles
         )
 
+        # PRD 1.6 草稿数量上限（individual 卖家最多 5 个 draft）
+        if seller_kind == SellerKind.INDIVIDUAL and status_value == "draft" and seller_user_id is not None:
+            count = self._count_open_drafts(seller_user_id)
+            if count >= LISTING_DRAFT_LIMIT:
+                raise ValueError(
+                    f"草稿数量已达上限 {LISTING_DRAFT_LIMIT} 份，请先提交或删除已有草稿"
+                )
+
+        # 防重复指纹（同一卖家若 brand+style+size+color 完全一致，提示去续草稿）
+        signature = self._make_dedup_signature(
+            brand=data.brand,
+            style_name=getattr(data, "styleName", None),
+            size=data.size,
+            color=data.color,
+        )
+        if signature:
+            dup = self._find_active_duplicate(
+                seller_user_id=seller_user_id,
+                merchant_id=merchant_id,
+                signature=signature,
+            )
+            if dup:
+                raise ValueError(f"已存在同款单品 (#{dup})，请直接编辑或先下架")
+
         insert_data: dict = {
             "store_id": store_id,
             "merchant_id": merchant_id,
@@ -210,6 +442,16 @@ class StoreProductService:
             ),
             "accept_offer": data.acceptOffer,
             "photo_angles": photo_angles_payload,
+            # PRD 单品 Phase 2 新字段
+            "style_name": getattr(data, "styleName", None),
+            "year_decade": getattr(data, "yearDecade", None),
+            "accessories_note": getattr(data, "accessoriesNote", None),
+            "ship_from_country": getattr(data, "shipFromCountry", None),
+            "ship_from_state": getattr(data, "shipFromState", None),
+            "ship_from_city": getattr(data, "shipFromCity", None),
+            "shipping_fee_mode": getattr(data, "shippingFeeMode", "cod") or "cod",
+            "commission_rate_bps": 100,  # PRD：发布即 1% 抽佣
+            "dedup_signature": signature,
         }
         result = self.db_admin.table("store_products").insert(insert_data).execute()
         if not result.data:
@@ -310,6 +552,14 @@ class StoreProductService:
             "originalAcquiredAt": "original_acquired_at",
             "acceptOffer": "accept_offer",
             "photoAngles": "photo_angles",
+            # PRD 单品 Phase 2
+            "styleName": "style_name",
+            "yearDecade": "year_decade",
+            "accessoriesNote": "accessories_note",
+            "shipFromCountry": "ship_from_country",
+            "shipFromState": "ship_from_state",
+            "shipFromCity": "ship_from_city",
+            "shippingFeeMode": "shipping_fee_mode",
         }
         db_patch: dict = {}
         for k, v in patch.items():
@@ -331,6 +581,52 @@ class StoreProductService:
         if not db_patch:
             return self._format_product(raw)
 
+        # ---- PRD 重审逻辑 ----
+        # 改价格 / 描述 / 物流 等不影响审核；图片变化（images 或 photoAngles）
+        # 在 active 状态下要重新进入 reviewing，期间 marketplace 不再返回。
+        cur_status = raw.get("status", "draft")
+        image_fields_changed = ("images" in db_patch) or ("photo_angles" in db_patch)
+
+        def _image_actually_different() -> bool:
+            if "images" in db_patch:
+                if (db_patch["images"] or []) != (raw.get("images") or []):
+                    return True
+            if "photo_angles" in db_patch:
+                if (db_patch["photo_angles"] or {}) != (raw.get("photo_angles") or {}):
+                    return True
+            return False
+
+        retrigger_review = (
+            cur_status == "active"
+            and image_fields_changed
+            and _image_actually_different()
+        )
+        if retrigger_review:
+            db_patch["status"] = "reviewing"
+            # 重新进入审核期间不再展示在 marketplace（status 字段就够了，不必额外字段）
+
+        # 同步指纹：brand / styleName / size / color 任一更新都会重算
+        if any(k in db_patch for k in ("brand", "style_name", "size", "color")):
+            new_brand = db_patch.get("brand", raw.get("brand"))
+            new_style = db_patch.get("style_name", raw.get("style_name"))
+            new_size = db_patch.get("size", raw.get("size"))
+            new_color = db_patch.get("color", raw.get("color"))
+            signature = self._make_dedup_signature(
+                brand=new_brand,
+                style_name=new_style,
+                size=new_size,
+                color=new_color,
+            )
+            dup = self._find_active_duplicate(
+                seller_user_id=owner_user_id if kind == "individual" else None,
+                merchant_id=owner_merchant_id if kind == "merchant" else None,
+                signature=signature,
+                exclude_product_id=product_id,
+            )
+            if dup:
+                raise ValueError(f"已存在同款单品 (#{dup})，请勿重复上架")
+            db_patch["dedup_signature"] = signature
+
         # 改价检测: 在 update 落库前抓住旧价, 落库后向收藏用户广播
         old_price_cents = int(raw.get("price_cents") or 0)
         new_price_cents = (
@@ -342,7 +638,7 @@ class StoreProductService:
         should_notify_price = (
             new_price_cents is not None
             and new_price_cents != old_price_cents
-            and raw.get("status") == "active"
+            and cur_status == "active"
         )
 
         q = self.db_admin.table("store_products").update(db_patch).eq("id", product_id)
@@ -354,6 +650,25 @@ class StoreProductService:
         if not result.data:
             raise ValueError("商品更新失败")
 
+        # 重审：图片改了 -> 需要写一条审核轨迹 + 撤销已有出价
+        if retrigger_review:
+            try:
+                self.db_admin.table("product_review_audits").insert(
+                    {
+                        "product_id": product_id,
+                        "reviewer_user_id": None,
+                        "decision": "image_resubmit",
+                        "reason": "卖家修改了实拍图，需重新审核",
+                    }
+                ).execute()
+            except Exception as e:
+                print(f"[store_products] write resubmit audit failed: {e}")
+            # 重审期间撤回所有 pending 出价（PRD：商品消失 + offer 自动清空）
+            try:
+                self._withdraw_pending_offers(product_id, reason="重新审核期间下架")
+            except Exception as e:
+                print(f"[store_products] withdraw offers on re-review failed: {e}")
+
         if should_notify_price:
             self._notify_interested_users(
                 product_id,
@@ -364,6 +679,37 @@ class StoreProductService:
             )
 
         return self.get_product(product_id) or self._format_product(result.data[0])
+
+    # ------------------------------------------------------------------
+    # 下架 / 重审时批量撤销 offer
+    # ------------------------------------------------------------------
+
+    def _withdraw_pending_offers(
+        self, product_id: int, *, reason: str = "商品已下架"
+    ) -> int:
+        """商品下架或重审时，把所有 pending offers 标为 withdrawn。
+
+        买家在 MyOffers 看到的是 withdrawn 状态而不是"消失"，避免疑惑。
+        返回受影响的 offer 数量；失败时静默吞错（这是辅助操作，不阻塞主流程）。
+        """
+        try:
+            res = (
+                self.db_admin.table("offers")
+                .update(
+                    {
+                        "status": "withdrawn",
+                        "resolved_at": datetime.utcnow().isoformat(),
+                        "message": reason,
+                    }
+                )
+                .eq("product_id", product_id)
+                .eq("status", "pending")
+                .execute()
+            )
+            return len(res.data or [])
+        except Exception as e:
+            print(f"[store_products] _withdraw_pending_offers failed pid={product_id}: {e}")
+            return 0
 
     # ========================================================================
     # PRD 状态机：草稿 -> 审核 -> 上架 -> 冻结 -> 售出
@@ -487,6 +833,11 @@ class StoreProductService:
                 kind="offline",
                 exclude_user_id=actor_user_id if not is_admin else None,
             )
+            # PRD：下架后买家已发起的 offer 自动撤回
+            try:
+                self._withdraw_pending_offers(product_id, reason="商品已下架")
+            except Exception as e:
+                print(f"[store_products] withdraw on offline failed pid={product_id}: {e}")
 
         return self.get_product(product_id) or self._format_product(result.data[0])
 
@@ -547,7 +898,7 @@ class StoreProductService:
         if not target_ids:
             return 0
         self.db_admin.table("store_products").update({"status": "offline"}).in_("id", target_ids).execute()
-        # 批量下架后逐个通知收藏用户
+        # 批量下架后逐个通知收藏用户 + 撤回所有 pending offer
         for pid in target_ids:
             try:
                 self._notify_interested_users(
@@ -557,6 +908,10 @@ class StoreProductService:
                 )
             except Exception as e:
                 print(f"[store_products] batch offline notify pid={pid} failed: {e}")
+            try:
+                self._withdraw_pending_offers(pid, reason="商品已下架")
+            except Exception as e:
+                print(f"[store_products] batch offline withdraw pid={pid} failed: {e}")
         return len(target_ids)
 
     def batch_delete_drafts(
@@ -1251,15 +1606,331 @@ class StoreProductService:
         ]
         return products, total
 
+    def _resolve_category_ids_by_name(self, names: List[str]) -> List[int]:
+        """把 PRD 6 大类名 (外套/上衣/裤装/鞋履/包袋/配饰) 反查成 category_id 列表。
+
+        各买手店分类命名各异，做模糊匹配（``name ilike %外套%``）；命中的所有
+        ``store_product_categories.id`` 都纳入查询。结果可能跨多个店铺。
+        """
+        if not names:
+            return []
+        cleaned = [n.replace("%", "").replace("_", "").strip() for n in names if n and n.strip()]
+        if not cleaned:
+            return []
+        try:
+            # 按 OR 一次性查回所有匹配的分类 id
+            expr = ",".join(f"name.ilike.%{n}%" for n in cleaned)
+            res = execute_with_retry(
+                lambda: (
+                    self.db.table("store_product_categories")
+                    .select("id")
+                    .or_(expr)
+                    .limit(500)
+                    .execute()
+                ),
+                label="store_product_categories.resolve_kind",
+            )
+            return [int(r["id"]) for r in (res.data or []) if r.get("id") is not None]
+        except Exception as e:
+            print(f"[store_product] resolve_category_ids_by_name failed: {e}")
+            return []
+
+    @staticmethod
+    def _sanitize_search_keyword(keyword: str) -> str:
+        """清理搜索关键词，转义 PostgREST ilike 特殊字符。"""
+        sanitized = keyword.replace("\\", "\\\\")
+        sanitized = sanitized.replace("%", "\\%")
+        sanitized = sanitized.replace("_", "\\_")
+        sanitized = sanitized.replace(",", " ")
+        return sanitized.strip()
+
+    @staticmethod
+    def _show_season_code(season: Optional[str], year: Optional[int]) -> str:
+        """把秀场季度 + 年份格式化为 FW07 / SS24 这类短码。"""
+        s = (season or "").strip().lower()
+        abbr = ""
+        if any(token in s for token in ("fall", "winter", "fw", "autumn", "秋冬")):
+            abbr = "FW"
+        elif any(token in s for token in ("spring", "summer", "ss", "春夏")):
+            abbr = "SS"
+        elif season:
+            compact = season.replace(" ", "").upper()
+            if compact.startswith("FW") or compact.startswith("SS"):
+                abbr = compact[:2]
+        if year and abbr:
+            year_text = str(year)
+            return f"{abbr}{year_text[-2:]}"
+        return abbr or (season or "").strip()
+
+    def _format_show_search_label(self, show: dict) -> str:
+        brand = (show.get("brand_name") or "").strip()
+        code = self._show_season_code(show.get("season"), show.get("year"))
+        if brand and code:
+            return f"{brand} {code}"
+        title = (show.get("title") or "").strip()
+        if brand and title:
+            return f"{brand} {title}"
+        return brand or title
+
+    def _resolve_show_ids_by_keyword(self, keyword: str, limit: int = 50) -> List[str]:
+        """按秀场关键词反查 show id 列表，供 Marketplace 关键词搜索使用。"""
+        safe = self._sanitize_search_keyword(keyword)
+        if not safe:
+            return []
+        try:
+            text_filters = (
+                f"brand_name.ilike.*{safe}*,"
+                f"title.ilike.*{safe}*,"
+                f"season.ilike.*{safe}*,"
+                f"category.ilike.*{safe}*,"
+                f"designer.ilike.*{safe}*,"
+                f"description.ilike.*{safe}*"
+            )
+            res = execute_with_retry(
+                lambda: (
+                    self.db.table("shows")
+                    .select("id")
+                    .or_(text_filters)
+                    .or_("status.eq.APPROVED,status.is.null")
+                    .limit(limit)
+                    .execute()
+                ),
+                label="shows.resolve_keyword",
+            )
+            return [str(r["id"]) for r in (res.data or []) if r.get("id")]
+        except Exception as e:
+            print(f"[marketplace] resolve_show_ids failed: {e}")
+            return []
+
+    def get_marketplace_search_suggestions(
+        self,
+        keyword: str,
+        limit: int = 8,
+    ) -> List[MarketplaceSearchSuggestion]:
+        """交易大厅搜索下拉建议。
+
+        聚合品牌名、款式/系列（style_name）、单品标题、秀场关键词，按热度排序。
+        """
+        safe = self._sanitize_search_keyword(keyword)
+        if not safe:
+            return []
+
+        suggestions: List[MarketplaceSearchSuggestion] = []
+        seen_labels: set[str] = set()
+
+        def push(item: MarketplaceSearchSuggestion) -> None:
+            key = item.label.strip().lower()
+            if not key or key in seen_labels:
+                return
+            seen_labels.add(key)
+            suggestions.append(item)
+
+        # 1) 品牌（brands 表 + 在售 listing 计数）
+        try:
+            brand_rows = execute_with_retry(
+                lambda: (
+                    self.db.table("brands")
+                    .select("id, name")
+                    .ilike("name", f"*{safe}*")
+                    .order("name")
+                    .limit(limit * 2)
+                    .execute()
+                ),
+                label="marketplace.suggest.brands",
+            ).data or []
+        except Exception as e:
+            print(f"[marketplace] suggest brands failed: {e}")
+            brand_rows = []
+
+        listing_counts: dict[str, int] = {}
+        try:
+            active_brands = execute_with_retry(
+                lambda: (
+                    self.db.table("store_products")
+                    .select("brand")
+                    .eq("status", "active")
+                    .ilike("brand", f"*{safe}*")
+                    .limit(1000)
+                    .execute()
+                ),
+                label="marketplace.suggest.active_brands",
+            ).data or []
+            for row in active_brands:
+                name = (row.get("brand") or "").strip()
+                if name:
+                    listing_counts[name.lower()] = listing_counts.get(name.lower(), 0) + 1
+        except Exception as e:
+            print(f"[marketplace] suggest active brand counts failed: {e}")
+
+        brand_candidates: dict[str, dict] = {}
+        for row in brand_rows:
+            name = (row.get("name") or "").strip()
+            if not name:
+                continue
+            brand_candidates[name.lower()] = {
+                "name": name,
+                "brandId": row.get("id"),
+            }
+        for name_lower, count in listing_counts.items():
+            if name_lower not in brand_candidates:
+                brand_candidates[name_lower] = {"name": name_lower.title(), "brandId": None}
+            brand_candidates[name_lower]["listingCount"] = count
+
+        for meta in sorted(
+            brand_candidates.values(),
+            key=lambda x: (-x.get("listingCount", 0), x["name"].lower()),
+        ):
+            push(
+                MarketplaceSearchSuggestion(
+                    label=meta["name"],
+                    type="brand",
+                    query=meta["name"],
+                    brand=meta["name"],
+                    brandId=meta.get("brandId"),
+                    listingCount=meta.get("listingCount") or 0,
+                )
+            )
+            if len(suggestions) >= limit:
+                return suggestions[:limit]
+
+        # 2) 品牌 + 款式/系列（如 Rick Owens DRKSHDW）
+        try:
+            style_rows = execute_with_retry(
+                lambda: (
+                    self.db.table("store_products")
+                    .select("brand, style_name")
+                    .eq("status", "active")
+                    .or_(
+                        f"brand.ilike.*{safe}*,style_name.ilike.*{safe}*,title.ilike.*{safe}*"
+                    )
+                    .not_.is_("brand", "null")
+                    .limit(200)
+                    .execute()
+                ),
+                label="marketplace.suggest.styles",
+            ).data or []
+        except Exception as e:
+            print(f"[marketplace] suggest styles failed: {e}")
+            style_rows = []
+
+        style_counts: dict[str, int] = {}
+        for row in style_rows:
+            brand = (row.get("brand") or "").strip()
+            style = (row.get("style_name") or "").strip()
+            if not brand:
+                continue
+            label = f"{brand} {style}".strip() if style else brand
+            if safe.lower() not in label.lower():
+                continue
+            style_counts[label] = style_counts.get(label, 0) + 1
+
+        for label, count in sorted(style_counts.items(), key=lambda x: (-x[1], x[0].lower())):
+            brand_part = label.split(" ", 1)[0]
+            push(
+                MarketplaceSearchSuggestion(
+                    label=label,
+                    type="keyword",
+                    query=label,
+                    brand=brand_part,
+                    listingCount=count,
+                )
+            )
+            if len(suggestions) >= limit:
+                return suggestions[:limit]
+
+        # 3) 秀场关键词（如 Rick Owens FW07）
+        try:
+            show_rows = execute_with_retry(
+                lambda: (
+                    self.db.table("shows")
+                    .select("id, brand_name, season, year, title, cover_image")
+                    .or_(
+                        f"brand_name.ilike.*{safe}*,"
+                        f"title.ilike.*{safe}*,"
+                        f"season.ilike.*{safe}*,"
+                        f"category.ilike.*{safe}*,"
+                        f"designer.ilike.*{safe}*"
+                    )
+                    .or_("status.eq.APPROVED,status.is.null")
+                    .order("year", desc=True)
+                    .limit(limit * 2)
+                    .execute()
+                ),
+                label="marketplace.suggest.shows",
+            ).data or []
+        except Exception as e:
+            print(f"[marketplace] suggest shows failed: {e}")
+            show_rows = []
+
+        for show in show_rows:
+            label = self._format_show_search_label(show)
+            if safe.lower() not in label.lower():
+                continue
+            push(
+                MarketplaceSearchSuggestion(
+                    label=label,
+                    type="show",
+                    query=label,
+                    brand=(show.get("brand_name") or "").strip() or None,
+                    showId=str(show.get("id")) if show.get("id") else None,
+                    imageUrl=show.get("cover_image"),
+                )
+            )
+            if len(suggestions) >= limit:
+                return suggestions[:limit]
+
+        # 4) 单品标题
+        try:
+            product_rows = execute_with_retry(
+                lambda: (
+                    self.db.table("store_products")
+                    .select("id, title, brand, images, favorite_count")
+                    .eq("status", "active")
+                    .or_(
+                        f"title.ilike.*{safe}*,brand.ilike.*{safe}*,style_name.ilike.*{safe}*"
+                    )
+                    .order("favorite_count", desc=True)
+                    .order("published_at", desc=True)
+                    .limit(limit * 2)
+                    .execute()
+                ),
+                label="marketplace.suggest.products",
+            ).data or []
+        except Exception as e:
+            print(f"[marketplace] suggest products failed: {e}")
+            product_rows = []
+
+        for row in product_rows:
+            title = (row.get("title") or "").strip()
+            if not title:
+                continue
+            images = row.get("images") or []
+            push(
+                MarketplaceSearchSuggestion(
+                    label=title,
+                    type="product",
+                    query=title,
+                    brand=(row.get("brand") or "").strip() or None,
+                    productId=row.get("id"),
+                    imageUrl=images[0] if images else None,
+                    listingCount=row.get("favorite_count") or 0,
+                )
+            )
+            if len(suggestions) >= limit:
+                break
+
+        return suggestions[:limit]
+
     def search_marketplace(
         self,
         *,
         keyword: Optional[str] = None,
-        brand: Optional[str] = None,
-        category_id: Optional[int] = None,
-        size: Optional[str] = None,
-        color: Optional[str] = None,
-        condition: Optional[str] = None,
+        brands: Optional[List[str]] = None,
+        category_ids: Optional[List[int]] = None,
+        category_kinds: Optional[List[str]] = None,
+        sizes: Optional[List[str]] = None,
+        colors: Optional[List[str]] = None,
+        conditions: Optional[List[str]] = None,
         seller_kind: Optional[str] = None,
         price_min_cents: Optional[int] = None,
         price_max_cents: Optional[int] = None,
@@ -1267,29 +1938,93 @@ class StoreProductService:
         page: int = 1,
         page_size: int = 20,
         user_id: Optional[int] = None,
+        # ---- 旧的单值入参，保留向后兼容 ----
+        brand: Optional[str] = None,
+        category_id: Optional[int] = None,
+        size: Optional[str] = None,
+        color: Optional[str] = None,
+        condition: Optional[str] = None,
     ) -> Tuple[List[StoreProduct], int]:
         """PRD 模块二 · Marketplace 交易大厅查询。
 
         - 只返回 status='active' 的单品。
-        - 支持品牌/品类/尺码/颜色/成色/卖家类型/价格区间过滤。
-        - 排序：newest / price_asc / price_desc。
+        - 支持 品牌/品类/尺码/颜色/成色/卖家类型/价格区间 多选过滤；多选采用 OR
+          语义（命中任一即返回）。
+        - ``category_kinds`` 走 PRD 6 大类（外套/上衣/裤装/鞋履/包袋/配饰），
+          通过反查 ``store_product_categories.name`` ILIKE 匹配获取
+          ``category_id`` 列表后再过滤。
+        - 排序：newest / price_asc / price_desc / featured。
         """
+        # 单值兼容：如果只传了旧的单值字段，转成单元素 list 走多选分支
+        if brands is None and brand:
+            brands = [brand]
+        if category_ids is None and category_id is not None:
+            category_ids = [category_id]
+        if sizes is None and size:
+            sizes = [size]
+        if colors is None and color:
+            colors = [color]
+        if conditions is None and condition:
+            conditions = [condition]
+
         q = self.db.table("store_products").select(_PRODUCT_SELECT, count="exact")
         q = q.eq("status", "active")
         if keyword:
-            kw = keyword.replace("%", "\\%").replace("_", "\\_").strip()
+            kw = self._sanitize_search_keyword(keyword)
             if kw:
-                q = q.or_(f"title.ilike.%{kw}%,brand.ilike.%{kw}%,tags.cs.{{{kw}}}")
-        if brand:
-            q = q.ilike("brand", brand)
-        if category_id is not None:
-            q = q.eq("category_id", category_id)
-        if size:
-            q = q.eq("size", size)
-        if color:
-            q = q.eq("color", color)
-        if condition:
-            q = q.eq("condition", condition)
+                parts = [
+                    f"title.ilike.%{kw}%",
+                    f"brand.ilike.%{kw}%",
+                    f"style_name.ilike.%{kw}%",
+                    f"description.ilike.%{kw}%",
+                    f"tags.cs.{{{kw}}}",
+                ]
+                show_ids = self._resolve_show_ids_by_keyword(kw)
+                if show_ids:
+                    ids_csv = ",".join(show_ids)
+                    parts.append(f"original_show_id.in.({ids_csv})")
+                q = q.or_(",".join(parts))
+        if brands:
+            # 品牌不区分大小写，使用 ilike 多分支 or
+            cleaned = [b.replace(",", "").strip() for b in brands if b and b.strip()]
+            if len(cleaned) == 1:
+                q = q.ilike("brand", cleaned[0])
+            elif cleaned:
+                expr = ",".join(f"brand.ilike.{b}" for b in cleaned)
+                q = q.or_(expr)
+        # PRD 6 大类 → 名称模糊匹配 store_product_categories.name → category_id list
+        if category_kinds:
+            extra_ids = self._resolve_category_ids_by_name(category_kinds)
+            if extra_ids:
+                category_ids = (category_ids or []) + extra_ids
+            elif not category_ids:
+                # 用户选了 PRD 大类但库里没有对应分类 → 直接返回空集，
+                # 比把 filter 静默忽略要诚实。
+                return [], 0
+        if category_ids:
+            uniq = list({int(c) for c in category_ids})
+            if len(uniq) == 1:
+                q = q.eq("category_id", uniq[0])
+            else:
+                q = q.in_("category_id", uniq)
+        if sizes:
+            cleaned = [s for s in sizes if s]
+            if len(cleaned) == 1:
+                q = q.eq("size", cleaned[0])
+            elif cleaned:
+                q = q.in_("size", cleaned)
+        if colors:
+            cleaned = [c for c in colors if c]
+            if len(cleaned) == 1:
+                q = q.eq("color", cleaned[0])
+            elif cleaned:
+                q = q.in_("color", cleaned)
+        if conditions:
+            cleaned = [c for c in conditions if c]
+            if len(cleaned) == 1:
+                q = q.eq("condition", cleaned[0])
+            elif cleaned:
+                q = q.in_("condition", cleaned)
         if seller_kind:
             q = q.eq("seller_kind", seller_kind)
         if price_min_cents is not None:
@@ -1300,15 +2035,20 @@ class StoreProductService:
         # - newest    : 最新上架（published_at desc）
         # - price_asc : 价格升序
         # - price_desc: 价格降序
-        # - featured  : 精选推荐（favorite_count desc 兜底 published_at desc）
+        # - featured  : 精选推荐 —— 主页推荐同款思路：信息最全的单品 (A 级) 优先，
+        #               同分级再按收藏度 + 上架时间稳定排序。
+        #               completeness_score 由 trigger 在 INSERT/UPDATE 时刷新（migration 065）。
         if sort == "price_asc":
             q = q.order("price_cents", desc=False)
         elif sort == "price_desc":
             q = q.order("price_cents", desc=True)
         elif sort == "featured":
-            q = q.order("favorite_count", desc=True).order(
-                "published_at", desc=True
-            ).order("id", desc=True)
+            q = (
+                q.order("completeness_score", desc=True)
+                .order("favorite_count", desc=True)
+                .order("published_at", desc=True)
+                .order("id", desc=True)
+            )
         else:
             q = q.order("published_at", desc=True).order("id", desc=True)
 
@@ -1336,7 +2076,7 @@ class StoreProductService:
         ]
         return products, total
 
-    def get_popular_brands(self, limit: int = 6) -> List[dict]:
+    def get_popular_brands(self, limit: int = 6, *, daily_rotate: bool = True) -> List[dict]:
         """Marketplace 顶部「热门品牌」聚合。
 
         实现策略：
@@ -1344,9 +2084,14 @@ class StoreProductService:
              这样既能反映"热门"也能保证有真实在售货品的品牌才出现，避免空点击。
           2. 用品牌名再去 `brands` 表关联一次，拿到 cover image / id；找不到的就
              仅返回名称（前端会显示首字母占位头像）。
+          3. 当 ``daily_rotate=True``：取在售单品数量前 30 名，按当前 UTC 日期作为
+             随机种子打乱后取前 ``limit`` 个。这样保证每天首屏顺序不同，但当天内
+             多次刷新顺序一致；不在前 30 名的冷门品牌不会冒出。
 
         返回每条结构：``{"name": str, "brandId": int|None, "imageUrl": str|None, "listingCount": int}``。
         """
+        import random
+        from datetime import datetime, timezone
         try:
             rows_resp = execute_with_retry(
                 lambda: (
@@ -1372,7 +2117,18 @@ class StoreProductService:
             counts[name] = counts.get(name, 0) + 1
         if not counts:
             return []
-        top = sorted(counts.items(), key=lambda x: (-x[1], x[0]))[:limit]
+        # 取前 30 候选池：保证只在真正"热门"的品牌之间洗牌，冷门品牌不会冒出。
+        candidate_pool_size = max(limit * 5, 30)
+        sorted_items = sorted(counts.items(), key=lambda x: (-x[1], x[0]))
+        candidate_pool = sorted_items[:candidate_pool_size]
+        if daily_rotate and len(candidate_pool) > limit:
+            today_seed = datetime.now(timezone.utc).strftime("%Y%m%d")
+            rng = random.Random(today_seed)
+            shuffled = list(candidate_pool)
+            rng.shuffle(shuffled)
+            top = shuffled[:limit]
+        else:
+            top = candidate_pool[:limit]
         names = [name for name, _ in top]
         # 关联 brands 拿 logo / id（大小写不敏感匹配）
         brand_meta: dict[str, dict] = {}
@@ -1417,6 +2173,208 @@ class StoreProductService:
             }
             for name, count in top
         ]
+
+    # ========================================================================
+    # 「大家都在看」管理员策展 (migration 065)
+    # ========================================================================
+
+    def list_curated_products(
+        self,
+        *,
+        limit: int = 10,
+        user_id: Optional[int] = None,
+    ) -> List[StoreProduct]:
+        """返回管理员标记为「大家都在看」的商品。
+
+        - 仅返回 status='active'。
+        - 排序：``curated_sort_order`` asc (NULL 最大 → 最后)，再按 published_at desc。
+        - 不分页：策展段一屏最多 10 张就够，前端按 limit 截断即可。
+        """
+        try:
+            res = execute_with_retry(
+                lambda: (
+                    self.db.table("store_products")
+                    .select(_PRODUCT_SELECT)
+                    .eq("status", "active")
+                    .eq("is_curated", True)
+                    .order("curated_sort_order", desc=False, nullsfirst=False)
+                    .order("published_at", desc=True)
+                    .order("id", desc=True)
+                    .limit(limit)
+                    .execute()
+                ),
+                label="store_products.list_curated",
+            )
+        except Exception as e:
+            print(f"[store_products] list_curated failed: {e}")
+            return []
+        rows = res.data or []
+        liked_map: dict[int, bool] = {}
+        favorited_map: dict[int, bool] = {}
+        wanted_map: dict[int, bool] = {}
+        if user_id is not None and rows:
+            ids = [r["id"] for r in rows]
+            liked_map = self._check_products_liked_bulk(ids, user_id)
+            favorited_map = self._check_products_favorited_bulk(ids, user_id)
+            wanted_map = self._check_products_wanted_bulk(ids, user_id)
+        return [
+            self._format_product(
+                row,
+                liked_by_me=liked_map.get(row["id"]),
+                favorited_by_me=favorited_map.get(row["id"]),
+                wanted_by_me=wanted_map.get(row["id"]),
+            )
+            for row in rows
+        ]
+
+    def admin_set_curated(
+        self,
+        product_id: int,
+        *,
+        is_curated: bool,
+        sort_order: Optional[int] = None,
+    ) -> StoreProduct:
+        """管理员策展开关：把单品设为/取消「大家都在看」。
+
+        - is_curated=False 时会同时把 sort_order 清空。
+        - is_curated=True 时若 sort_order=None，自动落到当前已策展中的最大值 +1。
+        """
+        raw = self._get_product_raw(product_id)
+        if not raw:
+            raise ValueError("商品不存在")
+
+        patch: dict = {"is_curated": bool(is_curated)}
+        if not is_curated:
+            patch["curated_sort_order"] = None
+        else:
+            if sort_order is None:
+                # 取当前最大 sort_order，+1 追加到末尾
+                try:
+                    res = (
+                        self.db.table("store_products")
+                        .select("curated_sort_order")
+                        .eq("is_curated", True)
+                        .not_.is_("curated_sort_order", "null")
+                        .order("curated_sort_order", desc=True)
+                        .limit(1)
+                        .execute()
+                    )
+                    rows = res.data or []
+                    next_order = (
+                        int(rows[0]["curated_sort_order"]) + 1 if rows else 0
+                    )
+                except Exception:
+                    next_order = 0
+                patch["curated_sort_order"] = next_order
+            else:
+                patch["curated_sort_order"] = int(sort_order)
+
+        result = (
+            self.db_admin.table("store_products")
+            .update(patch)
+            .eq("id", product_id)
+            .execute()
+        )
+        if not result.data:
+            raise ValueError("策展状态更新失败")
+        return self.get_product(product_id) or self._format_product(result.data[0])
+
+    # ========================================================================
+    # 全平台所有「录入品牌」列表（marketplace 顶部「更多」展开用）
+    # ========================================================================
+
+    def list_all_platform_brands(
+        self,
+        *,
+        keyword: Optional[str] = None,
+        page: int = 1,
+        page_size: int = 50,
+    ) -> Tuple[List[dict], int]:
+        """返回平台已录入的所有品牌（从 brands 表查），含在售单品数 + 封面图。
+
+        与 `brand_service.get_all_brands` 不同点：
+          - 顺手把每个品牌的 ``listingCount`` 算出来（active 在售）；
+          - 字段精简到 marketplace 模态框需要的几项 (name / brandId / imageUrl /
+            listingCount / category / country)，避免移动端解析多余字段。
+
+        排序：默认按在售单品数量降序、再按品牌名 asc，配合 keyword 搜索。
+        """
+        from app.services.brand_service import brand_service as _brand_svc
+
+        offset = (page - 1) * page_size
+        try:
+            q = self.db.table("brands").select("*", count="exact")
+            if keyword:
+                kw = (
+                    keyword.replace("\\", "\\\\")
+                    .replace("%", "\\%")
+                    .replace("_", "\\_")
+                    .strip()
+                )
+                if kw:
+                    q = q.or_(
+                        f"name.ilike.*{kw}*,founder.ilike.*{kw}*,country.ilike.*{kw}*"
+                    )
+            q = q.order("name", desc=False).range(offset, offset + page_size - 1)
+            res = execute_with_retry(lambda: q.execute(), label="marketplace.all_brands")
+        except Exception as e:
+            print(f"[all_brands] query failed: {e}")
+            return [], 0
+
+        rows = res.data or []
+        total = res.count or 0
+        if not rows:
+            return [], total
+
+        brand_ids = [r["id"] for r in rows if r.get("id") is not None]
+        # 封面图（is_selected=APPROVED）
+        try:
+            image_map = _brand_svc._get_first_brand_images(brand_ids)
+        except Exception:
+            image_map = {}
+
+        # 在售单品数：按品牌名 ilike 聚合（store_products.brand 是字符串）
+        listing_count_by_name: dict[str, int] = {}
+        try:
+            names = [(r.get("name") or "").strip() for r in rows]
+            names = [n for n in names if n]
+            if names:
+                # OR 一次性查回（PostgREST 的 or_ 长度安全：每页最多 50）
+                or_expr = ",".join(
+                    f"brand.ilike.{n.replace(',', ' ')}" for n in names
+                )
+                cnt_res = (
+                    self.db.table("store_products")
+                    .select("brand", count="exact")
+                    .eq("status", "active")
+                    .or_(or_expr)
+                    .limit(2000)
+                    .execute()
+                )
+                for row in cnt_res.data or []:
+                    nm = (row.get("brand") or "").strip().lower()
+                    if not nm:
+                        continue
+                    listing_count_by_name[nm] = listing_count_by_name.get(nm, 0) + 1
+        except Exception as e:
+            print(f"[all_brands] listing count failed: {e}")
+
+        items: List[dict] = []
+        for r in rows:
+            name = (r.get("name") or "").strip()
+            if not name:
+                continue
+            items.append(
+                {
+                    "brandId": r.get("id"),
+                    "name": name,
+                    "imageUrl": image_map.get(r.get("id")),
+                    "category": r.get("category"),
+                    "country": r.get("country"),
+                    "listingCount": listing_count_by_name.get(name.lower(), 0),
+                }
+            )
+        return items, total
 
     def search_products_global(
         self,

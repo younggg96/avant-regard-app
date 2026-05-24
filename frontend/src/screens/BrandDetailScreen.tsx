@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import {
   View,
   Text,
@@ -40,7 +40,9 @@ import {
   searchMarketplace,
   formatPrice,
   type StoreProduct,
+  type MarketplaceFilter,
 } from "../services/storeProductService";
+import MarketplaceFilterSheet from "./Marketplace/MarketplaceFilterSheet";
 
 type TabType = "shows" | "posts" | "onsale";
 
@@ -73,6 +75,12 @@ const BrandDetailScreen = () => {
   const [brandPosts, setBrandPosts] = useState<Post[]>([]);
   const [brandListings, setBrandListings] = useState<StoreProduct[]>([]);
   const [isLoadingListings, setIsLoadingListings] = useState(false);
+  // 进入此屏视为「已选中该品牌」；此 filter 用于 on-sale tab 的精细化筛选，
+  // 不含品牌字段（品牌锁在 brand.name 上，由 loadBrandListings 强制注入）。
+  const [listingFilter, setListingFilter] = useState<MarketplaceFilter>({
+    sort: "newest",
+  });
+  const [filterSheetVisible, setFilterSheetVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingPosts, setIsLoadingPosts] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -87,27 +95,46 @@ const BrandDetailScreen = () => {
   const [followLoading, setFollowLoading] = useState(false);
   const [showShareToChat, setShowShareToChat] = useState(false);
 
-  // 加载该品牌当前在售单品（PRD 模块二，与 Marketplace 接口一致）
-  const loadBrandListings = useCallback(async (brandName: string) => {
-    if (!brandName) {
-      setBrandListings([]);
-      return;
+  // 加载该品牌当前在售单品（PRD 模块二，与 Marketplace 接口一致）。
+  // brand 字段强制注入；其他维度由 listingFilter 控制，方便用户在品牌详情
+  // 页直接做二次筛选（PRD「进入 archive 视为直接选中了品牌」）。
+  const loadBrandListings = useCallback(
+    async (brandName: string, extra?: MarketplaceFilter) => {
+      if (!brandName) {
+        setBrandListings([]);
+        return;
+      }
+      setIsLoadingListings(true);
+      try {
+        const merged: MarketplaceFilter = {
+          ...(extra ?? listingFilter),
+          brand: brandName,
+          page: 1,
+          pageSize: 40,
+        };
+        const res = await searchMarketplace(merged);
+        setBrandListings(res.products || []);
+      } catch (e) {
+        setBrandListings([]);
+      } finally {
+        setIsLoadingListings(false);
+      }
+    },
+    [listingFilter],
+  );
+
+  /** 计算 on-sale tab 已激活的筛选维度数量（不含品牌本身）。 */
+  const listingActiveCount = useMemo(() => {
+    let n = 0;
+    if (listingFilter.categoryKinds?.length) n += listingFilter.categoryKinds.length;
+    if (listingFilter.sizes?.length) n += listingFilter.sizes.length;
+    if (listingFilter.colors?.length) n += listingFilter.colors.length;
+    if (listingFilter.conditions?.length) n += listingFilter.conditions.length;
+    if (listingFilter.priceMinCents != null || listingFilter.priceMaxCents != null) {
+      n += 1;
     }
-    setIsLoadingListings(true);
-    try {
-      const res = await searchMarketplace({
-        brand: brandName,
-        sort: "newest",
-        page: 1,
-        pageSize: 40,
-      });
-      setBrandListings(res.products || []);
-    } catch (e) {
-      setBrandListings([]);
-    } finally {
-      setIsLoadingListings(false);
-    }
-  }, []);
+    return n;
+  }, [listingFilter]);
 
   // 加载品牌相关的帖子（通过品牌 ID 查询关联该品牌的帖子）
   const loadBrandPosts = useCallback(async (brandIdToLoad: number) => {
@@ -791,6 +818,56 @@ const BrandDetailScreen = () => {
         {/* PRD 模块二 · 该品牌当前在售单品 */}
         {activeTab === "onsale" && (
           <View style={styles.postsSection}>
+            {/* 筛选入口 —— 进入此屏视为已选中此品牌 */}
+            <View style={styles.onsaleFilterRow}>
+              <TouchableOpacity
+                style={[
+                  styles.onsaleFilterBtn,
+                  listingActiveCount > 0 && styles.onsaleFilterBtnActive,
+                ]}
+                onPress={() => setFilterSheetVisible(true)}
+                activeOpacity={0.7}
+              >
+                <Ionicons
+                  name="options-outline"
+                  size={16}
+                  color={
+                    listingActiveCount > 0
+                      ? theme.colors.textInverted
+                      : theme.colors.text
+                  }
+                />
+                <Text
+                  style={[
+                    styles.onsaleFilterText,
+                    listingActiveCount > 0 && styles.onsaleFilterTextActive,
+                  ]}
+                >
+                  {t("trading.filter.title")}
+                </Text>
+                {listingActiveCount > 0 ? (
+                  <View style={styles.onsaleFilterBadge}>
+                    <Text style={styles.onsaleFilterBadgeText}>
+                      {listingActiveCount}
+                    </Text>
+                  </View>
+                ) : null}
+              </TouchableOpacity>
+              {listingActiveCount > 0 ? (
+                <TouchableOpacity
+                  onPress={() => {
+                    setListingFilter({ sort: "newest" });
+                    if (brand) loadBrandListings(brand.name, { sort: "newest" });
+                  }}
+                  hitSlop={8}
+                  activeOpacity={0.6}
+                >
+                  <Text style={styles.onsaleFilterReset}>
+                    {t("trading.filter.reset")}
+                  </Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
             {isLoadingListings ? (
               <View style={styles.loadingPosts}>
                 <ActivityIndicator size="small" color={theme.colors.black} />
@@ -876,6 +953,23 @@ const BrandDetailScreen = () => {
         visible={showShareToChat}
         brand={brand}
         onClose={() => setShowShareToChat(false)}
+      />
+
+      {/* On-sale 筛选 Sheet —— 品牌已锁定，UI 不可编辑品牌区 */}
+      <MarketplaceFilterSheet
+        visible={filterSheetVisible}
+        initial={{ ...listingFilter, brand: brand?.name }}
+        brandLocked
+        onClose={() => setFilterSheetVisible(false)}
+        onApply={(next) => {
+          setFilterSheetVisible(false);
+          // brand 永远是当前页品牌；其他维度从用户输入合并
+          const cleaned: MarketplaceFilter = { ...next };
+          delete cleaned.brand;
+          delete cleaned.brands;
+          setListingFilter(cleaned);
+          if (brand) loadBrandListings(brand.name, cleaned);
+        }}
       />
     </View>
   );
@@ -1262,6 +1356,57 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
     color: "rgba(255,255,255,0.8)",
     marginTop: 3,
     lineHeight: 15,
+  },
+  // On-sale tab 筛选 button
+  onsaleFilterRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 12,
+    gap: 12,
+  },
+  onsaleFilterBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 18,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: t.colors.border,
+    backgroundColor: t.colors.surface,
+  },
+  onsaleFilterBtnActive: {
+    backgroundColor: t.colors.text,
+    borderColor: t.colors.text,
+  },
+  onsaleFilterText: {
+    fontSize: 13,
+    color: t.colors.text,
+    fontWeight: "500",
+  },
+  onsaleFilterTextActive: {
+    color: t.colors.textInverted,
+  },
+  onsaleFilterBadge: {
+    minWidth: 18,
+    height: 18,
+    paddingHorizontal: 5,
+    borderRadius: 9,
+    backgroundColor: t.colors.error,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  onsaleFilterBadgeText: {
+    color: "#FFFFFF",
+    fontSize: 10,
+    fontWeight: "700",
+    lineHeight: 12,
+  },
+  onsaleFilterReset: {
+    fontSize: 13,
+    color: t.colors.textSecondary,
+    textDecorationLine: "underline",
   },
   // Posts Section
   postsSection: {

@@ -1,16 +1,22 @@
 /**
  * TradingTabContent —— Discover「交易」子 Tab。
  *
- * 新版（PRD + 设计稿 p.4 二期）结构：
- *   - 顶部 ChipBar：全部 / 分类 / 尺码 / 价格 / 成色 / 筛选（最右带漏斗 icon）。
- *     「全部」激活态用一条短下划线表示；其余 chip 用 chevron-down 暗示「拍下时弹出
- *     完整筛选 Sheet」。
+ * 新版（PRD + 设计稿 p.4 二期 + 用户反馈 2026-05）结构：
+ *   - 顶部 ChipBar：分类 / 尺码 / 价格 / 成色 / 筛选（最右带漏斗 icon + 已选数量 badge）。
+ *     各 chip 激活态用一条短下划线表示；带 chevron-down 的 chip 按下时弹出单项快捷 Sheet。
  *   - 热门品牌 (`popularBrandsTitle`)：横向滚动圆形头像 + 品牌名（来自后端
- *     `GET /api/marketplace/popular-brands`，按当前在售单品数量排序）。
- *   - 最新上架 (`latestArrivalsTitle`) + 「查看全部」：横向滚动 4-up 小卡片
- *     （sort=newest），点击进商品详情，「查看全部」跳到完整 MarketplaceScreen。
- *   - 精选推荐 (`featuredTitle`)：双列 4:5 瀑布流，按 sort=featured 拉取，支持
- *     上拉分页。每张卡含 favorite heart 角标 + 收藏计数。
+ *     `GET /api/marketplace/popular-brands`，每天 UTC 日期为种子在前 30 名候选池
+ *     里洗牌，每天首屏顺序不同；按「更多」展开 `MarketplaceAllBrandsSheet`，
+ *     展示平台所有已录入的品牌。
+ *   - 大家都在看 (`popularPicksTitle`)：管理员后台手动策展的精选单品 4-up 横滑
+ *     小卡片（来自 `GET /api/marketplace/curated`），点击进商品详情。
+ *   - 精选推荐 (`featuredTitle`)：双列 4:5 瀑布流，按 sort=featured 拉取，
+ *     按「信息完整度」(completeness_score) 倒序展示——和主页推荐贴的
+ *     A→B→C→D 思路一致：图片齐全 / 5 视角图 / 描述充足的单品稳定排前面。
+ *     支持上拉分页。每张卡含 favorite heart 角标 + 收藏计数。
+ *
+ * 设计规范：所有圆角统一 4pt；颜色全部走 theme（兼容 DarkTheme / LightTheme）；
+ * 文案走 i18n。
  *
  * 用户启用任意筛选项时（≥1 chip 或 sheet 中应用），自动隐藏前两段，把页面收敛
  * 为「过滤后的 2 列结果」，避免上下文混乱。
@@ -44,9 +50,11 @@ import {
   type AppTheme,
 } from "../../../theme";
 import {
+  getCuratedProducts,
   getPopularBrands,
   searchMarketplace,
   type MarketplaceFilter,
+  type PlatformBrand,
   type PopularBrand,
   type StoreProduct,
 } from "../../../services/storeProductService";
@@ -54,13 +62,15 @@ import MarketplaceFilterSheet from "../../Marketplace/MarketplaceFilterSheet";
 import MarketplaceChipSheet, {
   type ChipFilterKey,
 } from "../../Marketplace/MarketplaceChipSheet";
+import MarketplaceAllBrandsSheet from "../../Marketplace/MarketplaceAllBrandsSheet";
 import { SCREEN_HEIGHT, SCREEN_WIDTH } from "../constants";
 
 // ====== 卡片尺寸 ======
-// 设计稿（PDF p.4）参考点：
-//   - 最新上架横滑卡片：4 张一屏，正方形主图，与品牌头像下面的间距 12pt
-//   - 热门品牌头像：6 个一屏，圆形 ~48pt
+// 设计稿（PDF p.4 + 用户反馈 2026-05）参考点：
+//   - 大家都在看横滑卡片：4 张一屏，正方形主图，与品牌头像下面的间距 12pt
+//   - 热门品牌头像：6 个一屏，圆角 4pt 方形 48pt
 //   - 精选推荐：2 列瀑布流，主图比例 4:5
+//   - 圆角统一 4pt（CARD_RADIUS）：与 marketplace / discover 二期规范对齐。
 const SECTION_GUTTER = 10;
 const PAGE_PADDING = 16;
 const FEATURED_GUTTER = 12;
@@ -71,11 +81,11 @@ const LATEST_CARD_W =
   (SCREEN_WIDTH - PAGE_PADDING * 2 - SECTION_GUTTER * 3) / 4;
 const LATEST_CARD_IMG_H = LATEST_CARD_W;
 const BRAND_AVATAR_SIZE = 48;
-const BRAND_AVATAR_RADIUS = BRAND_AVATAR_SIZE / 2;
+const CARD_RADIUS = 4;
 
 // ====== Chip 配置 ======
 interface QuickChip {
-  id: keyof MarketplaceFilter | "all" | "filter";
+  id: keyof MarketplaceFilter | "filter";
   label: string;
   caret?: boolean;
 }
@@ -96,9 +106,12 @@ const TradingTabContent: React.FC<Props> = ({ isActive, onScroll }) => {
   const [filterSheetVisible, setFilterSheetVisible] = useState(false);
   // 单字段快捷弹窗（点击分类 / 尺码 / 价格 / 成色 chip 时弹出，只编辑该字段）
   const [chipSheetKey, setChipSheetKey] = useState<ChipFilterKey | null>(null);
+  // 「热门品牌 → 更多」展开模态框：展示平台所有已录入品牌
+  const [allBrandsSheetVisible, setAllBrandsSheetVisible] = useState(false);
 
   const [popularBrands, setPopularBrands] = useState<PopularBrand[]>([]);
-  const [latestItems, setLatestItems] = useState<StoreProduct[]>([]);
+  // 「大家都在看」管理员策展单品列表（替代旧版「最新上架」段）
+  const [curatedItems, setCuratedItems] = useState<StoreProduct[]>([]);
   const [featuredItems, setFeaturedItems] = useState<StoreProduct[]>([]);
 
   const [headerLoading, setHeaderLoading] = useState(false);
@@ -109,26 +122,30 @@ const TradingTabContent: React.FC<Props> = ({ isActive, onScroll }) => {
   const hasLoadedRef = useRef(false);
 
   // ====== 计算 ======
-  const activeFilterCount = useMemo(
-    () =>
-      [
-        "brand",
-        "categoryId",
-        "size",
-        "color",
-        "condition",
-        "sellerKind",
-        "priceMinCents",
-        "priceMaxCents",
-      ].filter((k) => (filter as any)[k] != null && (filter as any)[k] !== "")
-        .length,
-    [filter],
-  );
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    const brands = filter.brands?.length || (filter.brand ? 1 : 0);
+    const cats =
+      (filter.categoryKinds?.length ?? 0) +
+      (filter.categoryIds?.length ?? 0) +
+      (filter.categoryId != null ? 1 : 0);
+    const sizes = filter.sizes?.length || (filter.size ? 1 : 0);
+    const colors = filter.colors?.length || (filter.color ? 1 : 0);
+    const conds = filter.conditions?.length || (filter.condition ? 1 : 0);
+    if (brands) count += brands;
+    if (cats) count += cats;
+    if (sizes) count += sizes;
+    if (colors) count += colors;
+    if (conds) count += conds;
+    if (filter.sellerKind) count++;
+    if (filter.priceMinCents != null || filter.priceMaxCents != null) count++;
+    return count;
+  }, [filter]);
   const hasActiveFilter = activeFilterCount > 0;
 
   const chips: QuickChip[] = useMemo(
     () => [
-      { id: "all", label: t("trading.marketplace.chipAll") },
+      { id: "brand", label: t("trading.marketplace.chipBrand"), caret: true },
       { id: "categoryId", label: t("trading.marketplace.chipCategory"), caret: true },
       { id: "size", label: t("trading.marketplace.chipSize"), caret: true },
       { id: "priceMinCents", label: t("trading.marketplace.chipPrice"), caret: true },
@@ -139,17 +156,17 @@ const TradingTabContent: React.FC<Props> = ({ isActive, onScroll }) => {
   );
 
   // ====== 数据加载 ======
+  // - getPopularBrands: 默认 daily-rotate，每天 UTC 日期为种子洗牌；多次刷新当天顺序一致
+  // - getCuratedProducts: 「大家都在看」管理员后台手动策展，无策展返回空数组
   const loadHeaderSections = useCallback(async () => {
     setHeaderLoading(true);
     try {
-      const [brandsRes, latestRes] = await Promise.all([
+      const [brandsRes, curatedRes] = await Promise.all([
         getPopularBrands(5).catch(() => [] as PopularBrand[]),
-        searchMarketplace({ sort: "newest", page: 1, pageSize: 10 }).catch(
-          () => ({ products: [] } as any),
-        ),
+        getCuratedProducts(10).catch(() => [] as StoreProduct[]),
       ]);
       setPopularBrands(brandsRes);
-      setLatestItems(latestRes.products || []);
+      setCuratedItems(curatedRes);
     } finally {
       setHeaderLoading(false);
     }
@@ -214,12 +231,13 @@ const TradingTabContent: React.FC<Props> = ({ isActive, onScroll }) => {
     }
   };
 
-  // 把 chip id 映射到 MarketplaceChipSheet 支持的 key；返回 null 表示
-  // 该 chip 不属于「快捷单项」（即「全部」或「筛选」）。
+  // 把 chip id 映射到 MarketplaceChipSheet 支持的 key；返回 null 表示走全屏筛选 Sheet。
   const chipIdToChipKey = (
     chipId: QuickChip["id"],
   ): ChipFilterKey | null => {
     switch (chipId) {
+      case "brand":
+        return "brand";
       case "categoryId":
         return "category";
       case "size":
@@ -234,10 +252,6 @@ const TradingTabContent: React.FC<Props> = ({ isActive, onScroll }) => {
   };
 
   const handleChipPress = (chipId: QuickChip["id"]) => {
-    if (chipId === "all") {
-      reload({ sort: "featured" });
-      return;
-    }
     if (chipId === "filter") {
       setFilterSheetVisible(true);
       return;
@@ -262,20 +276,47 @@ const TradingTabContent: React.FC<Props> = ({ isActive, onScroll }) => {
     navigation.navigate("StoreProductDetail", { productId: product.id });
 
   const handleBrandMorePress = () => {
-    navigation.navigate("Main", { screen: "Archive" });
+    setAllBrandsSheetVisible(true);
+  };
+
+  // 「全部品牌」模态框选中一个品牌：关闭 sheet → 用品牌名收敛筛选到该品牌
+  const handleAllBrandsSelect = (brand: PlatformBrand) => {
+    setAllBrandsSheetVisible(false);
+    reload({
+      sort: "featured",
+      brand: brand.name,
+    });
   };
 
   // ====== 渲染：filter chips ======
   const renderChipBar = () => (
     <HStack style={styles.chipBar} alignItems="center">
       {chips.map((item) => {
-        const isAll = item.id === "all";
         const isFilter = item.id === "filter";
-        const isActiveChip = isAll
-          ? !hasActiveFilter
-          : item.id === "priceMinCents"
-            ? filter.priceMinCents != null || filter.priceMaxCents != null
-            : (filter as any)[item.id] != null;
+        // 多选数组态 → 任意一个选中即视为激活
+        const chipIsActive = (id: typeof item.id): boolean => {
+          if (id === "brand") {
+            return (filter.brands?.length ?? 0) > 0 || !!filter.brand;
+          }
+          if (id === "priceMinCents") {
+            return filter.priceMinCents != null || filter.priceMaxCents != null;
+          }
+          if (id === "categoryId") {
+            return (
+              (filter.categoryKinds?.length ?? 0) > 0 ||
+              (filter.categoryIds?.length ?? 0) > 0 ||
+              filter.categoryId != null
+            );
+          }
+          if (id === "size") {
+            return (filter.sizes?.length ?? 0) > 0 || !!filter.size;
+          }
+          if (id === "condition") {
+            return (filter.conditions?.length ?? 0) > 0 || !!filter.condition;
+          }
+          return !isFilter && (filter as any)[id] != null;
+        };
+        const isActiveChip = chipIsActive(item.id);
         return (
           <TouchableOpacity
             key={item.id}
@@ -307,11 +348,16 @@ const TradingTabContent: React.FC<Props> = ({ isActive, onScroll }) => {
                 <Ionicons
                   name="options-outline"
                   size={10}
-                  color={
-                    isActiveChip ? theme.colors.text : theme.colors.gray300
-                  }
+                  color={theme.colors.gray300}
                   style={{ marginLeft: 1 }}
                 />
+              ) : null}
+              {isFilter && activeFilterCount > 0 ? (
+                <View style={styles.filterBadge}>
+                  <Text style={styles.filterBadgeText}>
+                    {activeFilterCount > 99 ? "99+" : activeFilterCount}
+                  </Text>
+                </View>
               ) : null}
               {isActiveChip ? <View style={styles.chipUnderline} /> : null}
             </View>
@@ -393,12 +439,15 @@ const TradingTabContent: React.FC<Props> = ({ isActive, onScroll }) => {
     </VStack>
   );
 
-  // ====== 渲染：最新上架 ======
-  const renderLatestArrivals = () => (
+  // ====== 渲染：大家都在看（管理员策展） ======
+  // 数据源：GET /api/marketplace/curated（is_curated=TRUE 的 active 单品，
+  // 按 curated_sort_order asc 排序）。
+  // 用户没有任何策展数据时整段隐藏，不显示空槽位。
+  const renderPopularPicks = () => (
     <VStack style={styles.section} space="sm">
       <HStack alignItems="center" style={styles.sectionHeaderRow}>
         <Text style={styles.sectionTitle}>
-          {t("trading.marketplace.latestArrivalsTitle")}
+          {t("trading.marketplace.popularPicksTitle")}
         </Text>
         <View style={{ flex: 1 }} />
         <TouchableOpacity onPress={() => navigation.navigate("Marketplace")}>
@@ -411,8 +460,8 @@ const TradingTabContent: React.FC<Props> = ({ isActive, onScroll }) => {
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.latestRow}
-        data={latestItems}
-        keyExtractor={(p) => `latest_${p.id}`}
+        data={curatedItems}
+        keyExtractor={(p) => `curated_${p.id}`}
         renderItem={({ item }) => (
           <Pressable
             style={styles.latestCard}
@@ -497,7 +546,7 @@ const TradingTabContent: React.FC<Props> = ({ isActive, onScroll }) => {
     );
   };
 
-  // ====== ListHeader：当无 filter 时显示 brands + latest + featured 标题 ======
+  // ====== ListHeader：当无 filter 时显示 brands + 大家都在看 + featured 标题 ======
   const ListHeader = () => {
     if (hasActiveFilter) {
       return null;
@@ -505,7 +554,7 @@ const TradingTabContent: React.FC<Props> = ({ isActive, onScroll }) => {
     return (
       <VStack>
         {popularBrands.length > 0 ? renderPopularBrands() : null}
-        {latestItems.length > 0 ? renderLatestArrivals() : null}
+        {curatedItems.length > 0 ? renderPopularPicks() : null}
         <HStack
           alignItems="center"
           style={[styles.sectionHeaderRow, styles.featuredHeader]}
@@ -588,6 +637,12 @@ const TradingTabContent: React.FC<Props> = ({ isActive, onScroll }) => {
           // 合并增量字段后整体 reload，保持 sort/brand 等其余筛选项不变
           reload({ ...filter, ...patch });
         }}
+      />
+
+      <MarketplaceAllBrandsSheet
+        visible={allBrandsSheetVisible}
+        onClose={() => setAllBrandsSheetVisible(false)}
+        onSelectBrand={handleAllBrandsSelect}
       />
     </View>
   );
@@ -679,8 +734,25 @@ const makeStyles = (t: AppTheme) =>
       left: 0,
       right: 0,
       height: 1.5,
-      borderRadius: 1,
+      borderRadius: CARD_RADIUS,
       backgroundColor: t.colors.accent,
+    },
+    filterBadge: {
+      position: "absolute",
+      top: -6,
+      right: -8,
+      minWidth: 12,
+      height: 12,
+      paddingHorizontal: 2,
+      backgroundColor: t.colors.error,
+      borderRadius: CARD_RADIUS,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    filterBadgeText: {
+      color: t.colors.textInverted,
+      fontSize: 10,
+      lineHeight: 12,
     },
     // ====== Sections shared ======
     section: { paddingTop: 8 },
@@ -710,7 +782,7 @@ const makeStyles = (t: AppTheme) =>
     brandAvatarWrap: {
       width: BRAND_AVATAR_SIZE,
       height: BRAND_AVATAR_SIZE,
-      borderRadius: BRAND_AVATAR_RADIUS,
+      borderRadius: CARD_RADIUS,
       backgroundColor: t.colors.surface,
       borderWidth: 1,
       borderColor: "transparent",
@@ -725,7 +797,7 @@ const makeStyles = (t: AppTheme) =>
     brandAvatar: {
       width: BRAND_AVATAR_SIZE,
       height: BRAND_AVATAR_SIZE,
-      borderRadius: BRAND_AVATAR_RADIUS,
+      borderRadius: CARD_RADIUS,
       overflow: "hidden",
     },
     brandAvatarFallback: {
@@ -748,13 +820,13 @@ const makeStyles = (t: AppTheme) =>
       color: t.colors.text,
       fontWeight: "600",
     },
-    // ====== 最新上架 ======
+    // ====== 大家都在看（管理员策展，原「最新上架」段） ======
     latestRow: { paddingRight: PAGE_PADDING, gap: SECTION_GUTTER },
     latestCard: { width: LATEST_CARD_W },
     latestImageWrap: {
       width: LATEST_CARD_W,
       height: LATEST_CARD_IMG_H,
-      borderRadius: 6,
+      borderRadius: CARD_RADIUS,
       overflow: "hidden",
       backgroundColor: t.colors.skeleton,
       marginBottom: 8,
@@ -797,7 +869,7 @@ const makeStyles = (t: AppTheme) =>
     featuredCard: {
       width: FEATURED_CARD_W,
       backgroundColor: t.colors.cardElevated,
-      borderRadius: 10,
+      borderRadius: CARD_RADIUS,
       overflow: "hidden",
     },
     featuredImgWrap: {

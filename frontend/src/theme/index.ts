@@ -166,11 +166,15 @@ const baseTokens = {
     xl: 32,
     xxl: 48,
   },
+  /**
+   * 设计统一：所有非「圆形」组件的圆角统一为 4，避免大小不一的视觉割裂。
+   * `full` 仍然保留 9999 用于头像 / pill 等需要完整圆形的场景。
+   */
   borderRadius: {
     sm: 4,
-    md: 8,
-    lg: 12,
-    xl: 16,
+    md: 4,
+    lg: 4,
+    xl: 4,
     full: 9999,
   },
   shadows: {

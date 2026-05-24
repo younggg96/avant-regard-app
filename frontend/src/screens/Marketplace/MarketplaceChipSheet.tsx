@@ -5,24 +5,14 @@
  *   - 这是一个底部弹起的紧凑 sheet；只渲染**一个**字段的选择 UI。
  *   - 适用于 chip 行的 4 个子项（分类 / 尺码 / 价格 / 成色），用户希望
  *     "点哪个 chip 就只编辑这一项"，避免每次都打开全屏聚合 sheet。
- *   - "全部" 直接清空、"筛选" 走全屏 sheet——都不会触达此组件。
  *
- * 设计要点：
- *   - 顶部 handle + 标题 + 右上「重置」。
- *   - 中间根据 `chipKey` 渲染 TextInput / 尺码 chips / 价格双输入 / 成色 chips。
- *   - 底部主按钮「应用」。
- *
- * 用法：
- *   <MarketplaceChipSheet
- *     visible={chipKey !== null}
- *     chipKey={chipKey}
- *     initial={filter}
- *     onClose={() => setChipKey(null)}
- *     onApply={(patch) => reload({ ...filter, ...patch })}
- *   />
+ * 多选语义：分类/尺码/成色都是多选 chip（与全屏 Sheet 对齐）。价格仍是
+ * 区间双输入。"应用" 提交增量字段，由调用方 merge 进主 filter。
  */
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
+  ActivityIndicator,
+  FlatList,
   Modal,
   Pressable,
   StyleSheet,
@@ -30,6 +20,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 
 import { Box, HStack, Text } from "../../components/ui";
@@ -38,25 +29,42 @@ import type {
   MarketplaceFilter,
   ProductCondition,
 } from "../../services/storeProductService";
+import { brandService, type Brand } from "../../services/brandService";
 
-export type ChipFilterKey = "category" | "size" | "price" | "condition";
+export type ChipFilterKey =
+  | "brand"
+  | "category"
+  | "size"
+  | "price"
+  | "condition";
+
+const CATEGORY_KINDS: Array<{ value: string; labelKey: string }> = [
+  { value: "外套", labelKey: "trading.filter.categoryOuter" },
+  { value: "上衣", labelKey: "trading.filter.categoryTop" },
+  { value: "裤装", labelKey: "trading.filter.categoryPants" },
+  { value: "鞋履", labelKey: "trading.filter.categoryShoes" },
+  { value: "包袋", labelKey: "trading.filter.categoryBag" },
+  { value: "配饰", labelKey: "trading.filter.categoryAccessory" },
+];
 
 const SIZE_PRESETS = ["XS", "S", "M", "L", "XL", "XXL"];
 
-const CONDITION_OPTIONS: Array<{ value: ProductCondition; labelKey: string }> =
-  [
-    { value: "BNWT", labelKey: "trading.filter.conditionBnwt" },
-    { value: "NEW_95", labelKey: "trading.filter.conditionNear" },
-    { value: "USED_8", labelKey: "trading.filter.conditionLight" },
-    { value: "FLAW", labelKey: "trading.filter.conditionUsed" },
-  ];
+const CONDITION_OPTIONS: Array<{ value: ProductCondition; labelKey: string }> = [
+  { value: "BNWT", labelKey: "trading.filter.conditionBnwt" },
+  { value: "NEW_95", labelKey: "trading.filter.conditionNear" },
+  { value: "USED_8", labelKey: "trading.filter.conditionLight" },
+  { value: "FLAW", labelKey: "trading.filter.conditionUsed" },
+];
 
 const TITLE_KEY: Record<ChipFilterKey, string> = {
+  brand: "trading.filter.brand",
   category: "trading.filter.category",
   size: "trading.filter.size",
   price: "trading.filter.price",
   condition: "trading.filter.condition",
 };
+
+const BRAND_PAGE_SIZE = 30;
 
 interface Props {
   visible: boolean;
@@ -66,6 +74,9 @@ interface Props {
   /** 传递增量字段：调用方决定如何合并到主 filter。 */
   onApply: (patch: Partial<MarketplaceFilter>) => void;
 }
+
+const toggle = <T extends string>(arr: T[], v: T): T[] =>
+  arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v];
 
 const MarketplaceChipSheet: React.FC<Props> = ({
   visible,
@@ -78,32 +89,63 @@ const MarketplaceChipSheet: React.FC<Props> = ({
   const styles = useThemedStyles(makeStyles);
   const { t } = useTranslation();
 
-  const [categoryText, setCategoryText] = useState(
-    initial.categoryId != null ? String(initial.categoryId) : "",
-  );
-  const [size, setSize] = useState<string | undefined>(initial.size);
-  const [condition, setCondition] = useState<ProductCondition | undefined>(
-    initial.condition,
-  );
-  const [priceMin, setPriceMin] = useState(
-    initial.priceMinCents != null
-      ? String(Math.round(initial.priceMinCents / 100))
-      : "",
-  );
-  const [priceMax, setPriceMax] = useState(
-    initial.priceMaxCents != null
-      ? String(Math.round(initial.priceMaxCents / 100))
-      : "",
+  // 多选草稿
+  const [brands, setBrands] = useState<string[]>([]);
+  const [categoryKinds, setCategoryKinds] = useState<string[]>([]);
+  const [sizes, setSizes] = useState<string[]>([]);
+  const [conditions, setConditions] = useState<ProductCondition[]>([]);
+  const [priceMin, setPriceMin] = useState("");
+  const [priceMax, setPriceMax] = useState("");
+
+  // 品牌搜索 / 分页加载
+  const [brandQuery, setBrandQuery] = useState("");
+  const [brandList, setBrandList] = useState<Brand[]>([]);
+  const [brandPage, setBrandPage] = useState(1);
+  const [brandHasMore, setBrandHasMore] = useState(true);
+  const [brandLoading, setBrandLoading] = useState(false);
+  const [brandLoadingMore, setBrandLoadingMore] = useState(false);
+  const brandSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const brandQueryRef = useRef("");
+
+  // 拉取品牌（首页或下一页）。``reset=true`` 时回到第一页（搜索/打开时）
+  const loadBrands = useCallback(
+    async (reset: boolean) => {
+      const nextPage = reset ? 1 : brandPage + 1;
+      if (!reset && (!brandHasMore || brandLoadingMore)) return;
+      if (reset) setBrandLoading(true);
+      else setBrandLoadingMore(true);
+      try {
+        const res = await brandService.getBrands({
+          keyword: brandQueryRef.current.trim() || undefined,
+          page: nextPage,
+          pageSize: BRAND_PAGE_SIZE,
+        });
+        const items = res.brands ?? [];
+        setBrandList((prev) => (reset ? items : [...prev, ...items]));
+        setBrandPage(nextPage);
+        setBrandHasMore(
+          items.length >= BRAND_PAGE_SIZE &&
+            (reset ? items.length : brandList.length + items.length) <
+              (res.total ?? Number.POSITIVE_INFINITY),
+        );
+      } catch {
+        if (reset) setBrandList([]);
+      } finally {
+        setBrandLoading(false);
+        setBrandLoadingMore(false);
+      }
+    },
+    [brandPage, brandHasMore, brandLoadingMore, brandList.length],
   );
 
-  // 每次打开 / 切换 chipKey 时把本地草稿与外部状态对齐
   useEffect(() => {
     if (!visible) return;
-    setCategoryText(
-      initial.categoryId != null ? String(initial.categoryId) : "",
+    setBrands(initial.brands ?? (initial.brand ? [initial.brand] : []));
+    setCategoryKinds(initial.categoryKinds ?? []);
+    setSizes(initial.sizes ?? (initial.size ? [initial.size] : []));
+    setConditions(
+      (initial.conditions ?? (initial.condition ? [initial.condition] : [])) as ProductCondition[],
     );
-    setSize(initial.size);
-    setCondition(initial.condition);
     setPriceMin(
       initial.priceMinCents != null
         ? String(Math.round(initial.priceMinCents / 100))
@@ -114,29 +156,50 @@ const MarketplaceChipSheet: React.FC<Props> = ({
         ? String(Math.round(initial.priceMaxCents / 100))
         : "",
     );
+    // 进入 brand 模式时拉首页
+    if (chipKey === "brand") {
+      brandQueryRef.current = "";
+      setBrandQuery("");
+      setBrandHasMore(true);
+      loadBrands(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible, chipKey, initial]);
+
+  const onBrandQueryChange = (text: string) => {
+    setBrandQuery(text);
+    brandQueryRef.current = text;
+    if (brandSearchTimer.current) clearTimeout(brandSearchTimer.current);
+    brandSearchTimer.current = setTimeout(() => {
+      setBrandHasMore(true);
+      loadBrands(true);
+    }, 300);
+  };
 
   if (!chipKey) return null;
 
   const handleApply = () => {
     switch (chipKey) {
-      case "category": {
-        const n = Number(categoryText);
+      case "brand":
         onApply({
-          categoryId:
-            categoryText === ""
-              ? undefined
-              : Number.isFinite(n)
-                ? n
-                : undefined,
+          brand: undefined,
+          brands: brands.length ? brands : undefined,
         });
         break;
-      }
+      case "category":
+        onApply({ categoryKinds: categoryKinds.length ? categoryKinds : undefined });
+        break;
       case "size":
-        onApply({ size: size || undefined });
+        onApply({
+          size: undefined,
+          sizes: sizes.length ? sizes : undefined,
+        });
         break;
       case "condition":
-        onApply({ condition: condition || undefined });
+        onApply({
+          condition: undefined,
+          conditions: conditions.length ? conditions : undefined,
+        });
         break;
       case "price": {
         const min = priceMin ? Math.round(Number(priceMin) * 100) : undefined;
@@ -153,17 +216,21 @@ const MarketplaceChipSheet: React.FC<Props> = ({
 
   const handleReset = () => {
     switch (chipKey) {
+      case "brand":
+        setBrands([]);
+        onApply({ brand: undefined, brands: undefined });
+        break;
       case "category":
-        setCategoryText("");
-        onApply({ categoryId: undefined });
+        setCategoryKinds([]);
+        onApply({ categoryKinds: undefined });
         break;
       case "size":
-        setSize(undefined);
-        onApply({ size: undefined });
+        setSizes([]);
+        onApply({ size: undefined, sizes: undefined });
         break;
       case "condition":
-        setCondition(undefined);
-        onApply({ condition: undefined });
+        setConditions([]);
+        onApply({ condition: undefined, conditions: undefined });
         break;
       case "price":
         setPriceMin("");
@@ -182,7 +249,13 @@ const MarketplaceChipSheet: React.FC<Props> = ({
       onRequestClose={onClose}
     >
       <Pressable style={styles.backdrop} onPress={onClose}>
-        <Pressable style={styles.sheet} onPress={() => {}}>
+        <Pressable
+          style={[
+            styles.sheet,
+            chipKey === "brand" && styles.sheetTall,
+          ]}
+          onPress={() => {}}
+        >
           <Box style={styles.handle} />
           <HStack style={styles.header} alignItems="center">
             <Text style={styles.title}>{t(TITLE_KEY[chipKey])}</Text>
@@ -192,33 +265,194 @@ const MarketplaceChipSheet: React.FC<Props> = ({
             </TouchableOpacity>
           </HStack>
 
-          <Box style={styles.body}>
+          <Box
+            style={[
+              styles.body,
+              chipKey === "brand" && styles.bodyBrand,
+            ]}
+          >
+            {chipKey === "brand" ? (
+              <View style={{ flex: 1 }}>
+                {/* 已选品牌 chips */}
+                {brands.length > 0 ? (
+                  <HStack style={styles.selectedRow}>
+                    {brands.map((b) => (
+                      <Pressable
+                        key={`sel_${b}`}
+                        style={styles.selectedChip}
+                        onPress={() =>
+                          setBrands((prev) => prev.filter((x) => x !== b))
+                        }
+                      >
+                        <Text style={styles.selectedChipText}>{b}</Text>
+                        <Ionicons
+                          name="close"
+                          size={12}
+                          color={theme.colors.textInverted}
+                        />
+                      </Pressable>
+                    ))}
+                  </HStack>
+                ) : null}
+
+                {/* 搜索框 */}
+                <View style={styles.searchInputWrap}>
+                  <Ionicons
+                    name="search"
+                    size={16}
+                    color={theme.colors.gray300}
+                  />
+                  <TextInput
+                    style={styles.searchInput}
+                    value={brandQuery}
+                    onChangeText={onBrandQueryChange}
+                    placeholder={t("trading.filter.brandPlaceholder")}
+                    placeholderTextColor={theme.colors.placeholder}
+                    autoCorrect={false}
+                    autoCapitalize="none"
+                  />
+                  {brandQuery ? (
+                    <TouchableOpacity
+                      onPress={() => onBrandQueryChange("")}
+                      hitSlop={8}
+                    >
+                      <Ionicons
+                        name="close-circle"
+                        size={16}
+                        color={theme.colors.gray300}
+                      />
+                    </TouchableOpacity>
+                  ) : null}
+                </View>
+
+                {/* 品牌列表 —— 滚动到底加载更多 */}
+                <FlatList
+                  style={styles.brandFlat}
+                  data={brandList}
+                  keyExtractor={(b) => `b_${b.id}_${b.name}`}
+                  keyboardShouldPersistTaps="handled"
+                  onEndReachedThreshold={0.4}
+                  onEndReached={() => {
+                    if (brandHasMore && !brandLoading && !brandLoadingMore) {
+                      loadBrands(false);
+                    }
+                  }}
+                  renderItem={({ item }) => {
+                    const active = brands.includes(item.name);
+                    return (
+                      <Pressable
+                        style={[
+                          styles.brandRow,
+                          active && styles.brandRowActive,
+                        ]}
+                        onPress={() =>
+                          setBrands((prev) =>
+                            prev.includes(item.name)
+                              ? prev.filter((x) => x !== item.name)
+                              : [...prev, item.name],
+                          )
+                        }
+                      >
+                        <View style={{ flex: 1 }}>
+                          <Text
+                            style={[
+                              styles.brandRowName,
+                              active && styles.brandRowNameActive,
+                            ]}
+                            numberOfLines={1}
+                          >
+                            {item.name}
+                          </Text>
+                          {item.country || item.foundedYear ? (
+                            <Text
+                              style={styles.brandRowMeta}
+                              numberOfLines={1}
+                            >
+                              {[item.country, item.foundedYear]
+                                .filter(Boolean)
+                                .join(" · ")}
+                            </Text>
+                          ) : null}
+                        </View>
+                        {active ? (
+                          <Ionicons
+                            name="checkmark"
+                            size={18}
+                            color={theme.colors.accent}
+                          />
+                        ) : null}
+                      </Pressable>
+                    );
+                  }}
+                  ListEmptyComponent={
+                    brandLoading ? (
+                      <View style={styles.brandStatus}>
+                        <ActivityIndicator
+                          size="small"
+                          color={theme.colors.gray300}
+                        />
+                      </View>
+                    ) : (
+                      <View style={styles.brandStatus}>
+                        <Text style={styles.brandEmpty}>
+                          {t("trading.filter.brandEmpty")}
+                        </Text>
+                      </View>
+                    )
+                  }
+                  ListFooterComponent={
+                    brandLoadingMore ? (
+                      <View style={styles.brandStatus}>
+                        <ActivityIndicator
+                          size="small"
+                          color={theme.colors.gray300}
+                        />
+                      </View>
+                    ) : !brandHasMore && brandList.length > 0 ? (
+                      <View style={styles.brandStatus}>
+                        <Text style={styles.brandEmpty}>
+                          {t("trading.filter.brandAllLoaded")}
+                        </Text>
+                      </View>
+                    ) : null
+                  }
+                />
+              </View>
+            ) : null}
+
             {chipKey === "category" ? (
-              <TextInput
-                style={styles.input}
-                value={categoryText}
-                onChangeText={setCategoryText}
-                placeholder={t("trading.filter.category")}
-                placeholderTextColor={theme.colors.placeholder}
-                keyboardType="numeric"
-              />
+              <HStack style={styles.chipGrid}>
+                {CATEGORY_KINDS.map((c) => {
+                  const active = categoryKinds.includes(c.value);
+                  return (
+                    <Pressable
+                      key={c.value}
+                      onPress={() => setCategoryKinds(toggle(categoryKinds, c.value))}
+                      style={[styles.chip, styles.categoryChip, active && styles.chipActive]}
+                    >
+                      <Text
+                        style={[styles.chipText, active && styles.chipTextActive]}
+                      >
+                        {t(c.labelKey)}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </HStack>
             ) : null}
 
             {chipKey === "size" ? (
               <HStack style={styles.chipGrid}>
                 {SIZE_PRESETS.map((s) => {
-                  const active = size === s;
+                  const active = sizes.includes(s);
                   return (
                     <Pressable
                       key={s}
-                      onPress={() => setSize(active ? undefined : s)}
+                      onPress={() => setSizes(toggle(sizes, s))}
                       style={[styles.chip, active && styles.chipActive]}
                     >
                       <Text
-                        style={[
-                          styles.chipText,
-                          active && styles.chipTextActive,
-                        ]}
+                        style={[styles.chipText, active && styles.chipTextActive]}
                       >
                         {s}
                       </Text>
@@ -231,12 +465,12 @@ const MarketplaceChipSheet: React.FC<Props> = ({
             {chipKey === "condition" ? (
               <HStack style={styles.chipGrid}>
                 {CONDITION_OPTIONS.map((c) => {
-                  const active = condition === c.value;
+                  const active = conditions.includes(c.value);
                   return (
                     <Pressable
                       key={c.value}
                       onPress={() =>
-                        setCondition(active ? undefined : c.value)
+                        setConditions(toggle(conditions, c.value))
                       }
                       style={[
                         styles.chip,
@@ -245,10 +479,7 @@ const MarketplaceChipSheet: React.FC<Props> = ({
                       ]}
                     >
                       <Text
-                        style={[
-                          styles.chipText,
-                          active && styles.chipTextActive,
-                        ]}
+                        style={[styles.chipText, active && styles.chipTextActive]}
                       >
                         {t(c.labelKey)}
                       </Text>
@@ -311,6 +542,10 @@ const makeStyles = (t: AppTheme) =>
       paddingTop: 8,
       paddingBottom: 28,
     },
+    sheetTall: {
+      // 品牌模式：拉高到屏幕的 70%，保证列表可滚动
+      height: "75%",
+    },
     handle: {
       alignSelf: "center",
       width: 40,
@@ -337,22 +572,90 @@ const makeStyles = (t: AppTheme) =>
       paddingVertical: 4,
       marginBottom: 16,
     },
-    input: {
+    bodyBrand: {
+      flex: 1,
+      marginBottom: 12,
+    },
+    // ---- 品牌：已选 chip 行 ----
+    selectedRow: {
+      flexWrap: "wrap",
+      gap: 6,
+      marginBottom: 10,
+    } as any,
+    selectedChip: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+      paddingVertical: 6,
+      paddingHorizontal: 10,
+      borderRadius: 14,
+      backgroundColor: t.colors.accent,
+    },
+    selectedChipText: {
+      color: t.colors.textInverted,
+      fontSize: 12,
+      fontWeight: "600",
+    },
+    // ---- 品牌：搜索框 ----
+    searchInputWrap: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: t.colors.inputBorder,
       backgroundColor: t.colors.inputBackground,
       borderRadius: 8,
       paddingHorizontal: 12,
-      paddingVertical: 12,
+      paddingVertical: 4,
+      marginBottom: 8,
+    },
+    searchInput: {
+      flex: 1,
+      paddingVertical: 8,
       fontSize: 14,
       color: t.colors.text,
     },
+    // ---- 品牌：列表 ----
+    brandFlat: {
+      flex: 1,
+    },
+    brandRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingVertical: 12,
+      paddingHorizontal: 4,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: t.colors.divider,
+    },
+    brandRowActive: {
+      backgroundColor: t.colors.surface,
+    },
+    brandRowName: {
+      fontSize: 14,
+      color: t.colors.text,
+    },
+    brandRowNameActive: {
+      fontWeight: "600",
+      color: t.colors.accent,
+    },
+    brandRowMeta: {
+      fontSize: 11,
+      color: t.colors.textSecondary,
+      marginTop: 2,
+    },
+    brandStatus: {
+      paddingVertical: 18,
+      alignItems: "center",
+    },
+    brandEmpty: {
+      fontSize: 12,
+      color: t.colors.textSecondary,
+    },
     chipGrid: { flexWrap: "wrap", gap: 10 } as any,
     chip: {
-      flex: 1,
       minWidth: 56,
-      maxWidth: "20%",
       paddingVertical: 12,
+      paddingHorizontal: 14,
       borderRadius: 8,
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: t.colors.border,
@@ -360,10 +663,12 @@ const makeStyles = (t: AppTheme) =>
       alignItems: "center",
       justifyContent: "center",
     },
+    categoryChip: {
+      minWidth: 76,
+      paddingHorizontal: 14,
+    },
     conditionChip: {
-      // 4 档成色文字更长，给更宽的内边距
       paddingHorizontal: 16,
-      maxWidth: "23%",
     },
     chipActive: {
       backgroundColor: t.colors.accent,
@@ -397,7 +702,7 @@ const makeStyles = (t: AppTheme) =>
     applyBtn: {
       backgroundColor: t.colors.accent,
       paddingVertical: 16,
-      borderRadius: 28,
+      borderRadius: 4,
       alignItems: "center",
     },
     applyText: {

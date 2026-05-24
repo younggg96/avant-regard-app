@@ -1,11 +1,15 @@
 /**
- * PRD 模块一 · Step 3：智能定价与描述。
+ * PRD 单品发布 · Step 3 / 4：智能定价 + 描述。
  *
- * - 价格输入框大号字体（PRD 1.4 明确要求）。
- * - 实时计算参考价区间 + 抽佣后预计到手价。
- * - 「保存草稿」/「提交审核」两个 CTA。
+ * 关键点：
+ *   - 价格输入框走大号字体（保持原 PRD 1.4 视觉）。
+ *   - 参考区间从后端 GET /api/marketplace/brand-price-range 拉取（按品牌 + 成色）。
+ *     拉不到样本时降级到 client 端 suggestPriceRange()。
+ *   - 抽佣固定 1%，与 store_products.commission_rate_bps 默认值一致。
+ *   - 描述、标签、是否议价、瑕疵说明全部在这一步收集。
+ *   - 下一步进入 Step 4（物流）；Step 4 才提交审核。
  */
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -13,161 +17,155 @@ import {
   StyleSheet,
   TextInput,
   TouchableOpacity,
-  ActivityIndicator,
   Switch,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import {
-  useNavigation,
-  CommonActions,
-  useFocusEffect,
-} from "@react-navigation/native";
+import { useNavigation } from "@react-navigation/native";
+import { useTranslation } from "react-i18next";
+import { Ionicons } from "@expo/vector-icons";
 
-import { Box, HStack, Text, VStack } from "../../components/ui";
+import { Box, HStack, Text, VStack, Pressable } from "../../components/ui";
 import ScreenHeader from "../../components/ScreenHeader";
-import { useThemedStyles, type AppTheme } from "../../theme";
+import WizardStepper from "../../components/WizardStepper";
+import { useAppTheme, useThemedStyles, type AppTheme } from "../../theme";
 import { Alert } from "../../utils/Alert";
 import {
   usePublishListingStore,
-  validateForSubmit,
+  validateStep3,
+  TOTAL_PUBLISH_STEPS,
 } from "../../store/publishListingStore";
 import {
   calculateExpectedPayout,
   centsToPriceInput,
-  createListing,
   formatPrice,
+  getBrandPriceRange,
   parsePriceInputToCents,
-  patchListing,
-  submitListingForReview,
+  PLATFORM_COMMISSION_BPS,
   suggestPriceRange,
-  type ListingCreateBody,
-  type ListingPatchBody,
+  type BrandPriceRange,
 } from "../../services/storeProductService";
+import { FeeNotice } from "./PublishListingStep1Screen";
 
 const PublishListingStep3Screen: React.FC = () => {
-  const navigation = useNavigation();
+  const { t } = useTranslation();
+  const navigation = useNavigation<any>();
   const styles = useThemedStyles(makeStyles);
+  const theme = useAppTheme();
   const form = usePublishListingStore();
   const patch = usePublishListingStore((s) => s.patch);
-  const setProductId = usePublishListingStore((s) => s.setProductId);
 
   const [priceInput, setPriceInput] = useState(
     form.priceCents ? centsToPriceInput(form.priceCents) : ""
   );
-  const [submitting, setSubmitting] = useState(false);
-  const [savingDraft, setSavingDraft] = useState(false);
+  const [tagsInput, setTagsInput] = useState(form.tags.join(", "));
+  const [brandRange, setBrandRange] = useState<BrandPriceRange | null>(null);
+  const [rangeLoading, setRangeLoading] = useState(false);
 
   const priceCents = useMemo(
     () => parsePriceInputToCents(priceInput),
     [priceInput]
   );
 
-  const reference = useMemo(
+  // 服务端历史价格区间 —— 防抖：依赖 brand + condition 变化
+  useEffect(() => {
+    if (!form.brand.trim()) {
+      setBrandRange(null);
+      return;
+    }
+    setRangeLoading(true);
+    let cancelled = false;
+    getBrandPriceRange(form.brand, form.condition || undefined)
+      .then((r) => {
+        if (!cancelled) setBrandRange(r);
+      })
+      .catch(() => {
+        if (!cancelled) setBrandRange(null);
+      })
+      .finally(() => {
+        if (!cancelled) setRangeLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [form.brand, form.condition]);
+
+  // 选择参考区间的展示：优先服务端 history；否则按输入价 + condition 客户端兜底
+  const fallbackRange = useMemo(
     () => suggestPriceRange(form.brand, form.condition, priceCents ?? 0),
     [form.brand, form.condition, priceCents]
   );
 
-  // 抽佣率：Phase 1 尚未接入 Plus 订阅，默认 8%。等 P6 接入后再读真实状态。
+  const displayRange = useMemo(() => {
+    if (brandRange && brandRange.source === "history" && brandRange.sampleSize >= 3) {
+      return {
+        low: brandRange.lowCents,
+        high: brandRange.highCents,
+        median: brandRange.medianCents,
+        source: "history" as const,
+        sample: brandRange.sampleSize,
+      };
+    }
+    return {
+      low: fallbackRange.low,
+      high: fallbackRange.high,
+      median: 0,
+      source: "fallback" as const,
+      sample: 0,
+    };
+  }, [brandRange, fallbackRange]);
+
   const expectedPayout = useMemo(
-    () => calculateExpectedPayout(priceCents ?? 0, false),
+    () => calculateExpectedPayout(priceCents ?? 0, PLATFORM_COMMISSION_BPS),
     [priceCents]
   );
 
-  /** 把 form + Step 3 输入打包成 listing payload（不含 status，由调用方决定）。 */
-  const buildPayload = () => {
-    const payload: ListingPatchBody = {
-      title: form.title.trim() || `${form.brand} ${form.condition ?? ""}`.trim(),
-      description: form.description,
-      brand: form.brand,
-      categoryId: form.categoryId,
-      images: ([
-        form.photoAngles.front,
-        form.photoAngles.back,
-        form.photoAngles.wash_label,
-        form.photoAngles.brand_label,
-        form.photoAngles.flaw,
-        ...(form.photoAngles.extras ?? []),
-      ].filter(Boolean) as string[]),
-      priceCents: priceCents ?? 0,
-      size: form.size,
-      color: form.color,
-      condition: form.condition ?? undefined,
-      conditionNote: form.conditionNote,
-      originalShowId: form.originalShowId,
-      originalAcquiredAt: form.originalAcquiredAt,
-      acceptOffer: form.acceptOffer,
-      photoAngles: form.photoAngles,
-    };
-    return payload;
-  };
+  const handleApplyMedian = useCallback(() => {
+    if (!brandRange || brandRange.medianCents <= 0) return;
+    setPriceInput(centsToPriceInput(brandRange.medianCents));
+  }, [brandRange]);
 
-  const ensureDraft = async (): Promise<number> => {
-    if (form.productId) {
-      await patchListing(form.productId, buildPayload());
-      return form.productId;
+  const handleNext = () => {
+    if (priceCents != null) patch({ priceCents });
+    if (tagsInput) {
+      patch({
+        tags: tagsInput
+          .split(/[,，]/)
+          .map((s) => s.trim())
+          .filter(Boolean)
+          .slice(0, 8),
+      });
     }
-    const created = await createListing({
-      ...(buildPayload() as ListingCreateBody),
-      sellerKind: form.sellerKind,
-      title: form.title.trim() || `${form.brand} ${form.condition ?? ""}`.trim(),
-      priceCents: priceCents ?? 0,
-    });
-    setProductId(created.id);
-    return created.id;
-  };
-
-  const handleSaveDraft = async () => {
-    if (!priceCents) {
-      Alert.show("请填写价格再保存");
-      return;
-    }
-    setSavingDraft(true);
-    try {
-      await ensureDraft();
-      Alert.show("草稿已保存");
-      // 直接退回卖家库存
-      navigation.dispatch(CommonActions.goBack());
-    } catch (e) {
-      Alert.show(e instanceof Error ? e.message : "保存失败");
-    } finally {
-      setSavingDraft(false);
-    }
-  };
-
-  const handleSubmit = async () => {
-    // 同步当前 priceCents / 描述 / conditionNote 到 store
-    patch({
-      priceCents: priceCents,
-    });
-    const missing = validateForSubmit({
-      ...form,
-      priceCents: priceCents,
-    });
+    const missing = validateStep3({ ...form, priceCents });
     if (missing.length > 0) {
-      Alert.show(`请完成：${missing.join(", ")}`);
+      Alert.show(t("trading.publishListing.fillRequired"));
       return;
     }
-    setSubmitting(true);
-    try {
-      const productId = await ensureDraft();
-      const result = await submitListingForReview(productId);
-      Alert.show(
-        result.status === "active"
-          ? "已自动通过审核并上架"
-          : "已提交审核，请等待管理员通过"
-      );
-      // @ts-expect-error - navigation types
-      navigation.navigate("SellerListings");
-    } catch (e) {
-      Alert.show(e instanceof Error ? e.message : "提交失败");
-    } finally {
-      setSubmitting(false);
-    }
+    navigation.navigate("PublishListingStep4");
   };
+
+  const stepLabels = useMemo(
+    () => [
+      t("trading.publishListing.steps.basics"),
+      t("trading.publishListing.steps.photos"),
+      t("trading.publishListing.steps.pricing"),
+      t("trading.publishListing.steps.logistics"),
+    ],
+    [t]
+  );
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
-      <ScreenHeader title="发布单品 · 定价" showBack />
+      <ScreenHeader title={t("trading.publishListing.title")} showBack />
+      <WizardStepper
+        total={TOTAL_PUBLISH_STEPS}
+        current={3}
+        labels={stepLabels}
+        onJumpTo={(s) => {
+          if (s === 1) navigation.navigate("PublishListingStep1");
+          else if (s === 2) navigation.navigate("PublishListingStep2");
+        }}
+      />
+      <FeeNotice />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -176,11 +174,10 @@ const PublishListingStep3Screen: React.FC = () => {
           contentContainerStyle={styles.scroll}
           keyboardShouldPersistTaps="handled"
         >
-          <Text style={styles.sectionTitle}>3 / 3 · 定价与描述</Text>
-
-          {/* 大号字体价格输入 — PRD 1.4 明确要求 */}
-          <VStack space="xs" style={styles.priceBlock}>
-            <Text style={styles.fieldLabel}>售价</Text>
+          <VStack style={styles.priceBlock} space="xs">
+            <Text style={styles.fieldLabel}>
+              {t("trading.publishListing.fields.price")} *
+            </Text>
             <HStack alignItems="baseline" space="sm">
               <Text style={styles.currencyBig}>¥</Text>
               <TextInput
@@ -189,27 +186,139 @@ const PublishListingStep3Screen: React.FC = () => {
                 value={priceInput}
                 onChangeText={setPriceInput}
                 placeholder="0"
-                placeholderTextColor="#9999"
+                placeholderTextColor={theme.colors.placeholder}
               />
             </HStack>
 
-            {reference.high > 0 && (
-              <Text style={styles.referenceText}>
-                参考区间 {formatPrice(reference.low)} ~ {formatPrice(reference.high)}
+            {displayRange.low > 0 && (
+              <VStack space="xs" style={styles.rangeBlock}>
+                <Text style={styles.rangeText}>
+                  {displayRange.source === "history"
+                    ? t("trading.publishListing.pricing.referenceHistory", {
+                        low: formatPrice(displayRange.low),
+                        high: formatPrice(displayRange.high),
+                        sample: displayRange.sample,
+                      })
+                    : t("trading.publishListing.pricing.referenceFallback", {
+                        low: formatPrice(displayRange.low),
+                        high: formatPrice(displayRange.high),
+                      })}
+                </Text>
+                {displayRange.source === "history" && displayRange.median > 0 && (
+                  <HStack alignItems="center" space="sm">
+                    <Text style={styles.rangeMedian}>
+                      {t("trading.publishListing.pricing.median", {
+                        price: formatPrice(displayRange.median),
+                      })}
+                    </Text>
+                    <Pressable
+                      onPress={handleApplyMedian}
+                      style={styles.applyBtn}
+                    >
+                      <Text style={styles.applyBtnText}>
+                        {t("trading.publishListing.pricing.applyMedian")}
+                      </Text>
+                    </Pressable>
+                  </HStack>
+                )}
+              </VStack>
+            )}
+
+            {rangeLoading && !displayRange.low && (
+              <Text style={styles.rangeLoading}>
+                {t("trading.publishListing.pricing.referenceLoading")}
               </Text>
             )}
+
             {priceCents != null && priceCents > 0 && (
               <Text style={styles.payoutText}>
-                预计到手 {formatPrice(expectedPayout)} · 抽佣 8%
+                {t("trading.publishListing.pricing.expectedPayout", {
+                  price: formatPrice(expectedPayout),
+                  fee: "1%",
+                })}
               </Text>
             )}
           </VStack>
 
+          {/* Title */}
           <VStack style={styles.fieldRow} space="xs">
-            <Text style={styles.fieldLabel}>是否接受议价</Text>
+            <Text style={styles.fieldLabel}>
+              {t("trading.publishListing.fields.titleField")} *
+            </Text>
+            <TextInput
+              style={styles.input}
+              value={form.title}
+              onChangeText={(v) => patch({ title: v })}
+              placeholder={`${form.brand || ""} ${form.styleName || ""}`.trim() ||
+                t("trading.publishListing.fields.titlePlaceholder")}
+              placeholderTextColor={theme.colors.placeholder}
+              maxLength={80}
+            />
+          </VStack>
+
+          {/* Description */}
+          <VStack style={styles.fieldRow} space="xs">
+            <Text style={styles.fieldLabel}>
+              {t("trading.publishListing.fields.description")} *
+            </Text>
+            <TextInput
+              style={[styles.input, styles.textArea]}
+              value={form.description}
+              onChangeText={(v) => patch({ description: v })}
+              placeholder={t(
+                "trading.publishListing.fields.descriptionPlaceholder"
+              )}
+              placeholderTextColor={theme.colors.placeholder}
+              multiline
+              maxLength={1000}
+            />
+          </VStack>
+
+          {/* Condition note */}
+          <VStack style={styles.fieldRow} space="xs">
+            <Text style={styles.fieldLabel}>
+              {t("trading.publishListing.fields.conditionNote")} *
+            </Text>
+            <TextInput
+              style={[styles.input, styles.textArea]}
+              value={form.conditionNote}
+              onChangeText={(v) => patch({ conditionNote: v })}
+              placeholder={t(
+                "trading.publishListing.fields.conditionNotePlaceholder"
+              )}
+              placeholderTextColor={theme.colors.placeholder}
+              multiline
+            />
+            <Text style={styles.fieldHint}>
+              {t("trading.publishListing.fields.conditionNoteHint")}
+            </Text>
+          </VStack>
+
+          {/* Tags */}
+          <VStack style={styles.fieldRow} space="xs">
+            <Text style={styles.fieldLabel}>
+              {t("trading.publishListing.fields.tags")}
+            </Text>
+            <TextInput
+              style={styles.input}
+              value={tagsInput}
+              onChangeText={setTagsInput}
+              placeholder={t("trading.publishListing.fields.tagsPlaceholder")}
+              placeholderTextColor={theme.colors.placeholder}
+            />
+            <Text style={styles.fieldHint}>
+              {t("trading.publishListing.fields.tagsHint")}
+            </Text>
+          </VStack>
+
+          {/* Accept offer */}
+          <VStack style={styles.fieldRow} space="xs">
+            <Text style={styles.fieldLabel}>
+              {t("trading.publishListing.fields.acceptOffer")}
+            </Text>
             <HStack alignItems="center" justifyContent="space-between">
               <Text style={styles.hintInline}>
-                关闭后将不接收买家 Offer
+                {t("trading.publishListing.fields.acceptOfferHint")}
               </Text>
               <Switch
                 value={form.acceptOffer}
@@ -217,71 +326,19 @@ const PublishListingStep3Screen: React.FC = () => {
               />
             </HStack>
           </VStack>
-
-          <VStack style={styles.fieldRow} space="xs">
-            <Text style={styles.fieldLabel}>标题</Text>
-            <TextInput
-              style={styles.input}
-              value={form.title}
-              onChangeText={(v) => patch({ title: v })}
-              placeholder={`${form.brand || "品牌"} ${form.size} ${form.color}`}
-              placeholderTextColor="#9999"
-            />
-          </VStack>
-
-          <VStack style={styles.fieldRow} space="xs">
-            <Text style={styles.fieldLabel}>详情描述</Text>
-            <TextInput
-              style={[styles.input, styles.textArea]}
-              value={form.description}
-              onChangeText={(v) => patch({ description: v })}
-              placeholder="尺寸、版型、瑕疵描述、配件等"
-              placeholderTextColor="#9999"
-              multiline
-            />
-          </VStack>
-
-          <VStack style={styles.fieldRow} space="xs">
-            <Text style={styles.fieldLabel}>
-              成色说明 * <Text style={styles.hintInline}>PRD 1.3：即使无瑕疵也需填写</Text>
-            </Text>
-            <TextInput
-              style={[styles.input, styles.textArea]}
-              value={form.conditionNote}
-              onChangeText={(v) => patch({ conditionNote: v })}
-              placeholder="如：袖口轻微起球；其它部位均无明显使用痕迹"
-              placeholderTextColor="#9999"
-              multiline
-            />
-          </VStack>
         </ScrollView>
 
-        <HStack style={styles.footer} space="sm">
+        <Box style={styles.footer}>
           <TouchableOpacity
-            style={[styles.draftButton, savingDraft && { opacity: 0.6 }]}
-            onPress={handleSaveDraft}
+            style={styles.nextButton}
+            onPress={handleNext}
             activeOpacity={0.8}
-            disabled={savingDraft || submitting}
           >
-            {savingDraft ? (
-              <ActivityIndicator />
-            ) : (
-              <Text style={styles.draftButtonText}>保存草稿</Text>
-            )}
+            <Text style={styles.nextButtonText}>
+              {t("trading.publishListing.nextToLogistics")}
+            </Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.submitButton, submitting && { opacity: 0.6 }]}
-            onPress={handleSubmit}
-            activeOpacity={0.8}
-            disabled={submitting || savingDraft}
-          >
-            {submitting ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.submitButtonText}>提交审核</Text>
-            )}
-          </TouchableOpacity>
-        </HStack>
+        </Box>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -291,65 +348,70 @@ const makeStyles = (t: AppTheme) =>
   StyleSheet.create({
     container: { flex: 1, backgroundColor: t.colors.background },
     scroll: { padding: 16, paddingBottom: 32 },
-    sectionTitle: {
-      fontSize: 13,
-      color: t.colors.textSecondary,
-      letterSpacing: 1,
-      marginBottom: 16,
-    },
     priceBlock: {
-      paddingVertical: 12,
+      paddingVertical: 14,
       paddingHorizontal: 16,
-      borderRadius: 10,
+      borderRadius: t.borderRadius.sm,
       backgroundColor: t.colors.surface,
       marginBottom: 18,
     },
-    currencyBig: { fontSize: 28, color: t.colors.textSecondary, fontWeight: "500" },
+    currencyBig: { fontSize: 26, color: t.colors.textSecondary, fontWeight: "500" },
     priceInput: {
-      fontSize: 42,
+      fontSize: 38,
       fontWeight: "700",
       color: t.colors.text,
       minWidth: 160,
       paddingVertical: 4,
     },
-    referenceText: { fontSize: 13, color: t.colors.textSecondary, marginTop: 6 },
-    payoutText: { fontSize: 13, color: t.colors.accent, marginTop: 2 },
+    rangeBlock: {
+      marginTop: 6,
+    },
+    rangeText: { fontSize: 13, color: t.colors.textSecondary },
+    rangeMedian: { fontSize: 12, color: t.colors.textSecondary },
+    rangeLoading: { fontSize: 12, color: t.colors.textSecondary, marginTop: 6 },
+    applyBtn: {
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: t.borderRadius.sm,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: t.colors.border,
+    },
+    applyBtnText: {
+      fontSize: 11,
+      color: t.colors.text,
+      fontWeight: "600",
+    },
+    payoutText: { fontSize: 13, color: t.colors.accent, marginTop: 4 },
     fieldRow: { marginBottom: 18 },
     fieldLabel: { fontSize: 13, color: t.colors.textSecondary },
+    fieldHint: { fontSize: 11, color: t.colors.textSecondary, marginTop: 4 },
     hintInline: { fontSize: 12, color: t.colors.textSecondary },
     input: {
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: t.colors.border,
-      borderRadius: 8,
+      borderRadius: t.borderRadius.sm,
       paddingHorizontal: 12,
       paddingVertical: 10,
       fontSize: 15,
       color: t.colors.text,
+      backgroundColor: t.colors.inputBackground,
     },
     textArea: { minHeight: 88, textAlignVertical: "top" },
     footer: {
       padding: 16,
-      paddingBottom: Platform.OS === "ios" ? 32 : 16,
+      paddingBottom: Platform.OS === "ios" ? 28 : 16,
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: t.colors.border,
+      backgroundColor: t.colors.background,
     },
-    draftButton: {
-      flex: 1,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: t.colors.border,
-      paddingVertical: 14,
-      borderRadius: 8,
-      alignItems: "center",
-    },
-    draftButtonText: { color: t.colors.text, fontSize: 15 },
-    submitButton: {
+    nextButton: {
       flex: 1,
       backgroundColor: t.colors.accent,
       paddingVertical: 14,
-      borderRadius: 8,
+      borderRadius: t.borderRadius.sm,
       alignItems: "center",
     },
-    submitButtonText: { color: "#fff", fontSize: 15, fontWeight: "600" },
+    nextButtonText: { color: t.colors.textInverted, fontSize: 15, fontWeight: "600" },
   });
 
 export default PublishListingStep3Screen;

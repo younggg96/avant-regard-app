@@ -233,6 +233,23 @@ class StoreProductCreate(BaseModel):
     originalAcquiredAt: Optional[date] = None
     acceptOffer: bool = Field(default=True)
     photoAngles: Optional[PhotoAngles] = None
+    # PRD 单品 Phase 2 新字段
+    styleName: Optional[str] = Field(None, max_length=200, description="款式 / Runway 系列名")
+    yearDecade: Optional[str] = Field(
+        None,
+        max_length=8,
+        pattern=r"^(19[5-9]0s|20[0-2]0s)$",
+        description="年代（1950s ~ 2020s）",
+    )
+    accessoriesNote: Optional[str] = Field(None, description="配件说明")
+    shipFromCountry: Optional[str] = Field(None, max_length=80, description="发货国家")
+    shipFromState: Optional[str] = Field(None, max_length=80, description="发货省 / 州")
+    shipFromCity: Optional[str] = Field(None, max_length=80, description="发货城市")
+    shippingFeeMode: str = Field(
+        default="cod",
+        pattern="^(cod|free)$",
+        description="运费方式：cod 到付 / free 包邮",
+    )
 
     @field_validator("discountPriceCents")
     @classmethod
@@ -271,6 +288,18 @@ class StoreProductUpdate(BaseModel):
     originalAcquiredAt: Optional[date] = None
     acceptOffer: Optional[bool] = None
     photoAngles: Optional[PhotoAngles] = None
+    # PRD 单品 Phase 2 新字段
+    styleName: Optional[str] = Field(None, max_length=200)
+    yearDecade: Optional[str] = Field(
+        None,
+        max_length=8,
+        pattern=r"^(19[5-9]0s|20[0-2]0s)$",
+    )
+    accessoriesNote: Optional[str] = None
+    shipFromCountry: Optional[str] = Field(None, max_length=80)
+    shipFromState: Optional[str] = Field(None, max_length=80)
+    shipFromCity: Optional[str] = Field(None, max_length=80)
+    shippingFeeMode: Optional[str] = Field(None, pattern="^(cod|free)$")
 
 
 # ==================== 状态机 transition ====================
@@ -343,6 +372,55 @@ class StoreProduct(BaseModel):
     publishedAt: Optional[str] = None
     createdAt: Optional[str] = None
     updatedAt: Optional[str] = None
+    # PRD 单品 Phase 2 新字段
+    styleName: Optional[str] = None
+    yearDecade: Optional[str] = None
+    accessoriesNote: Optional[str] = None
+    shipFromCountry: Optional[str] = None
+    shipFromState: Optional[str] = None
+    shipFromCity: Optional[str] = None
+    shippingFeeMode: str = "cod"
+    commissionRateBps: int = 100  # 1%
+    # 「大家都在看」管理员策展 + 信息完整度评分（migration 065）
+    isCurated: bool = False
+    curatedSortOrder: Optional[int] = None
+    completenessScore: int = 0
+
+
+class BrandPriceRange(BaseModel):
+    """PRD 1.4 智能定价 —— 品牌 + 成色历史价格区间。"""
+    brand: str
+    condition: Optional[str] = None
+    sampleSize: int = 0
+    lowCents: int = 0
+    medianCents: int = 0
+    highCents: int = 0
+    minCents: int = 0
+    maxCents: int = 0
+    source: str = "history"  # history | fallback
+
+
+class SupportContactInfo(BaseModel):
+    """找不到品牌 / 秀场时引导联系小客服的配置。"""
+    weekdayHours: str
+    weekendHours: str
+    timezone: str
+    wechatId: Optional[str] = None
+    email: Optional[str] = None
+    notice: Optional[str] = None
+
+
+class MarketplaceSearchSuggestion(BaseModel):
+    """交易大厅搜索下拉建议项。"""
+    label: str = Field(..., description="展示文案，如 Rick Owens / Rick Owens DRKSHDW / Rick Owens FW07")
+    type: str = Field(..., description="brand | product | show | keyword")
+    query: str = Field(..., description="选中后用于 Marketplace 搜索的关键词")
+    brand: Optional[str] = None
+    brandId: Optional[int] = None
+    showId: Optional[str] = None
+    productId: Optional[int] = None
+    imageUrl: Optional[str] = None
+    listingCount: Optional[int] = None
 
 
 # ==================== Seller Profile ====================

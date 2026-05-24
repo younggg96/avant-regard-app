@@ -106,13 +106,23 @@ const MarketplaceScreen: React.FC = () => {
     }
   };
 
-  const activeFilterCount = useMemo(
-    () =>
-      ["brand", "size", "color", "condition", "sellerKind", "priceMinCents", "priceMaxCents"]
-        .filter((k) => (filter as any)[k] != null && (filter as any)[k] !== "")
-        .length,
-    [filter]
-  );
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (filter.brands?.length) count += filter.brands.length;
+    else if (filter.brand) count += 1;
+    if (filter.categoryKinds?.length) count += filter.categoryKinds.length;
+    if (filter.categoryIds?.length) count += filter.categoryIds.length;
+    else if (filter.categoryId != null) count += 1;
+    if (filter.sizes?.length) count += filter.sizes.length;
+    else if (filter.size) count += 1;
+    if (filter.colors?.length) count += filter.colors.length;
+    else if (filter.color) count += 1;
+    if (filter.conditions?.length) count += filter.conditions.length;
+    else if (filter.condition) count += 1;
+    if (filter.sellerKind) count += 1;
+    if (filter.priceMinCents != null || filter.priceMaxCents != null) count += 1;
+    return count;
+  }, [filter]);
 
   const renderCard = ({ item }: { item: StoreProduct }) => (
     <Pressable
