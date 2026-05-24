@@ -75,7 +75,35 @@ class TradeReviewService:
             raise ValueError("已评价过")
         if not res.data:
             raise RuntimeError("写入评价失败")
-        return self._format(res.data[0])
+        review = self._format(res.data[0])
+
+        # 通知对方：单方评价时只触发轻提醒；DB trigger 在双方都提交后会把 visible 翻 True
+        # —— 我们这里二次查询以判断是否已 visible，再决定 push 文案。
+        try:
+            from app.services.notification_service import notification_service
+            from app.schemas.notification import NotificationType
+            visible_now = bool(res.data[0].get("visible"))
+            if visible_now:
+                title = "互评已公开"
+                message = "对方已完成评价，双方评价现在已互相可见"
+            else:
+                title = "收到一条评价"
+                message = "对方已对你做出评价，互评将在你也提交后公开"
+            notification_service.create_notification(
+                user_id=target,
+                notification_type=NotificationType.SYSTEM,
+                title=title,
+                message=message,
+                action_data={
+                    "navigateTo": "OrderReviews",
+                    "navigateParams": {"orderId": order_id},
+                },
+                send_push=True,
+            )
+        except Exception as e:  # noqa: BLE001
+            print(f"[trade_review] notify counterparty failed: {e}")
+
+        return review
 
     def list_for_user(
         self,

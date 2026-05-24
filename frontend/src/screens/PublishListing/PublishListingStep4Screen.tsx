@@ -1,14 +1,5 @@
 /**
  * PRD 单品发布 · Step 4 / 4：物流与其他。
- *
- * 字段：
- *   - 原入手时间（可选，YYYY-MM-DD）
- *   - 关联秀场（可选）
- *   - 发货地：国家 / 省 - 州 / 城市（三段式 RegionPicker）
- *   - 运费方式：到付 / 包邮
- *   - 保存草稿 / 提交审核（首次会校验所有 step）
- *
- * 提交时把 store 数据组装成 ListingCreate/Patch payload，逻辑沿用旧 Step3 的 ensureDraft。
  */
 import React, { useCallback, useMemo, useState } from "react";
 import {
@@ -17,7 +8,6 @@ import {
   Platform,
   ScrollView,
   StyleSheet,
-  TextInput,
   TouchableOpacity,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -25,7 +15,7 @@ import { useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 
-import { Box, HStack, Text, VStack, Pressable } from "../../components/ui";
+import { Box, HStack, Text, VStack, Pressable, Input } from "../../components/ui";
 import ScreenHeader from "../../components/ScreenHeader";
 import WizardStepper from "../../components/WizardStepper";
 import RegionPicker from "../../components/RegionPicker";
@@ -47,7 +37,11 @@ import {
   type ListingPatchBody,
 } from "../../services/storeProductService";
 import { showService } from "../../services/showService";
-import { FeeNotice } from "./PublishListingStep1Screen";
+import {
+  makePublishListingFormStyles,
+  PublishListingFeeNotice,
+  PublishListingFieldRow,
+} from "./publishListingFormShared";
 
 const PublishListingStep4Screen: React.FC = () => {
   const { t } = useTranslation();
@@ -112,31 +106,32 @@ const PublishListingStep4Screen: React.FC = () => {
   );
 
   const buildPayload = (): ListingPatchBody => ({
-    title: form.title.trim() ||
+    title:
+      form.title.trim() ||
       `${form.brand} ${form.styleName || ""}`.trim() ||
       form.brand,
     description: form.description,
     brand: form.brand,
     categoryId: form.categoryId,
-    images: ([
+    images: [
       form.photoAngles.front,
       form.photoAngles.back,
       form.photoAngles.wash_label,
       form.photoAngles.brand_label,
       form.photoAngles.flaw,
       ...(form.photoAngles.extras ?? []),
-    ].filter(Boolean) as string[]),
+    ].filter(Boolean) as string[],
     priceCents: form.priceCents ?? 0,
     size: form.size,
     color: form.color,
     condition: form.condition ?? undefined,
     conditionNote: form.conditionNote,
-    originalShowId: form.originalShowId != null ? String(form.originalShowId) : null,
+    originalShowId:
+      form.originalShowId != null ? String(form.originalShowId) : null,
     originalAcquiredAt: form.originalAcquiredAt,
     acceptOffer: form.acceptOffer,
     photoAngles: form.photoAngles,
     tags: form.tags,
-    // PRD 单品 Phase 2
     styleName: form.styleName || null,
     yearDecade: form.yearDecade,
     accessoriesNote: form.accessoriesNote || null,
@@ -197,7 +192,9 @@ const PublishListingStep4Screen: React.FC = () => {
       );
       navigation.navigate("SellerListings");
     } catch (e) {
-      Alert.show(e instanceof Error ? e.message : t("trading.publishListing.submitFailed"));
+      Alert.show(
+        e instanceof Error ? e.message : t("trading.publishListing.submitFailed")
+      );
     } finally {
       setSubmitting(false);
     }
@@ -216,130 +213,125 @@ const PublishListingStep4Screen: React.FC = () => {
           else if (s === 3) navigation.navigate("PublishListingStep3");
         }}
       />
-      <FeeNotice />
+      <PublishListingFeeNotice />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-          {/* Acquired date */}
-          <VStack style={styles.fieldRow} space="xs">
-            <Text style={styles.fieldLabel}>
-              {t("trading.publishListing.fields.originalAcquiredAt")}
-            </Text>
-            <TextInput
-              style={styles.input}
-              value={form.originalAcquiredAt ?? ""}
-              onChangeText={(v) => patch({ originalAcquiredAt: v.trim() || null })}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor={theme.colors.placeholder}
-              autoCorrect={false}
-            />
-          </VStack>
-
-          {/* Original show */}
-          <VStack style={styles.fieldRow} space="xs">
-            <Text style={styles.fieldLabel}>
-              {t("trading.publishListing.fields.originalShow")}
-            </Text>
-            <Pressable
-              onPress={() => setShowSheetVisible(true)}
-              style={styles.selectorRow}
+        <ScrollView
+          contentContainerStyle={styles.scroll}
+          keyboardShouldPersistTaps="handled"
+        >
+          <VStack gap="$lg">
+            <PublishListingFieldRow
+              label={t("trading.publishListing.fields.originalAcquiredAt")}
             >
-              <Text
-                style={[
-                  styles.selectorText,
-                  !form.originalShowLabel && styles.placeholderText,
-                ]}
-              >
-                {form.originalShowLabel ||
-                  t("trading.publishListing.fields.originalShowPlaceholder")}
-              </Text>
-              <Ionicons
-                name="chevron-forward"
-                size={16}
-                color={theme.colors.textSecondary}
+              <Input
+                value={form.originalAcquiredAt ?? ""}
+                onChangeText={(v) =>
+                  patch({ originalAcquiredAt: v.trim() || null })
+                }
+                placeholder="YYYY-MM-DD"
+                placeholderTextColor={theme.colors.gray400}
+                variant="underlined"
+                size="sm"
+                autoCorrect={false}
               />
-            </Pressable>
-          </VStack>
+            </PublishListingFieldRow>
 
-          {/* Ship-from region */}
-          <VStack style={styles.fieldRow} space="xs">
-            <Text style={styles.fieldLabel}>
-              {t("trading.publishListing.fields.shipFrom")} *
-            </Text>
-            <Pressable
-              onPress={() => setRegionVisible(true)}
-              style={styles.selectorRow}
+            <PublishListingFieldRow
+              label={t("trading.publishListing.fields.originalShow")}
             >
-              <Text
-                style={[
-                  styles.selectorText,
-                  (!form.shipFromCountry || !form.shipFromState) &&
-                    styles.placeholderText,
-                ]}
+              <Pressable
+                onPress={() => setShowSheetVisible(true)}
+                style={styles.selectorRow}
               >
-                {regionLabel}
-              </Text>
-              <Ionicons
-                name="chevron-forward"
-                size={16}
-                color={theme.colors.textSecondary}
-              />
-            </Pressable>
-            <Text style={styles.fieldHint}>
-              {t("trading.publishListing.fields.shipFromHint")}
-            </Text>
-          </VStack>
+                <Text
+                  style={[
+                    styles.selectorText,
+                    !form.originalShowLabel && styles.placeholderText,
+                  ]}
+                >
+                  {form.originalShowLabel ||
+                    t("trading.publishListing.fields.originalShowPlaceholder")}
+                </Text>
+                <Ionicons
+                  name="chevron-forward"
+                  size={16}
+                  color={theme.colors.gray400}
+                />
+              </Pressable>
+            </PublishListingFieldRow>
 
-          {/* Shipping fee mode */}
-          <VStack style={styles.fieldRow} space="xs">
-            <Text style={styles.fieldLabel}>
-              {t("trading.publishListing.fields.shippingFeeMode")} *
-            </Text>
-            <HStack space="sm">
-              {(["cod", "free"] as const).map((mode) => {
-                const active = form.shippingFeeMode === mode;
-                return (
-                  <Pressable
-                    key={mode}
-                    onPress={() => patch({ shippingFeeMode: mode })}
-                    style={[
-                      styles.modeChip,
-                      active && styles.modeChipActive,
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.modeChipTitle,
-                        active && styles.modeChipTitleActive,
-                      ]}
-                    >
-                      {t(
-                        mode === "cod"
-                          ? "trading.publishListing.fields.shippingCod"
-                          : "trading.publishListing.fields.shippingFree"
-                      )}
-                    </Text>
-                    <Text
-                      style={[
-                        styles.modeChipSub,
-                        active && styles.modeChipSubActive,
-                      ]}
-                    >
-                      {t(
-                        mode === "cod"
-                          ? "trading.publishListing.fields.shippingCodSub"
-                          : "trading.publishListing.fields.shippingFreeSub"
-                      )}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </HStack>
-          </VStack>
+            <PublishListingFieldRow
+              label={t("trading.publishListing.fields.shipFrom")}
+              required
+              hint={t("trading.publishListing.fields.shipFromHint")}
+            >
+              <Pressable
+                onPress={() => setRegionVisible(true)}
+                style={styles.selectorRow}
+              >
+                <Text
+                  style={[
+                    styles.selectorText,
+                    (!form.shipFromCountry || !form.shipFromState) &&
+                      styles.placeholderText,
+                  ]}
+                >
+                  {regionLabel}
+                </Text>
+                <Ionicons
+                  name="chevron-forward"
+                  size={16}
+                  color={theme.colors.gray400}
+                />
+              </Pressable>
+            </PublishListingFieldRow>
 
-          <Box style={{ height: 24 }} />
+            <PublishListingFieldRow
+              label={t("trading.publishListing.fields.shippingFeeMode")}
+              required
+            >
+              <HStack space="sm">
+                {(["cod", "free"] as const).map((mode) => {
+                  const active = form.shippingFeeMode === mode;
+                  return (
+                    <Pressable
+                      key={mode}
+                      onPress={() => patch({ shippingFeeMode: mode })}
+                      style={[styles.modeChip, active && styles.modeChipActive]}
+                    >
+                      <Text
+                        style={[
+                          styles.modeChipTitle,
+                          active && styles.modeChipTitleActive,
+                        ]}
+                      >
+                        {t(
+                          mode === "cod"
+                            ? "trading.publishListing.fields.shippingCod"
+                            : "trading.publishListing.fields.shippingFree"
+                        )}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.modeChipSub,
+                          active && styles.modeChipSubActive,
+                        ]}
+                      >
+                        {t(
+                          mode === "cod"
+                            ? "trading.publishListing.fields.shippingCodSub"
+                            : "trading.publishListing.fields.shippingFreeSub"
+                        )}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </HStack>
+            </PublishListingFieldRow>
+          </VStack>
         </ScrollView>
 
         <HStack style={styles.footer} space="sm">
@@ -364,7 +356,7 @@ const PublishListingStep4Screen: React.FC = () => {
             disabled={submitting || savingDraft}
           >
             {submitting ? (
-              <ActivityIndicator color="#fff" />
+              <ActivityIndicator color={theme.colors.white} />
             ) : (
               <Text style={styles.submitButtonText}>
                 {t("trading.publishListing.submitForReview")}
@@ -400,7 +392,10 @@ const PublishListingStep4Screen: React.FC = () => {
         onSearch={searchShowsHandler}
         onSelectShow={(show: ShowSelectorItem) => {
           const label = [show.brand, show.season, show.year]
-            .filter((part) => part !== null && part !== undefined && part !== "" && part !== 0)
+            .filter(
+              (part) =>
+                part !== null && part !== undefined && part !== "" && part !== 0
+            )
             .join(" ");
           patch({
             originalShowId: show.show_id ?? null,
@@ -414,80 +409,26 @@ const PublishListingStep4Screen: React.FC = () => {
   );
 };
 
-const makeStyles = (t: AppTheme) =>
-  StyleSheet.create({
+const makeStyles = (t: AppTheme) => {
+  const shared = makePublishListingFormStyles(t);
+  return StyleSheet.create({
     container: { flex: 1, backgroundColor: t.colors.background },
-    scroll: { padding: 16, paddingBottom: 32 },
-    fieldRow: { marginBottom: 18 },
-    fieldLabel: { fontSize: 13, color: t.colors.textSecondary, marginBottom: 6 },
-    fieldHint: { fontSize: 11, color: t.colors.textSecondary, marginTop: 4 },
-    input: {
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: t.colors.border,
-      borderRadius: t.borderRadius.sm,
-      paddingHorizontal: 12,
-      paddingVertical: 10,
-      fontSize: 15,
-      color: t.colors.text,
-      backgroundColor: t.colors.inputBackground,
-    },
-    selectorRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: t.colors.border,
-      borderRadius: t.borderRadius.sm,
-      paddingHorizontal: 12,
-      paddingVertical: 12,
-      backgroundColor: t.colors.inputBackground,
-    },
-    selectorText: { fontSize: 15, color: t.colors.text },
-    placeholderText: { color: t.colors.placeholder },
-    modeChip: {
-      flex: 1,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: t.colors.border,
-      borderRadius: t.borderRadius.sm,
-      padding: 12,
-    },
-    modeChipActive: {
-      borderColor: t.colors.accent,
-      backgroundColor: `${t.colors.accent}0F`,
-    },
-    modeChipTitle: { fontSize: 14, color: t.colors.text, fontWeight: "600" },
-    modeChipTitleActive: { color: t.colors.text },
-    modeChipSub: {
-      fontSize: 11,
-      color: t.colors.textSecondary,
-      marginTop: 2,
-      lineHeight: 16,
-    },
-    modeChipSubActive: { color: t.colors.text },
-    footer: {
-      padding: 16,
-      paddingBottom: Platform.OS === "ios" ? 28 : 16,
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: t.colors.border,
-      backgroundColor: t.colors.background,
-    },
-    draftButton: {
-      flex: 1,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: t.colors.border,
-      paddingVertical: 14,
-      borderRadius: t.borderRadius.sm,
-      alignItems: "center",
-    },
-    draftButtonText: { color: t.colors.text, fontSize: 15 },
-    submitButton: {
-      flex: 1,
-      backgroundColor: t.colors.accent,
-      paddingVertical: 14,
-      borderRadius: t.borderRadius.sm,
-      alignItems: "center",
-    },
-    submitButtonText: { color: t.colors.textInverted, fontSize: 15, fontWeight: "600" },
+    scroll: shared.scroll,
+    selectorRow: shared.selectorRow,
+    selectorText: shared.selectorText,
+    placeholderText: shared.placeholderText,
+    modeChip: shared.modeChip,
+    modeChipActive: shared.modeChipActive,
+    modeChipTitle: shared.modeChipTitle,
+    modeChipTitleActive: shared.modeChipTitleActive,
+    modeChipSub: shared.modeChipSub,
+    modeChipSubActive: shared.modeChipSubActive,
+    footer: shared.footer,
+    draftButton: shared.draftButton,
+    draftButtonText: shared.draftButtonText,
+    submitButton: shared.submitButton,
+    submitButtonText: shared.submitButtonText,
   });
+};
 
 export default PublishListingStep4Screen;

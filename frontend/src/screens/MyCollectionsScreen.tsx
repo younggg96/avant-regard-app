@@ -400,7 +400,7 @@ const makeStyles = (t: AppTheme) =>
     card: {
       width: "48%",
       backgroundColor: t.colors.cardElevated,
-      borderRadius: 12,
+      borderRadius: t.borderRadius.sm,
       padding: 8,
       marginBottom: 12,
       borderWidth: StyleSheet.hairlineWidth,
@@ -409,7 +409,7 @@ const makeStyles = (t: AppTheme) =>
     cover: {
       width: "100%",
       aspectRatio: 1,
-      borderRadius: 8,
+      borderRadius: t.borderRadius.sm,
       backgroundColor: t.colors.skeleton,
     },
     coverPlaceholder: {
@@ -448,7 +448,7 @@ const makeStyles = (t: AppTheme) =>
     modalCard: {
       width: "100%",
       backgroundColor: t.colors.card,
-      borderRadius: 12,
+      borderRadius: t.borderRadius.sm,
       padding: 20,
     },
     modalTitle: {
@@ -460,7 +460,7 @@ const makeStyles = (t: AppTheme) =>
     modalInput: {
       backgroundColor: t.colors.surface,
       color: t.colors.text,
-      borderRadius: 8,
+      borderRadius: t.borderRadius.sm,
       paddingHorizontal: 12,
       paddingVertical: 10,
       fontSize: 14,
@@ -468,7 +468,7 @@ const makeStyles = (t: AppTheme) =>
     modalBtn: {
       flex: 1,
       paddingVertical: 12,
-      borderRadius: 8,
+      borderRadius: t.borderRadius.sm,
       alignItems: "center",
       justifyContent: "center",
     },

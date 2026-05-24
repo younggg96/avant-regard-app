@@ -13,7 +13,6 @@ import React, { useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Dimensions,
-  Platform,
   ScrollView,
   StyleSheet,
   TouchableOpacity,
@@ -40,7 +39,11 @@ import {
   TOTAL_PUBLISH_STEPS,
 } from "../../store/publishListingStore";
 import type { PhotoAngles } from "../../services/storeProductService";
-import { FeeNotice } from "./PublishListingStep1Screen";
+import {
+  makePublishListingFormStyles,
+  PublishListingFeeNotice,
+  PUBLISH_LISTING_FORM_PADDING,
+} from "./publishListingFormShared";
 
 // 数据层 key 与 UI 层 key 的桥接：UI 里"细节"对应 DB 里的 flaw 字段（兼容旧数据）。
 type StoreAngleKey = keyof Pick<
@@ -64,9 +67,8 @@ const SLOT_ORDER: Array<{
 const MAX_EXTRAS = 7;
 
 const { width: SCREEN_W } = Dimensions.get("window");
-const PAGE_PADDING = 16;
 const GAP = 12;
-const TILE_W = (SCREEN_W - PAGE_PADDING * 2 - GAP * 2) / 3;
+const TILE_W = (SCREEN_W - PUBLISH_LISTING_FORM_PADDING * 2 - GAP * 2) / 3;
 
 const PublishListingStep2Screen: React.FC = () => {
   const { t } = useTranslation();
@@ -190,9 +192,9 @@ const PublishListingStep2Screen: React.FC = () => {
           if (s === 1) navigation.navigate("PublishListingStep1");
         }}
       />
-      <FeeNotice />
+      <PublishListingFeeNotice />
       <ScrollView contentContainerStyle={styles.scroll}>
-        <Text style={styles.section}>
+        <Text style={styles.sectionTitle}>
           {t("trading.publishListing.photos.requiredHeader")}
         </Text>
         <Text style={styles.sectionHint}>
@@ -246,7 +248,7 @@ const PublishListingStep2Screen: React.FC = () => {
           })}
         </View>
 
-        <Text style={[styles.section, { marginTop: 24 }]}>
+        <Text style={[styles.sectionTitle, { marginTop: 24 }]}>
           {t("trading.publishListing.photos.extraHeader", { max: MAX_EXTRAS })}
         </Text>
         <Text style={styles.sectionHint}>
@@ -311,21 +313,18 @@ const PublishListingStep2Screen: React.FC = () => {
   );
 };
 
-const makeStyles = (t: AppTheme) =>
-  StyleSheet.create({
+const makeStyles = (t: AppTheme) => {
+  const shared = makePublishListingFormStyles(t);
+  return StyleSheet.create({
     container: { flex: 1, backgroundColor: t.colors.background },
-    scroll: { padding: PAGE_PADDING, paddingBottom: 32 },
-    section: {
-      fontSize: 13,
-      color: t.colors.text,
-      fontWeight: "600",
-      marginBottom: 4,
-    },
-    sectionHint: {
-      fontSize: 12,
-      color: t.colors.textSecondary,
-      marginBottom: 12,
-    },
+    scroll: shared.scroll,
+    sectionTitle: shared.sectionTitle,
+    sectionHint: shared.sectionHint,
+    hintSmall: shared.hintSmall,
+    footer: shared.footer,
+    nextButton: shared.nextButton,
+    nextButtonDisabled: shared.nextButtonDisabled,
+    nextButtonText: shared.nextButtonText,
     angleGrid: {
       flexDirection: "row",
       flexWrap: "wrap",
@@ -342,8 +341,9 @@ const makeStyles = (t: AppTheme) =>
       borderRadius: t.borderRadius.sm,
       overflow: "hidden",
       backgroundColor: t.colors.surface,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: t.colors.border,
+      borderWidth: 1,
+      borderStyle: "dashed",
+      borderColor: t.colors.gray200,
     },
     angleImage: { width: "100%", height: "100%" },
     angleEditOverlay: {
@@ -366,14 +366,14 @@ const makeStyles = (t: AppTheme) =>
       gap: 4,
     },
     angleEmptyHint: {
-      fontSize: 11,
-      color: t.colors.textSecondary,
+      fontSize: 12,
+      color: t.colors.gray400,
       textAlign: "center",
     },
     angleTitle: {
       fontSize: 12,
-      fontWeight: "600",
-      color: t.colors.text,
+      fontWeight: "500",
+      color: t.colors.gray600,
       marginTop: 6,
       textAlign: "center",
     },
@@ -389,33 +389,15 @@ const makeStyles = (t: AppTheme) =>
       width: 80,
       height: 80,
       borderRadius: t.borderRadius.sm,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: t.colors.border,
-      backgroundColor: t.colors.surface,
+      borderWidth: 1,
+      borderStyle: "dashed",
+      borderColor: t.colors.gray200,
+      backgroundColor: t.colors.card,
       justifyContent: "center",
       alignItems: "center",
     },
-    extraAddText: { fontSize: 24, color: t.colors.textSecondary },
-    hintSmall: { fontSize: 11, color: t.colors.textSecondary, marginTop: 8 },
-    footer: {
-      padding: 16,
-      paddingBottom: Platform.OS === "ios" ? 28 : 16,
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: t.colors.border,
-      backgroundColor: t.colors.background,
-    },
-    nextButton: {
-      backgroundColor: t.colors.accent,
-      paddingVertical: 14,
-      borderRadius: t.borderRadius.sm,
-      alignItems: "center",
-    },
-    nextButtonDisabled: { opacity: 0.4 },
-    nextButtonText: {
-      color: t.colors.textInverted,
-      fontSize: 16,
-      fontWeight: "600",
-    },
+    extraAddText: { fontSize: 24, color: t.colors.gray400 },
   });
+};
 
 export default PublishListingStep2Screen;

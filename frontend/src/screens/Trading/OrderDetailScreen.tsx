@@ -211,8 +211,12 @@ export default function OrderDetailScreen() {
     load();
   }, [load]);
 
-  const isBuyer = me?.id === order?.buyerUserId;
-  const isSeller = me?.id === order?.sellerUserId;
+  // 注意：authStore 里 user.id 是 string（来自 String(response.userId)），
+  // 但 order.buyerUserId/sellerUserId 是 number。直接 === 会因类型不一致
+  // 永远为 false，导致按钮永远不显示。统一用 user.userId（number）比较。
+  const meUserId = me?.userId ?? null;
+  const isBuyer = meUserId != null && meUserId === order?.buyerUserId;
+  const isSeller = meUserId != null && meUserId === order?.sellerUserId;
 
   const statusHint = useMemo(() => {
     if (!order) return "";

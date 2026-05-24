@@ -59,7 +59,6 @@ import {
   checkStoreProductWanted,
   createStoreProductComment,
   deleteStoreProductComment,
-  favoriteStoreProduct,
   formatPrice,
   getStoreProductComments,
   getStoreProductRichDetail,
@@ -69,7 +68,6 @@ import {
   StoreProductComment,
   StoreProductRichDetail,
   ProductCondition,
-  unfavoriteStoreProduct,
   unlikeStoreProduct,
   unlikeStoreProductComment,
   unwantStoreProduct,
@@ -94,6 +92,7 @@ import {
 } from "../utils/useMediaAspectRatio";
 import { useTranslation } from "react-i18next";
 import { resolveAvatarUrl } from "../utils/avatarUtils";
+import { followService, isFollowingUser } from "../services/followService";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -148,12 +147,15 @@ const StoreProductDetailScreen: React.FC = () => {
 
   const [isFavorited, setIsFavorited] = useState(false);
   const [favoriteCount, setFavoriteCount] = useState(0);
-  const [favoritePending, setFavoritePending] = useState(false);
 
   const [isWanted, setIsWanted] = useState(false);
   const [wantCount, setWantCount] = useState(0);
   const [wantPending, setWantPending] = useState(false);
   const [showWantPopup, setShowWantPopup] = useState(false);
+
+  // 卖家关注态 —— 顶部卖家卡片「关注」按钮直接触发 follow API，不跳转主页。
+  const [isFollowingSeller, setIsFollowingSeller] = useState(false);
+  const [followLoading, setFollowLoading] = useState(false);
 
   // PRD 模块三 · 收藏夹选择抽屉
   const [collectionSheetVisible, setCollectionSheetVisible] = useState(false);
@@ -218,6 +220,7 @@ const StoreProductDetailScreen: React.FC = () => {
 
   const mountedRef = useRef(true);
   useEffect(() => {
+    mountedRef.current = true;
     return () => {
       mountedRef.current = false;
     };
@@ -299,6 +302,22 @@ const StoreProductDetailScreen: React.FC = () => {
       .catch(() => {});
   }, [productId, currentUser]);
 
+  // 卖家关注态 —— 登录用户查看他人商品时拉一次 is-following。
+  useEffect(() => {
+    const sellerUserId = richDetail?.seller?.userId;
+    if (!currentUser?.userId || !sellerUserId) {
+      setIsFollowingSeller(false);
+      return;
+    }
+    if (currentUser.userId === sellerUserId) {
+      setIsFollowingSeller(false);
+      return;
+    }
+    isFollowingUser(currentUser.userId, sellerUserId)
+      .then((v) => mountedRef.current && setIsFollowingSeller(v))
+      .catch(() => {});
+  }, [currentUser?.userId, richDetail?.seller?.userId]);
+
   // 0.8s 自动 WantPopup（已加愿望单跳过）
   useEffect(() => {
     if (!product) return;
@@ -324,6 +343,49 @@ const StoreProductDetailScreen: React.FC = () => {
     [navigation, richDetail?.seller?.userId, product?.sellerUserId]
   );
 
+  const handleFollowSeller = useCallback(async () => {
+    const sellerUserId = richDetail?.seller?.userId;
+    if (!sellerUserId) return;
+    if (!currentUser?.userId) {
+      Alert.show(t("engagement.pleaseLogin"));
+      return;
+    }
+    if (currentUser.userId === sellerUserId) return;
+    if (followLoading) return;
+
+    const nextFollowing = !isFollowingSeller;
+    setIsFollowingSeller(nextFollowing);
+    setFollowLoading(true);
+    try {
+      if (nextFollowing) {
+        await followService.followUser({
+          followerId: currentUser.userId,
+          targetUserId: sellerUserId,
+        });
+        Alert.show(t("engagement.followSuccess"));
+      } else {
+        await followService.unfollowUser({
+          followerId: currentUser.userId,
+          targetUserId: sellerUserId,
+        });
+        Alert.show(t("engagement.unfollowed"));
+      }
+    } catch (e) {
+      setIsFollowingSeller(!nextFollowing);
+      Alert.show(
+        e instanceof Error ? e.message : t("engagement.operationFailed"),
+      );
+    } finally {
+      setFollowLoading(false);
+    }
+  }, [
+    currentUser?.userId,
+    followLoading,
+    isFollowingSeller,
+    richDetail?.seller?.userId,
+    t,
+  ]);
+
   const handleToggleLike = useCallback(async () => {
     if (likePending) return;
     if (!currentUser) {
@@ -346,27 +408,23 @@ const StoreProductDetailScreen: React.FC = () => {
     }
   }, [isLiked, likePending, currentUser, productId, t]);
 
+  /**
+   * 点击「收藏」按钮:
+   *   - 未登录 → 提示登录
+   *   - 已登录 → 直接打开「加入收藏夹」底部抽屉, 由抽屉处理 favorite +
+   *     选择收藏夹的整套流程 (默认收藏 / 自建收藏夹 / 新建收藏夹)。
+   *
+   * 之前的行为是直接 toggle favorite, 但 PRD 模块三 3.4 要求所有收藏动作都走
+   * 收藏夹界面, 让用户明确把单品归类, 同时也是「我」页 → 收藏 → 产品收藏夹
+   * 的数据来源。
+   */
   const handleToggleFavorite = useCallback(async () => {
-    if (favoritePending) return;
     if (!currentUser) {
       Alert.show(t("engagement.pleaseLogin"));
       return;
     }
-    const nextFavorited = !isFavorited;
-    setIsFavorited(nextFavorited);
-    setFavoriteCount((n) => Math.max(0, n + (nextFavorited ? 1 : -1)));
-    setFavoritePending(true);
-    try {
-      if (nextFavorited) await favoriteStoreProduct(productId);
-      else await unfavoriteStoreProduct(productId);
-    } catch (e) {
-      setIsFavorited(!nextFavorited);
-      setFavoriteCount((n) => Math.max(0, n + (nextFavorited ? -1 : 1)));
-      Alert.show(e instanceof Error ? e.message : t("store.operationFailed"));
-    } finally {
-      if (mountedRef.current) setFavoritePending(false);
-    }
-  }, [isFavorited, favoritePending, currentUser, productId, t]);
+    setCollectionSheetVisible(true);
+  }, [currentUser, t]);
 
   const handleToggleWant = useCallback(async () => {
     if (wantPending) return;
@@ -917,14 +975,27 @@ const StoreProductDetailScreen: React.FC = () => {
                     )}
                   </HStack>
                 </View>
-                <Pressable
-                  style={styles.followBtn}
-                  onPress={() => handleOpenSellerProfile(seller.userId)}
-                >
-                  <Text style={styles.followBtnText}>
-                    {t("store.productDetailV2.follow")}
-                  </Text>
-                </Pressable>
+                {currentUser?.userId !== seller.userId && (
+                  <Pressable
+                    style={[
+                      styles.followBtn,
+                      isFollowingSeller && styles.followBtnFollowing,
+                    ]}
+                    onPress={handleFollowSeller}
+                    disabled={followLoading}
+                  >
+                    <Text
+                      style={[
+                        styles.followBtnText,
+                        isFollowingSeller && styles.followBtnTextFollowing,
+                      ]}
+                    >
+                      {isFollowingSeller
+                        ? t("store.productDetailV2.followed")
+                        : t("store.productDetailV2.follow")}
+                    </Text>
+                  </Pressable>
+                )}
               </View>
             </View>
           )}
@@ -1424,7 +1495,11 @@ const StoreProductDetailScreen: React.FC = () => {
         isFavorited={isFavorited}
         onClose={() => setCollectionSheetVisible(false)}
         onSaved={() => {
-          if (!isFavorited) setIsFavorited(true);
+          // 抽屉里成功保存 = 已收藏。若之前没有 favorite, 这里乐观加 1。
+          if (!isFavorited) {
+            setIsFavorited(true);
+            setFavoriteCount((n) => n + 1);
+          }
         }}
         onUnsaved={() => {
           setIsFavorited(false);
@@ -1978,11 +2053,20 @@ const makeStyles = (t: AppTheme) =>
       paddingHorizontal: 18,
       paddingVertical: 7,
       borderRadius: 4,
+      minWidth: 56,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    followBtnFollowing: {
+      backgroundColor: t.colors.gray100,
     },
     followBtnText: {
       color: t.colors.background,
       fontSize: 12,
       fontWeight: "600",
+    },
+    followBtnTextFollowing: {
+      color: t.colors.gray400,
     },
 
     /* ---- Tab bar（吸顶用 stickyHeaderIndices） ---- */

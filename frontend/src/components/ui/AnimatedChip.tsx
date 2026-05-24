@@ -35,6 +35,8 @@ export const chipRowStyle: ViewStyle = {
 export interface AnimatedChipProps {
   label: string;
   count?: number;
+  /** 为 true 时 count 为 0 也展示数字 (收藏 sub-chip 等场景) */
+  showZeroCount?: boolean;
   isActive: boolean;
   onPress: () => void;
   onLayout?: (e: LayoutChangeEvent) => void;
@@ -44,6 +46,7 @@ export interface AnimatedChipProps {
 export const AnimatedChip: React.FC<AnimatedChipProps> = ({
   label,
   count,
+  showZeroCount = false,
   isActive,
   onPress,
   onLayout,
@@ -122,7 +125,7 @@ export const AnimatedChip: React.FC<AnimatedChipProps> = ({
         <Animated.Text style={[styles.chipText, labelAnimStyle]}>
           {label}
         </Animated.Text>
-        {count != null && count > 0 ? (
+        {count != null && (showZeroCount || count > 0) ? (
           <Animated.Text style={[styles.chipCount, countAnimStyle]}>
             {count}
           </Animated.Text>
@@ -139,19 +142,19 @@ const makeChipStyles = (t: AppTheme) =>
       flexDirection: "row",
       alignItems: "center",
       gap: 4,
-      paddingHorizontal: 12,
-      paddingVertical: 5,
-      borderRadius: 14,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 4,
       borderWidth: 1,
       borderColor: t.colors.gray200,
       backgroundColor: t.colors.card,
     },
     chipText: {
-      fontSize: 13,
+      fontSize: 12,
       fontWeight: "500",
     },
     chipCount: {
-      fontSize: 11,
+      fontSize: 10,
       fontWeight: "600",
     },
   });

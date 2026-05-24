@@ -31,7 +31,12 @@ import {
   listMyFavoritedStoreProducts,
   listMyLikedStoreProducts,
   listMyWantedStoreProducts,
+  type StoreProduct,
 } from "../../../services/storeProductService";
+import {
+  listMyCollections,
+  type UserCollection,
+} from "../../../services/tradingExtrasService";
 import {
   TabType,
   TabData,
@@ -41,6 +46,7 @@ import {
   ProductActivitySubTab,
   ProductListState,
   initialProductListState,
+  CollectionsSubTab,
 } from "../types";
 import { Alert } from "../../../utils/Alert";
 import { resolveAvatarUrlOrEmpty } from "../../../utils/avatarUtils";
@@ -115,6 +121,19 @@ export function useProfileData() {
   const [productSaved, setProductSaved] = useState<ProductListState>({ ...initialProductListState });
   const [productWanted, setProductWanted] = useState<ProductListState>({ ...initialProductListState });
 
+  // 「收藏」一级 tab 的 sub-chip 状态 + 产品收藏夹列表 + 默认收藏统计。
+  // 帖子收藏复用 tabsData.saved；买手店收藏复用 storeActivity.favorites；
+  // 这里只额外维护「产品收藏夹」自己的数据（folder grid + default 总数）。
+  const [collectionsSubTab, setCollectionsSubTab] =
+    useState<CollectionsSubTab>("posts");
+  const [collectionFolders, setCollectionFolders] = useState<UserCollection[]>([]);
+  const [defaultCollectionTotal, setDefaultCollectionTotal] = useState(0);
+  const [defaultCollectionCover, setDefaultCollectionCover] = useState<string | null>(
+    null,
+  );
+  const [collectionsLoading, setCollectionsLoading] = useState(false);
+  const [collectionsLoaded, setCollectionsLoaded] = useState(false);
+
   const [tabsData, setTabsData] = useState<Record<TabType, TabData>>({
     published: { ...initialTabState },
     pending: { ...initialTabState },
@@ -154,6 +173,10 @@ export function useProfileData() {
     setProductLikes({ ...initialProductListState });
     setProductSaved({ ...initialProductListState });
     setProductWanted({ ...initialProductListState });
+    setCollectionFolders([]);
+    setDefaultCollectionTotal(0);
+    setDefaultCollectionCover(null);
+    setCollectionsLoaded(false);
   }, []);
 
   const loadUserInfo = useCallback(async () => {
@@ -259,6 +282,34 @@ export function useProfileData() {
       setContribLoaded(true);
     }
   }, [user?.userId]);
+
+  /**
+   * 加载「收藏」一级 tab 下产品收藏夹的数据：
+   *   - 用户自建收藏夹列表（含 itemCount / cover）
+   *   - 默认收藏的总件数 + 第一张商品封面用作 cover
+   *
+   * 帖子收藏 / 买手店收藏复用各自已有的 loader，这里只补充产品侧。
+   */
+  const loadCollectionFolders = useCallback(async (force = false) => {
+    if (!user?.userId) return;
+    if (!force && collectionsLoaded) return;
+    setCollectionsLoading(true);
+    try {
+      const [folders, defaultRes] = await Promise.all([
+        listMyCollections(),
+        listMyFavoritedStoreProducts(1, 1, { onlyDefault: true }),
+      ]);
+      setCollectionFolders(folders);
+      const firstProduct: StoreProduct | undefined = defaultRes.products?.[0];
+      setDefaultCollectionTotal(defaultRes.total || 0);
+      setDefaultCollectionCover(firstProduct?.images?.[0] ?? null);
+    } catch (err) {
+      console.error("Error loading collection folders:", err);
+    } finally {
+      setCollectionsLoading(false);
+      setCollectionsLoaded(true);
+    }
+  }, [user?.userId, collectionsLoaded]);
 
   const loadStoreActivity = useCallback(async () => {
     if (!user?.userId) return;
@@ -453,6 +504,14 @@ export function useProfileData() {
     productSaved,
     productWanted,
     loadProductActivity,
+    collectionsSubTab,
+    setCollectionsSubTab,
+    collectionFolders,
+    defaultCollectionTotal,
+    defaultCollectionCover,
+    collectionsLoading,
+    collectionsLoaded,
+    loadCollectionFolders,
     tabsData,
     setTabsData,
     updateTabState,

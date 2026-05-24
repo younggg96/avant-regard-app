@@ -303,12 +303,9 @@ const SettingsScreen = () => {
           icon: "pricetag-outline",
           onPress: () => (navigation as any).navigate("SellerListings"),
         },
-        {
-          id: "myCollections",
-          label: t("settings.myCollections"),
-          icon: "bookmark-outline",
-          onPress: () => (navigation as any).navigate("MyCollections"),
-        },
+        // 「我的收藏」入口已迁移到 Profile 一级 tab「收藏」, 这里不再重复挂入口。
+        // 旧的 MyCollections / UserCollectionDetail 路由仍然保留 (App.tsx),
+        // 给 Profile 中的「产品收藏夹」卡片点击作为详情页入口。
         {
           id: "myOrders",
           label: t("settings.myOrders"),

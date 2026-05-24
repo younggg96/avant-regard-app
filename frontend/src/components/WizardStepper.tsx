@@ -169,6 +169,7 @@ const makeStyles = (t: AppTheme) =>
     dotText: {
       fontSize: 11,
       color: t.colors.textSecondary,
+      lineHeight: 12,
     },
     dotTextActive: {
       color: t.colors.textInverted,

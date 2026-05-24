@@ -8,6 +8,8 @@ import {
   Platform,
   KeyboardAvoidingView,
   ActivityIndicator,
+  View,
+  TextInput,
 } from "react-native";
 import { Alert } from "../utils/Alert";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -20,10 +22,11 @@ import {
   Text,
   Pressable,
   HStack,
+  VStack,
   ScrollView,
   Input,
 } from "../components/ui";
-import { theme, useThemedStyles, type AppTheme, useAppTheme } from "../theme";
+import { useThemedStyles, type AppTheme, useAppTheme } from "../theme";
 import ScreenHeader from "../components/ScreenHeader";
 import ImageGridSelector from "../components/ImageGridSelector";
 import ImagePreviewModal from "../components/ImagePreviewModal";
@@ -295,329 +298,303 @@ const SubmitStoreScreen = () => {
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="interactive"
         >
-          {/* 提示信息 */}
-          <Box mx="$md" mt="$md" mb="$lg" p="$md" style={{ backgroundColor: theme.colors.gray50 }} borderRadius="$md">
-            <HStack alignItems="center" gap="$sm">
-              <Ionicons
-                name="information-circle"
-                size={20}
-                color={theme.colors.gray500}
-              />
-              <Text style={{ color: theme.colors.gray500 }} fontSize="$sm" flex={1} lineHeight={20}>
-                {t("storeSubmit.description")}
-              </Text>
-            </HStack>
-          </Box>
-
-          {/* 基本信息 */}
-          <Box mx="$md" mb="$md">
-            <Text fontSize="$md" fontWeight="$bold" style={{ color: theme.colors.black }}>
-              {t("storeSubmit.basicInfo")}
+          <Box px="$lg" pt="$md">
+            <Text fontSize="$sm" style={{ color: theme.colors.gray500 }} mb="$lg">
+              {t("storeSubmit.description")}
             </Text>
-          </Box>
 
-          {/* 店铺名称 */}
-          <Box mx="$md" mb="$md">
-            <HStack mb="$sm" alignItems="center">
-              <Text style={{ color: theme.colors.gray600 }} fontSize="$sm">
-                {t("storeSubmit.storeName")}
-              </Text>
-              <Text style={{ color: theme.colors.error }} fontSize="$sm" ml="$xs">
-                *
-              </Text>
-            </HStack>
-            <Input
-              value={name}
-              onChangeText={setName}
-              placeholder={t("storeSubmit.storeNamePlaceholder")}
-              placeholderTextColor={theme.colors.gray400}
-              variant="filled"
-              maxLength={100}
-            />
-          </Box>
-
-          {/* 国家选择 */}
-          <Box mx="$md" mb="$md">
-            <HStack mb="$sm" alignItems="center">
-              <Text style={{ color: theme.colors.gray600 }} fontSize="$sm">
-                {t("storeSubmit.country")}
-              </Text>
-              <Text style={{ color: theme.colors.error }} fontSize="$sm" ml="$xs">
-                *
-              </Text>
-            </HStack>
-            <HStack flexWrap="wrap" gap="$xs">
-              {COUNTRY_OPTIONS.map((c) => (
-                <Pressable
-                  key={c}
-                  px="$md"
-                  py="$sm"
-                  rounded="$sm"
-                  style={{ backgroundColor: country === c ? theme.colors.black : theme.colors.gray100 }}
-                  onPress={() => setCountry(c)}
-                >
-                  <Text
-                    fontSize="$sm"
-                    style={{ color: country === c ? theme.colors.white : theme.colors.black }}
-                    fontWeight={country === c ? "$medium" : "$normal"}
-                  >
-                    {c}
-                  </Text>
-                </Pressable>
-              ))}
-            </HStack>
-          </Box>
-
-          {/* 城市 */}
-          <Box mx="$md" mb="$md">
-            <HStack mb="$sm" alignItems="center">
-              <Text style={{ color: theme.colors.gray600 }} fontSize="$sm">
-                {t("storeSubmit.city")}
-              </Text>
-              <Text style={{ color: theme.colors.error }} fontSize="$sm" ml="$xs">
-                *
-              </Text>
-            </HStack>
-            <Input
-              value={city}
-              onChangeText={setCity}
-              placeholder={t("storeSubmit.cityPlaceholder")}
-              placeholderTextColor={theme.colors.gray400}
-              variant="filled"
-              maxLength={50}
-            />
-          </Box>
-
-          {/* 详细地址 */}
-          <Box mx="$md" mb="$md">
-            <HStack mb="$sm" alignItems="center">
-              <Text style={{ color: theme.colors.gray600 }} fontSize="$sm">
-                {t("storeSubmit.storeAddress")}
-              </Text>
-              <Text style={{ color: theme.colors.error }} fontSize="$sm" ml="$xs">
-                *
-              </Text>
-            </HStack>
-            <Input
-              value={address}
-              onChangeText={setAddress}
-              placeholder={t("storeSubmit.addressPlaceholder")}
-              placeholderTextColor={theme.colors.gray400}
-              variant="filled"
-              multiline
-              numberOfLines={3}
-              sx={{
-                minHeight: 80,
-                textAlignVertical: "top",
-              }}
-            />
-          </Box>
-
-          {/* 位置坐标 */}
-          <Box mx="$md" mb="$lg">
-            <HStack justifyContent="between" alignItems="center" mb="$xs">
-              <Text style={{ color: theme.colors.gray600 }} fontSize="$sm">
-                {t("storeSubmit.coordinates")}
-              </Text>
-              <Pressable
-                flexDirection="row"
-                alignItems="center"
-                onPress={getCurrentLocation}
-                disabled={isLocating}
-              >
-                {isLocating ? (
-                  <ActivityIndicator size="small" color={theme.colors.black} />
-                ) : (
-                  <Ionicons
-                    name="locate"
-                    size={16}
-                    color={theme.colors.black}
-                  />
-                )}
-                <Text fontSize="$sm" style={{ color: theme.colors.black }} fontWeight="$medium" ml="$xs">
-                  {t("storeSubmit.getLocation")}
+            <VStack gap="$lg">
+              {/* 店铺名称 */}
+              <Box>
+                <Text fontSize="$sm" style={{ color: theme.colors.gray600 }} mb="$xs">
+                  {t("storeSubmit.storeName")}
+                  <Text style={{ color: theme.colors.error }}> *</Text>
                 </Text>
-              </Pressable>
-            </HStack>
-            {latitude && longitude ? (
-              <Box style={{ backgroundColor: theme.colors.gray100 }} rounded="$md" p="$sm">
-                <Text fontSize="$sm" style={{ color: theme.colors.gray500 }}>
-                  {t("storeSubmit.coordinatesDisplay", { lat: latitude.toFixed(6), lng: longitude.toFixed(6) })}
-                </Text>
-              </Box>
-            ) : (
-              <Text fontSize="$xs" style={{ color: theme.colors.gray400 }}>
-                {t("storeSubmit.coordinatesHint")}
-              </Text>
-            )}
-          </Box>
-
-          {/* 详细信息 */}
-          <Box mx="$md" mb="$md">
-            <Text fontSize="$md" fontWeight="$bold" style={{ color: theme.colors.black }}>
-              {t("storeSubmit.detailInfo")}
-            </Text>
-          </Box>
-
-          {/* 风格标签 */}
-          <Box mx="$md" mb="$md">
-            <HStack mb="$sm" alignItems="center">
-              <Text style={{ color: theme.colors.gray600 }} fontSize="$sm">
-                {t("storeSubmit.styleLabel")}
-              </Text>
-            </HStack>
-            <HStack flexWrap="wrap" gap="$xs">
-              {STYLE_OPTIONS.map((style) => (
-                <Pressable
-                  key={style}
-                  px="$md"
-                  py="$sm"
-                  rounded="$sm"
-                  style={{ backgroundColor: selectedStyles.includes(style) ? theme.colors.black : theme.colors.gray100 }}
-                  onPress={() => toggleStyle(style)}
-                >
-                  <Text
-                    fontSize="$sm"
-                    style={{ color: selectedStyles.includes(style) ? theme.colors.white : theme.colors.black }}
-                    fontWeight={selectedStyles.includes(style) ? "$medium" : "$normal"}
-                  >
-                    {style}
-                  </Text>
-                </Pressable>
-              ))}
-            </HStack>
-          </Box>
-
-          {/* 销售品牌 — 下拉触发 + BrandSelectorModal */}
-          <Box mx="$md" mb="$md">
-            <HStack mb="$sm" alignItems="center">
-              <Text style={{ color: theme.colors.gray600 }} fontSize="$sm">
-                {t("storeSubmit.storeBrands")}
-              </Text>
-              <Text style={{ color: theme.colors.gray400 }} fontSize="$xs" ml="$xs">
-                {selectedBrands.length}/{MAX_BRANDS}
-              </Text>
-            </HStack>
-
-            <Pressable
-              onPress={() => setBrandSelectorVisible(true)}
-              style={{ backgroundColor: theme.colors.gray50 }}
-              rounded="$md"
-              px="$md"
-              h={48}
-              flexDirection="row"
-              alignItems="center"
-              justifyContent="space-between"
-            >
-              <HStack alignItems="center" gap="$sm" flex={1}>
-                <Ionicons
-                  name="search"
-                  size={18}
-                  color={theme.colors.gray400}
+                <Input
+                  value={name}
+                  onChangeText={setName}
+                  placeholder={t("storeSubmit.storeNamePlaceholder")}
+                  placeholderTextColor={theme.colors.gray400}
+                  variant="underlined"
+                  size="sm"
+                  maxLength={100}
                 />
-                <Text
-                  style={{ color: selectedBrands.length === 0 ? theme.colors.gray400 : theme.colors.black }}
-                  fontSize="$sm"
-                  flex={1}
-                  numberOfLines={1}
-                >
-                  {selectedBrands.length === 0
-                    ? t("storeSubmit.brandsDropdownPlaceholder")
-                    : t("storeSubmit.brandsSelectedSummary", {
-                        count: selectedBrands.length,
-                      })}
-                </Text>
-              </HStack>
-              <Ionicons
-                name="chevron-down"
-                size={18}
-                color={theme.colors.gray400}
-              />
-            </Pressable>
+              </Box>
 
-            {/* 已选品牌 chips */}
-            {selectedBrands.length > 0 ? (
-              <HStack flexWrap="wrap" mt="$sm" gap="$xs">
-                {selectedBrands.map((b) => (
+              {/* 国家选择 */}
+              <Box>
+                <Text fontSize="$sm" style={{ color: theme.colors.gray600 }} mb="$sm">
+                  {t("storeSubmit.country")}
+                  <Text style={{ color: theme.colors.error }}> *</Text>
+                </Text>
+                <HStack flexWrap="wrap" gap="$xs">
+                  {COUNTRY_OPTIONS.map((c) => {
+                    const active = country === c;
+                    return (
+                      <Pressable
+                        key={c}
+                        px="$md"
+                        py="$sm"
+                        rounded="$sm"
+                        style={[
+                          styles.chip,
+                          {
+                            backgroundColor: active
+                              ? theme.colors.black
+                              : theme.colors.gray100,
+                            borderColor: active
+                              ? theme.colors.black
+                              : theme.colors.gray200,
+                          },
+                        ]}
+                        onPress={() => setCountry(c)}
+                      >
+                        <Text
+                          fontSize="$sm"
+                          style={{
+                            color: active ? theme.colors.white : theme.colors.black,
+                          }}
+                          fontWeight={active ? "$medium" : "$normal"}
+                        >
+                          {c}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </HStack>
+              </Box>
+
+              {/* 城市 */}
+              <Box>
+                <Text fontSize="$sm" style={{ color: theme.colors.gray600 }} mb="$xs">
+                  {t("storeSubmit.city")}
+                  <Text style={{ color: theme.colors.error }}> *</Text>
+                </Text>
+                <Input
+                  value={city}
+                  onChangeText={setCity}
+                  placeholder={t("storeSubmit.cityPlaceholder")}
+                  placeholderTextColor={theme.colors.gray400}
+                  variant="underlined"
+                  size="sm"
+                  maxLength={50}
+                />
+              </Box>
+
+              {/* 详细地址 */}
+              <Box>
+                <Text fontSize="$sm" style={{ color: theme.colors.gray600 }} mb="$xs">
+                  {t("storeSubmit.storeAddress")}
+                  <Text style={{ color: theme.colors.error }}> *</Text>
+                </Text>
+                <View style={styles.textArea}>
+                  <TextInput
+                    style={styles.textAreaInput}
+                    value={address}
+                    onChangeText={setAddress}
+                    placeholder={t("storeSubmit.addressPlaceholder")}
+                    placeholderTextColor={theme.colors.gray400}
+                    multiline
+                    textAlignVertical="top"
+                  />
+                </View>
+              </Box>
+
+              {/* 位置坐标 */}
+              <Box>
+                <HStack justifyContent="between" alignItems="center" mb="$xs">
+                  <Text fontSize="$sm" style={{ color: theme.colors.gray600 }}>
+                    {t("storeSubmit.coordinates")}
+                  </Text>
                   <Pressable
-                    key={`brand-chip-${b.id}`}
-                    onPress={() => handleRemoveBrand(b.id)}
-                    style={{ backgroundColor: theme.colors.black }}
-                    rounded="$sm"
-                    px="$sm"
-                    py={4}
                     flexDirection="row"
                     alignItems="center"
+                    onPress={getCurrentLocation}
+                    disabled={isLocating}
                   >
-                    <Text style={{ color: theme.colors.white }} fontSize="$xs" mr="$xs">
-                      {b.name}
+                    {isLocating ? (
+                      <ActivityIndicator size="small" color={theme.colors.text} />
+                    ) : (
+                      <Ionicons name="locate" size={16} color={theme.colors.text} />
+                    )}
+                    <Text
+                      fontSize="$sm"
+                      style={{ color: theme.colors.text }}
+                      fontWeight="$medium"
+                      ml="$xs"
+                    >
+                      {t("storeSubmit.getLocation")}
                     </Text>
-                    <Ionicons
-                      name="close"
-                      size={12}
-                      color={theme.colors.white}
-                    />
                   </Pressable>
-                ))}
-              </HStack>
-            ) : null}
-          </Box>
+                </HStack>
+                {latitude && longitude ? (
+                  <Text fontSize="$sm" style={{ color: theme.colors.gray500 }}>
+                    {t("storeSubmit.coordinatesDisplay", {
+                      lat: latitude.toFixed(6),
+                      lng: longitude.toFixed(6),
+                    })}
+                  </Text>
+                ) : (
+                  <Text fontSize="$sm" style={{ color: theme.colors.gray400 }}>
+                    {t("storeSubmit.coordinatesHint")}
+                  </Text>
+                )}
+              </Box>
 
-          {/* 联系电话 */}
-          <Box mx="$md" mb="$md">
-            <HStack mb="$sm" alignItems="center">
-              <Text style={{ color: theme.colors.gray600 }} fontSize="$sm">
-                {t("storeSubmit.storePhone")}
-              </Text>
-            </HStack>
-            <Input
-              value={phone}
-              onChangeText={setPhone}
-              placeholder={t("storeSubmit.phonePlaceholder")}
-              placeholderTextColor={theme.colors.gray400}
-              variant="filled"
-              keyboardType="phone-pad"
-            />
-          </Box>
+              {/* 风格标签 */}
+              <Box>
+                <Text fontSize="$sm" style={{ color: theme.colors.gray600 }} mb="$sm">
+                  {t("storeSubmit.styleLabel")}
+                </Text>
+                <HStack flexWrap="wrap" gap="$xs">
+                  {STYLE_OPTIONS.map((style) => {
+                    const active = selectedStyles.includes(style);
+                    return (
+                      <Pressable
+                        key={style}
+                        px="$md"
+                        py="$sm"
+                        rounded="$sm"
+                        style={[
+                          styles.chip,
+                          {
+                            backgroundColor: active
+                              ? theme.colors.black
+                              : theme.colors.gray100,
+                            borderColor: active
+                              ? theme.colors.black
+                              : theme.colors.gray200,
+                          },
+                        ]}
+                        onPress={() => toggleStyle(style)}
+                      >
+                        <Text
+                          fontSize="$sm"
+                          style={{
+                            color: active ? theme.colors.white : theme.colors.black,
+                          }}
+                          fontWeight={active ? "$medium" : "$normal"}
+                        >
+                          {style}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </HStack>
+              </Box>
 
-          {/* 营业时间 */}
-          <Box mx="$md" mb="$md">
-            <HStack mb="$sm" alignItems="center">
-              <Text style={{ color: theme.colors.gray600 }} fontSize="$sm">
-                {t("storeSubmit.businessHours")}
-              </Text>
-            </HStack>
-            <Input
-              value={hours}
-              onChangeText={setHours}
-              placeholder={t("storeSubmit.hoursPlaceholder")}
-              placeholderTextColor={theme.colors.gray400}
-              variant="filled"
-              maxLength={100}
-            />
-          </Box>
+              {/* 销售品牌 */}
+              <Box>
+                <HStack mb="$xs" alignItems="center">
+                  <Text fontSize="$sm" style={{ color: theme.colors.gray600 }}>
+                    {t("storeSubmit.storeBrands")}
+                  </Text>
+                  <Text fontSize="$sm" style={{ color: theme.colors.gray400 }} ml="$xs">
+                    {selectedBrands.length}/{MAX_BRANDS}
+                  </Text>
+                </HStack>
 
-          {/* 店铺描述 */}
-          <Box mx="$md" mb="$md">
-            <HStack mb="$sm" alignItems="center">
-              <Text style={{ color: theme.colors.gray600 }} fontSize="$sm">
-                {t("storeSubmit.storeDescription")}
-              </Text>
-            </HStack>
-            <Input
-              value={description}
-              onChangeText={setDescription}
-              placeholder={t("storeSubmit.descriptionPlaceholder")}
-              placeholderTextColor={theme.colors.gray400}
-              variant="filled"
-              multiline
-              numberOfLines={4}
-              maxLength={500}
-              sx={{
-                minHeight: 80,
-                textAlignVertical: "top",
-              }}
-            />
+                <Pressable
+                  onPress={() => setBrandSelectorVisible(true)}
+                  style={styles.brandTrigger}
+                >
+                  <HStack alignItems="center" gap="$sm" flex={1}>
+                    <Ionicons name="search" size={18} color={theme.colors.gray400} />
+                    <Text
+                      style={{
+                        color:
+                          selectedBrands.length === 0
+                            ? theme.colors.gray400
+                            : theme.colors.text,
+                      }}
+                      fontSize="$sm"
+                      flex={1}
+                      numberOfLines={1}
+                    >
+                      {selectedBrands.length === 0
+                        ? t("storeSubmit.brandsDropdownPlaceholder")
+                        : t("storeSubmit.brandsSelectedSummary", {
+                            count: selectedBrands.length,
+                          })}
+                    </Text>
+                  </HStack>
+                  <Ionicons name="chevron-down" size={18} color={theme.colors.gray400} />
+                </Pressable>
+
+                {selectedBrands.length > 0 ? (
+                  <HStack flexWrap="wrap" mt="$sm" gap="$xs">
+                    {selectedBrands.map((b) => (
+                      <Pressable
+                        key={`brand-chip-${b.id}`}
+                        onPress={() => handleRemoveBrand(b.id)}
+                        style={{ backgroundColor: theme.colors.black }}
+                        rounded="$sm"
+                        px="$sm"
+                        py={4}
+                        flexDirection="row"
+                        alignItems="center"
+                      >
+                        <Text style={{ color: theme.colors.white }} fontSize="$xs" mr="$xs">
+                          {b.name}
+                        </Text>
+                        <Ionicons name="close" size={12} color={theme.colors.white} />
+                      </Pressable>
+                    ))}
+                  </HStack>
+                ) : null}
+              </Box>
+
+              {/* 联系电话 */}
+              <Box>
+                <Text fontSize="$sm" style={{ color: theme.colors.gray600 }} mb="$xs">
+                  {t("storeSubmit.storePhone")}
+                </Text>
+                <Input
+                  value={phone}
+                  onChangeText={setPhone}
+                  placeholder={t("storeSubmit.phonePlaceholder")}
+                  placeholderTextColor={theme.colors.gray400}
+                  variant="underlined"
+                  size="sm"
+                  keyboardType="phone-pad"
+                />
+              </Box>
+
+              {/* 营业时间 */}
+              <Box>
+                <Text fontSize="$sm" style={{ color: theme.colors.gray600 }} mb="$xs">
+                  {t("storeSubmit.businessHours")}
+                </Text>
+                <Input
+                  value={hours}
+                  onChangeText={setHours}
+                  placeholder={t("storeSubmit.hoursPlaceholder")}
+                  placeholderTextColor={theme.colors.gray400}
+                  variant="underlined"
+                  size="sm"
+                  maxLength={100}
+                />
+              </Box>
+
+              {/* 店铺描述 */}
+              <Box>
+                <Text fontSize="$sm" style={{ color: theme.colors.gray600 }} mb="$xs">
+                  {t("storeSubmit.storeDescription")}
+                </Text>
+                <View style={styles.textArea}>
+                  <TextInput
+                    style={styles.textAreaInput}
+                    value={description}
+                    onChangeText={setDescription}
+                    placeholder={t("storeSubmit.descriptionPlaceholder")}
+                    placeholderTextColor={theme.colors.gray400}
+                    multiline
+                    textAlignVertical="top"
+                    maxLength={500}
+                  />
+                </View>
+              </Box>
+            </VStack>
           </Box>
 
           {/* 店铺图片 */}
@@ -634,12 +611,14 @@ const SubmitStoreScreen = () => {
           />
 
           {/* 提交按钮 */}
-          <Box mx="$md" mb="$xl">
+          <Box px="$lg" mb="$xl" mt="$md">
             <Pressable
               w="100%"
               py="$md"
               rounded="$sm"
-              style={{ backgroundColor: isSubmitting ? theme.colors.gray200 : theme.colors.black }}
+              style={{
+                backgroundColor: isSubmitting ? theme.colors.gray200 : theme.colors.black,
+              }}
               alignItems="center"
               justifyContent="center"
               onPress={handleSubmit}
@@ -680,20 +659,47 @@ const SubmitStoreScreen = () => {
   );
 };
 
-const makeStyles = (t: AppTheme) => StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: t.colors.background,
-  },
-  keyboardAvoidingView: {
-    flex: 1,
-  },
-  content: {
-    flex: 1,
-  },
-  contentContainer: {
-    paddingBottom: 100,
-  },
-});
+const makeStyles = (t: AppTheme) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: t.colors.background,
+    },
+    keyboardAvoidingView: {
+      flex: 1,
+    },
+    content: {
+      flex: 1,
+    },
+    contentContainer: {
+      paddingBottom: 120,
+    },
+    textArea: {
+      borderWidth: 1,
+      borderColor: t.colors.gray200,
+      borderRadius: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      minHeight: 110,
+    },
+    textAreaInput: {
+      fontSize: 14,
+      color: t.colors.text,
+      minHeight: 90,
+      textAlignVertical: "top",
+    },
+    brandTrigger: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      borderBottomWidth: 1,
+      borderBottomColor: t.colors.inputBorder,
+      backgroundColor: t.colors.inputBackground,
+      paddingVertical: 8,
+    },
+    chip: {
+      borderWidth: 1,
+    },
+  });
 
 export default SubmitStoreScreen;

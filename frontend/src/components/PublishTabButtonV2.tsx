@@ -12,7 +12,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 
-import { theme, useThemedStyles, type AppTheme } from "../theme";
+import { useAppTheme, useThemedStyles, type AppTheme } from "../theme";
 import { useDiscoverTabStore } from "../store/discoverTabStore";
 import { useMainBottomTabStore } from "../store/mainBottomTabStore";
 import { useAuthStore } from "../store/authStore";
@@ -50,6 +50,7 @@ function navigateFromPublishButton(
 const PublishTabButtonV2: React.FC<{ onPress?: (event: unknown) => void }> = () => {
   const navigation = useNavigation();
   const { t } = useTranslation();
+  const theme = useAppTheme();
   const styles = useThemedStyles(makeStyles);
   const [sheetVisible, setSheetVisible] = useState(false);
   const discoverActiveTab = useDiscoverTabStore((s) => s.activeTab);
@@ -183,6 +184,7 @@ const SheetItem: React.FC<{
   subtitle: string;
   onPress: () => void;
 }> = ({ icon, title, subtitle, onPress }) => {
+  const theme = useAppTheme();
   const styles = useThemedStyles(makeStyles);
   return (
     <Pressable style={styles.sheetItem} onPress={onPress}>
@@ -212,11 +214,11 @@ const makeStyles = (t: AppTheme) =>
     button: {
       width: 56,
       height: 56,
-      borderRadius: 8,
-      backgroundColor: t.colors.accent,
+      borderRadius: 4,
+      backgroundColor: t.colors.text,
       justifyContent: "center",
       alignItems: "center",
-      shadowColor: t.colors.accent,
+      shadowColor: "#000",
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.3,
       shadowRadius: 8,

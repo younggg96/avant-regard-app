@@ -2,17 +2,25 @@ import { Post as DisplayPost } from "../../components/PostCard";
 import { StoreProduct } from "../../services/storeProductService";
 import type { OrderStatus } from "../../services/orderService";
 
-/** 一级 tab —— Profile 主页 3 个一级 tab: 笔记 / 购买 / 在售。
+/** 一级 tab —— Profile 主页 4 个一级 tab: 笔记 / 购买 / 在售 / 收藏。
  *
  *  笔记 = 用户原创内容侧 (PostsContent + 9 个 sub chip)
  *  购买 = 买家订单侧
  *  在售 = 卖家订单侧
+ *  收藏 = 用户的收藏聚合 (CollectionsContent + 3 个 sub chip:
+ *          帖子收藏 / 买手店收藏 / 产品收藏)
  *
- *  之前曾经设计成「笔记 + 交易 → (购买/出售)」两层结构, 但用户的
- *  Profile 主页其实只有这 3 个并列页面, 拍平成一级 tab 减少层级,
- *  也方便 TopTabBar 左对齐放在屏幕顶部 (类似小红书 / 闲鱼)。
+ *  之前的「我的收藏」入口位于 Settings → 商家中心, 与产品域绑定较深;
+ *  现在拍平为顶级 tab, 让用户在「我」页一眼能找到。
  */
-export type TopTabType = "notes" | "buying" | "selling";
+export type TopTabType = "notes" | "buying" | "selling" | "collections";
+
+/** 「收藏」一级 tab 下的二级 chip:
+ *  - posts    = 帖子收藏 (post_favorites)
+ *  - stores   = 买手店收藏 (buyer_store_favorites)
+ *  - products = 产品收藏 (store_product_favorites + user_collections 收藏夹)
+ */
+export type CollectionsSubTab = "posts" | "stores" | "products";
 
 /** 「笔记」一级 tab 下的二级 chip —— 历史叫法为 TabType, 保留兼容。 */
 export type TabType = "published" | "pending" | "draft" | "saved" | "liked" | "forum" | "archive" | "wishlist" | "storeActivity";

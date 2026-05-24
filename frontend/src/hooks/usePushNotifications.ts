@@ -94,7 +94,15 @@ export function usePushNotifications() {
         // 前台收到推送后立即刷新角标, 避免等 30s 轮询.
         useNotificationStore.getState().refreshUnreadCount();
         const data = notification.request.content.data as NotificationData | undefined;
-        if (data?.type === "system" || data?.navigateTo === "Chat") {
+        // 任意 system 通知或会跳 Chat / OrderDetail / StoreProductDetail 的 push
+        // 都可能涉及一条新 chat 消息（trade card），顺手刷新聊天角标。
+        if (
+          data?.type === "system" ||
+          data?.navigateTo === "Chat" ||
+          data?.navigateTo === "OrderDetail" ||
+          data?.navigateTo === "StoreProductDetail" ||
+          data?.navigateTo === "OrderReviews"
+        ) {
           useChatStore.getState().refreshUnreadCount();
         }
       }

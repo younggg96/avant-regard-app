@@ -421,6 +421,24 @@ async def batch_delete(
 # ==========================================================================
 
 
+@sellers_router.get("/me/listings/summary")
+async def my_listings_summary(
+    current_user_id: int = Depends(get_current_user),
+):
+    """当前用户各 listing 状态的数量汇总（卖家管理后台顶部统计卡片）。"""
+    merchant = store_merchant_service.get_merchant_by_user(current_user_id)
+    counts = store_product_service.seller_listings_status_summary(
+        seller_user_id=current_user_id,
+    )
+    if merchant and merchant.status == "APPROVED":
+        merchant_counts = store_product_service.seller_listings_status_summary(
+            merchant_id=merchant.id,
+        )
+        for key, value in merchant_counts.items():
+            counts[key] = counts.get(key, 0) + value
+    return success(counts)
+
+
 @sellers_router.get("/me/listings")
 async def list_my_listings(
     status: Optional[str] = Query(None, description="active / draft / reviewing / sold / offline / rejected"),

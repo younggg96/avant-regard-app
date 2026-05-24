@@ -6,7 +6,7 @@
  *     各 chip 激活态用一条短下划线表示；带 chevron-down 的 chip 按下时弹出单项快捷 Sheet。
  *   - 热门品牌 (`popularBrandsTitle`)：横向滚动圆形头像 + 品牌名（来自后端
  *     `GET /api/marketplace/popular-brands`，每天 UTC 日期为种子在前 30 名候选池
- *     里洗牌，每天首屏顺序不同；按「更多」展开 `MarketplaceAllBrandsSheet`，
+ *     里洗牌，每天首屏顺序不同；按「全部品牌」展开 `MarketplaceAllBrandsSheet`，
  *     展示平台所有已录入的品牌。
  *   - 大家都在看 (`popularPicksTitle`)：管理员后台手动策展的精选单品 4-up 横滑
  *     小卡片（来自 `GET /api/marketplace/curated`），点击进商品详情。
@@ -68,7 +68,7 @@ import { SCREEN_HEIGHT, SCREEN_WIDTH } from "../constants";
 // ====== 卡片尺寸 ======
 // 设计稿（PDF p.4 + 用户反馈 2026-05）参考点：
 //   - 大家都在看横滑卡片：4 张一屏，正方形主图，与品牌头像下面的间距 12pt
-//   - 热门品牌头像：6 个一屏，圆角 4pt 方形 48pt
+//   - 热门品牌头像：6 个一屏，圆形 48pt
 //   - 精选推荐：2 列瀑布流，主图比例 4:5
 //   - 圆角统一 4pt（CARD_RADIUS）：与 marketplace / discover 二期规范对齐。
 const SECTION_GUTTER = 10;
@@ -81,6 +81,7 @@ const LATEST_CARD_W =
   (SCREEN_WIDTH - PAGE_PADDING * 2 - SECTION_GUTTER * 3) / 4;
 const LATEST_CARD_IMG_H = LATEST_CARD_W;
 const BRAND_AVATAR_SIZE = 48;
+const BRAND_AVATAR_RADIUS = BRAND_AVATAR_SIZE / 2;
 const CARD_RADIUS = 4;
 
 // ====== Chip 配置 ======
@@ -431,7 +432,7 @@ const TradingTabContent: React.FC<Props> = ({ isActive, onScroll }) => {
               />
             </View>
             <Text style={styles.brandName} numberOfLines={1}>
-              {t("trading.marketplace.brandMore")}
+              {t("trading.marketplace.allBrandsTitle")}
             </Text>
           </Pressable>
         }
@@ -782,7 +783,7 @@ const makeStyles = (t: AppTheme) =>
     brandAvatarWrap: {
       width: BRAND_AVATAR_SIZE,
       height: BRAND_AVATAR_SIZE,
-      borderRadius: CARD_RADIUS,
+      borderRadius: BRAND_AVATAR_RADIUS,
       backgroundColor: t.colors.surface,
       borderWidth: 1,
       borderColor: "transparent",
@@ -797,7 +798,7 @@ const makeStyles = (t: AppTheme) =>
     brandAvatar: {
       width: BRAND_AVATAR_SIZE,
       height: BRAND_AVATAR_SIZE,
-      borderRadius: CARD_RADIUS,
+      borderRadius: BRAND_AVATAR_RADIUS,
       overflow: "hidden",
     },
     brandAvatarFallback: {

@@ -1137,6 +1137,23 @@ export const searchMarketplace = async (
 };
 
 /** GET /api/sellers/me/listings — 当前用户的卖家库存。 */
+export type ListingsStatusSummary = Record<
+  | "active"
+  | "draft"
+  | "reviewing"
+  | "sold"
+  | "offline"
+  | "rejected"
+  | "frozen",
+  number
+>;
+
+export const getMyListingsSummary = async (): Promise<ListingsStatusSummary> => {
+  return request<ListingsStatusSummary>(`/api/sellers/me/listings/summary`, {
+    method: "GET",
+  });
+};
+
 export const listMyListings = async (params: {
   status?: ProductStatus | "";
   sellerKind?: SellerKind | "";

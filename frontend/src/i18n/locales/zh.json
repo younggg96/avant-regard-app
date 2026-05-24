@@ -120,6 +120,7 @@
     "tabNotes": "笔记",
     "tabBuying": "购买",
     "tabSelling": "在售",
+    "tabCollections": "收藏",
     "published": "笔记",
     "pending": "审核中",
     "forum": "论坛",
@@ -180,6 +181,14 @@
     "noLikes": "暂无喜欢的商品",
     "noSaved": "暂无收藏的商品",
     "noWishlist": "愿望单是空的"
+  },
+  "profileCollections": {
+    "posts": "帖子",
+    "stores": "买手店",
+    "products": "商品",
+    "noPosts": "还没有收藏的笔记",
+    "noStores": "还没有收藏的买手店",
+    "noProducts": "还没有收藏的单品，去发现喜欢的商品吧"
   },
   "auth": {
     "login": "登录",
@@ -2258,7 +2267,11 @@
     "removedFromFolder": "已从收藏夹移出",
     "moveToOther": "移到其他收藏夹",
     "removeFavorite": "取消收藏",
-    "itemCountShort": "{{count}} 件"
+    "itemCountShort": "{{count}} 件",
+    "visibilityPublic": "公开",
+    "visibilityPrivate": "私密",
+    "setPublic": "设为公开",
+    "confirm": "完成"
   },
   "share": {
     "title": "分享",
@@ -2943,6 +2956,8 @@
     },
     "myListings": {
       "title": "我的在售",
+      "sectionTitle": "我的出售",
+      "tabAll": "全部",
       "tabActive": "在售",
       "tabDraft": "草稿",
       "tabReviewing": "审核中",
@@ -2950,6 +2965,28 @@
       "tabOffline": "已下架",
       "tabRejected": "已拒",
       "statusFrozen": "预订中",
+      "statActive": "在售中",
+      "statReviewing": "审核中",
+      "statOffline": "已下架",
+      "statSold": "已售出",
+      "publishItem": "发布单品",
+      "publishHint": "上架你的单品到 Marketplace",
+      "empty": "暂无相关单品",
+      "selectedCount": "已选 {{count}}",
+      "offline": "下架",
+      "delete": "删除",
+      "views": "浏览",
+      "favorites": "收藏",
+      "submittedAt": "提交于 {{date}}",
+      "sizeLabel": "尺码",
+      "colorLabel": "颜色",
+      "actionEdit": "编辑",
+      "actionDelist": "下架",
+      "actionDelete": "删除",
+      "actionView": "查看详情",
+      "singleOfflineSuccess": "已下架",
+      "singleDeleteSuccess": "已删除",
+      "manageA11y": "管理在售",
       "offlineSuccess": "已下架 {{count}} 件",
       "deleteSuccess": "已删除 {{count}} 件"
     },

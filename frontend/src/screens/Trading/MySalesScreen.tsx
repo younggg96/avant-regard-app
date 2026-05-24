@@ -21,6 +21,8 @@ import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 
+import { OptimizedImage } from "../../components/ui/OptimizedImage";
+import { ImageSize } from "../../utils/imageUtils";
 import {
   listMySales,
   Order,
@@ -127,44 +129,64 @@ export default function MySalesScreen() {
           data={orders}
           keyExtractor={(o) => String(o.id)}
           contentContainerStyle={{ padding: 12 }}
-          renderItem={({ item }) => (
-            <Pressable
-              style={styles.card}
-              onPress={() =>
-                navigation.navigate("OrderDetail", { orderId: item.id })
-              }
-            >
-              <View style={styles.cardHeader}>
-                <Text style={styles.orderNo}>#{item.orderNo}</Text>
-                <Text style={styles.statusText}>
-                  {formatOrderStatus(item.status)}
-                </Text>
-              </View>
-              <View style={styles.cardBody}>
-                <View style={styles.coverPlaceholder}>
-                  <Text style={{ color: theme.colors.gray300 }}>
-                    {t("trading.sales.imagePlaceholder")}
+          renderItem={({ item }) => {
+            const cover = item.product?.coverImage || null;
+            const title =
+              item.product?.title ||
+              t("trading.sales.productLabel", { id: item.productId });
+            return (
+              <Pressable
+                style={styles.card}
+                onPress={() =>
+                  navigation.navigate("OrderDetail", { orderId: item.id })
+                }
+              >
+                <View style={styles.cardHeader}>
+                  <Text style={styles.orderNo}>#{item.orderNo}</Text>
+                  <Text style={styles.statusText}>
+                    {formatOrderStatus(item.status)}
                   </Text>
                 </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.title}>
-                    {t("trading.sales.productLabel", { id: item.productId })}
-                  </Text>
-                  <Text style={styles.price}>
-                    {t("trading.sales.paidLabel", {
-                      price: formatPrice(item.paidPriceCents),
-                    })}
-                  </Text>
-                  <Text style={styles.meta}>
-                    {t("trading.sales.payoutLabel", {
-                      price: formatPrice(item.sellerPayoutCents),
-                    })}{" "}
-                    · {item.createdAt?.slice(0, 16)}
-                  </Text>
+                <View style={styles.cardBody}>
+                  <View style={styles.coverWrap}>
+                    {cover ? (
+                      <OptimizedImage
+                        uri={cover}
+                        size={ImageSize.THUMBNAIL}
+                        style={styles.cover}
+                        contentFit="cover"
+                        lazy
+                      />
+                    ) : (
+                      <View style={[styles.cover, styles.coverPlaceholder]}>
+                        <Ionicons
+                          name="image-outline"
+                          size={26}
+                          color={theme.colors.gray300}
+                        />
+                      </View>
+                    )}
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.title} numberOfLines={2}>
+                      {title}
+                    </Text>
+                    <Text style={styles.price}>
+                      {t("trading.sales.paidLabel", {
+                        price: formatPrice(item.paidPriceCents),
+                      })}
+                    </Text>
+                    <Text style={styles.meta}>
+                      {t("trading.sales.payoutLabel", {
+                        price: formatPrice(item.sellerPayoutCents),
+                      })}{" "}
+                      · {item.createdAt?.slice(0, 16)}
+                    </Text>
+                  </View>
                 </View>
-              </View>
-            </Pressable>
-          )}
+              </Pressable>
+            );
+          }}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }
@@ -221,11 +243,15 @@ const makeStyles = (t: AppTheme) =>
     orderNo: { color: t.colors.gray300, fontSize: 12 },
     statusText: { color: t.colors.text, fontSize: 12, fontWeight: "600" },
     cardBody: { flexDirection: "row", gap: 12 },
-    coverPlaceholder: {
+    coverWrap: {
       width: 72,
       height: 72,
       borderRadius: 8,
+      overflow: "hidden",
       backgroundColor: t.colors.skeleton,
+    },
+    cover: { width: "100%", height: "100%" },
+    coverPlaceholder: {
       alignItems: "center",
       justifyContent: "center",
     },

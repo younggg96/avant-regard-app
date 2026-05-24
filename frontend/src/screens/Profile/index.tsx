@@ -53,6 +53,7 @@ import { ProfileTabBar } from "./components/ProfileTabBar";
 import { TopTabBar } from "../../components/ui";
 import { TradingContent } from "./components/TradingContent";
 import { PostsContent } from "./components/PostsContent";
+import { CollectionsContent } from "./components/CollectionsContent";
 import { DeletePostDialog } from "./components/DeletePostDialog";
 import { AvatarPreviewModal } from "../../components/AvatarPreviewModal";
 import { MonthlyLotteryEntry } from "../../components/level";
@@ -127,6 +128,13 @@ const ProfileScreen = () => {
     productSaved,
     productWanted,
     loadProductActivity,
+    collectionsSubTab,
+    setCollectionsSubTab,
+    collectionFolders,
+    defaultCollectionTotal,
+    defaultCollectionCover,
+    collectionsLoading,
+    loadCollectionFolders,
     tabsData,
     setTabsData,
     resetTabsData,
@@ -217,6 +225,19 @@ const ProfileScreen = () => {
       fetchTabData(activeTab);
     }
   }, [activeTab, user?.userId]);
+
+  // 「收藏」一级 tab —— 按需懒加载三类数据 (帖子收藏 / 店铺收藏 / 产品收藏夹)。
+  // 帖子收藏复用 saved 列表，店铺收藏复用 storeActivity，产品收藏夹独立 loader。
+  useEffect(() => {
+    if (topTab !== "collections") return;
+    if (collectionsSubTab === "posts") {
+      fetchTabData("saved");
+    } else if (collectionsSubTab === "stores") {
+      if (!storeActivityLoaded) loadStoreActivity();
+    } else if (collectionsSubTab === "products") {
+      loadCollectionFolders();
+    }
+  }, [topTab, collectionsSubTab, user?.userId, storeActivityLoaded]);
 
   useFocusEffect(
     useCallback(() => {
@@ -542,6 +563,7 @@ const ProfileScreen = () => {
               { id: "notes", label: t("profile.tabNotes") },
               { id: "buying", label: t("profile.tabBuying") },
               { id: "selling", label: t("profile.tabSelling") },
+              { id: "collections", label: t("profile.tabCollections") },
             ]}
             activeTab={topTab}
             onTabPress={setTopTab}
@@ -617,6 +639,7 @@ const ProfileScreen = () => {
               { id: "notes", label: t("profile.tabNotes") },
               { id: "buying", label: t("profile.tabBuying") },
               { id: "selling", label: t("profile.tabSelling") },
+              { id: "collections", label: t("profile.tabCollections") },
             ]}
             activeTab={topTab}
             onTabPress={setTopTab}
@@ -674,6 +697,35 @@ const ProfileScreen = () => {
               />
             </Animated.View>
           </>
+        ) : topTab === "collections" ? (
+          <View
+            style={[
+              styles.postsContainer,
+              { minHeight: contentMinHeight, backgroundColor: appTheme.colors.background },
+            ]}
+          >
+            <CollectionsContent
+              collectionsSubTab={collectionsSubTab}
+              setCollectionsSubTab={setCollectionsSubTab}
+              postsFavData={tabsData.saved}
+              onPostPress={handlePostPress}
+              onLike={handleLike}
+              storeActivity={storeActivity}
+              storeActivityLoading={storeActivityLoading}
+              onStorePress={handleStoreActivityPress}
+              collectionFolders={collectionFolders}
+              defaultCollectionTotal={defaultCollectionTotal}
+              defaultCollectionCover={defaultCollectionCover}
+              collectionsLoading={collectionsLoading}
+              onProductFolderPress={(collectionId, title) =>
+                (navigation as any).navigate("UserCollectionDetail", {
+                  collectionId,
+                  title,
+                })
+              }
+              onFoldersChanged={() => loadCollectionFolders(true)}
+            />
+          </View>
         ) : (
           <View style={[styles.postsContainer, { minHeight: contentMinHeight, backgroundColor: appTheme.colors.background }]}>
             <TradingContent

@@ -130,14 +130,36 @@ class OfferService:
                 "parentOfferId": offer_row.get("parent_offer_id"),
                 "product": product or None,
             }
+            push_title = self._offer_push_title(offer_row.get("status") or "")
             chat.send_message(
                 conversation_id=conv_id,
                 sender_id=actor_user_id,
                 content=json.dumps(payload, ensure_ascii=False),
                 message_type="offer",
+                send_push=True,
+                push_title=push_title,
+                push_navigate_to="StoreProductDetail",
+                push_navigate_params={"productId": offer_row["product_id"]},
             )
         except Exception as e:
             print(f"[offer_service] send offer card failed: {e}")
+
+    @staticmethod
+    def _offer_push_title(status: str) -> str:
+        """给出价类 push 选一段中文标题（让 banner 一眼可读）。"""
+        if status == "pending":
+            return "收到新出价"
+        if status == "accepted":
+            return "出价已接受"
+        if status == "rejected":
+            return "出价已拒绝"
+        if status == "countered":
+            return "对方还价了"
+        if status == "withdrawn":
+            return "出价已撤回"
+        if status == "expired":
+            return "出价已过期"
+        return "出价更新"
 
     def _send_order_card(self, order, actor_user_id: int, counterpart_user_id: int) -> None:
         """offer 接受成单后，给买卖双方发一张 order_status 卡片。"""
@@ -155,6 +177,10 @@ class OfferService:
                 sender_id=actor_user_id,
                 content=json.dumps(payload, ensure_ascii=False),
                 message_type="order_status",
+                send_push=True,
+                push_title="出价已成单",
+                push_navigate_to="OrderDetail",
+                push_navigate_params={"orderId": order.id},
             )
         except Exception as e:
             print(f"[offer_service] send order card failed: {e}")
@@ -554,10 +580,11 @@ class OfferService:
         return enriched, total
 
     def expire_overdue(self) -> int:
+        """Cron：把过期 24h 未响应的 pending offer 标记为 expired，并给双方推送提醒。"""
         now = datetime.utcnow().isoformat()
         res = (
             self.db.table("offers")
-            .select("id")
+            .select("id, product_id, buyer_user_id, seller_user_id, seller_merchant_id, price_cents")
             .eq("status", "pending")
             .lt("expires_at", now)
             .execute()
@@ -569,6 +596,42 @@ class OfferService:
         self.db.table("offers").update(
             {"status": "expired", "resolved_at": now}
         ).in_("id", ids).execute()
+
+        # 通知双方：出价 24h 未响应已过期
+        try:
+            from app.services.notification_service import notification_service
+            from app.schemas.notification import NotificationType
+            for r in rows:
+                buyer_id = r.get("buyer_user_id")
+                seller_uid = r.get("seller_user_id")
+                if not seller_uid and r.get("seller_merchant_id"):
+                    try:
+                        from app.services.store_merchant_service import store_merchant_service
+                        merchant = store_merchant_service.get_merchant_by_id(r["seller_merchant_id"])
+                        if merchant:
+                            seller_uid = getattr(merchant, "userId", None)
+                    except Exception:
+                        seller_uid = None
+                product = self._get_product_brief(r.get("product_id")) or {}
+                product_title = product.get("title") or product.get("brand") or f"商品 #{r.get('product_id')}"
+                action_data = {
+                    "navigateTo": "StoreProductDetail",
+                    "navigateParams": {"productId": r.get("product_id")},
+                }
+                for uid in {buyer_id, seller_uid}:
+                    if not uid:
+                        continue
+                    notification_service.create_notification(
+                        user_id=uid,
+                        notification_type=NotificationType.SYSTEM,
+                        title="出价已过期",
+                        message=f"「{product_title}」的出价 24 小时内未响应，已自动过期",
+                        action_data=action_data,
+                        send_push=True,
+                    )
+        except Exception as e:  # noqa: BLE001
+            print(f"[offer_service] notify offer expired failed: {e}")
+
         return len(ids)
 
 

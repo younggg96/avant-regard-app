@@ -265,7 +265,7 @@ const makeStyles = (t: AppTheme) =>
     productCard: {
       width: "48%",
       backgroundColor: t.colors.cardElevated,
-      borderRadius: 12,
+      borderRadius: t.borderRadius.sm,
       padding: 8,
       marginBottom: 12,
       borderWidth: StyleSheet.hairlineWidth,
@@ -274,7 +274,7 @@ const makeStyles = (t: AppTheme) =>
     productImage: {
       width: "100%",
       aspectRatio: 1,
-      borderRadius: 8,
+      borderRadius: t.borderRadius.sm,
       backgroundColor: t.colors.skeleton,
     },
     imagePlaceholder: {

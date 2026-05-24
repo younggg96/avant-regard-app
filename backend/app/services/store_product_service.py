@@ -17,7 +17,7 @@
     同样的 CommentsSection 组件。
 """
 
-from typing import Optional, List, Tuple, Iterable
+from typing import Optional, List, Tuple, Iterable, Dict
 from datetime import datetime
 import hashlib
 
@@ -869,6 +869,45 @@ class StoreProductService:
         rows = result.data or []
         total = result.count or 0
         return [self._format_product(r) for r in rows], total
+
+    def seller_listings_status_summary(
+        self,
+        *,
+        seller_user_id: Optional[int] = None,
+        merchant_id: Optional[int] = None,
+    ) -> Dict[str, int]:
+        """聚合卖家各 listing 状态的数量（卖家管理后台顶部统计卡片）。"""
+        statuses = (
+            "active",
+            "draft",
+            "reviewing",
+            "sold",
+            "offline",
+            "rejected",
+            "frozen",
+        )
+        counts: Dict[str, int] = {s: 0 for s in statuses}
+
+        def _accumulate(*, uid: Optional[int] = None, mid: Optional[int] = None) -> None:
+            q = self.db.table("store_products").select("status")
+            if uid is not None:
+                q = q.eq("seller_user_id", uid).eq("seller_kind", "individual")
+            if mid is not None:
+                q = q.eq("merchant_id", mid).eq("seller_kind", "merchant")
+            res = execute_with_retry(
+                lambda: q.execute(),
+                label="store_products.seller_listings_status_summary",
+            )
+            for row in res.data or []:
+                status = (row or {}).get("status")
+                if status in counts:
+                    counts[status] += 1
+
+        if seller_user_id is not None:
+            _accumulate(uid=seller_user_id)
+        if merchant_id is not None:
+            _accumulate(mid=merchant_id)
+        return counts
 
     def batch_set_offline(
         self,

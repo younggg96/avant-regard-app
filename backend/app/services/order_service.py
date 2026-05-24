@@ -173,14 +173,43 @@ class OrderService:
                     }
             if note:
                 payload["note"] = note
+            # 同时下发 push：让买卖双方都能在 App 关闭时被提醒（与微信 / 闲鱼一致）。
+            # title 走「卖家发货 / 买家付款」等业务化文案；点击跳订单详情。
+            push_title = self._status_push_title(order.status, sender_user_id == order.buyerUserId)
             chat.send_message(
                 conversation_id=conv_id,
                 sender_id=sender_user_id,
                 content=json.dumps(payload, ensure_ascii=False),
                 message_type="order_status",
+                send_push=True,
+                push_title=push_title,
+                push_navigate_to="OrderDetail",
+                push_navigate_params={"orderId": order.id},
             )
         except Exception as e:
             print(f"[orders] send order_status card failed: {e}")
+
+    @staticmethod
+    def _status_push_title(status: str, sender_is_buyer: bool) -> str:
+        """给 push 通知的 title 选一段更贴合「订单状态变化」的中文文案。
+
+        sender_is_buyer 表示触发动作的是买家（接收方就是卖家）。
+        """
+        if status == OrderStatus.PAID.value:
+            return "买家已付款"
+        if status == OrderStatus.SHIPPED.value:
+            return "卖家已发货"
+        if status == OrderStatus.DELIVERED.value:
+            return "包裹已签收"
+        if status == OrderStatus.COMPLETED.value:
+            return "交易已完成"
+        if status in (OrderStatus.REFUNDED.value, OrderStatus.REFUNDED_AUTO.value):
+            return "订单已退款"
+        if status == OrderStatus.SETTLED.value:
+            return "款项已结算"
+        if status == OrderStatus.PENDING_PAYMENT.value:
+            return "有新订单待付款"
+        return "订单状态更新"
 
     def _resolve_seller_user_id(self, order_row: dict) -> Optional[int]:
         """处理买手店卖家 → 取 merchant.user_id。"""
@@ -205,25 +234,28 @@ class OrderService:
         *,
         actor_user_id: Optional[int] = None,
     ) -> None:
-        """订单状态变化时给相关方发卡片。
+        """订单状态变化时给相关方发卡片 + push（与微信 / 闲鱼一致的双向触达）。
 
+        - PENDING_PAYMENT（下单待支付）→ 发给卖家
         - PAID（买家支付完成）         → 发给卖家
         - SHIPPED（卖家发货）           → 发给买家
         - DELIVERED（签收）             → 同时发给买家 + 卖家（双方都需要知道已签收）
-        - COMPLETED / REFUNDED 系列     → 发给对手方
+        - COMPLETED（确认收货 / 自动确认）→ 双方都需要知道交易完成
+        - REFUNDED / REFUNDED_AUTO     → 双方都需要知晓终态
+        - SETTLED（T+3 结算到账）       → 双方知晓款项已结算
         """
         buyer_id = order.buyerUserId
         seller_id = self._resolve_seller_user_id(order_row)
         if not seller_id:
             return
 
-        # 这几类状态对买卖双方都关键，双方都得到一份卡片：
-        #   - DELIVERED：签收（系统或买家触发，双方需要知道开始 7 天确认窗口）
-        #   - REFUNDED / REFUNDED_AUTO：退款（客服仲裁或系统超时回收，双方需要知晓终态）
+        # 这几类状态对买卖双方都关键，双方都得到一份卡片 + push：
         if order.status in {
             OrderStatus.DELIVERED.value,
+            OrderStatus.COMPLETED.value,
             OrderStatus.REFUNDED.value,
             OrderStatus.REFUNDED_AUTO.value,
+            OrderStatus.SETTLED.value,
         }:
             self._send_order_status_card(
                 order, sender_user_id=buyer_id, recipient_user_id=seller_id
@@ -337,11 +369,15 @@ class OrderService:
         ).eq("id", hold_id).execute()
 
     def expire_holds_due(self) -> int:
-        """Cron：把过期未消费的 hold 标记为 released 并把商品状态恢复 active。返回处理数量。"""
+        """Cron：把过期未消费的 hold 标记为 released 并把商品状态恢复 active。返回处理数量。
+
+        买家会收到 push 提醒：「订单已超时取消」—— 否则用户长时间不付款回来发现
+        宝贝消失会一脸懵。
+        """
         now = datetime.utcnow().isoformat()
         res = (
             self.db.table("stock_holds")
-            .select("id, product_id")
+            .select("id, product_id, buyer_user_id")
             .is_("released_at", "null")
             .is_("consumed_at", "null")
             .lt("expires_at", now)
@@ -359,6 +395,30 @@ class OrderService:
         self.db.table("store_products").update(
             {"status": "active", "frozen_until": None, "current_buyer_id": None}
         ).in_("id", product_ids).eq("status", "frozen").execute()
+
+        # 给买家发 push（系统事件，没 chat 卡片可借力，直接走 in-app notification）
+        try:
+            from app.services.notification_service import notification_service
+            from app.schemas.notification import NotificationType
+            for r in rows:
+                buyer_id = r.get("buyer_user_id")
+                if not buyer_id:
+                    continue
+                product = self._product_brief(r.get("product_id")) or {}
+                title = product.get("title") or product.get("brand") or f"商品 #{r.get('product_id')}"
+                notification_service.create_notification(
+                    user_id=buyer_id,
+                    notification_type=NotificationType.SYSTEM,
+                    title="订单已超时取消",
+                    message=f"商品「{title}」未在规定时间内完成付款，已自动释放库存",
+                    action_data={
+                        "navigateTo": "StoreProductDetail",
+                        "navigateParams": {"productId": r.get("product_id")},
+                    },
+                    send_push=True,
+                )
+        except Exception as e:  # noqa: BLE001
+            print(f"[orders] notify hold expired failed: {e}")
         return len(ids)
 
     # ------------------------------------------------------------------
@@ -728,7 +788,7 @@ class OrderService:
             except Exception as e:
                 print(f"[orders] settle legacy failed: {e}")
 
-        # 关键状态变更自动推送 order_status 富媒体卡片
+        # 关键状态变更自动推送 order_status 富媒体卡片 + 同步触发 push
         if target in {
             OrderStatus.PAID,
             OrderStatus.SHIPPED,
@@ -736,6 +796,7 @@ class OrderService:
             OrderStatus.COMPLETED,
             OrderStatus.REFUNDED,
             OrderStatus.REFUNDED_AUTO,
+            OrderStatus.SETTLED,
         }:
             try:
                 self._notify_both_parties(updated, {**order, **update}, actor_user_id=actor_user_id)

@@ -160,7 +160,7 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
     paddingHorizontal: 10,
   },
   sheet: {
-    backgroundColor: t.colors.card,
+    backgroundColor: t.colors.cardElevated,
     borderRadius: 8,
     overflow: "hidden",
   },
@@ -197,7 +197,7 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   },
   cancelBtn: {
     marginTop: 8,
-    backgroundColor: t.colors.card,
+    backgroundColor: t.colors.cardElevated,
     borderRadius: 8,
     paddingVertical: 16,
     alignItems: "center",
@@ -209,7 +209,7 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   },
   cancelBtnHalf: {
     flex: 1,
-    backgroundColor: t.colors.card,
+    backgroundColor: t.colors.cardElevated,
     borderRadius: 8,
     paddingVertical: 16,
     alignItems: "center",

@@ -353,13 +353,13 @@ const makeStyles = (t: AppTheme) =>
       height: 96,
       borderRadius: 48,
       borderWidth: 1,
-      borderColor: t.colors.gray200,
+      borderColor: t.colors.gray300,
       alignItems: "center",
       justifyContent: "center",
     },
     zeroBadgeText: {
       ...t.typography.h2,
-      color: t.colors.gray200,
+      color: t.colors.text,
     },
     pendingChip: {
       flexDirection: "row",

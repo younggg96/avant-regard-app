@@ -44,6 +44,8 @@ from app.schemas.orders import (
 )
 from app.schemas.tracking import TrackingEventCreate
 from app.services.logistics import tracking_service
+from app.services.notification_service import notification_service
+from app.schemas.notification import NotificationType
 
 
 orders_router = APIRouter(prefix="/orders", tags=["交易系统 / 订单"])
@@ -291,6 +293,27 @@ async def submit_inspection(
             "submitted_by": user_id,
         }
     ).execute()
+
+    # 通知卖家：买家已提交验货记录，方便卖家提前了解收货情况
+    try:
+        seller_id = order_service._resolve_seller_user_id(  # type: ignore[attr-defined]
+            order_service.db.table("orders").select("*").eq("id", order_id).limit(1).execute().data[0]
+        )
+        if seller_id and seller_id != user_id:
+            notification_service.create_notification(
+                user_id=seller_id,
+                notification_type=NotificationType.SYSTEM,
+                title="买家已提交验货",
+                message=f"订单 #{order.orderNo} 的买家已提交验货记录，可在订单详情查看",
+                action_data={
+                    "navigateTo": "OrderDetail",
+                    "navigateParams": {"orderId": order_id},
+                },
+                send_push=True,
+            )
+    except Exception as e:  # noqa: BLE001
+        print(f"[orders] notify inspection failed: {e}")
+
     return success({"ok": True})
 
 

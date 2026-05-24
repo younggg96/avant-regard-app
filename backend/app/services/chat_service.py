@@ -331,8 +331,20 @@ class ChatService:
         sender_id: int,
         content: str,
         message_type: str = "text",
+        *,
+        send_push: bool = False,
+        push_title: Optional[str] = None,
+        push_navigate_to: Optional[str] = None,
+        push_navigate_params: Optional[Dict[str, Any]] = None,
     ) -> Optional[MessageResponse]:
-        """Send a message in a conversation."""
+        """Send a message in a conversation.
+
+        ``send_push=True`` 时同步给对端发一条 Expo push 通知（用 ``format_chat_message_preview``
+        生成 body），并把整条记录写入 in-app `notifications` 表，方便对方在通知列表里看到。
+        默认 ``push_navigate_to="Chat"`` —— 点击通知直达本会话。
+        程序化发送 trade card（订单 / 出价 / 售后等）请显式传 ``send_push=True``，
+        与用户手动发文字消息保持一致的触达体验。
+        """
         if not self._is_participant(conversation_id, sender_id):
             return None
 
@@ -359,6 +371,19 @@ class ChatService:
         msg = result.data[0]
         sender = self._get_user_brief(sender_id)
 
+        if send_push and other_id and other_id != sender_id:
+            self._dispatch_message_push(
+                recipient_id=other_id,
+                sender_id=sender_id,
+                sender_username=sender.get("username") or "",
+                conversation_id=conversation_id,
+                content=content,
+                message_type=message_type,
+                push_title=push_title,
+                push_navigate_to=push_navigate_to,
+                push_navigate_params=push_navigate_params,
+            )
+
         return MessageResponse(
             id=msg["id"],
             conversationId=msg["conversation_id"],
@@ -372,6 +397,49 @@ class ChatService:
             isDeleted=False,
             isMine=True,
         )
+
+    def _dispatch_message_push(
+        self,
+        *,
+        recipient_id: int,
+        sender_id: int,
+        sender_username: str,
+        conversation_id: int,
+        content: str,
+        message_type: str,
+        push_title: Optional[str],
+        push_navigate_to: Optional[str],
+        push_navigate_params: Optional[Dict[str, Any]],
+    ) -> None:
+        """把一条 trade card / 系统消息推送到对端（in-app + Expo push）。失败静默。
+
+        注意：本方法在 ``chat_service`` 内引用 ``notification_service``（反向方向 OK）；
+        为避免顶层循环依赖，函数体内延迟 import。
+        """
+        try:
+            from app.services.notification_service import notification_service
+            from app.schemas.notification import NotificationType
+
+            preview = format_chat_message_preview(content, message_type)
+            navigate_to = push_navigate_to or "Chat"
+            navigate_params = push_navigate_params or {"conversationId": conversation_id}
+            title = push_title or (sender_username or "新消息")
+            notification_service.create_notification(
+                user_id=recipient_id,
+                notification_type=NotificationType.SYSTEM,
+                title=title,
+                message=(preview or "")[:120],
+                action_data={
+                    "user_id": sender_id,
+                    "navigateTo": navigate_to,
+                    "navigateParams": navigate_params,
+                    "conversationId": conversation_id,
+                    "messageType": message_type,
+                },
+                send_push=True,
+            )
+        except Exception as e:  # noqa: BLE001
+            logger.warning("dispatch_message_push failed: %s", e)
 
     def mark_conversation_read(self, conversation_id: int, user_id: int) -> bool:
         """Mark all messages in a conversation as read for a user."""

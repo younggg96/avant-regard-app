@@ -120,6 +120,7 @@
     "tabNotes": "Notes",
     "tabBuying": "Buying",
     "tabSelling": "Selling",
+    "tabCollections": "Saved",
     "published": "Published",
     "pending": "Under Review",
     "forum": "Forum",
@@ -180,6 +181,14 @@
     "noLikes": "No liked products yet",
     "noSaved": "No saved products yet",
     "noWishlist": "No wishlist products yet"
+  },
+  "profileCollections": {
+    "posts": "Saved Posts",
+    "stores": "Saved Stores",
+    "products": "Saved Items",
+    "noPosts": "No saved posts yet",
+    "noStores": "No saved stores yet",
+    "noProducts": "No saved items yet — start exploring and save what you love"
   },
   "auth": {
     "login": "Log In",
@@ -2258,7 +2267,11 @@
     "removedFromFolder": "Removed from collection",
     "moveToOther": "Move to another collection",
     "removeFavorite": "Unsave",
-    "itemCountShort": "{{count}} items"
+    "itemCountShort": "{{count}} items",
+    "visibilityPublic": "Public",
+    "visibilityPrivate": "Private",
+    "setPublic": "Make public",
+    "confirm": "Done"
   },
   "share": {
     "title": "Share",
@@ -2943,6 +2956,8 @@
     },
     "myListings": {
       "title": "My Listings",
+      "sectionTitle": "My listings",
+      "tabAll": "All",
       "tabActive": "Active",
       "tabDraft": "Drafts",
       "tabReviewing": "In Review",
@@ -2950,6 +2965,28 @@
       "tabOffline": "Unlisted",
       "tabRejected": "Rejected",
       "statusFrozen": "Reserved",
+      "statActive": "Active",
+      "statReviewing": "In review",
+      "statOffline": "Unlisted",
+      "statSold": "Sold",
+      "publishItem": "List an item",
+      "publishHint": "List your item on the Marketplace",
+      "empty": "No listings yet",
+      "selectedCount": "Selected {{count}}",
+      "offline": "Delist",
+      "delete": "Delete",
+      "views": "Views",
+      "favorites": "Saves",
+      "submittedAt": "Submitted {{date}}",
+      "sizeLabel": "Size",
+      "colorLabel": "Color",
+      "actionEdit": "Edit",
+      "actionDelist": "Delist",
+      "actionDelete": "Delete",
+      "actionView": "View details",
+      "singleOfflineSuccess": "Item unlisted",
+      "singleDeleteSuccess": "Item deleted",
+      "manageA11y": "Manage listings",
       "offlineSuccess": "Unlisted {{count}} items",
       "deleteSuccess": "Deleted {{count}} items"
     },
