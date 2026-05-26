@@ -7,6 +7,7 @@ import {
   Modal,
   Pressable,
   Text as RNText,
+  ScrollView,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
@@ -19,17 +20,88 @@ import { useAuthStore } from "../store/authStore";
 import { usePublishListingStore } from "../store/publishListingStore";
 
 /** 从底部 Tab 的「+」按钮跳到根 Stack 上的发布相关页面 */
+type PublishButtonNav = {
+  getParent?: () => PublishButtonNav | undefined;
+  navigate: (name: string, params?: Record<string, unknown>) => void;
+};
+
 function navigateFromPublishButton(
-  navigation: ReturnType<typeof useNavigation>,
+  navigation: PublishButtonNav,
   screen: string,
   params?: Record<string, unknown>,
 ) {
   const rootNav = navigation.getParent?.() ?? navigation;
-  (rootNav as { navigate: (name: string, p?: Record<string, unknown>) => void }).navigate(
-    screen,
-    params,
-  );
+  rootNav.navigate(screen, params);
 }
+
+type PublishSheetMode = "trading" | "all";
+
+type PublishSheetItemDef = {
+  id: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  titleKey: string;
+  subtitleKey: string;
+};
+
+const TRADING_SHEET_ITEMS: PublishSheetItemDef[] = [
+  {
+    id: "listing",
+    icon: "pricetag-outline",
+    titleKey: "trading.publishSheetTrading.listingTitle",
+    subtitleKey: "trading.publishSheetTrading.listingSubtitle",
+  },
+  {
+    id: "repost",
+    icon: "copy-outline",
+    titleKey: "trading.publishSheetTrading.repostTitle",
+    subtitleKey: "trading.publishSheetTrading.repostSubtitle",
+  },
+];
+
+const ALL_SHEET_ITEMS: PublishSheetItemDef[] = [
+  {
+    id: "composer",
+    icon: "create-outline",
+    titleKey: "publish.publishSheetAll.composerTitle",
+    subtitleKey: "publish.publishSheetAll.composerSubtitle",
+  },
+  {
+    id: "forum",
+    icon: "chatbubbles-outline",
+    titleKey: "publish.publishSheetAll.forumTitle",
+    subtitleKey: "publish.publishSheetAll.forumSubtitle",
+  },
+  {
+    id: "store",
+    icon: "storefront-outline",
+    titleKey: "publish.publishSheetAll.storeTitle",
+    subtitleKey: "publish.publishSheetAll.storeSubtitle",
+  },
+  {
+    id: "listing",
+    icon: "pricetag-outline",
+    titleKey: "publish.publishSheetAll.listingTitle",
+    subtitleKey: "publish.publishSheetAll.listingSubtitle",
+  },
+  {
+    id: "repost",
+    icon: "copy-outline",
+    titleKey: "publish.publishSheetAll.repostTitle",
+    subtitleKey: "publish.publishSheetAll.repostSubtitle",
+  },
+  {
+    id: "brand",
+    icon: "ribbon-outline",
+    titleKey: "publish.publishSheetAll.brandTitle",
+    subtitleKey: "publish.publishSheetAll.brandSubtitle",
+  },
+  {
+    id: "ai",
+    icon: "sparkles",
+    titleKey: "publish.publishSheetAll.aiTitle",
+    subtitleKey: "publish.publishSheetAll.aiSubtitle",
+  },
+];
 
 /**
  * 发布按钮 V2
@@ -42,18 +114,36 @@ function navigateFromPublishButton(
  *       · Discover·买手店 → `SubmitStore`
  *       · Discover·推荐 / 关注 → `PublishV2Composer`（直接写笔记 / Lookbook）
  *       · Discover·交易 → 双选 Sheet（发布单品 / 从以往帖子转入）
+ *       · 未知子 Tab → 全量 Sheet（上述全部入口 + 品牌 + AI 发帖）
  *
  * V2 完全独立于 V1 流程，原 `PublishTypeScreen` 等屏仍然保留并可被
  * 别的入口（例如 PostCard 编辑、AI 预览页）继续 navigate 进去。
  */
 
 const PublishTabButtonV2: React.FC<{ onPress?: (event: unknown) => void }> = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation() as PublishButtonNav;
   const { t } = useTranslation();
   const theme = useAppTheme();
   const styles = useThemedStyles(makeStyles);
   const [sheetVisible, setSheetVisible] = useState(false);
+  const [sheetMode, setSheetMode] = useState<PublishSheetMode>("trading");
   const discoverActiveTab = useDiscoverTabStore((s) => s.activeTab);
+
+  const openSheet = (mode: PublishSheetMode) => {
+    setSheetMode(mode);
+    setSheetVisible(true);
+  };
+
+  const closeSheet = () => setSheetVisible(false);
+
+  const ensureLoggedIn = (messageKey: string): boolean => {
+    const { user } = useAuthStore.getState();
+    if (!user?.userId) {
+      Alert.alert(t("common.hint"), t(messageKey));
+      return false;
+    }
+    return true;
+  };
 
   // 中央「+」按钮：按当前 Discover 子 Tab 分流到对应发布流程。
   const handlePress = () => {
@@ -92,40 +182,51 @@ const PublishTabButtonV2: React.FC<{ onPress?: (event: unknown) => void }> = () 
       return;
     }
     if (activeTab === "trading") {
-      setSheetVisible(true);
+      openSheet("trading");
       return;
     }
-    // 兜底：未知子 Tab 仍走写笔记 Composer
-    const { user } = useAuthStore.getState();
-    if (!user?.userId) {
-      Alert.alert(t("common.hint"), t("publish.loginRequired"));
-      return;
-    }
-    navigateFromPublishButton(navigation, "PublishV2Composer");
+    // 兜底：未知子 Tab → 展示全部可发布入口
+    openSheet("all");
   };
 
-  const handleSelectListing = () => {
-    setSheetVisible(false);
-    const { user } = useAuthStore.getState();
-    if (!user?.userId) {
-      Alert.alert(t("common.hint"), t("trading.publishSheet.loginRequired"));
-      return;
+  const handleSheetItemPress = (id: string) => {
+    closeSheet();
+    switch (id) {
+      case "composer":
+        if (!ensureLoggedIn("publish.loginRequired")) return;
+        navigateFromPublishButton(navigation, "PublishV2Composer");
+        break;
+      case "forum":
+        if (!ensureLoggedIn("publish.loginRequired")) return;
+        navigateFromPublishButton(navigation, "PublishV2ForumMode");
+        break;
+      case "store":
+        navigateFromPublishButton(navigation, "SubmitStore");
+        break;
+      case "listing":
+        if (!ensureLoggedIn("trading.publishSheet.loginRequired")) return;
+        usePublishListingStore.getState().reset({ sellerKind: "individual" });
+        navigateFromPublishButton(navigation, "PublishListingStep1");
+        break;
+      case "repost":
+        if (!ensureLoggedIn("trading.publishSheet.loginRequired")) return;
+        navigateFromPublishButton(navigation, "PublishFromPostPicker");
+        break;
+      case "brand":
+        if (!ensureLoggedIn("archive.loginToSubmitBrand")) return;
+        navigateFromPublishButton(navigation, "SubmitBrand");
+        break;
+      case "ai":
+        if (!ensureLoggedIn("publish.loginRequired")) return;
+        navigateFromPublishButton(navigation, "AIPostEntry");
+        break;
+      default:
+        break;
     }
-    // 重置 Wizard 状态后跳到 Step 1
-    usePublishListingStore.getState().reset({ sellerKind: "individual" });
-    navigateFromPublishButton(navigation, "PublishListingStep1");
   };
 
-  // PDF p.13 设计要点：从以往帖子转入 —— 让卖家把已有论坛帖 / Lookbook 一键转单品
-  const handleSelectRepost = () => {
-    setSheetVisible(false);
-    const { user } = useAuthStore.getState();
-    if (!user?.userId) {
-      Alert.alert(t("common.hint"), t("trading.publishSheet.loginRequired"));
-      return;
-    }
-    navigateFromPublishButton(navigation, "PublishFromPostPicker");
-  };
+  const sheetItems =
+    sheetMode === "trading" ? TRADING_SHEET_ITEMS : ALL_SHEET_ITEMS;
 
   return (
     <>
@@ -143,30 +244,32 @@ const PublishTabButtonV2: React.FC<{ onPress?: (event: unknown) => void }> = () 
         animationType="fade"
         transparent
         visible={sheetVisible}
-        onRequestClose={() => setSheetVisible(false)}
+        onRequestClose={closeSheet}
       >
-        <Pressable
-          style={styles.sheetBackdrop}
-          onPress={() => setSheetVisible(false)}
-        >
+        <Pressable style={styles.sheetBackdrop} onPress={closeSheet}>
           <Pressable style={styles.sheetContainer} onPress={() => {}}>
             <View style={styles.sheetHandle} />
-            <SheetItem
-              icon="pricetag-outline"
-              title={t("trading.publishSheetTrading.listingTitle")}
-              subtitle={t("trading.publishSheetTrading.listingSubtitle")}
-              onPress={handleSelectListing}
-            />
-            <SheetItem
-              icon="copy-outline"
-              title={t("trading.publishSheetTrading.repostTitle")}
-              subtitle={t("trading.publishSheetTrading.repostSubtitle")}
-              onPress={handleSelectRepost}
-            />
-            <Pressable
-              style={styles.sheetCancel}
-              onPress={() => setSheetVisible(false)}
+            {sheetMode === "all" ? (
+              <RNText style={styles.sheetTitle}>
+                {t("publish.publishSheetAll.title")}
+              </RNText>
+            ) : null}
+            <ScrollView
+              style={sheetMode === "all" ? styles.sheetScroll : undefined}
+              bounces={false}
+              showsVerticalScrollIndicator={sheetMode === "all"}
             >
+              {sheetItems.map((item) => (
+                <SheetItem
+                  key={item.id}
+                  icon={item.icon}
+                  title={t(item.titleKey)}
+                  subtitle={t(item.subtitleKey)}
+                  onPress={() => handleSheetItemPress(item.id)}
+                />
+              ))}
+            </ScrollView>
+            <Pressable style={styles.sheetCancel} onPress={closeSheet}>
               <View style={styles.sheetCancelInner}>
                 <Ionicons name="close" size={20} color={theme.colors.text} />
               </View>
@@ -244,6 +347,15 @@ const makeStyles = (t: AppTheme) =>
       borderRadius: 2,
       backgroundColor: t.colors.border,
       marginBottom: 12,
+    },
+    sheetTitle: {
+      fontSize: 17,
+      fontWeight: "600",
+      color: t.colors.text,
+      marginBottom: 4,
+    },
+    sheetScroll: {
+      maxHeight: 420,
     },
     sheetItem: {
       flexDirection: "row",
