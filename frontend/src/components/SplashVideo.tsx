@@ -41,8 +41,24 @@ export default function SplashVideo({ onFinish }: SplashVideoProps) {
   const hasFinishedRef = useRef(false);
 
   useEffect(() => {
+    console.log("[SplashVideo] mounted");
     checkFirstOpen();
   }, []);
+
+  // 无条件兜底:player / isFirstOpen 在最差情况下可能都不就绪
+  // (AsyncStorage 卡住, expo-video native player 初始化失败等),
+  // 此时 player-driven 的 hard limit 永远不会 setup, splash 会永远盖在
+  // 最上层。这里独立跑一个 timer, 与 player 状态完全解耦, 保证 UI 绝不
+  // 卡死;时长比 MAX_SPLASH_DURATION_MS 长一点, 让正常路径优先。
+  useEffect(() => {
+    const fallbackTimer = setTimeout(() => {
+      if (hasFinishedRef.current) return;
+      console.warn("[SplashVideo] fallback timer fired (player may be stuck)");
+      hasFinishedRef.current = true;
+      onFinish();
+    }, MAX_SPLASH_DURATION_MS + 2000);
+    return () => clearTimeout(fallbackTimer);
+  }, [onFinish]);
 
   const checkFirstOpen = async () => {
     try {

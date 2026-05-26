@@ -1334,8 +1334,29 @@ export default function App() {
   }, [updateUser, userId]);
 
   useEffect(() => {
-    async function prepare() {
+    console.log("[App] prepare() useEffect mounted");
+    let settled = false;
+    const settle = (reason: string) => {
+      if (settled) return;
+      settled = true;
+      console.log(`[App] settle via ${reason}`);
+      setFontsLoaded(true);
+      setAppIsReady(true);
+      // 不 await,避免 hideAsync 卡死阻塞 settle。
+      SplashScreen.hideAsync().catch(() => { });
+    };
+
+    // 硬性超时兜底:Font.loadAsync / initI18n 在某些边缘情况下(磁盘锁、
+    // i18next 内部 await、AsyncStorage 卡住等)可能既不 resolve 也不 reject,
+    // native splash 永远不被 hide,用户卡在启动图。4s 是字体 + i18n 在最差
+    // 网络/IO 下也应该完成的上限,超过就放弃等待,直接进入 App。
+    const hardTimeout = setTimeout(() => {
+      settle("hardTimeout(4s)");
+    }, 4000);
+
+    (async () => {
       try {
+        console.log("[App] starting Font.loadAsync + initI18n");
         await Promise.all([
           Font.loadAsync({
             "PlayfairDisplay-Regular": require("./assets/fonts/PlayfairDisplay-Regular.ttf"),
@@ -1344,16 +1365,16 @@ export default function App() {
           }),
           initI18n(),
         ]);
-        setFontsLoaded(true);
+        console.log("[App] Font + i18n done");
       } catch (error) {
-        console.log("Font loading failed, using system fonts:", error);
-        setFontsLoaded(true);
+        console.log("[App] Font / i18n init failed, using fallbacks:", error);
       } finally {
-        await SplashScreen.hideAsync().catch(() => { });
-        setAppIsReady(true);
+        clearTimeout(hardTimeout);
+        settle("prepare-finally");
       }
-    }
-    prepare();
+    })();
+
+    return () => clearTimeout(hardTimeout);
   }, []);
 
   // 初始化深度链接处理

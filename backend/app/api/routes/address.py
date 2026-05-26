@@ -20,7 +20,7 @@ from app.schemas.address import UserAddressCreate, UserAddressUpdate
 router = APIRouter(prefix="/me/addresses", tags=["交易系统 / 地址"])
 
 
-@router.get("/")
+@router.get("")
 async def list_my_addresses(user_id: int = Depends(get_current_user)):
     items = address_service.list_for_user(user_id)
     return success({"items": [it.dict() for it in items]})
@@ -32,7 +32,7 @@ async def get_my_default_address(user_id: int = Depends(get_current_user)):
     return success(item.dict() if item else None)
 
 
-@router.post("/")
+@router.post("")
 async def create_address(
     payload: UserAddressCreate,
     user_id: int = Depends(get_current_user),
