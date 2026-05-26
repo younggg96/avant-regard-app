@@ -3390,7 +3390,8 @@
       "savedTitle": "已保存",
       "savedMessage": "地址已保存",
       "saveFailed": "地址保存失败",
-      "loadFailed": "加载地址失败"
+      "loadFailed": "加载地址失败",
+      "serviceUnavailable": "地址服务尚未上线，请稍后重试或联系客服"
     },
     "orderDetail": {
       "headerTitle": "订单详情",

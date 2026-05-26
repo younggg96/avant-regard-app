@@ -34,6 +34,7 @@ import {
   UserAddress,
   UserAddressCreate,
 } from "../services/addressService";
+import { ApiError } from "../services/http";
 import { useAppTheme, useThemedStyles, type AppTheme } from "../theme";
 
 type FormMode =
@@ -55,8 +56,14 @@ export default function AddressBookScreen() {
     try {
       const list = await listMyAddresses();
       setItems(list);
-    } catch (e: any) {
-      Alert.alert(t("trading.addressBook.loadFailed"), e?.message ?? "");
+    } catch (e: unknown) {
+      const msg =
+        e instanceof ApiError && e.status === 404
+          ? t("trading.addressBook.serviceUnavailable")
+          : e instanceof Error
+            ? e.message
+            : "";
+      Alert.alert(t("trading.addressBook.loadFailed"), msg);
     } finally {
       setLoading(false);
     }

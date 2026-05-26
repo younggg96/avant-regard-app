@@ -3390,7 +3390,8 @@
       "savedTitle": "Saved",
       "savedMessage": "Address saved",
       "saveFailed": "Could not save address",
-      "loadFailed": "Could not load addresses"
+      "loadFailed": "Could not load addresses",
+      "serviceUnavailable": "Address service is not available yet. Please try again later."
     },
     "orderDetail": {
       "headerTitle": "Order Details",
