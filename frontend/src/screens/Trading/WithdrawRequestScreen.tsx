@@ -32,7 +32,7 @@ import {
   listPayoutAccounts,
   PayoutAccount,
 } from "../../services/kycService";
-import { formatPrice } from "../../services/storeProductService";
+import { useFormatPrice } from "../../utils/currency";
 import { useAppTheme, useThemedStyles, type AppTheme } from "../../theme";
 
 export default function WithdrawRequestScreen() {
@@ -40,6 +40,7 @@ export default function WithdrawRequestScreen() {
   const theme = useAppTheme();
   const styles = useThemedStyles(makeStyles);
   const { t } = useTranslation();
+  const formatPrice = useFormatPrice();
 
   const [balance, setBalance] = useState<SellerBalance | null>(null);
   const [accounts, setAccounts] = useState<PayoutAccount[]>([]);

@@ -31,6 +31,7 @@ import {
   useCurrencyStore,
   type CurrencyPreference,
 } from "../store/currencyStore";
+import { useExchangeRateStore } from "../store/exchangeRateStore";
 import {
   Box,
   Text,
@@ -173,6 +174,9 @@ const SettingsScreen = () => {
     // 离线 / 未登录场景下也能立即生效。
     setCurrencyPreference(nextCurrency);
     setShowCurrencyModal(false);
+    // 用户主动切币种 = 强信号 "我要看实时换算数字"，顺手 fire-and-forget 刷一下
+    // 最新汇率（已在 6h TTL 内则 refreshIfStale 会自己短路，不发请求）。
+    useExchangeRateStore.getState().refreshIfStale();
     if (!user?.userId) return;
     try {
       await userInfoService.updateCurrencyPreference(user.userId, nextCurrency);
@@ -392,6 +396,12 @@ const SettingsScreen = () => {
           label: t("trading.profile.walletEntry"),
           icon: "wallet-outline",
           onPress: () => (navigation as any).navigate("MyWallet"),
+        },
+        {
+          id: "addressBook",
+          label: t("trading.addressBook.title"),
+          icon: "location-outline",
+          onPress: () => (navigation as any).navigate("AddressBook"),
         },
         {
           id: "plusSubscribe",

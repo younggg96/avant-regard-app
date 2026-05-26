@@ -26,10 +26,10 @@ import { getStoresPaginated, BuyerStore } from "../services/buyerStoreService";
 import {
   searchProductsGlobal,
   StoreProduct,
-  formatPrice,
   getMarketplaceSearchSuggestions,
   type MarketplaceSearchSuggestion,
 } from "../services/storeProductService";
+import { useFormatPrice } from "../utils/currency";
 import { useAuthStore } from "../store/authStore";
 import { OptimizedImage } from "../components/ui/OptimizedImage";
 import { ImageSize } from "../utils/imageUtils";
@@ -51,6 +51,7 @@ const SearchScreen = () => {
   const navigation = useNavigation();
   const route = useRoute<any>();
   const { user } = useAuthStore();
+  const formatPrice = useFormatPrice();
 
   const allowedTypes = (route.params?.allowedTypes as SearchType[] | undefined) ?? [
     "posts",

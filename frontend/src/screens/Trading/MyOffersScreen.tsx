@@ -36,7 +36,7 @@ import {
   rejectOffer,
   withdrawOffer,
 } from "../../services/orderService";
-import { formatPrice } from "../../services/storeProductService";
+import { useFormatPrice } from "../../utils/currency";
 import { useAppTheme, useThemedStyles, type AppTheme } from "../../theme";
 import { AnimatedChip, chipRowStyle } from "../../components/ui";
 import { UserAvatar } from "../../components/ui/UserAvatar";
@@ -58,6 +58,7 @@ export default function MyOffersScreen() {
   const theme = useAppTheme();
   const styles = useThemedStyles(makeStyles);
   const { t } = useTranslation();
+  const formatPrice = useFormatPrice();
 
   const [mode, setMode] = useState<RoleMode>("outgoing");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");

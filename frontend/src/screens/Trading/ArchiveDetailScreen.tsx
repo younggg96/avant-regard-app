@@ -44,10 +44,8 @@ import {
   listArchiveHoldings,
   createArchiveHolding,
 } from "../../services/archivePlusService";
-import {
-  formatPrice,
-  parsePriceInputToCents,
-} from "../../services/storeProductService";
+import { parsePriceInputToCents } from "../../services/storeProductService";
+import { useFormatPrice } from "../../utils/currency";
 
 type HoldingStatus = "owned" | "lent" | "transferred" | "resold" | "returned";
 
@@ -59,6 +57,7 @@ const ArchiveDetailScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const route = useRoute<RouteProp<RouteParams, "ArchiveDetail">>();
   const { t } = useTranslation();
+  const formatPrice = useFormatPrice();
   const { archiveId } = route.params;
 
   const HOLDING_STATUS_LABELS = useMemo<Record<HoldingStatus, string>>(

@@ -47,8 +47,8 @@ import {
 } from "../../../services/buyerStoreService";
 import {
   StoreProduct,
-  formatPrice,
 } from "../../../services/storeProductService";
+import { useFormatPrice } from "../../../utils/currency";
 import {
   useStoreActivityStyles,
   useProfileStyles,
@@ -528,6 +528,7 @@ const ProductGridCard: React.FC<{ product: StoreProduct; onPress: () => void }> 
   onPress,
 }) => {
   const productGridStyles = useThemedStyles(makeProductGridStyles);
+  const formatPrice = useFormatPrice();
   const cover = product.images?.[0];
   const hasDiscount =
     product.discountPriceCents != null &&

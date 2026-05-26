@@ -24,10 +24,14 @@ import { request } from "./http";
  * 单位符号映射参考 `backend/app/schemas/store_product.py` 中 `currency` 字段，
  * 目前支持 CNY / USD。
  *
- * ⚠️ 这个函数按"源币种"原样展示，不会做汇率换算。如果想跟着用户
- * `preferred_currency` 偏好走（在 Settings → 币种 中切换），请改用
- * `useFormatPrice()`（src/utils/currency.ts）。新代码请优先用 hook 版本；
- * 这里保留是为了不一次性改掉 30+ 调用点。
+ * ⚠️ 这个函数按"源币种"原样展示，不会做汇率换算。**所有 UI 调用点已经迁移
+ * 到 `useFormatPrice()`**（src/utils/currency.ts），它会跟随用户在 Settings 里
+ * 选的 `preferred_currency` 走，并用 `exchangeRateStore` 的实时汇率换算。
+ *
+ * 这个旧版函数仅保留给：
+ *   - 后端日志 / 错误信息里需要按原币种打印金额的场景；
+ *   - 单元测试里固定 source currency 的断言。
+ * 在 React 组件 / 屏幕 / Modal 里直接用 `useFormatPrice()`，不要再 import 这个。
  */
 export const formatPrice = (
   priceCents: number | null | undefined,

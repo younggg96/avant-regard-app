@@ -157,6 +157,17 @@ class TrackingService:
 
             self._refresh_shipment_cache(shipment_id, inserted)
 
+            # 新轨迹意味着包裹恢复活动,清掉之前 detect_stuck_packages 打上的暂停标记。
+            try:
+                self.db.table("orders").update(
+                    {
+                        "tracking_stuck_since": None,
+                        "auto_confirm_paused_at": None,
+                    }
+                ).eq("id", order_id).neq("tracking_stuck_since", None).execute()
+            except Exception:
+                pass
+
             if event.status_code == TrackingStatus.DELIVERED:
                 # 走 order_service 现有的"DELIVERED 双方卡片 + push"流程
                 self._auto_mark_delivered(order_id)

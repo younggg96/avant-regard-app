@@ -182,9 +182,19 @@ class WalletService:
     # 写入：买家确认收货后调
     # ------------------------------------------------------------------
 
-    def credit_pending_for_order(self, order_id: int) -> Optional[Dict[str, Any]]:
+    def credit_pending_for_order(
+        self,
+        order_id: int,
+        *,
+        release_immediately: bool = False,
+    ) -> Optional[Dict[str, Any]]:
         """订单刚被买家确认 → 把卖家应收挂到 pending_cents（锁 3 天）。
         返回 pending_payouts 行（包含 release_at），供通知层用。
+
+        Args:
+            release_immediately: 仲裁路径(dispute resolved_release → SETTLED)走这里时
+                T+3 的等待已经被仲裁取代,把 `release_at` 设为现在,wallet release
+                cron 下一轮就会把它转入 available_cents。
         """
         # 已经写过就直接幂等返回
         existing = (
@@ -218,7 +228,7 @@ class WalletService:
         owner_kind = "user" if owner_user_id is not None else "merchant"
 
         now = datetime.utcnow()
-        release_at = now + timedelta(days=PENDING_RELEASE_DAYS)
+        release_at = now if release_immediately else now + timedelta(days=PENDING_RELEASE_DAYS)
 
         payload = {
             "order_id": order_id,
@@ -553,7 +563,71 @@ class WalletService:
         acct = row.get("payout_accounts")
         if isinstance(acct, list):
             acct = acct[0] if acct else None
+
+        # 通知卖家提现状态变更(PRD 「提现状态推送」)。
+        try:
+            self._notify_withdrawal_status(row, acct)
+        except Exception as e:
+            print(f"[wallet] notify withdrawal status failed: {e}")
+
         return self._format_withdrawal(row, acct)
+
+    def _notify_withdrawal_status(
+        self, withdrawal_row: Dict[str, Any], account: Optional[Dict[str, Any]]
+    ) -> None:
+        """提现申请状态变更时给卖家一条系统通知 + push。"""
+        from app.services.notification_service import notification_service
+        from app.schemas.notification import NotificationType
+
+        user_id = withdrawal_row.get("user_id")
+        if not user_id:
+            return
+        status = withdrawal_row.get("status")
+        amount_cents = withdrawal_row.get("amount_cents") or 0
+        currency = withdrawal_row.get("currency") or DEFAULT_CURRENCY
+        symbol = "¥" if currency == "CNY" else currency
+        amount_yuan = amount_cents / 100
+        last4 = ""
+        try:
+            no = (account or {}).get("account_no") or ""
+            last4 = no[-4:] if len(no) >= 4 else no
+        except Exception:
+            last4 = ""
+
+        title_map = {
+            "processing": "提现处理中",
+            "paid": "提现已到账",
+            "rejected": "提现未通过",
+        }
+        message_map = {
+            "processing": (
+                f"提现 {symbol}{amount_yuan:.2f} 已进入处理流程,"
+                f"通常 1-3 个工作日到账"
+            ),
+            "paid": (
+                f"{symbol}{amount_yuan:.2f} 已打到您尾号 {last4} 的账户,请注意查收"
+            ),
+            "rejected": (
+                f"提现 {symbol}{amount_yuan:.2f} 未通过,款项已退回可用余额。"
+                f"原因:{withdrawal_row.get('reject_reason') or '请联系客服'}"
+            ),
+        }
+        title = title_map.get(status)
+        if not title:
+            return
+
+        notification_service.create_notification(
+            user_id=user_id,
+            notification_type=NotificationType.SYSTEM,
+            title=title,
+            message=message_map.get(status, ""),
+            action_data={
+                "navigateTo": "MyWallet",
+                "withdrawalId": withdrawal_row.get("id"),
+                "status": status,
+            },
+            send_push=True,
+        )
 
     # ------------------------------------------------------------------
     # Helpers

@@ -42,7 +42,7 @@ import {
   PaymentProviderId,
   startPayment,
 } from "../../services/orderService";
-import { formatPrice } from "../../services/storeProductService";
+import { useFormatPrice } from "../../utils/currency";
 import { useAppTheme, useThemedStyles, type AppTheme } from "../../theme";
 
 type RouteParams = { Payment: { orderId: number } };
@@ -57,12 +57,19 @@ const PROVIDER_ICON: Record<
   mock: { name: "construct", color: "#9A9A9A" },
 };
 
+/**
+ * 库存锁定时长(分钟)。与后端 order_service.HOLD_TTL_MINUTES 保持一致。
+ * 到期后买家未付款,cron expire_holds_due 会把订单转 refunded_auto 并释放库存。
+ */
+const HOLD_TTL_MINUTES = 30;
+
 export default function PaymentScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<RouteProp<RouteParams, "Payment">>();
   const { orderId } = route.params;
   const { t } = useTranslation();
   const theme = useAppTheme();
+  const formatPrice = useFormatPrice();
   const styles = useThemedStyles(makeStyles);
 
   const [order, setOrder] = useState<Order | null>(null);
@@ -70,6 +77,35 @@ export default function PaymentScreen() {
   const [selected, setSelected] = useState<PaymentProviderId | null>(null);
   const [loading, setLoading] = useState(true);
   const [paying, setPaying] = useState(false);
+  const [remainingMs, setRemainingMs] = useState<number | null>(null);
+
+  // 支付倒计时:order.createdAt + 30 分钟。
+  // 到 0 时禁用 pay 按钮 + 显眼提示;实际状态推进由 cron 完成,UI 只是同步告警。
+  useEffect(() => {
+    if (!order?.createdAt) {
+      setRemainingMs(null);
+      return;
+    }
+    if (order.status !== "pending_payment") {
+      setRemainingMs(null);
+      return;
+    }
+    const deadline = new Date(order.createdAt).getTime() + HOLD_TTL_MINUTES * 60_000;
+    const tick = () => setRemainingMs(deadline - Date.now());
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [order?.createdAt, order?.status]);
+
+  const countdownExpired = remainingMs !== null && remainingMs <= 0;
+  const countdownLabel = (() => {
+    if (remainingMs === null) return null;
+    if (remainingMs <= 0) return "00:00";
+    const total = Math.floor(remainingMs / 1000);
+    const m = Math.floor(total / 60);
+    const s = total % 60;
+    return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  })();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -162,6 +198,28 @@ export default function PaymentScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll}>
+        {countdownLabel && !isPaid ? (
+          <View
+            style={[
+              styles.countdownBox,
+              countdownExpired && styles.countdownBoxExpired,
+            ]}
+          >
+            <Ionicons
+              name={countdownExpired ? "alert-circle" : "time-outline"}
+              size={16}
+              color={
+                countdownExpired ? theme.colors.error : theme.colors.text
+              }
+            />
+            <Text style={styles.countdownText}>
+              {countdownExpired
+                ? t("trading.payment.holdExpired")
+                : t("trading.payment.holdCountdown", { time: countdownLabel })}
+            </Text>
+          </View>
+        ) : null}
+
         <View style={styles.amountBlock}>
           <Text style={styles.amountLabel}>
             {t("trading.payment.amountLabel")}
@@ -239,10 +297,11 @@ export default function PaymentScreen() {
         <Pressable
           style={[
             styles.primaryBtn,
-            (paying || isPaid || !selected) && styles.primaryBtnDisabled,
+            (paying || isPaid || !selected || countdownExpired) &&
+              styles.primaryBtnDisabled,
           ]}
           onPress={handlePay}
-          disabled={paying || isPaid || !selected}
+          disabled={paying || isPaid || !selected || countdownExpired}
         >
           {paying ? (
             <ActivityIndicator color={theme.colors.textInverted} />
@@ -274,6 +333,28 @@ const makeStyles = (t: AppTheme) =>
     },
     headerTitle: { fontSize: 16, fontWeight: "600", color: t.colors.text },
     scroll: { padding: 16, paddingBottom: 140 },
+    countdownBox: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      backgroundColor: t.colors.cardElevated,
+      borderRadius: 8,
+      marginBottom: 12,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: t.colors.border,
+    },
+    countdownBoxExpired: {
+      borderColor: t.colors.error,
+      backgroundColor: t.colors.error + "10",
+    },
+    countdownText: {
+      flex: 1,
+      fontSize: 13,
+      color: t.colors.text,
+      fontWeight: "600",
+    },
     amountBlock: {
       alignItems: "center",
       paddingVertical: 32,

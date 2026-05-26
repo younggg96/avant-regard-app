@@ -62,6 +62,8 @@ from app.api.routes.wallet import (
     admin_wallet_router as admin_wallet_router,
     admin_kyc_router as admin_kyc_router,
 )
+from app.api.routes.address import router as address_router
+from app.api.routes.payment_webhooks import router as payment_webhooks_router
 from app.api.routes.trading_support import (
     support_router as trading_support_router,
     admin_support_router as admin_trading_support_router,
@@ -86,6 +88,7 @@ from app.api.routes.ai_prompts_admin import router as ai_prompts_admin_router
 # 导入缓存服务
 from app.services.cache_service import cache_service
 from app.services.maintenance_service import maintenance_service
+from app.services.scheduler_service import start_scheduler, stop_scheduler
 
 
 @asynccontextmanager
@@ -96,10 +99,16 @@ async def lifespan(app: FastAPI):
     
     # 连接 Redis
     cache_service.connect()
-    
+
+    # 启动后台调度器(订单/钱包/物流定时任务)。
+    # 通过 settings.ENABLE_BACKGROUND_SCHEDULER 控制,默认关闭便于本地调试,
+    # 生产环境只在选举出来的"主"实例打开,避免多副本重复执行。
+    start_scheduler()
+
     yield
-    
+
     # 关闭时执行
+    stop_scheduler()
     cache_service.disconnect()
     print("👋 Avant Regard API shutting down...")
 
@@ -313,6 +322,8 @@ app.include_router(wallet_router, prefix="/api")
 app.include_router(kyc_router, prefix="/api")
 app.include_router(admin_wallet_router, prefix="/api")
 app.include_router(admin_kyc_router, prefix="/api")
+app.include_router(address_router, prefix="/api")
+app.include_router(payment_webhooks_router, prefix="/api")
 app.include_router(trading_support_router, prefix="/api")
 app.include_router(admin_trading_support_router, prefix="/api")
 app.include_router(notification_router, prefix="/api")

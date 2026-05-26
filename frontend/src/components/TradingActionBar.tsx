@@ -20,9 +20,9 @@ import { Box, HStack, Pressable, Text, VStack } from "./ui";
 import { useAppTheme, useThemedStyles, type AppTheme } from "../theme";
 import {
   StoreProduct,
-  formatPrice,
   calculateExpectedPayout,
 } from "../services/storeProductService";
+import { useFormatPrice } from "../utils/currency";
 
 interface Props {
   product: StoreProduct;
@@ -46,6 +46,9 @@ const TradingActionBar: React.FC<Props> = ({
   const theme = useAppTheme();
   const styles = useThemedStyles(makeStyles);
   const { t } = useTranslation();
+  // 价格按用户偏好币种展示；用 product.currency 作为源币种走实时汇率换算。
+  const formatPriceHook = useFormatPrice();
+  const formatPrice = (cents: number) => formatPriceHook(cents, product.currency);
 
   const status = (product.status || "").toLowerCase();
   const isActive = status === "active";

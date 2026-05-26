@@ -30,7 +30,6 @@ import { Alert } from "../utils/Alert";
 import {
   batchDeleteListings,
   batchOfflineListings,
-  formatPrice,
   getMyListingsSummary,
   listMyListings,
   transitionListing,
@@ -39,6 +38,7 @@ import {
   type ProductStatus,
 } from "../services/storeProductService";
 import { usePublishListingStore } from "../store/publishListingStore";
+import { useFormatPrice } from "../utils/currency";
 
 const CARD_RADIUS = 4;
 const PAGE_SIZE = 20;
@@ -484,6 +484,7 @@ const ListingRow: React.FC<ListingRowProps> = ({
   const theme = useAppTheme();
   const styles = useThemedStyles(makeStyles);
   const badgeStyle = useStatusBadgeStyle(item.status as ProductStatus);
+  const formatPrice = useFormatPrice();
 
   const footerText =
     item.status === "active" && (item.viewCount > 0 || item.favoriteCount > 0)

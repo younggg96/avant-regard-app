@@ -91,10 +91,10 @@ import { LevelBadge } from "../components/level";
 import { levelService } from "../services/levelService";
 import { titlesShownOnProfile } from "./Profile/components/UserTitlesSection";
 import {
-  formatPrice,
   listUserPublicListings,
   type StoreProduct,
 } from "../services/storeProductService";
+import { useFormatPrice } from "../utils/currency";
 
 /** 他人主页一级 tab */
 type UserProfileTopTab = "notes" | "selling" | "wishlist" | "archive";
@@ -141,6 +141,7 @@ const UserProfileScreen = () => {
   const appTheme = useAppTheme();
   const styles = useThemedStyles(makeStyles);
   const profileLoadingGif = useProfileLoadingGif();
+  const formatPrice = useFormatPrice();
 
   // 1. 动态计算 Header 总高度 (刘海 + 44px)
   const headerTotalHeight = insets.top + HEADER_CONTENT_HEIGHT;

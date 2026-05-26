@@ -32,10 +32,8 @@ import { Post as ServicePost } from "../services/postService";
 import { BuyerStore, BuyerStoreDetail } from "../services/buyerStoreService";
 import { Brand } from "../services/brandService";
 import { UserInfo } from "../services/userInfoService";
-import {
-  formatPrice,
-  StoreProduct,
-} from "../services/storeProductService";
+import { StoreProduct } from "../services/storeProductService";
+import { useFormatPrice } from "../utils/currency";
 import {
   ShareContentType,
   generateShareUrl,
@@ -250,6 +248,11 @@ interface SharePreview {
 
 function resolvePreview(
   t: (key: string) => string,
+  // formatPrice 由组件通过 useFormatPrice() 注入，确保跟随用户币种偏好
+  formatPrice: (
+    priceCents: number | null | undefined,
+    sourceCurrency?: string | null,
+  ) => string,
   post?: Post | null,
   store?: ShareableStore | null,
   brand?: Brand | null,
@@ -353,6 +356,7 @@ export const ShareToChatModal: React.FC<ShareToChatModalProps> = ({
   onShareComplete,
 }) => {
   const { t } = useTranslation();
+  const formatPrice = useFormatPrice();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState<number | null>(null);
@@ -407,7 +411,7 @@ export const ShareToChatModal: React.FC<ShareToChatModalProps> = ({
     }
   };
 
-  const preview = resolvePreview(t, post, store, brand, show, user, product);
+  const preview = resolvePreview(t, formatPrice, post, store, brand, show, user, product);
 
   const shareUrl = preview
     ? generateShareUrl(preview.contentType, preview.contentId)

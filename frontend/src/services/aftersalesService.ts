@@ -231,8 +231,10 @@ export interface TradeReview {
   rating: number;
   payload?: Record<string, unknown> | null;
   comment?: string | null;
+  photos?: string[] | null;
   visible: boolean;
   submittedAt?: string | null;
+  autoClosedAt?: string | null;
 }
 
 export async function submitTradeReview(body: {
@@ -240,6 +242,7 @@ export async function submitTradeReview(body: {
   rating: number;
   payload?: Record<string, unknown>;
   comment?: string;
+  photos?: string[];
 }): Promise<TradeReview> {
   return request<TradeReview>("/api/trade-reviews", {
     method: "POST",

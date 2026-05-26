@@ -32,13 +32,14 @@ import {
   ArchiveItem,
   ArchiveAnalyticsPreview,
 } from "../../services/archivePlusService";
-import { formatPrice } from "../../services/storeProductService";
+import { useFormatPrice } from "../../utils/currency";
 
 const MyArchiveScreen: React.FC = () => {
   const theme = useAppTheme();
   const styles = useThemedStyles(makeStyles);
   const navigation = useNavigation<any>();
   const { t } = useTranslation();
+  const formatPrice = useFormatPrice();
 
   const [items, setItems] = useState<ArchiveItem[]>([]);
   const [analytics, setAnalytics] = useState<ArchiveAnalyticsPreview | null>(

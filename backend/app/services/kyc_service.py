@@ -4,7 +4,11 @@
 业务规则：
   - 必须 KYC.status == 'approved' 才能发起提款
   - 必须至少有一个 is_default = TRUE 的 payout_accounts
-  - 身份证号 / 卡号 等敏感字段 API 出参一律 mask
+  - 身份证号 / 卡号 等敏感字段:
+      * 入库前 Fernet 对称加密(`KYC_ENCRYPTION_KEY` 必须配置)
+      * API 出参一律 mask(只露 head/tail)
+  - 实名校验 / 银行卡四要素通过 VerifyProvider 抽象,
+    生产接阿里云,开发回落 mock(任何合法格式都通过)。
 """
 from __future__ import annotations
 
@@ -12,6 +16,8 @@ from typing import List, Optional
 from datetime import datetime
 
 from app.db.supabase import get_supabase_admin
+from app.core.crypto import encrypt_str, decrypt_str
+from app.services.verify import get_verify_provider
 from app.schemas.wallet import (
     KYCRecord,
     KYCSubmitRequest,
@@ -60,11 +66,14 @@ class KYCService:
     def _format_kyc(row: Optional[dict]) -> Optional[KYCRecord]:
         if not row:
             return None
+        # 兼容历史明文数据:decrypt_str 在解密失败(InvalidToken)时会原样返回,
+        # 因此对老库里没加密过的身份证号也能 mask 正确。
+        id_no_plain = decrypt_str(row.get("id_card_no") or "") or ""
         return KYCRecord(
             id=row.get("id"),
             userId=row["user_id"],
             realName=_mask_name(row.get("real_name") or ""),
-            idCardMasked=_mask_id_card(row.get("id_card_no") or ""),
+            idCardMasked=_mask_id_card(id_no_plain),
             idCardFrontUrl=row.get("id_card_front_url"),
             idCardBackUrl=row.get("id_card_back_url"),
             holderPhotoUrl=row.get("holder_photo_url"),
@@ -96,7 +105,8 @@ class KYCService:
         payload = {
             "user_id": user_id,
             "real_name": body.realName.strip(),
-            "id_card_no": body.idCardNo.strip(),
+            # 加密落库,API 出参再 _mask 给前端
+            "id_card_no": encrypt_str(body.idCardNo.strip()),
             "id_card_front_url": body.idCardFrontUrl,
             "id_card_back_url": body.idCardBackUrl,
             "holder_photo_url": body.holderPhotoUrl,
@@ -276,6 +286,99 @@ class KYCService:
         if not res.data or res.data[0]["user_id"] != user_id:
             raise ValueError("账户不存在")
         self.db.table("payout_accounts").delete().eq("id", account_id).execute()
+
+    # ------------------------------------------------------------------
+    # 自动审核(实名 二要素 / 银行卡 四要素)
+    # ------------------------------------------------------------------
+
+    def verify_identity_auto(
+        self, user_id: int, *, real_name: str, id_card_no: str
+    ) -> KYCRecord:
+        """二要素自动审核:阿里云通过即把 status 设为 approved,失败保持 pending。
+
+        前置:用户必须已经通过 submit() 提交过三张身份证照(走人工兜底);
+        本方法只是把二要素这一关自动化,通过后免去管理员人工 review 这一步。
+        """
+        provider = get_verify_provider()
+        result = provider.verify_id_card(name=real_name, id_no=id_card_no)
+
+        existing = (
+            self.db.table("seller_kyc")
+            .select("*")
+            .eq("user_id", user_id)
+            .limit(1)
+            .execute()
+        )
+        base_payload = {
+            "user_id": user_id,
+            "real_name": real_name.strip(),
+            "id_card_no": encrypt_str(id_card_no.strip()),
+            "submitted_at": datetime.utcnow().isoformat(),
+        }
+        if result.ok:
+            base_payload.update(
+                {
+                    "status": "approved",
+                    "reject_reason": None,
+                    "reviewed_at": datetime.utcnow().isoformat(),
+                }
+            )
+        else:
+            base_payload.update(
+                {
+                    "status": "pending" if result.status == "provider_error" else "rejected",
+                    "reject_reason": result.message or "实名校验未通过",
+                    "reviewed_at": None,
+                }
+            )
+
+        if existing.data:
+            self.db.table("seller_kyc").update(base_payload).eq(
+                "user_id", user_id
+            ).execute()
+        else:
+            self.db.table("seller_kyc").insert(base_payload).execute()
+
+        # 同步 seller_profiles.id_verified
+        try:
+            self.db.table("seller_profiles").update(
+                {
+                    "id_verified": result.ok,
+                    "id_verified_at": (
+                        datetime.utcnow().isoformat() if result.ok else None
+                    ),
+                }
+            ).eq("user_id", user_id).execute()
+        except Exception:
+            pass
+
+        return self.get(user_id) or KYCRecord(
+            userId=user_id, status=base_payload["status"]
+        )
+
+    def verify_bank_card4(
+        self,
+        user_id: int,
+        *,
+        holder_name: str,
+        id_card_no: str,
+        bank_no: str,
+        phone: str,
+    ) -> bool:
+        """银行卡四要素。绑定 payout_account 前调,通过才允许绑卡。
+
+        不写库,纯校验。落地后 create_payout_account 会拿同一组数据 + 真实姓名做双重保险。
+        """
+        provider = get_verify_provider()
+        result = provider.verify_bank_card4(
+            name=holder_name,
+            id_no=id_card_no,
+            bank_no=bank_no,
+            phone=phone,
+        )
+        if not result.ok:
+            raise ValueError(result.message or "银行卡四要素未通过")
+        return True
 
 
 kyc_service = KYCService()

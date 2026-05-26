@@ -32,7 +32,7 @@ import {
   AuthenticationPackage,
   AuthenticationOrder,
 } from "../../services/aftersalesService";
-import { formatPrice } from "../../services/storeProductService";
+import { useFormatPrice } from "../../utils/currency";
 import { uploadImageFromUri } from "../admin/adminUtils";
 import { useAppTheme, useThemedStyles, type AppTheme } from "../../theme";
 
@@ -41,6 +41,7 @@ export default function AuthenticationScreen() {
   const theme = useAppTheme();
   const styles = useThemedStyles(makeStyles);
   const { t } = useTranslation();
+  const formatPrice = useFormatPrice();
   const [packages, setPackages] = useState<AuthenticationPackage[]>([]);
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
   const [photos, setPhotos] = useState<string[]>([]);

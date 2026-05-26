@@ -73,12 +73,12 @@ import {
   createMerchantStoreProduct,
   deleteMerchantProductCategory,
   deleteMerchantStoreProduct,
-  formatPrice,
   getStoreProductCategories,
   listMerchantStoreProducts,
   parsePriceInputToCents,
   updateMerchantStoreProduct,
 } from "../services/storeProductService";
+import { useFormatPrice } from "../utils/currency";
 
 const PAGE_SIZE = 20;
 const MAX_PRODUCT_IMAGES = 9;
@@ -127,6 +127,7 @@ const MerchantProductsScreen: React.FC = () => {
   const navigation = useNavigation();
   const route = useRoute<RouteProp<RouteParams, "MerchantProducts">>();
   const merchantId = route.params?.merchantId;
+  const formatPrice = useFormatPrice();
 
   // ── 状态 ─────────────────────────────────────────────────────────────────
   const [merchant, setMerchant] = useState<StoreMerchant | null>(null);

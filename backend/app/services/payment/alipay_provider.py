@@ -15,9 +15,17 @@ from __future__ import annotations
 
 import os
 import uuid
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Mapping
+from urllib.parse import parse_qsl
 
-from .base import PaymentIntent, PaymentResult
+from .base import (
+    PaymentIntent,
+    PaymentResult,
+    WebhookEvent,
+    WEBHOOK_EVENT_PAYMENT_SUCCEEDED,
+    WEBHOOK_EVENT_PAYMENT_FAILED,
+    WEBHOOK_EVENT_REFUND_SUCCEEDED,
+)
 
 try:  # pragma: no cover - optional dep
     from alipay.aop.api.AlipayClientConfig import AlipayClientConfig  # type: ignore
@@ -128,4 +136,66 @@ class AlipayProvider:
             intent_id=intent_id,
             status="succeeded",
             raw={"refundAmountCents": amount_cents, "reason": reason, "stub": not self._live()},
+        )
+
+    def verify_webhook(
+        self,
+        *,
+        headers: Mapping[str, str],
+        body: bytes,
+    ) -> Optional[WebhookEvent]:
+        """支付宝异步通知 verify。
+
+        支付宝通知是 application/x-www-form-urlencoded,需要按官方文档拼串验签。
+        当前实现:
+          - 没装 SDK 或没配公钥 → 返回 None,生产路径拒掉
+          - 已装且 SDK 验签通过 → 把 trade_status / refund 信号映射成标准事件
+        """
+        if not self._live():
+            return None
+        try:
+            form = dict(parse_qsl(body.decode("utf-8")))
+        except Exception:
+            return None
+
+        # 真实环境必须用 alipay-sdk-python 验签:
+        # from alipay.aop.api.util.SignatureUtils import verify_with_rsa
+        # 这里保留接口,实际接入时把 verify_with_rsa(...) 接上即可。
+        # 没验签前一律不返回事件,避免被伪造请求推进订单状态。
+        try:  # pragma: no cover
+            from alipay.aop.api.util.SignatureUtils import verify_with_rsa  # type: ignore
+            sign = form.pop("sign", None)
+            sign_type = form.pop("sign_type", None)
+            if not sign or sign_type != "RSA2":
+                return None
+            sign_content = "&".join(
+                f"{k}={v}" for k, v in sorted(form.items()) if v != ""
+            )
+            ok = verify_with_rsa(self._public_key, sign_content.encode("utf-8"), sign)
+            if not ok:
+                return None
+        except Exception:  # pragma: no cover
+            return None
+
+        trade_status = form.get("trade_status")
+        if trade_status in ("TRADE_SUCCESS", "TRADE_FINISHED"):
+            evt = WEBHOOK_EVENT_PAYMENT_SUCCEEDED
+        elif form.get("refund_fee"):
+            evt = WEBHOOK_EVENT_REFUND_SUCCEEDED
+        elif trade_status == "TRADE_CLOSED":
+            evt = WEBHOOK_EVENT_PAYMENT_FAILED
+        else:
+            return None
+
+        try:
+            amount = int(round(float(form.get("total_amount") or 0) * 100))
+        except Exception:
+            amount = 0
+        return WebhookEvent(
+            provider=self.name,
+            event_type=evt,
+            intent_id=form.get("out_trade_no"),
+            amount_cents=amount,
+            currency="CNY",
+            raw=form,
         )

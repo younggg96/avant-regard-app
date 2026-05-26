@@ -13,11 +13,19 @@
 """
 from __future__ import annotations
 
+import json
 import os
 import uuid
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Mapping
 
-from .base import PaymentIntent, PaymentResult
+from .base import (
+    PaymentIntent,
+    PaymentResult,
+    WebhookEvent,
+    WEBHOOK_EVENT_PAYMENT_SUCCEEDED,
+    WEBHOOK_EVENT_PAYMENT_FAILED,
+    WEBHOOK_EVENT_REFUND_SUCCEEDED,
+)
 
 
 class WechatProvider:
@@ -119,3 +127,54 @@ class WechatProvider:
             status="succeeded",
             raw={"refundAmountCents": amount_cents, "reason": reason, "stub": not self._live()},
         )
+
+    def verify_webhook(
+        self,
+        *,
+        headers: Mapping[str, str],
+        body: bytes,
+    ) -> Optional[WebhookEvent]:
+        """微信 v3 通知验签。
+
+        v3 通知 body 是加密 JSON,需要用 APIv3 key 解密 (AEAD_AES_256_GCM)。
+        当前实现是骨架:
+          - 没接 wechatpayv3 SDK 时返回 None,生产拒掉
+          - 接上后 wxpay.callback(headers, body) 一步完成验签 + 解密
+        """
+        if not self._live():
+            return None
+        try:  # pragma: no cover
+            from wechatpayv3 import WeChatPay, WeChatPayType  # type: ignore
+            wxpay = WeChatPay(
+                wechatpay_type=WeChatPayType.APP,
+                mchid=self._mch_id,
+                private_key=self._private_key,
+                cert_serial_no=self._cert_serial,
+                apiv3_key=self._api_key,
+                appid=self._app_id,
+                notify_url=self._notify_url or "",
+            )
+            result = wxpay.callback(dict(headers), body)
+            if not result or result.get("event_type") not in {
+                "TRANSACTION.SUCCESS",
+                "REFUND.SUCCESS",
+            }:
+                return None
+            data = result.get("resource", {}) or {}
+            evt = (
+                WEBHOOK_EVENT_PAYMENT_SUCCEEDED
+                if result["event_type"] == "TRANSACTION.SUCCESS"
+                else WEBHOOK_EVENT_REFUND_SUCCEEDED
+            )
+            amount = int((data.get("amount") or {}).get("total") or 0)
+            return WebhookEvent(
+                provider=self.name,
+                event_type=evt,
+                intent_id=data.get("out_trade_no"),
+                amount_cents=amount,
+                currency=(data.get("amount") or {}).get("currency") or "CNY",
+                raw=result,
+            )
+        except Exception as e:  # pragma: no cover
+            print(f"[wechat] webhook verify failed: {e}")
+            return None

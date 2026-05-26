@@ -34,10 +34,10 @@ import {
   formatOrderStatus,
 } from "../../services/orderService";
 import {
-  formatPrice,
   getStoreProductDetail,
   StoreProduct,
 } from "../../services/storeProductService";
+import { useFormatPrice } from "../../utils/currency";
 import { OptimizedImage } from "../../components/ui/OptimizedImage";
 import { ImageSize } from "../../utils/imageUtils";
 import { useAuthStore } from "../../store/authStore";
@@ -137,6 +137,7 @@ export default function OrderDetailScreen() {
   const me = useAuthStore((s) => s.user);
   const { t } = useTranslation();
   const theme = useAppTheme();
+  const formatPrice = useFormatPrice();
   const styles = useThemedStyles(makeStyles);
 
   const [order, setOrder] = useState<Order | null>(null);

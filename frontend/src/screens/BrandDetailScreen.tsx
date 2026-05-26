@@ -38,10 +38,10 @@ import { PostCoverMedia } from "../components/PostCoverMedia";
 import { ImageSize } from "../utils/imageUtils";
 import {
   searchMarketplace,
-  formatPrice,
   type StoreProduct,
   type MarketplaceFilter,
 } from "../services/storeProductService";
+import { useFormatPrice } from "../utils/currency";
 import MarketplaceFilterSheet from "./Marketplace/MarketplaceFilterSheet";
 
 type TabType = "shows" | "posts" | "onsale";
@@ -65,6 +65,7 @@ const BrandDetailScreen = () => {
   const navigation = useNavigation();
   const { user } = useAuthStore();
   const params = route.params as RouteParams;
+  const formatPrice = useFormatPrice();
 
   // Handle different param formats
   const brandId = params.id || params.brandId;

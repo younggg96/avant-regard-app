@@ -26,9 +26,9 @@ import { Alert } from "../../utils/Alert";
 import {
   adminListReviewingListings,
   adminReviewListing,
-  formatPrice,
   type StoreProduct,
 } from "../../services/storeProductService";
+import { useFormatPrice } from "../../utils/currency";
 import { request } from "../../services/http";
 
 interface FeatureFlagsPayload {
@@ -45,6 +45,7 @@ const COMPACT_SWITCH_PROPS = Platform.select({
 const ProductReviewTab: React.FC = () => {
   const { t } = useTranslation();
   const theme = useAppTheme();
+  const formatPrice = useFormatPrice();
   const styles = useThemedStyles(makeStyles);
   const [items, setItems] = useState<StoreProduct[]>([]);
   const [loading, setLoading] = useState(false);

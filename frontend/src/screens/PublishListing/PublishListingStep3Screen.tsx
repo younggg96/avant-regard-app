@@ -28,13 +28,13 @@ import {
 import {
   calculateExpectedPayout,
   centsToPriceInput,
-  formatPrice,
   getBrandPriceRange,
   parsePriceInputToCents,
   PLATFORM_COMMISSION_BPS,
   suggestPriceRange,
   type BrandPriceRange,
 } from "../../services/storeProductService";
+import { useFormatPrice } from "../../utils/currency";
 import {
   makePublishListingFormStyles,
   PublishListingFeeNotice,
@@ -47,6 +47,7 @@ const PublishListingStep3Screen: React.FC = () => {
   const navigation = useNavigation<any>();
   const styles = useThemedStyles(makeStyles);
   const theme = useAppTheme();
+  const formatPrice = useFormatPrice();
   const form = usePublishListingStore();
   const patch = usePublishListingStore((s) => s.patch);
 

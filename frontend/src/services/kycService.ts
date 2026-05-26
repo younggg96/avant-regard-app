@@ -70,6 +70,35 @@ export async function submitKyc(body: KYCSubmitBody): Promise<KYCRecord> {
   });
 }
 
+/**
+ * 二要素自动审核(姓名 + 身份证号)。
+ * 通过即把 KYC.status 设为 approved,失败保持 pending 并带 rejectReason。
+ */
+export async function verifyIdentityAuto(body: {
+  realName: string;
+  idCardNo: string;
+}): Promise<KYCRecord> {
+  return request<KYCRecord>("/api/kyc/me/verify-identity", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+/**
+ * 银行卡四要素校验。绑卡前先调,通过才允许 createPayoutAccount。
+ */
+export async function verifyBankCard4(body: {
+  holderName: string;
+  idCardNo: string;
+  bankNo: string;
+  phone: string;
+}): Promise<{ ok: boolean }> {
+  return request<{ ok: boolean }>("/api/kyc/me/verify-bank-card", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
 export async function listPayoutAccounts(): Promise<{ items: PayoutAccount[] }> {
   return request<{ items: PayoutAccount[] }>("/api/kyc/me/payout-accounts");
 }

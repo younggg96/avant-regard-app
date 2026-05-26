@@ -111,8 +111,10 @@ import WalletLedgerScreen from "./src/screens/Trading/WalletLedgerScreen";
 import WithdrawalHistoryScreen from "./src/screens/Trading/WithdrawalHistoryScreen";
 import KycVerificationScreen from "./src/screens/Trading/KycVerificationScreen";
 import PayoutAccountsScreen from "./src/screens/Trading/PayoutAccountsScreen";
+import AddressBookScreen from "./src/screens/AddressBookScreen";
 // Aftersales (PRD Phase 5) Screens
-import DisputeOpenScreen from "./src/screens/Trading/DisputeOpenScreen";
+// DisputeOpenScreen 已不再挂载到 user-facing 导航（PRD 售后默认走 IM CS）。
+// 如需恢复管理员后台用,从 git 历史取出即可。
 import AuthenticationScreen from "./src/screens/Trading/AuthenticationScreen";
 import TradeReviewScreen from "./src/screens/Trading/TradeReviewScreen";
 import OrderReviewsScreen from "./src/screens/Trading/OrderReviewsScreen";
@@ -179,6 +181,7 @@ import {
 // Store
 import { useAuthStore } from "./src/store/authStore";
 import { useCurrencyStore } from "./src/store/currencyStore";
+import { useExchangeRateStore } from "./src/store/exchangeRateStore";
 
 // Providers
 import { ToastProvider } from "./src/components/ToastProvider";
@@ -1024,12 +1027,15 @@ function AppNavigator({
           component={PayoutAccountsScreen}
           options={{ headerShown: false }}
         />
-        {/* PRD Phase 5 · 售后 / 鉴定 / 双盲互评 */}
         <Stack.Screen
-          name="DisputeOpen"
-          component={DisputeOpenScreen}
+          name="AddressBook"
+          component={AddressBookScreen}
           options={{ headerShown: false }}
         />
+        {/* PRD Phase 5 · 售后 / 鉴定 / 双盲互评 */}
+        {/* DisputeOpen 屏幕已下线:用户售后统一走 IM 客服(OrderDetail 的"申请售后"
+            action sheet → contactSupportForOrderWithIssue),避免双入口造成跳转/状态不一致。
+            backend openDispute API 保留供管理员后台或未来引入正式仲裁流程时使用。 */}
         <Stack.Screen
           name="Authentication"
           component={AuthenticationScreen}
@@ -1374,6 +1380,27 @@ export default function App() {
     return () => {
       clearTimeout(kickoff);
       stopFeatureFlagsPolling();
+    };
+  }, [appIsReady]);
+
+  // 汇率刷新：冷启动 + 回到前台时按 TTL（6h）静默刷新一次。
+  //   - 拉失败保留旧值（AsyncStorage 里还有上次成功值），UI 永远不会拿到 NaN；
+  //   - 真实结算金额永远走后端 currency + cents，所以这里只影响"展示给买家看的"金额。
+  useEffect(() => {
+    if (!appIsReady) return;
+    const kickoff = setTimeout(() => {
+      useExchangeRateStore.getState().refreshIfStale();
+    }, 4000);
+
+    const sub = AppState.addEventListener("change", (next) => {
+      if (next === "active") {
+        useExchangeRateStore.getState().refreshIfStale();
+      }
+    });
+
+    return () => {
+      clearTimeout(kickoff);
+      sub.remove();
     };
   }, [appIsReady]);
 

@@ -40,3 +40,12 @@ openai==1.59.5
 # alibabacloud_tea_openapi 由 imageaudit 自带传递依赖 (>=0.3.16,<1.0.0),
 # 不要显式 pin,否则会跟 SDK 自己的版本约束冲突。
 alibabacloud_imageaudit20191230==2.0.6
+
+# 订单/钱包定时任务调度。lifespan 内启动 AsyncIOScheduler,
+# 替代「POST /api/admin/orders/scheduler/run」手动触发。
+# 通过 settings.ENABLE_BACKGROUND_SCHEDULER 关闭,便于本地调试或单测。
+apscheduler==3.11.0
+
+# 实名认证 / 身份证号字段 AES 加密 (Fernet)。
+# KYC_ENCRYPTION_KEY 未配置时服务层会拒绝写库,避免明文落盘。
+cryptography==44.0.0

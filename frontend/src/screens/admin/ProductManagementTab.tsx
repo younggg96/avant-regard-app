@@ -18,7 +18,6 @@ import {
   adminUpdateProduct,
   adminDeleteProduct,
   adminSetListingCurated,
-  formatPrice,
   centsToPriceInput,
   parsePriceInputToCents,
   type StoreProduct,
@@ -26,6 +25,7 @@ import {
   type StoreProductUpdateParams,
   type ProductStatus,
 } from "../../services/storeProductService";
+import { useFormatPrice } from "../../utils/currency";
 import { useSharedStyles } from "./adminStyles";
 import { pickAndUploadImage } from "./adminUtils";
 import {
@@ -118,6 +118,7 @@ const EMPTY_FORM: ProductForm = {
 const ProductManagementTab = () => {
   const { t } = useTranslation();
   const theme = useAppTheme();
+  const formatPrice = useFormatPrice();
   const styles = useThemedStyles(makeStyles);
   const sharedStyles = useSharedStyles();
 

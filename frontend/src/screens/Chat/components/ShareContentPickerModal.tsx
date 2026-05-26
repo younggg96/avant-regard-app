@@ -67,7 +67,7 @@ import {
   listMyOrders,
   formatOrderStatus,
 } from "../../../services/orderService";
-import { formatPrice } from "../../../services/storeProductService";
+import { useFormatPrice } from "../../../utils/currency";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 const MODAL_HEIGHT = Math.round(SCREEN_HEIGHT * 0.6);
@@ -134,6 +134,7 @@ export const ShareContentPickerModal: React.FC<ShareContentPickerModalProps> = (
   onSelect,
 }) => {
   const { t } = useTranslation();
+  const formatPrice = useFormatPrice();
   const currentUser = useAuthStore((s) => s.user);
   const currentUserId = currentUser?.userId;
   const styles = useThemedStyles(makeStyles);
@@ -555,7 +556,7 @@ export const ShareContentPickerModal: React.FC<ShareContentPickerModalProps> = (
         </TouchableOpacity>
       );
     },
-    [handleSelectOrder]
+    [handleSelectOrder, formatPrice]
   );
 
   const renderEmpty = useCallback(

@@ -23,7 +23,7 @@ import {
 } from "../../components/ui";
 import { useAppTheme, useThemedStyles, type AppTheme } from "../../theme";
 import { createOffer, counterOffer } from "../../services/orderService";
-import { formatPrice } from "../../services/storeProductService";
+import { useFormatPrice } from "../../utils/currency";
 
 type Mode = "create" | "counter";
 
@@ -51,6 +51,7 @@ const OfferModal: React.FC<Props> = ({
   const theme = useAppTheme();
   const styles = useThemedStyles(makeStyles);
   const { t } = useTranslation();
+  const formatPrice = useFormatPrice();
 
   const [priceText, setPriceText] = useState("");
   const [message, setMessage] = useState("");

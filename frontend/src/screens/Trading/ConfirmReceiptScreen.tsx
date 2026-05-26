@@ -30,10 +30,10 @@ import {
   Order,
 } from "../../services/orderService";
 import {
-  formatPrice,
   getStoreProductDetail,
   StoreProduct,
 } from "../../services/storeProductService";
+import { useFormatPrice } from "../../utils/currency";
 import { OptimizedImage } from "../../components/ui/OptimizedImage";
 import { ImageSize } from "../../utils/imageUtils";
 import { useAppTheme, useThemedStyles, type AppTheme } from "../../theme";
@@ -49,6 +49,7 @@ export default function ConfirmReceiptScreen() {
   const theme = useAppTheme();
   const styles = useThemedStyles(makeStyles);
   const { t } = useTranslation();
+  const formatPrice = useFormatPrice();
 
   const [order, setOrder] = useState<Order | null>(null);
   const [product, setProduct] = useState<StoreProduct | null>(null);

@@ -38,11 +38,11 @@ import {
 } from "../services/tradingExtrasService";
 import { listCollectionItems } from "../services/tradingExtrasService";
 import {
-  formatPrice,
   listMyFavoritedStoreProducts,
   unfavoriteStoreProduct,
   type StoreProduct,
 } from "../services/storeProductService";
+import { useFormatPrice } from "../utils/currency";
 
 type ParamList = {
   UserCollectionDetail: {
@@ -57,6 +57,7 @@ const UserCollectionDetailScreen: React.FC = () => {
   const theme = useAppTheme();
   const styles = useThemedStyles(makeStyles);
   const { t } = useTranslation();
+  const formatPrice = useFormatPrice();
 
   const { collectionId, title: paramTitle } = route.params || {
     collectionId: null,

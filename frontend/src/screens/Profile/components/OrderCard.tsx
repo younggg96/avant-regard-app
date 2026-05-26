@@ -28,7 +28,7 @@ import {
   OrderStatus,
   formatOrderStatus,
 } from "../../../services/orderService";
-import { formatPrice } from "../../../services/storeProductService";
+import { useFormatPrice } from "../../../utils/currency";
 
 type OrderRole = "buyer" | "seller";
 
@@ -139,6 +139,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({
   const theme = useAppTheme();
   const styles = useThemedStyles(makeStyles);
   const { t } = useTranslation();
+  const formatPrice = useFormatPrice();
 
   const product = order.product ?? null;
   const cover = product?.coverImage || null;

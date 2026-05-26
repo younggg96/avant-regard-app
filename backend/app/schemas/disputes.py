@@ -112,6 +112,7 @@ class TradeReviewCreate(BaseModel):
     rating: int = Field(..., ge=1, le=5)
     payload: Optional[Dict[str, Any]] = None  # {asDescribed:5, communication:5, packaging:4, shipping:5, tags:[...]}
     comment: Optional[str] = Field(None, max_length=1000)
+    photos: Optional[list[str]] = Field(default=None, max_length=3)
 
 
 class TradeReview(BaseModel):
@@ -123,5 +124,7 @@ class TradeReview(BaseModel):
     rating: int
     payload: Optional[Dict[str, Any]] = None
     comment: Optional[str] = None
+    photos: Optional[list[str]] = None
     visible: bool
     submittedAt: Optional[str] = None
+    autoClosedAt: Optional[str] = None

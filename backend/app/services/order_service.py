@@ -3,8 +3,12 @@ PRD 模块四 · 订单引擎核心服务。
 
 涵盖：
   - stock_holds：30 分钟库存锁（创建 / 释放 / 消费 / 过期回收）
+    过期回收时会同步取消同一 (product, buyer) 下仍处于 pending_payment 的订单，
+    避免「库存释放了但订单留下来污染待付款列表」的孤儿状态。
   - orders：状态机（pending_payment → paid → shipped → delivered → completed → settled）
-  - 价格快照与抽佣计算（Plus 6% / 普通 8%）
+  - 价格快照与抽佣计算（统一 1% 平台手续费，DEFAULT_COMMISSION_BPS=100）
+    历史上分过 Plus 6% / 普通 8%，migration 063 起统一为 1%；
+    `_commission_for_user` 保留作为未来差异化抽佣的 hook 点。
 
 支付通道通过 payment.factory.get_payment_provider() 获取，订单不直接依赖具体 SDK。
 """
@@ -371,8 +375,8 @@ class OrderService:
     def expire_holds_due(self) -> int:
         """Cron：把过期未消费的 hold 标记为 released 并把商品状态恢复 active。返回处理数量。
 
-        买家会收到 push 提醒：「订单已超时取消」—— 否则用户长时间不付款回来发现
-        宝贝消失会一脸懵。
+        同时把对应的 `pending_payment` 订单转 `refunded_auto`,避免买家钱包/订单
+        列表里留下永远停在「待付款」的孤儿订单。买家会收到一条系统通知。
         """
         now = datetime.utcnow().isoformat()
         res = (
@@ -395,6 +399,38 @@ class OrderService:
         self.db.table("store_products").update(
             {"status": "active", "frozen_until": None, "current_buyer_id": None}
         ).in_("id", product_ids).eq("status", "frozen").execute()
+
+        # 同步把对应的待付款订单转 refunded_auto。
+        # 由于 stock_holds 上没有 order_id 外键(MVP 阶段保留隐式关联),
+        # 这里按 (product_id, buyer_user_id) 反查;一个 hold 最多一个 pending_payment 订单。
+        cancelled_orders: list[int] = []
+        for r in rows:
+            try:
+                pending = (
+                    self.db.table("orders")
+                    .select("id")
+                    .eq("product_id", r["product_id"])
+                    .eq("buyer_user_id", r["buyer_user_id"])
+                    .eq("status", "pending_payment")
+                    .order("created_at", desc=True)
+                    .limit(1)
+                    .execute()
+                )
+                if not pending.data:
+                    continue
+                order_id = pending.data[0]["id"]
+                try:
+                    self.transition_status(
+                        order_id,
+                        OrderStatus.REFUNDED_AUTO,
+                        is_admin=True,
+                        reason="支付超时自动取消",
+                    )
+                    cancelled_orders.append(order_id)
+                except Exception as e:  # noqa: BLE001
+                    print(f"[orders] cancel pending order {order_id} failed: {e}")
+            except Exception as e:  # noqa: BLE001
+                print(f"[orders] lookup pending order for hold {r['id']} failed: {e}")
 
         # 给买家发 push（系统事件，没 chat 卡片可借力，直接走 in-app notification）
         try:
@@ -419,6 +455,12 @@ class OrderService:
                 )
         except Exception as e:  # noqa: BLE001
             print(f"[orders] notify hold expired failed: {e}")
+        if cancelled_orders:
+            print(
+                f"[orders] hold expiry cancelled {len(cancelled_orders)} pending orders: "
+                f"{cancelled_orders}",
+                flush=True,
+            )
         return len(ids)
 
     # ------------------------------------------------------------------
@@ -707,9 +749,19 @@ class OrderService:
         full = self.db.table("orders").select("*").eq("id", order_id).limit(1).execute()
         updated = self._format_order(full.data[0] if full.data else {**order, **update})
 
-        # 退款（人工或自动）若订单已结算到 pending_payouts，则反向冲账，
-        # 保证 sum(pending) 与 seller_balances.pending_cents 守恒。
+        # 退款(人工或自动)处理:
+        #   1) 调真实通道 refund(),让买家的钱真的回到原支付渠道(stub provider 默认成功);
+        #   2) 若订单已结算到 pending_payouts,则反向冲账,保证账本守恒;
+        # 注意:provider.refund() 失败不会阻塞状态机迁移——订单仍标 refunded,
+        # 失败的退款由后续 retry job / 客服处理,避免因通道抖动卡住整个状态切换。
         if target in (OrderStatus.REFUNDED, OrderStatus.REFUNDED_AUTO):
+            try:
+                self._issue_provider_refund(
+                    {**order, **update},
+                    reason=reason or "order_refund",
+                )
+            except Exception as e:
+                print(f"[orders] provider refund failed: {e}")
             try:
                 from app.services.wallet_service import wallet_service
                 wallet_service.reverse_pending_for_order(
@@ -787,6 +839,28 @@ class OrderService:
                 self._credit_seller_legacy(updated)
             except Exception as e:
                 print(f"[orders] settle legacy failed: {e}")
+
+            # Dispute resolved_release 路径下,订单从 DISPUTED → RESOLVED → SETTLED
+            # 跳过了 COMPLETED,credit_pending_for_order 不会被自动触发,
+            # 卖家钱包 pending_cents 就少计了。这里做一次幂等补偿:
+            # - 如果该订单尚未生成 pending_payouts,立刻补一条(release_at = 现在,
+            #   下一轮 wallet release cron 会把它划到 available_cents);
+            # - 如果已有 pending_payouts(说明走过 COMPLETED),什么都不做。
+            try:
+                from app.services.wallet_service import wallet_service
+                existing = (
+                    self.db.table("pending_payouts")
+                    .select("id")
+                    .eq("order_id", order_id)
+                    .limit(1)
+                    .execute()
+                )
+                if not existing.data:
+                    wallet_service.credit_pending_for_order(
+                        order_id, release_immediately=True
+                    )
+            except Exception as e:
+                print(f"[orders] settle backfill pending failed: {e}")
 
         # 关键状态变更自动推送 order_status 富媒体卡片 + 同步触发 push
         if target in {
@@ -1029,6 +1103,145 @@ class OrderService:
         )
 
     # ------------------------------------------------------------------
+    # Payment refund / webhook handling
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _is_synthetic_intent(intent_id: Optional[str]) -> bool:
+        """stub / mock intent_id 不需要也不能调用真实退款 API。"""
+        if not intent_id:
+            return True
+        return any(
+            intent_id.startswith(p)
+            for p in ("mock_", "stripe_stub_", "stripe_err_", "ali_", "wx_")
+        )
+
+    def _issue_provider_refund(
+        self, order_row: Dict[str, Any], *, reason: str
+    ) -> None:
+        """调真实支付通道退款。
+
+        - 没有 payment_intent_id 或是 mock/stub intent → 直接跳过(没真实扣款);
+        - 通道返回非 succeeded → 打日志并写一条 settlement_ledger 标记(metadata.pending=true),
+          交给后续 retry job / 人工处理;
+        - 通道 succeeded → 在 orders.payment_metadata.refund 里记录,方便对账。
+        """
+        intent_id = order_row.get("payment_intent_id")
+        if self._is_synthetic_intent(intent_id):
+            return
+        provider_name = order_row.get("payment_provider") or "mock"
+        provider = get_payment_provider_by_name(provider_name)
+        result = provider.refund(
+            intent_id,
+            amount_cents=order_row.get("paid_price_cents") or 0,
+            reason=reason,
+        )
+
+        # 把退款结果落到 payment_metadata 与 settlement_ledger 上,方便对账与排查。
+        metadata = order_row.get("payment_metadata") or {}
+        if not isinstance(metadata, dict):
+            metadata = {}
+        metadata.setdefault("refunds", []).append(
+            {
+                "provider": provider_name,
+                "intentId": intent_id,
+                "status": result.status,
+                "reason": reason,
+                "rawSummary": {k: v for k, v in (result.raw or {}).items() if k != "_raw"},
+            }
+        )
+        try:
+            self.db.table("orders").update(
+                {"payment_metadata": metadata}
+            ).eq("id", order_row["id"]).execute()
+        except Exception as e:
+            print(f"[orders] write refund metadata failed: {e}")
+
+        if result.status != "succeeded":
+            print(
+                f"[orders] provider {provider_name} refund returned {result.status} "
+                f"for order {order_row['id']}, will need manual retry",
+                flush=True,
+            )
+
+    def handle_payment_event(self, event: Any) -> None:
+        """支付 webhook 入口。把通道事件映射到订单状态机。
+
+        幂等约束:
+          - PAID 已存在 → succeeded 事件直接 no-op
+          - REFUNDED 已存在 → refund.succeeded 直接 no-op
+          - 找不到订单 → 跳过(可能是 webhook 在数据库恢复前到达,或 intent_id 不属于本系统)
+        """
+        from app.services.payment.base import (
+            WebhookEvent,
+            WEBHOOK_EVENT_PAYMENT_SUCCEEDED,
+            WEBHOOK_EVENT_PAYMENT_FAILED,
+            WEBHOOK_EVENT_REFUND_SUCCEEDED,
+        )
+
+        if not isinstance(event, WebhookEvent):
+            return
+        intent_id = event.intent_id
+        if not intent_id:
+            return
+        res = (
+            self.db.table("orders")
+            .select("*")
+            .eq("payment_intent_id", intent_id)
+            .limit(1)
+            .execute()
+        )
+        if not res.data:
+            print(f"[webhook] no order found for intent {intent_id}", flush=True)
+            return
+        order_row = res.data[0]
+        order_id = order_row["id"]
+
+        if event.event_type == WEBHOOK_EVENT_PAYMENT_SUCCEEDED:
+            if order_row["status"] in (
+                "paid",
+                "shipped",
+                "delivered",
+                "completed",
+                "settled",
+            ):
+                return  # already advanced
+            if order_row["status"] != "pending_payment":
+                print(
+                    f"[webhook] order {order_id} in {order_row['status']}, "
+                    f"cannot advance to paid"
+                )
+                return
+            self.transition_status(
+                order_id,
+                OrderStatus.PAID,
+                actor_user_id=order_row["buyer_user_id"],
+                is_admin=True,
+            )
+        elif event.event_type == WEBHOOK_EVENT_PAYMENT_FAILED:
+            # 失败也只是个提示,前端会让用户重试 / 切换支付方式。
+            # 不主动 refunded_auto:用户可能只是临时银行拒绝。
+            print(
+                f"[webhook] payment failed for order {order_id}, "
+                f"raw={event.raw}",
+                flush=True,
+            )
+        elif event.event_type == WEBHOOK_EVENT_REFUND_SUCCEEDED:
+            # 退款回执:仅做对账记录,状态机迁移由发起方(_issue_provider_refund 上游)负责。
+            metadata = order_row.get("payment_metadata") or {}
+            if not isinstance(metadata, dict):
+                metadata = {}
+            metadata.setdefault("refundWebhooks", []).append(
+                {"intentId": intent_id, "amountCents": event.amount_cents}
+            )
+            try:
+                self.db.table("orders").update(
+                    {"payment_metadata": metadata}
+                ).eq("id", order_id).execute()
+            except Exception as e:
+                print(f"[orders] write refund webhook metadata failed: {e}")
+
+    # ------------------------------------------------------------------
     # Settlement
     # ------------------------------------------------------------------
 
@@ -1135,11 +1348,16 @@ class OrderService:
         return count
 
     def auto_confirm_delivered(self) -> int:
-        """delivered + 7d → completed。"""
+        """delivered + 7d → completed。
+
+        PRD 「包裹长期不动 / 已签收但买家说没收到」边缘场景:
+          - 若 `auto_confirm_paused_at` 不为空,跳过本订单(由 stuck 检测暂停);
+          - 若 `tracking_stuck_since` 也仍存在,说明仍在 stuck 状态,不推进。
+        """
         now = datetime.utcnow().isoformat()
         res = (
             self.db.table("orders")
-            .select("id")
+            .select("id, auto_confirm_paused_at, tracking_stuck_since")
             .eq("status", "delivered")
             .lt("auto_confirm_due_at", now)
             .execute()
@@ -1147,6 +1365,8 @@ class OrderService:
         rows = res.data or []
         count = 0
         for r in rows:
+            if r.get("auto_confirm_paused_at") or r.get("tracking_stuck_since"):
+                continue
             try:
                 self.transition_status(
                     r["id"],
@@ -1158,6 +1378,320 @@ class OrderService:
             except Exception:
                 pass
         return count
+
+    # ------------------------------------------------------------------
+    # 提醒序列(Batch 5)
+    # ------------------------------------------------------------------
+
+    def send_confirm_receipt_reminders(self) -> int:
+        """delivered 状态下:
+          - 第 3 天: push + 站内信 「请确认收货」
+          - 第 5 天: 短信 「即将自动确认收货」(需要 contact_phone)
+        幂等:写入 confirm_reminder_3d_sent_at / 5d 后不再发。
+        """
+        now = datetime.utcnow()
+        res = (
+            self.db.table("orders")
+            .select(
+                "id, order_no, buyer_user_id, product_id, delivered_at, "
+                "auto_confirm_due_at, "
+                "confirm_reminder_3d_sent_at, confirm_reminder_5d_sent_at, "
+                "auto_confirm_paused_at, tracking_stuck_since"
+            )
+            .eq("status", "delivered")
+            .execute()
+        )
+        rows = res.data or []
+        sent = 0
+        for r in rows:
+            # stuck 状态下不要催买家(物流自己没动,催了买家也没法操作)
+            if r.get("auto_confirm_paused_at") or r.get("tracking_stuck_since"):
+                continue
+            delivered_at = r.get("delivered_at")
+            if not delivered_at:
+                continue
+            try:
+                d_at = datetime.fromisoformat(delivered_at.replace("Z", "+00:00"))
+            except Exception:
+                continue
+            age_days = (now - d_at.replace(tzinfo=None)).days
+
+            if age_days >= 3 and not r.get("confirm_reminder_3d_sent_at"):
+                self._send_confirm_reminder_3d(r)
+                self.db.table("orders").update(
+                    {"confirm_reminder_3d_sent_at": now.isoformat()}
+                ).eq("id", r["id"]).execute()
+                sent += 1
+            if age_days >= 5 and not r.get("confirm_reminder_5d_sent_at"):
+                self._send_confirm_reminder_5d(r)
+                self.db.table("orders").update(
+                    {"confirm_reminder_5d_sent_at": now.isoformat()}
+                ).eq("id", r["id"]).execute()
+                sent += 1
+        return sent
+
+    def send_shipping_reminders(self) -> int:
+        """paid 状态接近 shipping_due_at 时催卖家发货。
+          - 48h 提醒:距离 due 还剩 ≤ 48h
+          - 24h 提醒:距离 due 还剩 ≤ 24h
+        幂等同上。
+        """
+        now = datetime.utcnow()
+        res = (
+            self.db.table("orders")
+            .select(
+                "id, order_no, seller_user_id, seller_merchant_id, product_id, "
+                "shipping_due_at, "
+                "shipping_reminder_48h_sent_at, shipping_reminder_24h_sent_at"
+            )
+            .eq("status", "paid")
+            .execute()
+        )
+        rows = res.data or []
+        sent = 0
+        for r in rows:
+            due = r.get("shipping_due_at")
+            if not due:
+                continue
+            try:
+                due_at = datetime.fromisoformat(due.replace("Z", "+00:00")).replace(
+                    tzinfo=None
+                )
+            except Exception:
+                continue
+            remaining_hours = (due_at - now).total_seconds() / 3600
+
+            if (
+                remaining_hours <= 48
+                and remaining_hours > 24
+                and not r.get("shipping_reminder_48h_sent_at")
+            ):
+                self._send_shipping_reminder(r, hours_left=48)
+                self.db.table("orders").update(
+                    {"shipping_reminder_48h_sent_at": now.isoformat()}
+                ).eq("id", r["id"]).execute()
+                sent += 1
+            elif (
+                remaining_hours <= 24
+                and remaining_hours > 0
+                and not r.get("shipping_reminder_24h_sent_at")
+            ):
+                self._send_shipping_reminder(r, hours_left=24)
+                self.db.table("orders").update(
+                    {"shipping_reminder_24h_sent_at": now.isoformat()}
+                ).eq("id", r["id"]).execute()
+                sent += 1
+        return sent
+
+    def detect_stuck_packages(self, *, idle_days: int = 5) -> int:
+        """shipped 状态下,如果 tracking_events 连续 idle_days 天没新轨迹,
+        标记 tracking_stuck_since 并把 auto_confirm_paused_at 置上,
+        同时 push 双方提醒。下次有新 tracking_event 时再清零。
+        """
+        now = datetime.utcnow()
+        cutoff = (now - timedelta(days=idle_days)).isoformat()
+        res = (
+            self.db.table("orders")
+            .select(
+                "id, order_no, buyer_user_id, seller_user_id, shipped_at, "
+                "tracking_stuck_since"
+            )
+            .eq("status", "shipped")
+            .lt("shipped_at", cutoff)
+            .execute()
+        )
+        rows = res.data or []
+        marked = 0
+        for r in rows:
+            if r.get("tracking_stuck_since"):
+                continue
+            # 检查最新一条 tracking_event 时间
+            try:
+                latest = (
+                    self.db.table("tracking_events")
+                    .select("occurred_at")
+                    .eq("order_id", r["id"])
+                    .order("occurred_at", desc=True)
+                    .limit(1)
+                    .execute()
+                )
+                last_time = (
+                    latest.data[0]["occurred_at"] if latest.data else r.get("shipped_at")
+                )
+                if not last_time:
+                    continue
+                last_dt = datetime.fromisoformat(
+                    last_time.replace("Z", "+00:00")
+                ).replace(tzinfo=None)
+                if (now - last_dt).days < idle_days:
+                    continue
+            except Exception:
+                continue
+            self.db.table("orders").update(
+                {
+                    "tracking_stuck_since": now.isoformat(),
+                    "auto_confirm_paused_at": now.isoformat(),
+                }
+            ).eq("id", r["id"]).execute()
+            self._notify_stuck_package(r)
+            marked += 1
+        return marked
+
+    # ---------- 提醒发送辅助 ----------
+
+    def _send_confirm_reminder_3d(self, order_row: Dict[str, Any]) -> None:
+        try:
+            from app.services.notification_service import notification_service
+            from app.schemas.notification import NotificationType
+            product = self._product_brief(order_row["product_id"]) or {}
+            title = product.get("title") or product.get("brand") or f"订单 #{order_row['order_no']}"
+            notification_service.create_notification(
+                user_id=order_row["buyer_user_id"],
+                notification_type=NotificationType.SYSTEM,
+                title="请确认收货",
+                message=f"您购买的「{title}」已签收 3 天,请尽快确认无误后释放款项给卖家",
+                action_data={
+                    "navigateTo": "OrderDetail",
+                    "navigateParams": {"orderId": order_row["id"]},
+                },
+                send_push=True,
+            )
+        except Exception as e:
+            print(f"[orders] send 3d reminder failed: {e}")
+
+    def _send_confirm_reminder_5d(self, order_row: Dict[str, Any]) -> None:
+        # 站内信兜底 + 短信
+        try:
+            from app.services.notification_service import notification_service
+            from app.schemas.notification import NotificationType
+            product = self._product_brief(order_row["product_id"]) or {}
+            title = product.get("title") or product.get("brand") or f"订单 #{order_row['order_no']}"
+            notification_service.create_notification(
+                user_id=order_row["buyer_user_id"],
+                notification_type=NotificationType.SYSTEM,
+                title="即将自动确认收货",
+                message=f"「{title}」还有 2 天将自动确认。如有问题请尽快联系客服",
+                action_data={
+                    "navigateTo": "OrderDetail",
+                    "navigateParams": {"orderId": order_row["id"]},
+                },
+                send_push=True,
+            )
+        except Exception as e:
+            print(f"[orders] send 5d in-app reminder failed: {e}")
+
+        # 取买家手机号发短信(可选)
+        try:
+            phone = self._buyer_phone(order_row["buyer_user_id"])
+            if phone:
+                from app.services.sms import get_sms_provider
+                product = self._product_brief(order_row["product_id"]) or {}
+                title = (
+                    product.get("title") or product.get("brand") or order_row["order_no"]
+                )
+                get_sms_provider().send_template_sms(
+                    phone=phone,
+                    template_code="SMS_TPL_CONFIRM_RECEIPT_5D",
+                    params={"product": title[:20], "days": "2"},
+                )
+        except Exception as e:
+            print(f"[orders] send 5d sms failed: {e}")
+
+    def _send_shipping_reminder(
+        self, order_row: Dict[str, Any], *, hours_left: int
+    ) -> None:
+        seller_id = order_row.get("seller_user_id")
+        if not seller_id:
+            return
+        try:
+            from app.services.notification_service import notification_service
+            from app.schemas.notification import NotificationType
+            notification_service.create_notification(
+                user_id=seller_id,
+                notification_type=NotificationType.SYSTEM,
+                title="请尽快发货",
+                message=(
+                    f"订单 #{order_row['order_no']} 还有 {hours_left} 小时,"
+                    f"逾期未发货将自动退款给买家"
+                ),
+                action_data={
+                    "navigateTo": "OrderDetail",
+                    "navigateParams": {"orderId": order_row["id"]},
+                },
+                send_push=True,
+            )
+        except Exception as e:
+            print(f"[orders] send shipping reminder failed: {e}")
+
+        # 24h 临门一脚还要发短信
+        if hours_left == 24:
+            try:
+                phone = self._seller_phone(seller_id)
+                if phone:
+                    from app.services.sms import get_sms_provider
+                    get_sms_provider().send_template_sms(
+                        phone=phone,
+                        template_code="SMS_TPL_SHIPPING_24H",
+                        params={"orderNo": order_row["order_no"][:20]},
+                    )
+            except Exception as e:
+                print(f"[orders] send 24h shipping sms failed: {e}")
+
+    def _notify_stuck_package(self, order_row: Dict[str, Any]) -> None:
+        try:
+            from app.services.notification_service import notification_service
+            from app.schemas.notification import NotificationType
+            for user_id in (
+                order_row.get("buyer_user_id"),
+                order_row.get("seller_user_id"),
+            ):
+                if not user_id:
+                    continue
+                notification_service.create_notification(
+                    user_id=user_id,
+                    notification_type=NotificationType.SYSTEM,
+                    title="包裹物流停止更新",
+                    message=(
+                        f"订单 #{order_row['order_no']} 的包裹连续多日无物流更新,"
+                        f"已暂停自动确认倒计时。请双方核实,如有异常请联系客服"
+                    ),
+                    action_data={
+                        "navigateTo": "OrderDetail",
+                        "navigateParams": {"orderId": order_row["id"]},
+                    },
+                    send_push=True,
+                )
+        except Exception as e:
+            print(f"[orders] notify stuck failed: {e}")
+
+    def _buyer_phone(self, user_id: int) -> Optional[str]:
+        try:
+            res = (
+                self.db.table("users")
+                .select("phone")
+                .eq("id", user_id)
+                .limit(1)
+                .execute()
+            )
+            return (res.data[0] or {}).get("phone") if res.data else None
+        except Exception:
+            return None
+
+    def _seller_phone(self, user_id: int) -> Optional[str]:
+        # 优先取 seller_kyc.contact_phone,fallback users.phone
+        try:
+            kyc = (
+                self.db.table("seller_kyc")
+                .select("contact_phone")
+                .eq("user_id", user_id)
+                .limit(1)
+                .execute()
+            )
+            if kyc.data and kyc.data[0].get("contact_phone"):
+                return kyc.data[0]["contact_phone"]
+        except Exception:
+            pass
+        return self._buyer_phone(user_id)
 
     def settle_completed(self) -> int:
         """completed + 3d → settled.

@@ -29,7 +29,7 @@ import {
   PlusStatus,
   PlusPlan,
 } from "../../services/archivePlusService";
-import { formatPrice } from "../../services/storeProductService";
+import { useFormatPrice } from "../../utils/currency";
 import { useAppTheme, useThemedStyles, type AppTheme } from "../../theme";
 
 const BENEFITS: { icon: any; title: string; desc: string }[] = [
@@ -48,6 +48,7 @@ export default function PlusSubscribeScreen() {
   const theme = useAppTheme();
   const styles = useThemedStyles(makeStyles);
   const { t } = useTranslation();
+  const formatPrice = useFormatPrice();
   const [status, setStatus] = useState<PlusStatus | null>(null);
   const [plan, setPlan] = useState<PlusPlan>("annual");
   const [busy, setBusy] = useState(false);

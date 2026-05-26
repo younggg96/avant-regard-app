@@ -18,10 +18,12 @@ import {
   ScrollView,
   Image as RNImage,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
 import { useTranslation } from "react-i18next";
 
 import {
@@ -34,6 +36,10 @@ import {
 import ScreenHeader from "../../components/ScreenHeader";
 import { useAppTheme, useThemedStyles, type AppTheme } from "../../theme";
 import { submitTradeReview } from "../../services/aftersalesService";
+import { uploadImage } from "../../services/postService";
+
+
+const MAX_REVIEW_PHOTOS = 3;
 
 type RouteParams = {
   TradeReview: {
@@ -82,8 +88,41 @@ const TradeReviewScreen: React.FC = () => {
     shipping: 5,
   });
   const [comment, setComment] = useState("");
+  const [photoUrls, setPhotoUrls] = useState<string[]>([]);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const pickAndUploadPhoto = async () => {
+    if (photoUrls.length >= MAX_REVIEW_PHOTOS) return;
+    try {
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert(t("common.error"), t("trading.review.photoPermissionDenied"));
+        return;
+      }
+      const res = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: false,
+        quality: 0.85,
+      });
+      if (res.canceled || !res.assets?.[0]) return;
+      setUploadingPhoto(true);
+      const url = await uploadImage(res.assets[0].uri);
+      setPhotoUrls((prev) => [...prev, url].slice(0, MAX_REVIEW_PHOTOS));
+    } catch (e: any) {
+      Alert.alert(
+        t("common.error"),
+        e?.message ?? t("trading.review.photoUploadFailed"),
+      );
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
+  const removePhoto = (url: string) => {
+    setPhotoUrls((prev) => prev.filter((u) => u !== url));
+  };
 
   const submit = async () => {
     setErrorMsg(null);
@@ -94,6 +133,7 @@ const TradeReviewScreen: React.FC = () => {
         rating,
         payload: dimRatings,
         comment: comment.trim() || undefined,
+        photos: photoUrls.length > 0 ? photoUrls : undefined,
       });
       setStep(4);
     } catch (e: any) {
@@ -250,6 +290,48 @@ const TradeReviewScreen: React.FC = () => {
                 maxLength={1000}
                 textAlignVertical="top"
               />
+
+              {/* 图片上传 · 最多 3 张 */}
+              <Text style={styles.photosLabel}>
+                {t("trading.review.photosLabel", {
+                  count: photoUrls.length,
+                  max: MAX_REVIEW_PHOTOS,
+                })}
+              </Text>
+              <HStack space="sm">
+                {photoUrls.map((url) => (
+                  <Box key={url} style={styles.photoTile}>
+                    <RNImage source={{ uri: url }} style={styles.photoImage} />
+                    <Pressable
+                      style={styles.photoRemoveBtn}
+                      onPress={() => removePhoto(url)}
+                    >
+                      <Ionicons
+                        name="close"
+                        size={14}
+                        color={theme.colors.textInverted}
+                      />
+                    </Pressable>
+                  </Box>
+                ))}
+                {photoUrls.length < MAX_REVIEW_PHOTOS ? (
+                  <Pressable
+                    style={[styles.photoTile, styles.photoAddBtn]}
+                    onPress={pickAndUploadPhoto}
+                    disabled={uploadingPhoto}
+                  >
+                    {uploadingPhoto ? (
+                      <ActivityIndicator color={theme.colors.gray300} />
+                    ) : (
+                      <Ionicons
+                        name="add"
+                        size={28}
+                        color={theme.colors.gray300}
+                      />
+                    )}
+                  </Pressable>
+                ) : null}
+              </HStack>
             </VStack>
           )}
 
@@ -350,6 +432,38 @@ const makeStyles = (t: AppTheme) =>
       backgroundColor: t.colors.inputBackground,
     },
     textarea: { minHeight: 160 },
+    photosLabel: {
+      fontSize: 13,
+      color: t.colors.gray300,
+      marginTop: 16,
+      marginBottom: 10,
+    },
+    photoTile: {
+      width: 72,
+      height: 72,
+      borderRadius: 8,
+      overflow: "hidden",
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: t.colors.border,
+      position: "relative",
+    },
+    photoImage: { width: "100%", height: "100%" },
+    photoAddBtn: {
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: t.colors.inputBackground,
+    },
+    photoRemoveBtn: {
+      position: "absolute",
+      top: 2,
+      right: 2,
+      width: 20,
+      height: 20,
+      borderRadius: 10,
+      backgroundColor: "rgba(0,0,0,0.6)",
+      alignItems: "center",
+      justifyContent: "center",
+    },
     error: { color: t.colors.error, marginTop: 12 },
 
     footer: {

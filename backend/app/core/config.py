@@ -113,5 +113,45 @@ class Settings(BaseSettings):
     def aliyun_green_image_scenes_list(self) -> List[str]:
         return [s.strip() for s in self.ALIYUN_GREEN_IMAGE_SCENES.split(",") if s.strip()]
 
+    # =====================================================
+    # 后台调度器 (订单 / 钱包 / 物流)
+    # =====================================================
+    # lifespan 启动时是否自动拉起 AsyncIOScheduler。
+    # - 本地 / 单测建议关掉,避免抢库；
+    # - 多副本部署时只在一个 worker 开启（pod 名前缀或 leader 选举决定）。
+    ENABLE_BACKGROUND_SCHEDULER: bool = False
+    # 各任务执行频率,生产保守一些避免抖动。
+    SCHEDULER_HOLDS_INTERVAL_SECONDS: int = 60        # 30 分钟 hold 过期检测
+    SCHEDULER_OFFERS_INTERVAL_SECONDS: int = 120      # 24h offer 过期
+    SCHEDULER_SHIPMENTS_INTERVAL_SECONDS: int = 300   # 72h 未发货检测
+    SCHEDULER_AUTO_CONFIRM_INTERVAL_SECONDS: int = 600  # 7 天自动确认
+    SCHEDULER_WALLET_INTERVAL_SECONDS: int = 300      # T+3 pending → available
+    SCHEDULER_SETTLE_INTERVAL_SECONDS: int = 300      # completed → settled
+    SCHEDULER_TRACKING_INTERVAL_SECONDS: int = 600    # 物流轨迹拉取
+    SCHEDULER_REMINDERS_INTERVAL_SECONDS: int = 1800  # 自动确认 3/5 天提醒(Batch 5)
+    SCHEDULER_REVIEW_AUTO_INTERVAL_SECONDS: int = 3600  # 7 天自动好评 / 15 天单方公开(Batch 6)
+
+    # =====================================================
+    # 实名认证 / 银行卡四要素 (阿里云 实人认证 / 银联四要素)
+    # =====================================================
+    # 身份证号 / 持卡人姓名 等敏感字段 AES 加密的对称密钥。
+    # 必须是 Fernet 接受的 32-byte url-safe base64,缺省时服务层拒绝写库,
+    # 避免明文落盘。生成方法:
+    #   python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+    KYC_ENCRYPTION_KEY: str = ""
+
+    # 阿里云实人认证(身份证 + 姓名 OCR 二要素 / 三要素 / 活体)
+    ALIYUN_VERIFY_APP_CODE: str = ""           # 市场 API AppCode
+    ALIYUN_VERIFY_ID2_URL: str = (             # 身份证二要素验证(姓名 + 身份证号)
+        "https://idcert.market.alicloudapi.com/idcard"
+    )
+    # 阿里云银行卡四要素(姓名 + 身份证 + 银行卡 + 手机号)
+    ALIYUN_BANK4_URL: str = (
+        "https://bcard4.market.alicloudapi.com/bankcard4"
+    )
+
+    # 选择真实 provider:留空 / mock → MockVerifyProvider(开发用,所有请求都通过)
+    VERIFY_PROVIDER: str = "mock"  # mock / aliyun
+
 
 settings = Settings()

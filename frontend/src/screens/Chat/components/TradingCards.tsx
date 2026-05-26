@@ -22,7 +22,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 
-import { formatPrice } from "../../../services/storeProductService";
+import { useFormatPrice } from "../../../utils/currency";
 import {
   formatOrderStatus,
   formatOfferStatus,
@@ -157,6 +157,7 @@ export function ProductListingCardView({
 }) {
   const { t } = useTranslation();
   const theme = useAppTheme();
+  const formatPrice = useFormatPrice();
   const styles = useThemedStyles(makeStyles);
   return (
     <TouchableOpacity
@@ -205,6 +206,7 @@ export function OfferCardView({
 }) {
   const { t } = useTranslation();
   const theme = useAppTheme();
+  const formatPrice = useFormatPrice();
   const styles = useThemedStyles(makeStyles);
   const isCounter = (data.parentOfferId ?? null) !== null;
   return (
@@ -292,6 +294,7 @@ export function OrderStatusCardView({
 }) {
   const { t } = useTranslation();
   const theme = useAppTheme();
+  const formatPrice = useFormatPrice();
   const styles = useThemedStyles(makeStyles);
   const pending = data.status === "pending_payment";
   const hasShipment =

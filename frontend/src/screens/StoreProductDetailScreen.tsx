@@ -53,7 +53,7 @@ import { ImageSize } from "../utils/imageUtils";
 import { useThemedStyles, type AppTheme, useAppTheme } from "../theme";
 import { useProfileLoadingGif } from "../utils/loadingGifs";
 import { Alert } from "../utils/Alert";
-import { useFormatPrice } from "../utils/currency";
+import { useFormatPrice, useSellerCurrencyHint } from "../utils/currency";
 import {
   checkStoreProductFavorited,
   checkStoreProductLiked,
@@ -139,6 +139,17 @@ const StoreProductDetailScreen: React.FC = () => {
     null
   );
   const product = richDetail?.product ?? null;
+  // 卖家原币种 ≠ 当前买家展示币种 时拿到提示行（原价 + 汇率）；相同时为 null。
+  // 折扣时主价是 discountPriceCents；提示也跟随主价 cents 而不是 strikethrough 原价。
+  const sellerHintCents =
+    product?.discountPriceCents != null &&
+    product.discountPriceCents < product.priceCents
+      ? product.discountPriceCents
+      : product?.priceCents ?? null;
+  const sellerCurrencyHint = useSellerCurrencyHint(
+    sellerHintCents,
+    product?.currency ?? null
+  );
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -909,6 +920,18 @@ const StoreProductDetailScreen: React.FC = () => {
                 </Text>
               )}
             </HStack>
+
+            {/* 卖家原币种 ≠ 当前展示币种 → 展示原价 + 汇率（同币种时 hint=null 不渲染）。 */}
+            {sellerCurrencyHint && (
+              <View style={{ marginTop: 4 }}>
+                <Text style={styles.sellerCurrencyHint}>
+                  {sellerCurrencyHint.originalLine}
+                </Text>
+                <Text style={styles.sellerCurrencyHint}>
+                  {sellerCurrencyHint.rateLine}
+                </Text>
+              </View>
+            )}
 
             {/* 快速信息行 —— `全新 95新 | 尺码 48 | Black` 形式 */}
             {quickInfoParts.length > 0 && (
@@ -1982,6 +2005,11 @@ const makeStyles = (t: AppTheme) =>
       fontSize: 24,
       fontWeight: "700",
       color: t.colors.text,
+    },
+    sellerCurrencyHint: {
+      fontSize: 12,
+      lineHeight: 16,
+      color: t.colors.textSecondary,
     },
     priceStrike: {
       fontSize: 13,

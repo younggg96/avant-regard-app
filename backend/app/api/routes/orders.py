@@ -532,8 +532,13 @@ async def list_incoming_offers(
 
 @admin_orders_router.post("/scheduler/run")
 async def run_scheduler(_admin=Depends(get_current_admin_user)):
-    """单次执行所有 cron 任务。生产环境应改成由 APScheduler / Cloud Cron 触发。"""
+    """单次执行所有 cron 任务。
+
+    生产环境主入口已经是 lifespan 内的 AsyncIOScheduler(参见
+    `services/scheduler_service.py`);本接口保留作为手动兜底/本地调试入口。
+    """
     from app.services.wallet_service import wallet_service
+    from app.services.trade_review_service import trade_review_service
     return success(
         {
             "holdsExpired": order_service.expire_holds_due(),
@@ -543,6 +548,10 @@ async def run_scheduler(_admin=Depends(get_current_admin_user)):
             "pendingPayoutsReleased": wallet_service.release_due_pending(),
             "ordersSettled": order_service.settle_completed(),
             "trackingPulled": tracking_service.pull_pending_shipments(),
+            "confirmReceiptReminders": order_service.send_confirm_receipt_reminders(),
+            "shippingReminders": order_service.send_shipping_reminders(),
+            "stuckPackages": order_service.detect_stuck_packages(),
+            "reviewsAutoClose": trade_review_service.run_auto_close(),
         }
     )
 

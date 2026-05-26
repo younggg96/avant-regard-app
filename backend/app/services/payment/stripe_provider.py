@@ -14,9 +14,24 @@ from __future__ import annotations
 
 import os
 import uuid
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Mapping
 
-from .base import PaymentIntent, PaymentResult
+from .base import (
+    PaymentIntent,
+    PaymentResult,
+    WebhookEvent,
+    WEBHOOK_EVENT_PAYMENT_SUCCEEDED,
+    WEBHOOK_EVENT_PAYMENT_FAILED,
+    WEBHOOK_EVENT_REFUND_SUCCEEDED,
+)
+
+
+# Stripe 事件名 → 我们的标准事件名
+_STRIPE_EVENT_MAP = {
+    "payment_intent.succeeded": WEBHOOK_EVENT_PAYMENT_SUCCEEDED,
+    "payment_intent.payment_failed": WEBHOOK_EVENT_PAYMENT_FAILED,
+    "charge.refunded": WEBHOOK_EVENT_REFUND_SUCCEEDED,
+}
 
 try:  # pragma: no cover - optional dep
     import stripe  # type: ignore
@@ -36,6 +51,7 @@ class StripeProvider:
 
     def __init__(self) -> None:
         self._api_key = os.getenv("STRIPE_API_KEY")
+        self._webhook_secret = os.getenv("STRIPE_WEBHOOK_SECRET")
         if _HAS_STRIPE and self._api_key:
             stripe.api_key = self._api_key  # type: ignore
 
@@ -148,3 +164,49 @@ class StripeProvider:
             return PaymentResult(
                 provider=self.name, intent_id=intent_id, status="failed", raw={"error": str(e)}
             )
+
+    def verify_webhook(
+        self,
+        *,
+        headers: Mapping[str, str],
+        body: bytes,
+    ) -> Optional[WebhookEvent]:
+        # 没装 SDK 或没配 webhook secret → 直接拒绝(生产路径必须验签)。
+        # 本地 dev 可以用 PAYMENT_PROVIDER=mock 的 webhook 路径联调,
+        # 不要让真实 stripe 路由在未验签状态下推进订单。
+        if not (_HAS_STRIPE and self._webhook_secret):
+            return None
+
+        sig = headers.get("stripe-signature") or headers.get("Stripe-Signature")
+        if not sig:
+            return None
+        try:  # pragma: no cover
+            event = stripe.Webhook.construct_event(  # type: ignore
+                body, sig, self._webhook_secret
+            )
+        except Exception as e:  # pragma: no cover
+            print(f"[stripe] webhook verify failed: {e}")
+            return None
+
+        evt_type_raw = getattr(event, "type", None) or event.get("type")  # type: ignore
+        evt_type = _STRIPE_EVENT_MAP.get(evt_type_raw)
+        if not evt_type:
+            return None
+
+        data = (
+            event.get("data", {}).get("object", {})  # type: ignore
+            if isinstance(event, dict)
+            else event.data.object  # type: ignore
+        )
+        # PaymentIntent / Charge 都有 id + amount + currency,但字段位置不同
+        intent_id = data.get("payment_intent") or data.get("id")
+        amount = int(data.get("amount") or data.get("amount_received") or 0)
+        currency = (data.get("currency") or "usd").upper()
+        return WebhookEvent(
+            provider=self.name,
+            event_type=evt_type,
+            intent_id=intent_id,
+            amount_cents=amount,
+            currency=currency,
+            raw={"id": event.get("id") if isinstance(event, dict) else event.id},
+        )

@@ -73,8 +73,8 @@ import {
 import {
   StoreProduct,
   getStoreProducts,
-  formatPrice,
 } from "../services/storeProductService";
+import { useFormatPrice } from "../utils/currency";
 // 买手店帖子（migration 055）— Posts tab 用 postService.getPostsByStoreId
 // 拉数据, 横向滚动卡片视觉风格和单品 preview 对齐, 详情走 PostDetail.
 import {
@@ -113,6 +113,7 @@ const StoreDetailScreen = () => {
   const route = useRoute<RouteProp<RouteParams, "StoreDetail">>();
   const { storeId } = route.params;
   const { user } = useAuthStore();
+  const formatPrice = useFormatPrice();
   const syncFromDetail = useStoreFavoritesStore((s) => s.syncFromDetail);
 
   // 店铺详情状态

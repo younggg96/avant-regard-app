@@ -42,8 +42,10 @@ const ProductCardImpl: React.FC<ProductCardProps> = ({
   const styles = useThemedStyles(makeStyles);
   // 注意：BuyerStoreProduct 当前还没有透传后端的 currency 字段，先按 CNY 兜底；
   // 后续把 currency 串到 view model 后改成 product.currency 即可，无需改组件逻辑。
+  // trimZeroFraction: true → 整数元省略 .00（"¥ 5,890" / "$ 999"），带小数固定 2 位。
   const formatPrice = useFormatPrice();
-  const formatPriceCents = (cents: number) => formatPrice(cents, "CNY");
+  const formatPriceCents = (cents: number) =>
+    formatPrice(cents, "CNY", { trimZeroFraction: true });
   // BADGE_STYLE must be recomputed per render so the badge colors stay
   // theme-reactive (the legacy module-scope object captured frozen colors at
   // load time). `theme.colors.white` and `theme.colors.black` auto-invert

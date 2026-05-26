@@ -89,7 +89,7 @@ CREATE TABLE IF NOT EXISTS orders (
     shipping_address_json JSONB,
     shipping_due_at TIMESTAMP WITH TIME ZONE,            -- paid + 72h
     auto_confirm_due_at TIMESTAMP WITH TIME ZONE,        -- delivered + 7d
-    settlement_due_at TIMESTAMP WITH TIME ZONE,          -- completed + 7d
+    settlement_due_at TIMESTAMP WITH TIME ZONE,          -- completed + 3d (T+3 售后窗口)
     -- 状态
     status VARCHAR(24) NOT NULL DEFAULT 'pending_payment'
         CHECK (status IN (

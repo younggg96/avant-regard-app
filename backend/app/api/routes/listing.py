@@ -312,7 +312,12 @@ async def submit_listing(
     product_id: int,
     current_user_id: int = Depends(get_current_user),
 ):
-    """提交审核（draft → reviewing）。开启 listingAutoApprove 时自动 → active。"""
+    """提交审核（draft → reviewing）。开启 listingAutoApprove 时自动 → active。
+
+    PRD 「实名认证 · 没实名不能上架」:
+      - C2C 个人卖家:必须 seller_kyc.status='approved' 才能 submit;
+      - 买手店:走 store_merchant 自带认证流程,这里不强制 seller_kyc。
+    """
     raw = store_product_service._get_product_raw(product_id)
     if not raw:
         raise HTTPException(status_code=404, detail="商品不存在")
@@ -324,6 +329,14 @@ async def submit_listing(
     else:
         if raw.get("seller_user_id") != current_user_id:
             raise HTTPException(status_code=403, detail="无权限操作")
+        # 个人 C2C 卖家强制实名门
+        from app.services.kyc_service import kyc_service
+        kyc = kyc_service.get(current_user_id)
+        if not kyc or kyc.status != "approved":
+            raise HTTPException(
+                status_code=403,
+                detail="请先完成实名认证后再上架(我的钱包 → 实名认证)",
+            )
 
     try:
         auto = feature_flags_service.is_listing_auto_approve()

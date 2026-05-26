@@ -467,6 +467,7 @@ const ProductCardItemImpl: React.FC<{
   onPress: (productId: number) => void;
 }> = ({ product, onPress }) => {
   const styles = useThemedStyles(makeStyles);
+  const formatPrice = useFormatPrice();
   const cover = product.images?.[0];
   const hasDiscount =
     product.discountPriceCents != null &&

@@ -191,6 +191,7 @@ async def submit_review(body: TradeReviewCreate, user_id: int = Depends(get_curr
             rating=body.rating,
             payload=body.payload,
             comment=body.comment,
+            photos=body.photos,
         )
     except PermissionError as e:
         raise HTTPException(status_code=403, detail=str(e))

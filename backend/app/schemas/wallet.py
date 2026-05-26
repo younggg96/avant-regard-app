@@ -161,6 +161,20 @@ class PayoutAccountCreate(BaseModel):
     isDefault: bool = True
 
 
+class VerifyIdentityRequest(BaseModel):
+    """实名二要素校验请求(姓名 + 身份证号)。"""
+    realName: str = Field(..., min_length=1, max_length=80)
+    idCardNo: str = Field(..., min_length=15, max_length=18)
+
+
+class VerifyBankCardRequest(BaseModel):
+    """银行卡四要素校验请求(绑定 payout_account 前调)。"""
+    holderName: str = Field(..., min_length=1, max_length=80)
+    idCardNo: str = Field(..., min_length=15, max_length=18)
+    bankNo: str = Field(..., min_length=12, max_length=24)
+    phone: str = Field(..., min_length=8, max_length=24)
+
+
 class PayoutAccount(BaseModel):
     id: int
     userId: int

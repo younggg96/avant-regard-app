@@ -32,6 +32,8 @@ from app.schemas.wallet import (
     PayoutAccountCreate,
     WithdrawCreateRequest,
     WithdrawalAdminUpdate,
+    VerifyIdentityRequest,
+    VerifyBankCardRequest,
 )
 
 
@@ -122,6 +124,47 @@ async def submit_kyc(
 ):
     rec = kyc_service.submit(user_id, body)
     return success(rec.dict())
+
+
+@kyc_router.post("/me/verify-identity")
+async def verify_identity_auto(
+    body: VerifyIdentityRequest,
+    user_id: int = Depends(get_current_user),
+):
+    """二要素自动审核(姓名 + 身份证号)。
+
+    通过即把 status 设为 approved,免去管理员人工 review;
+    通道临时故障(provider_error)保持 pending,允许用户稍后重试;
+    不一致 / 格式错误直接 rejected。
+    """
+    try:
+        rec = kyc_service.verify_identity_auto(
+            user_id,
+            real_name=body.realName,
+            id_card_no=body.idCardNo,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return success(rec.dict())
+
+
+@kyc_router.post("/me/verify-bank-card")
+async def verify_bank_card(
+    body: VerifyBankCardRequest,
+    user_id: int = Depends(get_current_user),
+):
+    """银行卡四要素校验。绑定 payout_account 前调,通过才允许绑卡。"""
+    try:
+        kyc_service.verify_bank_card4(
+            user_id,
+            holder_name=body.holderName,
+            id_card_no=body.idCardNo,
+            bank_no=body.bankNo,
+            phone=body.phone,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return success({"ok": True})
 
 
 @kyc_router.get("/me/payout-accounts")

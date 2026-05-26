@@ -28,7 +28,7 @@ import {
   LedgerEntry,
   listLedger,
 } from "../../services/walletService";
-import { formatPrice } from "../../services/storeProductService";
+import { useFormatPrice } from "../../utils/currency";
 import { useAppTheme, useThemedStyles, type AppTheme } from "../../theme";
 
 function formatDate(iso?: string | null): string {
@@ -41,6 +41,7 @@ export default function WalletLedgerScreen() {
   const theme = useAppTheme();
   const styles = useThemedStyles(makeStyles);
   const { t } = useTranslation();
+  const formatPrice = useFormatPrice();
 
   const [items, setItems] = useState<LedgerEntry[]>([]);
   const [loading, setLoading] = useState(true);

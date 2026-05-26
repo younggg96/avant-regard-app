@@ -32,7 +32,7 @@ import {
   PendingPayoutItem,
   WalletSummary,
 } from "../../services/walletService";
-import { formatPrice } from "../../services/storeProductService";
+import { useFormatPrice } from "../../utils/currency";
 import { useAppTheme, useThemedStyles, type AppTheme } from "../../theme";
 
 const ACTION_ITEMS = [
@@ -52,6 +52,7 @@ export default function MyWalletScreen() {
   const theme = useAppTheme();
   const styles = useThemedStyles(makeStyles);
   const { t } = useTranslation();
+  const formatPrice = useFormatPrice();
 
   const [summary, setSummary] = useState<WalletSummary | null>(null);
   const [pending, setPending] = useState<PendingPayoutItem[]>([]);
@@ -132,6 +133,38 @@ export default function MyWalletScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
+        {/* 钱包未绑定红色 banner:KYC 未通过 / 无默认放款账户时显眼提示,
+            提现按钮也会因此 disabled,但顶部 banner 更早把用户引导到对应入口。 */}
+        {summary &&
+        (summary.kycStatus !== "approved" || !summary.hasDefaultPayoutAccount) ? (
+          <Pressable
+            style={styles.walletBanner}
+            onPress={() => {
+              if (summary.kycStatus !== "approved") {
+                navigation.navigate("KycVerification");
+              } else {
+                navigation.navigate("PayoutAccounts");
+              }
+            }}
+          >
+            <Ionicons
+              name="alert-circle"
+              size={18}
+              color={theme.colors.error}
+            />
+            <Text style={styles.walletBannerText}>
+              {summary.kycStatus !== "approved"
+                ? t("trading.wallet.bannerNeedKyc")
+                : t("trading.wallet.bannerNeedPayoutAccount")}
+            </Text>
+            <Ionicons
+              name="chevron-forward"
+              size={16}
+              color={theme.colors.error}
+            />
+          </Pressable>
+        ) : null}
+
         <View style={styles.balanceCard}>
           <Text style={styles.balanceLabel}>
             {t("trading.wallet.balanceCardTitle")}
@@ -264,6 +297,24 @@ const makeStyles = (t: AppTheme) =>
     },
     headerTitle: { fontSize: 16, fontWeight: "600", color: t.colors.text },
     scroll: { padding: 16, paddingBottom: 32 },
+    walletBanner: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      backgroundColor: t.colors.error + "12",
+      borderRadius: 10,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: t.colors.error,
+      marginBottom: 12,
+    },
+    walletBannerText: {
+      flex: 1,
+      fontSize: 13,
+      color: t.colors.error,
+      fontWeight: "600",
+    },
     balanceCard: {
       backgroundColor: t.colors.text,
       borderRadius: 16,
