@@ -105,6 +105,9 @@ class PlusSubscription(BaseModel):
     currency: str = "CNY"
     source: str
     paymentIntentId: Optional[str] = None
+    # 仅 source=stripe 时返回 client_secret, 前端用 Stripe RN SDK 拉
+    # PaymentSheet 完成支付。其它通道为 null。
+    clientSecret: Optional[str] = None
     status: str
     autoRenew: bool = False
     createdAt: Optional[str] = None

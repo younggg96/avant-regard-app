@@ -217,25 +217,42 @@ class KYCService:
     def create_payout_account(
         self, user_id: int, body: PayoutAccountCreate
     ) -> PayoutAccount:
-        # 实名校验：必须 approved 才能绑卡
-        kyc = self.get(user_id)
-        if not kyc or kyc.status != "approved":
-            raise ValueError("请先完成实名认证")
+        is_stripe_connect = body.accountType.value == "stripe_connect"
 
-        # 校验持卡人 = 实名（防止把别人卡填进来）
-        try:
-            real = (
-                self.db.table("seller_kyc")
-                .select("real_name")
-                .eq("user_id", user_id)
-                .limit(1)
-                .execute()
+        if is_stripe_connect:
+            # Stripe Connect 走 Stripe 自家 KYC, 不要求本地 seller_kyc.approved。
+            # 但要求用户已经完成 connect 账号 onboarding(status=active),
+            # 并且本接口传入的 accountNo == stripe_account_id, 防止伪造关联。
+            from app.services.payment.stripe_connect_service import (
+                stripe_connect_service,
             )
-            real_name = real.data[0]["real_name"] if real.data else None
-        except Exception:
-            real_name = None
-        if real_name and body.holderName.strip() != real_name.strip():
-            raise ValueError("持卡人必须与实名一致")
+            connect_row = stripe_connect_service.get_account_row(user_id)
+            if not connect_row:
+                raise ValueError("请先完成 Stripe Connect 接入")
+            if connect_row["status"] != "active":
+                raise ValueError("Stripe 账号尚未通过审核, 请稍后再绑定")
+            if body.accountNo.strip() != connect_row["stripe_account_id"]:
+                raise ValueError("Stripe 账号 ID 不匹配")
+        else:
+            # 实名校验：必须 approved 才能绑卡
+            kyc = self.get(user_id)
+            if not kyc or kyc.status != "approved":
+                raise ValueError("请先完成实名认证")
+
+            # 校验持卡人 = 实名（防止把别人卡填进来）
+            try:
+                real = (
+                    self.db.table("seller_kyc")
+                    .select("real_name")
+                    .eq("user_id", user_id)
+                    .limit(1)
+                    .execute()
+                )
+                real_name = real.data[0]["real_name"] if real.data else None
+            except Exception:
+                real_name = None
+            if real_name and body.holderName.strip() != real_name.strip():
+                raise ValueError("持卡人必须与实名一致")
 
         if body.isDefault:
             # 把已有默认账户重置

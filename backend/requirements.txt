@@ -49,3 +49,10 @@ apscheduler==3.11.0
 # 实名认证 / 身份证号字段 AES 加密 (Fernet)。
 # KYC_ENCRYPTION_KEY 未配置时服务层会拒绝写库,避免明文落盘。
 cryptography==44.0.0
+
+# 支付通道 SDK
+# Stripe(信用卡/借记卡/Apple Pay/Google Pay,海外区主通道)
+# - PaymentIntent / Refund / Webhook 验签均通过 stripe-python
+# - 服务端 API_VERSION 在 stripe_provider.py 显式 pin,避免 SDK 升级跨版本变更默认行为
+# - 不写 STRIPE_API_KEY 时 provider 自动 fallback 到 stub(开发/CI 友好)
+stripe==11.6.0

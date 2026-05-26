@@ -117,6 +117,11 @@ class AuthenticationService:
 
     @staticmethod
     def _format(row: dict) -> AuthenticationOrder:
+        return self._format_with_secret(row, None)
+
+    def _format_with_secret(
+        self, row: dict, client_secret: Optional[str]
+    ) -> AuthenticationOrder:
         return AuthenticationOrder(
             id=row["id"],
             orderNo=row["order_no"],
@@ -136,6 +141,8 @@ class AuthenticationService:
             certificateUrl=row.get("certificate_url"),
             paymentProvider=row.get("payment_provider"),
             paymentIntentId=row.get("payment_intent_id"),
+            # client_secret 一次性透传给前端,不入库
+            clientSecret=client_secret,
             paidAt=row.get("paid_at"),
             completedAt=row.get("completed_at"),
             createdAt=row.get("created_at"),
@@ -178,7 +185,13 @@ class AuthenticationService:
             order_id=row["id"],
             amount_cents=pkg["price_cents"],
             currency=pkg.get("currency", "CNY"),
-            metadata={"authOrderNo": order_no},
+            # scope=auth 让 webhook 把 intent 路由到 authentication_orders 表
+            metadata={
+                "scope": "auth",
+                "authOrderNo": order_no,
+                "userId": str(user_id),
+                "packageCode": package_code,
+            },
         )
         self.db.table("authentication_orders").update(
             {
@@ -196,26 +209,54 @@ class AuthenticationService:
             message=f"订单 #{order_no} 已生成，请尽快完成支付。",
             order_id=row["id"],
         )
-        return self._format(row)
+        return self._format_with_secret(row, intent.client_secret)
+
+    def _mark_paid(self, row: dict) -> dict:
+        """共用激活逻辑: pending_payment → reviewing(支付到账后立刻进入
+        审核队列, 历史 schema 上 paid 状态实际不会被填; 但表里仍允许)。
+        webhook 与 pay_mock 共用,幂等。"""
+        if row["status"] in ("paid", "reviewing", "completed", "canceled"):
+            return row
+        if row["status"] != "pending_payment":
+            return row
+        now = datetime.utcnow().isoformat()
+        self.db.table("authentication_orders").update(
+            {"status": "reviewing", "paid_at": now}
+        ).eq("id", row["id"]).execute()
+        row.update({"status": "reviewing", "paid_at": now})
+        try:
+            self._notify_user(
+                user_id=row["user_id"],
+                title="鉴定费已收款，专家审核中",
+                message=f"订单 #{row['order_no']} 已开始鉴定，请耐心等待报告。",
+                order_id=row["id"],
+            )
+        except Exception as e:
+            print(f"[auth] notify on paid failed: {e}", flush=True)
+        return row
 
     def pay_mock(self, order_id: int, user_id: int) -> AuthenticationOrder:
+        """开发联调入口。生产环境(`DEBUG=False`)由路由层 404 拦截,
+        真正的付款由 stripe webhook → confirm_by_intent 推进。"""
         row = self._get_or_raise(order_id)
         if row["user_id"] != user_id:
             raise PermissionError("无权操作")
         if row["status"] != "pending_payment":
             raise ValueError("当前状态不可支付")
-        now = datetime.utcnow().isoformat()
-        self.db.table("authentication_orders").update(
-            {"status": "reviewing", "paid_at": now}
-        ).eq("id", order_id).execute()
-        row.update({"status": "reviewing", "paid_at": now})
+        return self._format(self._mark_paid(row))
 
-        self._notify_user(
-            user_id=user_id,
-            title="鉴定费已收款，专家审核中",
-            message=f"订单 #{row['order_no']} 已开始鉴定，请耐心等待报告。",
-            order_id=order_id,
+    def confirm_by_intent(self, intent_id: str) -> Optional[AuthenticationOrder]:
+        """Webhook 入口:按 payment_intent_id 找鉴定订单并推进到 reviewing。"""
+        res = (
+            self.db.table("authentication_orders")
+            .select("*")
+            .eq("payment_intent_id", intent_id)
+            .limit(1)
+            .execute()
         )
+        if not res.data:
+            return None
+        row = self._mark_paid(res.data[0])
         return self._format(row)
 
     def submit_decision(

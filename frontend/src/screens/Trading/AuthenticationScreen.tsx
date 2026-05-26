@@ -24,6 +24,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import * as ImagePicker from "expo-image-picker";
 
+import { useStripe } from "@stripe/stripe-react-native";
+
 import {
   listAuthPackages,
   createAuthOrder,
@@ -35,6 +37,7 @@ import {
 import { useFormatPrice } from "../../utils/currency";
 import { uploadImageFromUri } from "../admin/adminUtils";
 import { useAppTheme, useThemedStyles, type AppTheme } from "../../theme";
+import { config as envConfig } from "../../config/env";
 
 export default function AuthenticationScreen() {
   const navigation = useNavigation<any>();
@@ -85,6 +88,8 @@ export default function AuthenticationScreen() {
     }
   };
 
+  const { initPaymentSheet, presentPaymentSheet } = useStripe();
+
   const submit = async () => {
     if (!selectedCode) {
       setErrorMsg("请选择套餐");
@@ -103,8 +108,38 @@ export default function AuthenticationScreen() {
         brandName: brandName.trim() || undefined,
         note: note.trim() || undefined,
       });
-      // mock 支付
-      await payAuthOrderMock(o.id);
+
+      const isRealStripe =
+        o.paymentProvider === "stripe" &&
+        o.clientSecret &&
+        !o.clientSecret.startsWith("stripe_stub_") &&
+        !o.clientSecret.startsWith("stripe_err_") &&
+        !!envConfig.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+
+      if (isRealStripe) {
+        const initRes = await initPaymentSheet({
+          merchantDisplayName: "Avant Regard",
+          paymentIntentClientSecret: o.clientSecret!,
+          applePay: { merchantCountryCode: "US" },
+          googlePay: { merchantCountryCode: "US", testEnv: __DEV__ },
+          returnURL: "avantregard://stripe-redirect",
+        });
+        if (initRes.error) throw new Error(initRes.error.message);
+        const presentRes = await presentPaymentSheet();
+        if (presentRes.error) {
+          if (presentRes.error.code === "Canceled") {
+            // 用户取消, 订单留在 pending_payment, 后续可在订单列表里继续支付。
+            return;
+          }
+          throw new Error(presentRes.error.message);
+        }
+        // 付款成功 → 实际状态推进由 webhook 完成 (auth.confirm_by_intent)。
+        await new Promise((r) => setTimeout(r, 1200));
+      } else {
+        // DEV 联调: 走 mock 支付。生产环境后端 404 会让这里抛错并提示。
+        await payAuthOrderMock(o.id);
+      }
+
       setPhotos([]);
       setNote("");
       setBrandName("");

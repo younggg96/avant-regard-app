@@ -180,6 +180,10 @@ export interface AuthenticationOrder {
   expertUserId?: number | null;
   expertReport?: string | null;
   certificateUrl?: string | null;
+  paymentProvider?: string | null;
+  paymentIntentId?: string | null;
+  /** 仅 stripe 支付且 createAuthOrder 时返回, 用于拉 PaymentSheet。 */
+  clientSecret?: string | null;
   paidAt?: string | null;
   completedAt?: string | null;
   createdAt?: string | null;

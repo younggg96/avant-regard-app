@@ -17,6 +17,21 @@ import * as Font from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
 import { GluestackUIProvider } from "@gluestack-ui/themed";
 import { config } from "./gluestack.config";
+import { StripeProvider } from "@stripe/stripe-react-native";
+import { config as envConfig } from "./src/config/env";
+import Constants from "expo-constants";
+
+// app.config.js 里 scheme 在 NA 变体下是 "avantregardna",其它是 "avantregard"。
+// Stripe PaymentSheet 的 3DS / WeChat 等跳转付款方式回调依赖 urlScheme,
+// 必须与原生 Info.plist 注册的 scheme 完全一致,否则跳转后回不到 App。
+// 这里读 expo-constants 里 manifest 给出的运行时 scheme(数组首项),fallback 到默认。
+const STRIPE_URL_SCHEME: string = (() => {
+  const expoCfg: any = (Constants.expoConfig ?? Constants.manifest) as any;
+  const s = expoCfg?.scheme;
+  if (Array.isArray(s) && s.length > 0) return String(s[0]);
+  if (typeof s === "string" && s.length > 0) return s;
+  return "avantregard";
+})();
 
 // i18n
 import { initI18n } from "./src/i18n";
@@ -1461,33 +1476,46 @@ export default function App() {
       config={config}
       colorMode={resolvedThemeMode}
     >
-      <ThemeProvider value={appTheme}>
-        <QueryClientProvider client={queryClient}>
-          <SafeAreaProvider>
-            <ToastProvider>
-              <View style={{ flex: 1, backgroundColor: appTheme.colors.background }}>
-                <NavigationContainer
-                  ref={navigationRef}
-                  linking={LINKING_CONFIG}
-                  theme={navigationTheme}
-                  onStateChange={handleNavigationStateChange}
-                >
-                  <AppNavigator
-                    engagementBehaviorSignal={engagementBehaviorSignal}
-                    onNavigateToAIPost={handleNavigateToAIPost}
-                    onNavigateToForum={handleNavigateToForum}
-                  />
-                  <StatusBar style={resolvedThemeMode === "dark" ? "light" : "dark"} />
-                </NavigationContainer>
-                {showSplashVideo && (
-                  <SplashVideo onFinish={handleSplashVideoFinish} />
-                )}
-                <MaintenanceOverlay />
-              </View>
-            </ToastProvider>
-          </SafeAreaProvider>
-        </QueryClientProvider>
-      </ThemeProvider>
+      {/*
+        StripeProvider 需要在导航树外部, 因为 PaymentSheet 弹层 hook
+        (useStripe / usePaymentSheet) 必须能在任意子树访问到 publishable key。
+        publishableKey 留空时 Stripe SDK 不会主动初始化, 因此即便没配 .env,
+        非 Stripe 通道(支付宝 / 微信 / mock)依然可以走完;一旦走到 Stripe
+        path 才会触发 SDK 初始化错误,由 PaymentScreen 拦截给出友好提示。
+      */}
+      <StripeProvider
+        publishableKey={envConfig.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY}
+        merchantIdentifier="merchant.com.yanggg96.avant-regard"
+        urlScheme={STRIPE_URL_SCHEME}
+      >
+        <ThemeProvider value={appTheme}>
+          <QueryClientProvider client={queryClient}>
+            <SafeAreaProvider>
+              <ToastProvider>
+                <View style={{ flex: 1, backgroundColor: appTheme.colors.background }}>
+                  <NavigationContainer
+                    ref={navigationRef}
+                    linking={LINKING_CONFIG}
+                    theme={navigationTheme}
+                    onStateChange={handleNavigationStateChange}
+                  >
+                    <AppNavigator
+                      engagementBehaviorSignal={engagementBehaviorSignal}
+                      onNavigateToAIPost={handleNavigateToAIPost}
+                      onNavigateToForum={handleNavigateToForum}
+                    />
+                    <StatusBar style={resolvedThemeMode === "dark" ? "light" : "dark"} />
+                  </NavigationContainer>
+                  {showSplashVideo && (
+                    <SplashVideo onFinish={handleSplashVideoFinish} />
+                  )}
+                  <MaintenanceOverlay />
+                </View>
+              </ToastProvider>
+            </SafeAreaProvider>
+          </QueryClientProvider>
+        </ThemeProvider>
+      </StripeProvider>
     </GluestackUIProvider>
   );
 }

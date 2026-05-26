@@ -153,7 +153,11 @@ async def plus_subscribe(body: PlusSubscribeRequest, user_id: int = Depends(get_
 
 @plus_router.post("/subscriptions/{sub_id}/confirm-mock")
 async def plus_confirm_mock(sub_id: int, user_id: int = Depends(get_current_user)):
-    """开发用：直接置 active。上线后由真实支付通道 webhook 调。"""
+    """开发用：直接置 active。生产环境(`DEBUG=False`)一律 404,
+    真实付款由 stripe webhook → plus_service.confirm_by_intent 推动。"""
+    from app.core.config import settings
+    if not settings.DEBUG:
+        raise HTTPException(status_code=404, detail="not_found")
     try:
         sub = plus_service.confirm(sub_id, user_id)
     except PermissionError as e:

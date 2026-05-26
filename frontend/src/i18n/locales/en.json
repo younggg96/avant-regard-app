@@ -3592,7 +3592,22 @@
       "submitFailed": "Save failed",
       "submitSuccess": "Saved",
       "fillRequired": "Please complete all fields",
-      "kycRequired": "Complete real-name verification before adding accounts"
+      "kycRequired": "Complete real-name verification before adding accounts",
+      "typeStripe_connect": "Stripe International payouts",
+      "stripeConnect": {
+        "title": "Stripe Connect payouts",
+        "manage": "Manage",
+        "continue": "Resume",
+        "start": "Set up",
+        "needs": "Required: ",
+        "status": {
+          "none": "Not set up. International sellers can onboard via Stripe and get paid directly to a bank card.",
+          "pending": "Pending — please finish Stripe verification.",
+          "active": "Active — withdrawals are paid out automatically via Stripe.",
+          "restricted": "Stripe flagged this account; payouts are paused until requirements are completed.",
+          "disabled": "Account disabled. Contact support to re-enable."
+        }
+      }
     },
     "tracking": {
       "title": "Logistics tracking",
@@ -3662,6 +3677,9 @@
       "loadFailedTitle": "Failed to load",
       "orderMissing": "Order not found",
       "viewOrder": "View order",
+      "stripeUnavailableTitle": "Payment unavailable",
+      "stripeUnavailableMessage": "Payment channel not ready. Please try again or pick another method.",
+      "stripeMissingKey": "Stripe is not configured in this build. Please contact support.",
       "providers": {
         "alipay": "Alipay",
         "wechat": "WeChat Pay",

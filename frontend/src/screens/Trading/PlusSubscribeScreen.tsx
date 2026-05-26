@@ -21,6 +21,8 @@ import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 
+import { useStripe } from "@stripe/stripe-react-native";
+
 import {
   getPlusStatus,
   subscribePlus,
@@ -31,6 +33,7 @@ import {
 } from "../../services/archivePlusService";
 import { useFormatPrice } from "../../utils/currency";
 import { useAppTheme, useThemedStyles, type AppTheme } from "../../theme";
+import { config as envConfig } from "../../config/env";
 
 const BENEFITS: { icon: any; title: string; desc: string }[] = [
   { icon: "trending-down", title: "抽佣折扣", desc: "8% → 6%，每笔订单立省 2 个点" },
@@ -64,10 +67,45 @@ export default function PlusSubscribeScreen() {
     load();
   }, [load]);
 
+  const { initPaymentSheet, presentPaymentSheet } = useStripe();
+
   const subscribe = async () => {
     setBusy(true);
     try {
       const sub = await subscribePlus(plan);
+
+      // 1) 真实 Stripe 支付路径: source=stripe + 拿到 clientSecret 才走 PaymentSheet
+      const isRealStripe =
+        sub.source === "stripe" &&
+        sub.clientSecret &&
+        !sub.clientSecret.startsWith("stripe_stub_") &&
+        !sub.clientSecret.startsWith("stripe_err_") &&
+        !!envConfig.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+
+      if (isRealStripe) {
+        const initRes = await initPaymentSheet({
+          merchantDisplayName: "Avant Regard",
+          paymentIntentClientSecret: sub.clientSecret!,
+          applePay: { merchantCountryCode: "US" },
+          googlePay: { merchantCountryCode: "US", testEnv: __DEV__ },
+          returnURL: "avantregard://stripe-redirect",
+        });
+        if (initRes.error) throw new Error(initRes.error.message);
+        const presentRes = await presentPaymentSheet();
+        if (presentRes.error) {
+          if (presentRes.error.code === "Canceled") return;
+          throw new Error(presentRes.error.message);
+        }
+        // 付款成功 → 实际激活由 webhook 完成 (plus_service.confirm_by_intent),
+        // 这里不再调 confirm-mock; 给后端一个心跳的小延时再 reload 状态。
+        await new Promise((r) => setTimeout(r, 1200));
+        Alert.alert("订阅成功", "Plus 权益将在数秒内生效");
+        load();
+        return;
+      }
+
+      // 2) DEV 联调路径 (mock provider / 没配 stripe key): 直接 confirm-mock。
+      // 生产环境后端会 404, 这种情况会落到 catch 提示错误。
       await confirmPlusMock(sub.id);
       Alert.alert("订阅成功", "Plus 权益已生效");
       load();

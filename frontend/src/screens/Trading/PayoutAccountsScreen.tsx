@@ -25,6 +25,9 @@ import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 
+import * as WebBrowser from "expo-web-browser";
+import Constants from "expo-constants";
+
 import {
   createPayoutAccount,
   deletePayoutAccount,
@@ -34,6 +37,22 @@ import {
   PayoutAccountType,
   setDefaultPayoutAccount,
 } from "../../services/kycService";
+
+// 与 App.tsx / PaymentScreen 同样的 scheme 解析逻辑 — 决定 Stripe Connect
+// 跳板页应该跳哪个 App variant 的 deep link。
+function resolveAppScheme(): string {
+  const expoCfg: any = (Constants.expoConfig ?? Constants.manifest) as any;
+  const s = expoCfg?.scheme;
+  if (Array.isArray(s) && s.length > 0) return String(s[0]);
+  if (typeof s === "string" && s.length > 0) return s;
+  return "avantregard";
+}
+import {
+  getConnectStatus,
+  refreshConnectStatus,
+  startConnectOnboarding,
+  type ConnectAccountStatus,
+} from "../../services/walletService";
 import { useAppTheme, useThemedStyles, type AppTheme } from "../../theme";
 
 const TYPE_OPTIONS: PayoutAccountType[] = ["bank", "alipay", "wechat"];
@@ -48,20 +67,76 @@ export default function PayoutAccountsScreen() {
   const [loading, setLoading] = useState(true);
   const [kycStatus, setKycStatus] = useState<string>("none");
   const [showAdd, setShowAdd] = useState(false);
+  const [connect, setConnect] = useState<ConnectAccountStatus | null>(null);
+  const [connectBusy, setConnectBusy] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [list, kyc] = await Promise.all([
+      const [list, kyc, conn] = await Promise.all([
         listPayoutAccounts(),
         getMyKyc().catch(() => null),
+        getConnectStatus().catch(() => null),
       ]);
       setAccounts(list.items);
       setKycStatus(kyc?.status ?? "none");
+      setConnect(conn);
     } finally {
       setLoading(false);
     }
   }, []);
+
+  const onboardConnect = useCallback(async () => {
+    if (connectBusy) return;
+    setConnectBusy(true);
+    try {
+      const appScheme = resolveAppScheme();
+      const { url } = await startConnectOnboarding({ appScheme });
+      // openAuthSessionAsync(url, redirectUrl):
+      //   - iOS  使用 ASWebAuthenticationSession,看到 location 跳到
+      //     redirectUrl(scheme 完全匹配)就 dismiss
+      //   - Android 使用 Custom Tabs,行为一致
+      // 我们后端的 /api/connect/return HTML 会 JS 跳到
+      // {appScheme}://connect/return, 所以这里要把同一个 scheme 显式传过去,
+      // 否则 native session 不会自动关闭,用户得手动点 "Done"。
+      const result = await WebBrowser.openAuthSessionAsync(
+        url,
+        `${appScheme}://connect/return`,
+      );
+      // 不论用户是 dismiss 还是完成,都拉一次最新状态;
+      // 如果还是 pending(没完成 KYC), refresh 也会反映出来。
+      try {
+        const fresh = await refreshConnectStatus();
+        setConnect(fresh);
+        if (fresh.status === "active" && fresh.stripeAccountId) {
+          // 自动把 acct 同步到 payout_accounts 表里(后端 createPayoutAccount
+          // 内部会校验 stripe_account_id 与 connect_row 一致)。
+          // 已存在则后端会返回 400,这里吞掉。
+          try {
+            await createPayoutAccount({
+              accountType: "stripe_connect",
+              // Connect 类型对 holderName 不做强校验, 但占位写一个稳定值,
+              // 防止后续展示空白。
+              holderName: "Stripe Connect",
+              accountNo: fresh.stripeAccountId,
+              isDefault: accounts.length === 0,
+            });
+          } catch (_) {
+            // 已经绑过了,忽略
+          }
+        }
+      } finally {
+        load();
+      }
+      if (result?.type === "cancel") {
+        // 用户主动取消,不报错
+      }
+    } catch (e: any) {
+      Alert.alert(t("common.failed"), e?.message ?? "");
+    } finally {
+      setConnectBusy(false);
+    }
+  }, [connectBusy, accounts.length, load, t]);
 
   useEffect(() => {
     load();
@@ -148,6 +223,14 @@ export default function PayoutAccountsScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll}>
+        <ConnectCard
+          status={connect}
+          busy={connectBusy}
+          onPress={onboardConnect}
+          theme={theme}
+          styles={styles}
+          t={t}
+        />
         {accounts.length === 0 ? (
           <View style={styles.empty}>
             <Ionicons
@@ -445,7 +528,73 @@ function Field({
 function accountIcon(type: string): keyof typeof Ionicons.glyphMap {
   if (type === "alipay") return "logo-alipay";
   if (type === "wechat") return "logo-wechat";
+  if (type === "stripe_connect") return "globe-outline";
   return "card-outline";
+}
+
+function ConnectCard({
+  status,
+  busy,
+  onPress,
+  theme,
+  styles,
+  t,
+}: {
+  status: ConnectAccountStatus | null;
+  busy: boolean;
+  onPress: () => void;
+  theme: AppTheme;
+  styles: ReturnType<typeof makeStyles>;
+  t: (k: string, opts?: any) => string;
+}) {
+  const s = status?.status ?? "none";
+  const titleKey = `trading.payoutAccount.stripeConnect.status.${s}`;
+  const ctaKey =
+    s === "active"
+      ? "trading.payoutAccount.stripeConnect.manage"
+      : s === "restricted" || s === "pending"
+      ? "trading.payoutAccount.stripeConnect.continue"
+      : "trading.payoutAccount.stripeConnect.start";
+  return (
+    <Pressable
+      style={styles.connectCard}
+      onPress={onPress}
+      disabled={busy}
+    >
+      <View style={styles.connectIcon}>
+        {busy ? (
+          <ActivityIndicator color={theme.colors.textInverted} />
+        ) : (
+          <Ionicons
+            name="globe-outline"
+            size={20}
+            color={theme.colors.textInverted}
+          />
+        )}
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.connectTitle}>
+          {t("trading.payoutAccount.stripeConnect.title")}
+        </Text>
+        <Text style={styles.connectSubtitle}>
+          {t(titleKey, {
+            defaultValue: t("trading.payoutAccount.stripeConnect.status.none"),
+          })}
+        </Text>
+        {(status?.requirementsCurrentlyDue ?? []).length > 0 ? (
+          <Text style={styles.connectSubtitle}>
+            {t("trading.payoutAccount.stripeConnect.needs", {
+              defaultValue: "需补充: ",
+            })}
+            {status!.requirementsCurrentlyDue.slice(0, 3).join(", ")}
+          </Text>
+        ) : null}
+      </View>
+      <View style={styles.connectCta}>
+        <Text style={styles.connectCtaText}>{t(ctaKey)}</Text>
+      </View>
+    </Pressable>
+  );
 }
 
 function capitalize(s: string) {
@@ -533,6 +682,46 @@ const makeStyles = (t: AppTheme) =>
       paddingTop: 12,
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: t.colors.border,
+    },
+    connectCard: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+      padding: 14,
+      borderRadius: 12,
+      marginBottom: 14,
+      backgroundColor: t.colors.cardElevated,
+      borderWidth: 1,
+      borderColor: t.colors.accent,
+    },
+    connectIcon: {
+      width: 38,
+      height: 38,
+      borderRadius: 19,
+      backgroundColor: t.colors.accent,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    connectTitle: {
+      fontSize: 14,
+      color: t.colors.text,
+      fontWeight: "600",
+    },
+    connectSubtitle: {
+      fontSize: 12,
+      color: t.colors.gray300,
+      marginTop: 2,
+    },
+    connectCta: {
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 6,
+      backgroundColor: t.colors.accent,
+    },
+    connectCtaText: {
+      color: t.colors.textInverted,
+      fontSize: 12,
+      fontWeight: "600",
     },
     actionBtn: {
       paddingHorizontal: 12,

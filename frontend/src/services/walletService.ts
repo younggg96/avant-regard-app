@@ -114,6 +114,56 @@ export async function createWithdrawal(
   });
 }
 
+// ---------------- Stripe Connect ----------------
+
+export type ConnectStatus =
+  | "none"
+  | "pending"
+  | "active"
+  | "restricted"
+  | "disabled";
+
+export interface ConnectAccountStatus {
+  exists: boolean;
+  status: ConnectStatus;
+  stripeAccountId?: string | null;
+  country?: string | null;
+  defaultCurrency?: string | null;
+  chargesEnabled: boolean;
+  payoutsEnabled: boolean;
+  detailsSubmitted: boolean;
+  requirementsCurrentlyDue: string[];
+  requirementsDisabledReason?: string | null;
+}
+
+export async function getConnectStatus(): Promise<ConnectAccountStatus> {
+  return request<ConnectAccountStatus>("/api/wallet/me/connect");
+}
+
+/** 创建 Connect 账号(幂等)+ 拿一个一次性 Onboarding URL。
+ * 前端用 expo-web-browser 的 openAuthSessionAsync 打开,完成后回调入参的 returnUrl。
+ *
+ * appScheme: 当前 App variant 的自定义 scheme(avantregard / avantregardna),
+ *   传给后端跳板页, 让 Stripe → 跳板页 → 跳回当前 variant 的 App。 */
+export async function startConnectOnboarding(
+  body: { country?: string; email?: string; appScheme?: string } = {},
+): Promise<{ url: string; account: ConnectAccountStatus }> {
+  return request<{ url: string; account: ConnectAccountStatus }>(
+    "/api/wallet/me/connect/onboard",
+    {
+      method: "POST",
+      body: JSON.stringify(body),
+    },
+  );
+}
+
+/** 主动从 Stripe 拉一次状态(onboarding 跳回 App 后调一次,确认状态变 active)。 */
+export async function refreshConnectStatus(): Promise<ConnectAccountStatus> {
+  return request<ConnectAccountStatus>("/api/wallet/me/connect/refresh", {
+    method: "POST",
+  });
+}
+
 export function formatLedgerReason(reason: string): string {
   const key = `trading.wallet.ledger.${reason}`;
   const translated = i18n.t(key);

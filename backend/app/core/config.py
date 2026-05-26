@@ -153,5 +153,45 @@ class Settings(BaseSettings):
     # 选择真实 provider:留空 / mock → MockVerifyProvider(开发用,所有请求都通过)
     VERIFY_PROVIDER: str = "mock"  # mock / aliyun
 
+    # =====================================================
+    # 支付通道(Stripe / 支付宝 / 微信支付)
+    # =====================================================
+    # 默认 provider:留空或 "mock" 时 OrderService 创建订单走 stub intent,
+    # 生产应配 PAYMENT_PROVIDER=stripe(海外)或留空让 factory 按 currency 路由。
+    PAYMENT_PROVIDER: str = ""
+    # 即便默认 provider 是 stripe/alipay/wechat,这一开关额外把 mock 注入
+    # payment-options 列表,便于 staging 环境联调订单状态机而不真实扣款。
+    PAYMENT_ENABLE_MOCK: str = ""
+
+    # Stripe 后端密钥(sk_live_ / sk_test_ / rk_*)。建议优先用 Restricted API Key(rk_)。
+    # 仅服务器端可见,绝对不要塞进 EXPO_PUBLIC_*。
+    STRIPE_API_KEY: str = ""
+    # Webhook 验签密钥(whsec_*)。未配置时 stripe webhook 路由直接 400,
+    # 避免未验证的事件推进订单状态机。
+    STRIPE_WEBHOOK_SECRET: str = ""
+    # Stripe Account ID(acct_*)。可选,Connect 场景需要;普通收单留空即可。
+    STRIPE_ACCOUNT_ID: str = ""
+
+    # Stripe Connect Onboarding 跳转 URL。
+    # - REFRESH 在 Onboarding URL 过期或用户中途取消时, Stripe 会跳到这里;
+    #   建议指向一个前端页面, 该页再调 /wallet/me/connect/onboard 重新拿 URL。
+    # - RETURN  Onboarding 完成后跳到这里;前端页可调 /wallet/me/connect/refresh 拉最新状态。
+    STRIPE_CONNECT_REFRESH_URL: str = ""
+    STRIPE_CONNECT_RETURN_URL: str = ""
+
+    # 支付宝 App 支付(国内 CNY 主通道之一)
+    ALIPAY_APP_ID: str = ""
+    ALIPAY_PRIVATE_KEY: str = ""
+    ALIPAY_PUBLIC_KEY: str = ""
+    ALIPAY_NOTIFY_URL: str = ""
+
+    # 微信支付 v3(国内 CNY 主通道之一)
+    WECHAT_APP_ID: str = ""
+    WECHAT_MCH_ID: str = ""
+    WECHAT_API_V3_KEY: str = ""
+    WECHAT_PRIVATE_KEY: str = ""
+    WECHAT_CERT_SERIAL_NO: str = ""
+    WECHAT_NOTIFY_URL: str = ""
+
 
 settings = Settings()

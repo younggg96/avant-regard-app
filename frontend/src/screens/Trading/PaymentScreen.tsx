@@ -8,14 +8,18 @@
  *
  * 支付通道：
  *   - 中国（CNY）：支付宝 / 微信支付
- *   - 美国及其它（USD/...）：Stripe
+ *   - 美国及其它（USD/...）：Stripe (PaymentSheet)
  *   - 开发环境额外暴露 mock，方便联调
  *
- * 流程：
- *   - GET /orders/:id/payment-options 拉可用 provider
- *   - 用户选 provider → POST /orders/:id/pay → 拿到 provider intent / clientSecret / orderString / prepayId
- *   - 调起原生 SDK（待真实接入；当前直接 confirm 闭环）
- *   - POST /orders/:id/pay/confirm → 订单 → paid
+ * Stripe 流程(本屏直接拉起原生 PaymentSheet):
+ *   1. POST /orders/:id/pay → 后端创建 PaymentIntent, 返回 paymentMetadata.clientSecret
+ *   2. initPaymentSheet({ paymentIntentClientSecret })
+ *   3. presentPaymentSheet() → 用户在原生半模态里完卡 / Apple Pay / Google Pay
+ *   4. 成功后 POST /orders/:id/pay/confirm 让 UX 立刻跳到 paid 态(乐观);
+ *      最终订单状态以 Stripe webhook 为准, 后端是幂等的。
+ *
+ * 其它 provider(Alipay / WeChat / mock)暂仍走「直接 confirm」, 后续接 SDK 时
+ * 在 handlePay 里按 selected 分支扩展即可。
  */
 import React, { useCallback, useEffect, useState } from "react";
 import {
@@ -32,6 +36,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
+import { useStripe } from "@stripe/stripe-react-native";
+import Constants from "expo-constants";
 
 import {
   confirmPayment,
@@ -44,6 +50,16 @@ import {
 } from "../../services/orderService";
 import { useFormatPrice } from "../../utils/currency";
 import { useAppTheme, useThemedStyles, type AppTheme } from "../../theme";
+import { config as envConfig } from "../../config/env";
+
+// 与 App.tsx 的 STRIPE_URL_SCHEME 保持一致 — 3DS 跳转回 App 用。
+const STRIPE_URL_SCHEME: string = (() => {
+  const expoCfg: any = (Constants.expoConfig ?? Constants.manifest) as any;
+  const s = expoCfg?.scheme;
+  if (Array.isArray(s) && s.length > 0) return String(s[0]);
+  if (typeof s === "string" && s.length > 0) return s;
+  return "avantregard";
+})();
 
 type RouteParams = { Payment: { orderId: number } };
 
@@ -71,6 +87,7 @@ export default function PaymentScreen() {
   const theme = useAppTheme();
   const formatPrice = useFormatPrice();
   const styles = useThemedStyles(makeStyles);
+  const { initPaymentSheet, presentPaymentSheet } = useStripe();
 
   const [order, setOrder] = useState<Order | null>(null);
   const [options, setOptions] = useState<PaymentOption[]>([]);
@@ -131,21 +148,105 @@ export default function PaymentScreen() {
     load();
   }, [load]);
 
+  /**
+   * Stripe PaymentSheet 拉起逻辑。
+   *
+   * - clientSecret 来自后端 PaymentIntent.create, 必须形如 pi_*_secret_*;
+   *   stub intent (stripe_stub_*, stripe_err_*) 没有真实 client_secret,
+   *   直接给提示让用户切换通道或联系客服(避免 PaymentSheet 报无意义错误)。
+   * - presentPaymentSheet 返回的 error.code 在用户取消时为 "Canceled",
+   *   需要吞掉, 不然每次返回都弹「支付失败」误导用户。
+   * - 成功后调 confirmPayment 仅做客户端乐观更新, 真正的 paid 状态以
+   *   webhook 为准 (后端 handle_payment_event 幂等)。
+   */
+  const presentStripeSheet = async (refreshed: Order): Promise<boolean> => {
+    const clientSecret = (refreshed.paymentMetadata as any)?.clientSecret as
+      | string
+      | undefined;
+    if (!clientSecret || /^stripe_(stub|err)_/.test(clientSecret)) {
+      Alert.alert(
+        t("trading.payment.stripeUnavailableTitle"),
+        t("trading.payment.stripeUnavailableMessage"),
+      );
+      return false;
+    }
+    if (!envConfig.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY) {
+      Alert.alert(
+        t("trading.payment.stripeUnavailableTitle"),
+        t("trading.payment.stripeMissingKey"),
+      );
+      return false;
+    }
+
+    const init = await initPaymentSheet({
+      paymentIntentClientSecret: clientSecret,
+      merchantDisplayName: "Avant Regard",
+      // Apple Pay 在 app.config.js 的 merchantIdentifier 配置后即可使用。
+      // 国家码沿用商品币种推算(USD → US, 其它默认 US 兜底)。
+      applePay: { merchantCountryCode: "US" },
+      googlePay: {
+        merchantCountryCode: "US",
+        testEnv: __DEV__,
+      },
+      // returnURL 让 Stripe 在 3DS 等需要跳转浏览器的支付方式回到 App,
+      // urlScheme 与 StripeProvider 上保持一致(NA 变体走 avantregardna)。
+      returnURL: `${STRIPE_URL_SCHEME}://stripe-redirect`,
+      allowsDelayedPaymentMethods: false,
+    });
+    if (init.error) {
+      Alert.alert(
+        t("trading.payment.failedTitle"),
+        init.error.message ?? t("trading.payment.failedMessage"),
+      );
+      return false;
+    }
+
+    const result = await presentPaymentSheet();
+    if (result.error) {
+      // 用户主动取消不算失败, 让他可以重新选支付方式或重试
+      if (result.error.code === "Canceled") {
+        return false;
+      }
+      Alert.alert(
+        t("trading.payment.failedTitle"),
+        result.error.message ?? t("trading.payment.failedMessage"),
+      );
+      return false;
+    }
+    return true;
+  };
+
   const handlePay = async () => {
     if (!order || !selected) return;
     setPaying(true);
     try {
-      // 1. 创建/刷新 provider intent
+      // 1. 让后端创建/刷新 provider intent, 拿到 clientSecret(Stripe) /
+      //    orderString(支付宝) / prepayId(微信) 等通道私有凭证。
       const refreshed = await startPayment(order.id, selected);
       setOrder(refreshed);
 
-      // 2. 拉起原生 SDK 占位：真实接入时根据 provider 走不同 flow
-      //    Stripe → Stripe RN SDK PaymentSheet
-      //    Alipay → alipay-react-native
-      //    WeChat → react-native-wechat
-      //    当前 stub 直接走 confirm 闭环
-      const confirmed = await confirmPayment(order.id);
-      setOrder(confirmed);
+      // 2. 按 provider 拉起对应原生 SDK
+      if (selected === "stripe") {
+        const ok = await presentStripeSheet(refreshed);
+        if (!ok) {
+          setPaying(false);
+          return;
+        }
+      }
+      // TODO(支付宝): alipay-react-native AlipaySdk.alipay(orderString)
+      // TODO(微信支付): @wq-spike/expo-native-wechat 的 sendPaymentRequest
+      // mock provider 没有真实 SDK, 直接走 confirm 闭环
+
+      // 3. 客户端乐观确认 — 即便 confirm 接口偶发失败, webhook 仍会推动
+      //    订单到 paid。这里仅为给用户即时反馈用,失败时回退到当前状态。
+      try {
+        const confirmed = await confirmPayment(order.id);
+        setOrder(confirmed);
+      } catch (confirmErr: any) {
+        // confirm 失败但 PaymentSheet 已成功 → 提示用户稍后查看,
+        // 不阻塞其它流程。
+        console.warn("[payment] optimistic confirm failed:", confirmErr);
+      }
 
       Alert.alert(
         t("trading.payment.successTitle"),

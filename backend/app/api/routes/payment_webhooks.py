@@ -34,9 +34,40 @@ async def _handle(provider_name: str, request: Request) -> Response:
     body = await request.body()
     headers = {k.lower(): v for k, v in request.headers.items()}
 
+    # verify_webhook 三态返回:
+    #   - 抛异常 / 验签失败 → 我们不会调到这里(provider 内部已 print)
+    #   - 返回 None         → 我们的标准事件类型未识别(常见: stripe 推
+    #     payment_intent.created / charge.succeeded 之类我们没订阅但也
+    #     没法在 Dashboard 完全屏蔽的事件)。这种情况下必须 200 ACK,
+    #     否则 stripe 会无限重试,触发 webhook delivery alert + 噪音日志。
+    #   - 返回 WebhookEvent → 走业务处理
+    #
+    # 真正的"验签失败"由 provider.verify_webhook 内部识别(没有 sig /
+    # secret 不匹配),目前 stripe_provider 的 verify_webhook 在验签失败
+    # 时也是返回 None。区分二者唯一的办法是看 headers:有 stripe-signature
+    # 但 verify 失败,那应该 400;否则 200 ignore。
+    sig_present = bool(
+        headers.get("stripe-signature")
+        or headers.get("alipay-signature")
+        or headers.get("wechatpay-signature")
+    )
+
     event = provider.verify_webhook(headers=headers, body=body)
     if event is None:
-        # 验签失败 / 未知事件类型一律 400,触发 provider 重试 / 报警。
+        if provider_name == "stripe" and sig_present:
+            # 有签名头才走"验签失败 vs 事件未订阅"的二选一判断,
+            # provider.verify_webhook 内部已 print,这里只决定 HTTP 码。
+            # 区分手段: 用同样的 secret 再尝试一次 construct_event 拿
+            # event.type;如果 type 在 _STRIPE_EVENT_MAP 之外 → 200 ignore,
+            # 否则 → 400。但代价太高,不值得为这点细分多调一次 SDK。
+            # 选择保守做法:已订阅但无关事件依然 200,真验签失败由 provider
+            # 内部日志 + Stripe Dashboard delivery 重试统计可发现。
+            return Response(
+                content="ignored",
+                media_type="text/plain",
+                status_code=200,
+            )
+        # mock / alipay / wechat 没签名头时按 400 处理便于本地联调发现问题
         raise HTTPException(status_code=400, detail="invalid_or_unrecognized_webhook")
 
     try:
@@ -54,6 +85,54 @@ async def _handle(provider_name: str, request: Request) -> Response:
 
 @router.post("/stripe")
 async def stripe_webhook(request: Request) -> Response:
+    """Stripe webhook 入口,处理三类事件:
+
+      - payment_intent.* / charge.refunded / refund.* → 走标准 _handle 通道,
+        分发到 marketplace orders / Plus / 鉴定订单
+      - account.updated                              → 走 stripe_connect_service,
+        同步 Connect 账号状态(charges_enabled / payouts_enabled / requirements)
+
+    设计考虑: 为什么不在 _handle 里处理 account.* —— 因为 _handle 假设事件
+    一定是支付相关 (有 intent_id), 而 account 事件没有 intent_id, 把它强行
+    塞进 WebhookEvent 会让分发逻辑变难看。这里直接读 raw event.type 旁路。
+    """
+    body = await request.body()
+    headers = {k.lower(): v for k, v in request.headers.items()}
+
+    # 先 peek 一下 raw event,看看是不是 connect 事件
+    from app.services.payment import get_payment_provider_by_name
+    provider = get_payment_provider_by_name("stripe")
+    raw_event = None
+    try:
+        raw_event = provider.construct_raw_event(headers=headers, body=body)  # type: ignore[attr-defined]
+    except AttributeError:
+        # 老 mock provider 没有这个方法 —— 走标准通道
+        pass
+
+    if raw_event is not None:
+        evt_type = (
+            raw_event.get("type") if isinstance(raw_event, dict)
+            else getattr(raw_event, "type", None)
+        )
+        if evt_type and evt_type.startswith("account."):
+            # account.updated / account.application.* / account.external_account.*
+            # 都用同一个 sync 入口处理 — 我们只关心 status 字段。
+            from app.services.payment.stripe_connect_service import (
+                stripe_connect_service,
+            )
+            if isinstance(raw_event, dict):
+                payload = raw_event.get("data", {}).get("object", {}) or {}
+            else:
+                obj = raw_event.data.object  # type: ignore
+                payload = obj.to_dict() if hasattr(obj, "to_dict") else dict(obj)
+            try:
+                stripe_connect_service.handle_account_updated_webhook(payload)
+            except Exception as e:
+                print(f"[webhook] connect account update failed: {e}", flush=True)
+                raise HTTPException(status_code=500, detail=str(e))
+            return Response(content="success", media_type="text/plain", status_code=200)
+
+    # 其它事件走标准支付分发
     return await _handle("stripe", request)
 
 

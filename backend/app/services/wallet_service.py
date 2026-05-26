@@ -278,10 +278,17 @@ class WalletService:
     ) -> Optional[Dict[str, Any]]:
         """订单发生退款 / 仲裁退给买家时把对应的 pending_payout 反向冲账。
 
-        - 仅处理仍处于 `locked` 状态的 pending；如果已经 `released`（钱已进 available）
-          则代表 3 天锁定期已过，需要在更高层（disputes 仲裁）单独处理可用余额回收。
-        - 守恒：`pending_cents -= amount`，写一条 `refund_reverse` 的 debit 流水。
-        - 幂等：如果该订单的 pending 已被 reverse 过，直接返回 None。
+        三种情形:
+          1) `locked`(仍在 T+3 锁定期内)
+             直接 status=reversed,pending_cents -= amount,写 refund_reverse 流水。
+             这是最常见 / 最干净的路径。
+          2) `released`(已经过 T+3,钱在 available_cents 里)
+             先尝试 available_cents -= amount(尽量不让卖家带 platform 风险);
+             余额不足时,把缺口作为坏账记录(metadata.shortfall),
+             由对账系统 / 客服后续处理(可能需要从卖家其它收入扣回)。
+             status 改 `clawed_back`,与正常 reverse 区分。
+          3) `reversed` / 其它非法状态
+             幂等 no-op,直接返回原行。
         """
         try:
             res = (
@@ -297,30 +304,89 @@ class WalletService:
         if not res.data:
             return None
         row = res.data[0]
-        if row.get("status") != "locked":
-            # 已 released / reversed：不再重复操作
+        status = row.get("status")
+        if status not in ("locked", "released"):
+            # 已 reversed / clawed_back / 未知状态:幂等 no-op
             return row
 
         now_iso = datetime.utcnow().isoformat()
-        try:
-            self.db.table("pending_payouts").update(
-                {"status": "reversed", "released_at": now_iso}
-            ).eq("id", row["id"]).execute()
-        except Exception as e:
-            print(f"[wallet] mark pending reversed failed: {e}")
+        amount = int(row["amount_cents"] or 0)
+
+        if status == "locked":
+            # 路径 1: 锁定期内退款,pending 反向。
+            try:
+                self.db.table("pending_payouts").update(
+                    {"status": "reversed", "released_at": now_iso}
+                ).eq("id", row["id"]).execute()
+            except Exception as e:
+                print(f"[wallet] mark pending reversed failed: {e}")
+                return row
+            try:
+                self._bump_balance(
+                    owner_kind=row["owner_kind"],
+                    owner_user_id=row.get("owner_user_id"),
+                    owner_merchant_id=row.get("owner_merchant_id"),
+                    currency=row.get("currency", DEFAULT_CURRENCY),
+                    pending_delta=-amount,
+                    total_payout_delta=-amount,
+                )
+            except Exception as e:
+                print(f"[wallet] bump on reverse failed: {e}")
+            try:
+                self._write_ledger(
+                    order_id=order_id,
+                    owner_kind=row["owner_kind"],
+                    owner_user_id=row.get("owner_user_id"),
+                    owner_merchant_id=row.get("owner_merchant_id"),
+                    direction="debit",
+                    amount_cents=amount,
+                    currency=row.get("currency", DEFAULT_CURRENCY),
+                    reason="refund_reverse",
+                    metadata={"pendingPayoutId": row["id"], "note": reason},
+                )
+            except Exception as e:
+                print(f"[wallet] write reverse ledger failed: {e}")
             return row
 
+        # 路径 2: T+3 后 clawback。能扣多少扣多少,不足部分挂坏账。
         try:
-            self._bump_balance(
+            bal = self._get_balance_row(
                 owner_kind=row["owner_kind"],
                 owner_user_id=row.get("owner_user_id"),
                 owner_merchant_id=row.get("owner_merchant_id"),
                 currency=row.get("currency", DEFAULT_CURRENCY),
-                pending_delta=-row["amount_cents"],
-                total_payout_delta=-row["amount_cents"],
             )
         except Exception as e:
-            print(f"[wallet] bump on reverse failed: {e}")
+            print(f"[wallet] get balance for clawback failed: {e}")
+            bal = None
+
+        available_now = int((bal or {}).get("available_cents") or 0)
+        clawback = min(amount, max(available_now, 0))
+        shortfall = amount - clawback
+
+        try:
+            self.db.table("pending_payouts").update(
+                {
+                    "status": "clawed_back",
+                    "released_at": now_iso,
+                }
+            ).eq("id", row["id"]).execute()
+        except Exception as e:
+            print(f"[wallet] mark pending clawed_back failed: {e}")
+            return row
+
+        if clawback > 0:
+            try:
+                self._bump_balance(
+                    owner_kind=row["owner_kind"],
+                    owner_user_id=row.get("owner_user_id"),
+                    owner_merchant_id=row.get("owner_merchant_id"),
+                    currency=row.get("currency", DEFAULT_CURRENCY),
+                    available_delta=-clawback,
+                    total_payout_delta=-clawback,
+                )
+            except Exception as e:
+                print(f"[wallet] clawback bump failed: {e}")
 
         try:
             self._write_ledger(
@@ -329,14 +395,55 @@ class WalletService:
                 owner_user_id=row.get("owner_user_id"),
                 owner_merchant_id=row.get("owner_merchant_id"),
                 direction="debit",
-                amount_cents=row["amount_cents"],
+                amount_cents=clawback,
                 currency=row.get("currency", DEFAULT_CURRENCY),
-                reason="refund_reverse",
-                metadata={"pendingPayoutId": row["id"], "note": reason},
+                reason="refund_clawback",
+                metadata={
+                    "pendingPayoutId": row["id"],
+                    "note": reason,
+                    # shortfall > 0 → 平台先垫付,后续向卖家追讨。
+                    # 监控这条 ledger 的 shortfall 字段即可发现风险订单。
+                    "amountRequested": amount,
+                    "amountClawed": clawback,
+                    "shortfall": shortfall,
+                },
             )
         except Exception as e:
-            print(f"[wallet] write reverse ledger failed: {e}")
+            print(f"[wallet] write clawback ledger failed: {e}")
+
+        if shortfall > 0:
+            print(
+                f"[wallet] CLAWBACK SHORTFALL order={order_id} owner_user="
+                f"{row.get('owner_user_id')} merchant={row.get('owner_merchant_id')} "
+                f"shortfall={shortfall} reason={reason}",
+                flush=True,
+            )
+
         return row
+
+    def _get_balance_row(
+        self,
+        *,
+        owner_kind: str,
+        owner_user_id: Optional[int],
+        owner_merchant_id: Optional[int],
+        currency: str,
+    ) -> Optional[Dict[str, Any]]:
+        """读取一条 seller_balances 行(找不到返回 None)。仅供 clawback / 估算用,
+        正式更新走 _bump_balance,以避免和 _bump_balance 内的 UPSERT 互相覆盖。"""
+        q = self.db.table("seller_balances").select("*").eq(
+            "owner_kind", owner_kind
+        ).eq("currency", currency)
+        if owner_kind == "user":
+            if owner_user_id is None:
+                return None
+            q = q.eq("owner_user_id", owner_user_id)
+        else:
+            if owner_merchant_id is None:
+                return None
+            q = q.eq("owner_merchant_id", owner_merchant_id)
+        res = q.limit(1).execute()
+        return res.data[0] if res.data else None
 
     # ------------------------------------------------------------------
     # Cron：3 天到期 → 释放到 available_cents
@@ -401,10 +508,6 @@ class WalletService:
     ) -> Withdrawal:
         from app.services.kyc_service import kyc_service
 
-        kyc = kyc_service.get(user_id)
-        if not kyc or kyc.status != "approved":
-            raise ValueError("需要先完成实名认证")
-
         # 解析放款账户：未传则取默认
         account_row = None
         if payout_account_id is not None:
@@ -429,6 +532,28 @@ class WalletService:
             account_row = res.data[0] if res.data else None
         if account_row is None:
             raise ValueError("请先绑定放款账户")
+
+        # KYC 校验:
+        #   - bank/alipay/wechat 走平台手动放款,需要本地实名(身份证)
+        #   - stripe_connect    Stripe Express 已托管 KYC,本地不强制要求,
+        #                       但 Connect 账号必须 details_submitted=true 且
+        #                       payouts_enabled=true(由 status='active' 反映)。
+        if account_row["account_type"] == "stripe_connect":
+            from app.services.payment.stripe_connect_service import (
+                stripe_connect_service,
+            )
+            connect_row = stripe_connect_service.get_account_row(user_id)
+            if not connect_row:
+                raise ValueError("Stripe Connect 账号未关联")
+            if connect_row["status"] != "active":
+                raise ValueError("Stripe 账号尚未通过审核, 暂时无法放款")
+            # 防御:account_no 应该等于 stripe_account_id
+            if account_row.get("account_no") != connect_row["stripe_account_id"]:
+                raise ValueError("放款账户与 Stripe Connect 账号不匹配")
+        else:
+            kyc = kyc_service.get(user_id)
+            if not kyc or kyc.status != "approved":
+                raise ValueError("需要先完成实名认证")
 
         bal = self.get_balance(user_id)
         if amount_cents > bal.availableCents:
@@ -466,7 +591,106 @@ class WalletService:
             reason="withdrawal",
             metadata={"withdrawalId": row["id"]},
         )
+
+        # Stripe Connect 类型的提现走自动放款 — 直接调 Transfer API。
+        # 失败时不阻塞 create_withdrawal 返回 (前端用户已经看到 pending 单),
+        # 失败的 transfer 把错误写到 metadata, 由客服在后台二次处理。
+        if account_row["account_type"] == "stripe_connect":
+            try:
+                self._process_stripe_connect_withdrawal(row, account_row, bal.currency)
+                # 重新读一次 row 拿最新 status / metadata
+                refreshed = (
+                    self.db.table("wallet_withdrawals")
+                    .select("*")
+                    .eq("id", row["id"])
+                    .limit(1)
+                    .execute()
+                )
+                if refreshed.data:
+                    row = refreshed.data[0]
+            except Exception as e:
+                print(f"[wallet] auto stripe transfer failed: {e}", flush=True)
+
         return self._format_withdrawal(row, account_row)
+
+    def _process_stripe_connect_withdrawal(
+        self,
+        wd_row: Dict[str, Any],
+        account_row: Dict[str, Any],
+        currency: str,
+    ) -> None:
+        """对 stripe_connect 类型的 wallet_withdrawals 执行真正的 Transfer。
+
+        约定:
+          - 成功 → wallet_withdrawals.status='paid', metadata.stripeTransferId 记录,
+            balance 累计 total_withdrawn_cents。
+          - 失败 → wallet_withdrawals.status='processing'(让人觉得在跑),
+            metadata.lastError 记录,管理员可在后台手动 retry / reject。
+            不直接 reject 是因为很多失败原因是临时的(例如 Stripe 平台余额
+            还没到账),客服判断后再决定。
+        """
+        from app.services.payment.stripe_connect_service import (
+            stripe_connect_service,
+        )
+
+        stripe_account_id = account_row.get("account_no")
+        if not stripe_account_id:
+            raise ValueError("payout_account.account_no 缺失")
+
+        try:
+            tr = stripe_connect_service.transfer_to_account(
+                stripe_account_id=stripe_account_id,
+                amount_cents=wd_row["amount_cents"],
+                currency=currency,
+                withdrawal_id=wd_row["id"],
+            )
+            existing_meta = wd_row.get("metadata") or {}
+            if not isinstance(existing_meta, dict):
+                existing_meta = {}
+            existing_meta["stripeTransferId"] = tr.get("id")
+            existing_meta["stripeTransferDestination"] = tr.get("destination")
+            self.db.table("wallet_withdrawals").update(
+                {
+                    "status": "paid",
+                    "processed_at": datetime.utcnow().isoformat(),
+                    "metadata": existing_meta,
+                }
+            ).eq("id", wd_row["id"]).execute()
+
+            # 标记 total_withdrawn_cents
+            self._bump_balance(
+                owner_kind="user",
+                owner_user_id=wd_row["user_id"],
+                owner_merchant_id=None,
+                currency=currency,
+                total_withdrawn_delta=wd_row["amount_cents"],
+            )
+            self._write_ledger(
+                order_id=None,
+                owner_kind="user",
+                owner_user_id=wd_row["user_id"],
+                owner_merchant_id=None,
+                direction="debit",
+                amount_cents=0,  # 资金移动早在 create 时已 debit,这里只是 marker
+                currency=currency,
+                reason="withdrawal_paid_stripe",
+                metadata={
+                    "withdrawalId": wd_row["id"],
+                    "stripeTransferId": tr.get("id"),
+                },
+            )
+        except Exception as e:
+            existing_meta = wd_row.get("metadata") or {}
+            if not isinstance(existing_meta, dict):
+                existing_meta = {}
+            existing_meta["lastError"] = str(e)[:500]
+            self.db.table("wallet_withdrawals").update(
+                {
+                    "status": "processing",
+                    "metadata": existing_meta,
+                }
+            ).eq("id", wd_row["id"]).execute()
+            raise
 
     def list_withdrawals(
         self,

@@ -106,6 +106,19 @@ const config = {
       },
     ],
     "expo-video",
+    // Stripe React Native config plugin
+    // - merchantIdentifier 在 Apple Developer Portal 创建,启用 Apple Pay 必填;
+    //   留空时 Apple Pay 走不通(收单依然可以,降级走 Card)。
+    // - enableGooglePay=true 在 Android 上启用 Google Pay 收单。
+    // 真正接入 Apple/Google Pay 还需要 PaymentSheet 配置 applePay/googlePay 选项,
+    // 这里仅提供原生侧的能力声明。
+    [
+      "@stripe/stripe-react-native",
+      {
+        merchantIdentifier: "merchant.com.yanggg96.avant-regard",
+        enableGooglePay: true,
+      },
+    ],
   ],
   extra: {
     eas: {

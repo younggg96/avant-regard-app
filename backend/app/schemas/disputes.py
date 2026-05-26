@@ -99,6 +99,8 @@ class AuthenticationOrder(BaseModel):
     certificateUrl: Optional[str] = None
     paymentProvider: Optional[str] = None
     paymentIntentId: Optional[str] = None
+    # 仅 stripe 支付时返回 client_secret, 前端拉 PaymentSheet 用。
+    clientSecret: Optional[str] = None
     paidAt: Optional[str] = None
     completedAt: Optional[str] = None
     createdAt: Optional[str] = None

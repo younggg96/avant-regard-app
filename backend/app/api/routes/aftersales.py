@@ -128,6 +128,11 @@ async def create_auth_order(
 
 @authentication_router.post("/orders/{order_id}/pay-mock")
 async def pay_auth_order_mock(order_id: int, user_id: int = Depends(get_current_user)):
+    """开发联调用,生产环境一律 404。真实付款由 stripe webhook → 
+    authentication_service.confirm_by_intent 推动。"""
+    from app.core.config import settings
+    if not settings.DEBUG:
+        raise HTTPException(status_code=404, detail="not_found")
     try:
         o = authentication_service.pay_mock(order_id, user_id)
     except PermissionError as e:

@@ -3592,7 +3592,22 @@
       "submitFailed": "保存失败",
       "submitSuccess": "已绑定",
       "fillRequired": "请完整填写账户信息",
-      "kycRequired": "请先完成实名认证再绑定账户"
+      "kycRequired": "请先完成实名认证再绑定账户",
+      "typeStripe_connect": "Stripe 国际放款",
+      "stripeConnect": {
+        "title": "Stripe Connect 放款",
+        "manage": "管理",
+        "continue": "继续完成",
+        "start": "开始接入",
+        "needs": "需补充: ",
+        "status": {
+          "none": "未接入,海外卖家可一键接入,放款由 Stripe 直接打到银行卡",
+          "pending": "信息待补全,请继续完成 Stripe 验证",
+          "active": "已接入,提现将自动通过 Stripe 放款",
+          "restricted": "Stripe 标记账号需要补充材料,暂停放款",
+          "disabled": "账号已停用,如需重新启用请联系客服"
+        }
+      }
     },
     "tracking": {
       "title": "物流轨迹",
@@ -3662,6 +3677,9 @@
       "loadFailedTitle": "加载失败",
       "orderMissing": "订单不存在",
       "viewOrder": "查看订单",
+      "stripeUnavailableTitle": "暂时无法发起支付",
+      "stripeUnavailableMessage": "支付通道未就绪,请稍后再试或选择其它支付方式",
+      "stripeMissingKey": "App 未配置 Stripe 公钥,请联系客服",
       "providers": {
         "alipay": "支付宝",
         "wechat": "微信支付",

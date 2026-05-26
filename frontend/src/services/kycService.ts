@@ -11,7 +11,11 @@
 import { request } from "./http";
 
 export type KYCStatus = "none" | "pending" | "approved" | "rejected";
-export type PayoutAccountType = "bank" | "alipay" | "wechat";
+export type PayoutAccountType =
+  | "bank"
+  | "alipay"
+  | "wechat"
+  | "stripe_connect";
 
 export interface KYCRecord {
   id?: number | null;

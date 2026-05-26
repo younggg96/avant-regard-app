@@ -150,6 +150,9 @@ class PayoutAccountType(str, Enum):
     BANK = "bank"
     ALIPAY = "alipay"
     WECHAT = "wechat"
+    # Stripe Connect Express, account_no 字段存 acct_*。
+    # KYC 由 Stripe 托管, 国际放款必备。
+    STRIPE_CONNECT = "stripe_connect"
 
 
 class PayoutAccountCreate(BaseModel):

@@ -71,8 +71,13 @@ async def buy_now(body: BuyNowRequest, user_id: int = Depends(get_current_user))
 
 @orders_router.post("/{order_id}/pay-mock")
 async def pay_mock(order_id: int, user_id: int = Depends(get_current_user)):
-    """开发用：mock provider 直接置为 paid。
-    上线后此入口应改成真实 webhook，由支付通道回调。"""
+    """开发用:绕过真实通道直接将订单置为 paid。
+    生产环境(`DEBUG=False`)一律 404,避免被人当作免费付款入口。
+    真实付款由 Stripe / 支付宝 / 微信 webhook → handle_payment_event 推进。"""
+    from app.core.config import settings
+    if not settings.DEBUG:
+        raise HTTPException(status_code=404, detail="not_found")
+
     order = order_service.get_order(order_id)
     if not order:
         raise HTTPException(status_code=404, detail="订单不存在")

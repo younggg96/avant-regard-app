@@ -1165,12 +1165,21 @@ class OrderService:
             )
 
     def handle_payment_event(self, event: Any) -> None:
-        """支付 webhook 入口。把通道事件映射到订单状态机。
+        """支付 webhook 入口。把通道事件映射到三类业务实体的状态机:
+          - marketplace `orders`(主线)
+          - `plus_subscriptions`(Plus 订阅)
+          - `authentication_orders`(鉴定订单)
+
+        分发策略: 按 intent_id 顺序查三张表;只要有一张命中就处理并返回。
+        因为 stripe / mock provider 给的 intent_id 都是全局唯一的,
+        不会出现两张表同时命中。Stripe Dashboard 也允许通过 metadata.scope
+        提前路由,但为了兼容历史已存在的不带 scope 的 intent,这里仍按
+        全表扫描分发,代价就是每次最多 3 次 SELECT。
 
         幂等约束:
-          - PAID 已存在 → succeeded 事件直接 no-op
-          - REFUNDED 已存在 → refund.succeeded 直接 no-op
-          - 找不到订单 → 跳过(可能是 webhook 在数据库恢复前到达,或 intent_id 不属于本系统)
+          - 已 advance 的状态再收到 succeeded → no-op
+          - 找不到任何匹配 → 200 ignore(可能是别的系统的 intent,或 webhook
+            在数据库恢复前到达)
         """
         from app.services.payment.base import (
             WebhookEvent,
@@ -1184,6 +1193,34 @@ class OrderService:
         intent_id = event.intent_id
         if not intent_id:
             return
+
+        # 1) marketplace orders
+        if self._dispatch_to_order(event, intent_id):
+            return
+        # 2) Plus / 鉴定 仅响应 succeeded(refund / failed 暂无落地处理)
+        if event.event_type == WEBHOOK_EVENT_PAYMENT_SUCCEEDED:
+            try:
+                from app.services.plus_service import plus_service
+                if plus_service.confirm_by_intent(intent_id) is not None:
+                    return
+            except Exception as e:
+                print(f"[webhook] plus dispatch failed: {e}", flush=True)
+            try:
+                from app.services.authentication_service import authentication_service
+                if authentication_service.confirm_by_intent(intent_id) is not None:
+                    return
+            except Exception as e:
+                print(f"[webhook] auth dispatch failed: {e}", flush=True)
+
+        print(f"[webhook] no business row matches intent {intent_id}", flush=True)
+
+    def _dispatch_to_order(self, event: Any, intent_id: str) -> bool:
+        from app.services.payment.base import (
+            WEBHOOK_EVENT_PAYMENT_SUCCEEDED,
+            WEBHOOK_EVENT_PAYMENT_FAILED,
+            WEBHOOK_EVENT_REFUND_SUCCEEDED,
+        )
+
         res = (
             self.db.table("orders")
             .select("*")
@@ -1192,8 +1229,7 @@ class OrderService:
             .execute()
         )
         if not res.data:
-            print(f"[webhook] no order found for intent {intent_id}", flush=True)
-            return
+            return False
         order_row = res.data[0]
         order_id = order_row["id"]
 
@@ -1205,41 +1241,90 @@ class OrderService:
                 "completed",
                 "settled",
             ):
-                return  # already advanced
+                return True  # already advanced
             if order_row["status"] != "pending_payment":
                 print(
                     f"[webhook] order {order_id} in {order_row['status']}, "
-                    f"cannot advance to paid"
+                    f"cannot advance to paid",
+                    flush=True,
                 )
-                return
+                return True
             self.transition_status(
                 order_id,
                 OrderStatus.PAID,
                 actor_user_id=order_row["buyer_user_id"],
                 is_admin=True,
             )
-        elif event.event_type == WEBHOOK_EVENT_PAYMENT_FAILED:
+            return True
+
+        if event.event_type == WEBHOOK_EVENT_PAYMENT_FAILED:
             # 失败也只是个提示,前端会让用户重试 / 切换支付方式。
             # 不主动 refunded_auto:用户可能只是临时银行拒绝。
             print(
-                f"[webhook] payment failed for order {order_id}, "
-                f"raw={event.raw}",
+                f"[webhook] payment failed for order {order_id}, raw={event.raw}",
                 flush=True,
             )
-        elif event.event_type == WEBHOOK_EVENT_REFUND_SUCCEEDED:
-            # 退款回执:仅做对账记录,状态机迁移由发起方(_issue_provider_refund 上游)负责。
-            metadata = order_row.get("payment_metadata") or {}
-            if not isinstance(metadata, dict):
-                metadata = {}
-            metadata.setdefault("refundWebhooks", []).append(
-                {"intentId": intent_id, "amountCents": event.amount_cents}
+            return True
+
+        if event.event_type == WEBHOOK_EVENT_REFUND_SUCCEEDED:
+            return self._handle_refund_webhook(order_row, intent_id, event.amount_cents)
+
+        return True
+
+    def _handle_refund_webhook(
+        self,
+        order_row: Dict[str, Any],
+        intent_id: str,
+        amount_cents: int,
+    ) -> bool:
+        """退款回执处理:
+          1) 写一条 metadata.refundWebhooks 用于审计
+          2) 如果订单状态尚未 refunded(说明退款是在 Stripe Dashboard
+             或别的渠道直接发起),自动驱动状态机到 refunded —— 这样钱
+             退给买家、订单也一并标记为退款,避免出现"钱退了但订单还
+             显示已支付"的资金/状态错配。
+          3) 如果订单已经 refunded(我们自己发起的退款,此 webhook 是回执),
+             仅写 metadata,不再重复推动。
+        """
+        order_id = order_row["id"]
+        metadata = order_row.get("payment_metadata") or {}
+        if not isinstance(metadata, dict):
+            metadata = {}
+        metadata.setdefault("refundWebhooks", []).append(
+            {"intentId": intent_id, "amountCents": amount_cents}
+        )
+        try:
+            self.db.table("orders").update(
+                {"payment_metadata": metadata}
+            ).eq("id", order_id).execute()
+        except Exception as e:
+            print(f"[orders] write refund webhook metadata failed: {e}", flush=True)
+
+        if order_row["status"] in ("refunded", "refunded_auto"):
+            return True
+
+        # Stripe Dashboard 直接退款 → 推动状态机。注意 transition_status 会
+        # 再次触发 _issue_provider_refund —— 但此时 stripe 已经退过了,
+        # 二次调用会因为相同 idempotency_key 拿到原 refund 对象(succeeded),
+        # 不会重复扣款。reverse_pending_for_order 也是幂等的。
+        if not is_valid_order_transition(order_row["status"], OrderStatus.REFUNDED.value):
+            print(
+                f"[webhook] order {order_id} in {order_row['status']}, "
+                f"refund webhook cannot advance to refunded",
+                flush=True,
             )
-            try:
-                self.db.table("orders").update(
-                    {"payment_metadata": metadata}
-                ).eq("id", order_id).execute()
-            except Exception as e:
-                print(f"[orders] write refund webhook metadata failed: {e}")
+            return True
+        try:
+            self.transition_status(
+                order_id,
+                OrderStatus.REFUNDED,
+                actor_user_id=order_row.get("buyer_user_id") or 0,
+                is_admin=True,
+                reason="stripe_dashboard_refund",
+            )
+        except Exception as e:
+            print(f"[webhook] dashboard refund transition failed: {e}", flush=True)
+        return True
 
     # ------------------------------------------------------------------
     # Settlement

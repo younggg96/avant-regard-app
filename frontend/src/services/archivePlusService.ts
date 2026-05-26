@@ -157,6 +157,8 @@ export interface PlusSubscription {
   currency: string;
   source: string;
   paymentIntentId?: string | null;
+  /** 仅 source=stripe 且首次 subscribe 调用时返回, 用于拉 Stripe PaymentSheet。 */
+  clientSecret?: string | null;
   status: string;
   autoRenew: boolean;
   createdAt?: string | null;
