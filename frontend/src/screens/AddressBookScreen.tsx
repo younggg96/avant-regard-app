@@ -1,27 +1,20 @@
 /**
  * AddressBookScreen —— 用户常用收货地址簿(PRD 模块四 · 支付环节地址管理)。
- *
- * 业务规则:
- *   - 同时只能有一条 is_default(由后端 unique index 保证)。
- *   - 软删除:后端 deleted_at,删除后历史订单的地址快照仍可读。
- *   - 第一条地址自动置为默认(后端 service 层处理)。
  */
 import React, { useCallback, useEffect, useState } from "react";
 import {
   View,
-  Text,
   StyleSheet,
   ScrollView,
   Pressable,
   Modal,
-  TextInput,
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 
@@ -35,6 +28,14 @@ import {
   UserAddressCreate,
 } from "../services/addressService";
 import { ApiError } from "../services/http";
+import ScreenHeader from "../components/ScreenHeader";
+import { Text } from "../components/ui";
+import {
+  makeTradingFormStyles,
+  ShippingAddressFields,
+  TradingFormDefaultToggle,
+  TRADING_FORM_PADDING,
+} from "../components/trading/TradingFormShared";
 import { useAppTheme, useThemedStyles, type AppTheme } from "../theme";
 
 type FormMode =
@@ -42,9 +43,9 @@ type FormMode =
   | { kind: "edit"; address: UserAddress };
 
 export default function AddressBookScreen() {
-  const navigation = useNavigation<any>();
   const theme = useAppTheme();
-  const styles = useThemedStyles(makeStyles);
+  const formStyles = useThemedStyles(makeTradingFormStyles);
+  const styles = useThemedStyles(makeScreenStyles);
   const { t } = useTranslation();
 
   const [items, setItems] = useState<UserAddress[]>([]);
@@ -111,20 +112,18 @@ export default function AddressBookScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <View style={styles.header}>
-        <Pressable onPress={() => navigation.goBack()} hitSlop={8}>
-          <Ionicons name="chevron-back" size={26} color={theme.colors.text} />
-        </Pressable>
-        <Text style={styles.headerTitle}>{t("trading.addressBook.title")}</Text>
-        <Pressable
-          onPress={() => setEditing({ kind: "create" })}
-          hitSlop={8}
-          style={styles.headerAction}
-        >
-          <Ionicons name="add" size={26} color={theme.colors.accent} />
-        </Pressable>
-      </View>
+    <SafeAreaView style={styles.safe} edges={["top"]}>
+      <ScreenHeader
+        title={t("trading.addressBook.title")}
+        showBack
+        rightActions={[
+          {
+            icon: "add",
+            style: "ghost",
+            onPress: () => setEditing({ kind: "create" }),
+          },
+        ]}
+      />
 
       {loading ? (
         <View style={styles.center}>
@@ -137,17 +136,17 @@ export default function AddressBookScreen() {
             size={42}
             color={theme.colors.gray300}
           />
-          <Text style={styles.emptyTitle}>
+          <Text style={formStyles.emptyTitle}>
             {t("trading.addressBook.empty")}
           </Text>
-          <Text style={styles.emptyHint}>
+          <Text style={formStyles.emptyHint}>
             {t("trading.addressBook.emptyHint")}
           </Text>
           <Pressable
             onPress={() => setEditing({ kind: "create" })}
-            style={styles.primaryBtn}
+            style={[formStyles.primaryBtn, { marginTop: 24 }]}
           >
-            <Text style={styles.primaryBtnText}>
+            <Text style={formStyles.primaryBtnText}>
               {t("trading.addressBook.addNew")}
             </Text>
           </Pressable>
@@ -155,7 +154,7 @@ export default function AddressBookScreen() {
       ) : (
         <ScrollView contentContainerStyle={styles.scroll}>
           {items.map((it) => (
-            <View key={it.id} style={styles.card}>
+            <View key={it.id} style={formStyles.card}>
               <View style={styles.cardHeader}>
                 <View style={styles.nameRow}>
                   <Text style={styles.receiverName}>{it.receiverName}</Text>
@@ -167,8 +166,8 @@ export default function AddressBookScreen() {
                   ) : null}
                 </View>
                 {it.isDefault ? (
-                  <View style={styles.defaultBadge}>
-                    <Text style={styles.defaultBadgeText}>
+                  <View style={formStyles.defaultBadge}>
+                    <Text style={formStyles.defaultBadgeText}>
                       {t("trading.addressBook.defaultBadge")}
                     </Text>
                   </View>
@@ -183,7 +182,7 @@ export default function AddressBookScreen() {
                     onPress={() => onSetDefault(it.id)}
                     style={styles.actionBtn}
                   >
-                    <Text style={styles.actionText}>
+                    <Text style={formStyles.linkText}>
                       {t("trading.addressBook.setDefault")}
                     </Text>
                   </Pressable>
@@ -192,15 +191,15 @@ export default function AddressBookScreen() {
                   onPress={() => setEditing({ kind: "edit", address: it })}
                   style={styles.actionBtn}
                 >
-                  <Text style={styles.actionText}>
+                  <Text style={formStyles.linkText}>
                     {t("trading.addressBook.edit")}
                   </Text>
                 </Pressable>
                 <Pressable
                   onPress={() => onDelete(it)}
-                  style={[styles.actionBtn, styles.actionBtnDanger]}
+                  style={styles.actionBtn}
                 >
-                  <Text style={[styles.actionText, styles.actionTextDanger]}>
+                  <Text style={[formStyles.linkText, styles.actionTextDanger]}>
                     {t("trading.addressBook.delete")}
                   </Text>
                 </Pressable>
@@ -223,8 +222,6 @@ export default function AddressBookScreen() {
   );
 }
 
-/* ---------------------- 新建 / 编辑表单 ---------------------- */
-
 function AddressForm({
   visible,
   mode,
@@ -237,8 +234,10 @@ function AddressForm({
   onSaved: () => void;
 }) {
   const theme = useAppTheme();
-  const styles = useThemedStyles(makeStyles);
+  const formStyles = useThemedStyles(makeTradingFormStyles);
+  const styles = useThemedStyles(makeScreenStyles);
   const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
 
   const existing = mode?.kind === "edit" ? mode.address : null;
 
@@ -289,149 +288,87 @@ function AddressForm({
   };
 
   return (
-    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
-      <SafeAreaView style={styles.safe}>
-        <KeyboardAvoidingView
-          style={{ flex: 1 }}
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-        >
-          <View style={styles.header}>
-            <Pressable onPress={onClose} hitSlop={8}>
-              <Ionicons
-                name="close"
-                size={26}
-                color={theme.colors.text}
-              />
-            </Pressable>
-            <Text style={styles.headerTitle}>
-              {existing
-                ? t("trading.addressBook.edit")
-                : t("trading.addressBook.addNew")}
-            </Text>
-            <Pressable onPress={save} disabled={!canSave} hitSlop={8}>
-              {saving ? (
-                <ActivityIndicator color={theme.colors.accent} />
-              ) : (
+    <Modal
+      visible={visible}
+      animationType="slide"
+      presentationStyle="fullScreen"
+      onRequestClose={onClose}
+    >
+      <View
+        style={[
+          styles.safe,
+          { paddingTop: insets.top, paddingBottom: insets.bottom },
+        ]}
+      >
+        <ScreenHeader
+          title={
+            existing
+              ? t("trading.addressBook.editAddress")
+              : t("trading.addressBook.addNew")
+          }
+          showCloseButton
+          onBackPress={onClose}
+          rightComponent={
+            saving ? (
+              <ActivityIndicator color={theme.colors.accent} size="small" />
+            ) : (
+              <Pressable onPress={save} disabled={!canSave} hitSlop={8}>
                 <Text
                   style={[
-                    styles.saveText,
+                    formStyles.linkText,
                     !canSave && { opacity: 0.4 },
                   ]}
                 >
                   {t("common.save")}
                 </Text>
-              )}
-            </Pressable>
-          </View>
-          <ScrollView contentContainerStyle={styles.formScroll}>
-            <TextInput
-              style={styles.input}
-              placeholder={t("trading.checkout.receiverName")}
-              placeholderTextColor={theme.colors.placeholder}
-              value={receiverName}
-              onChangeText={setReceiverName}
-              autoCapitalize="words"
+              </Pressable>
+            )
+          }
+        />
+        <KeyboardAvoidingView
+          style={styles.formBody}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          keyboardVerticalOffset={Platform.OS === "ios" ? insets.top : 0}
+        >
+          <ScrollView
+            contentContainerStyle={formStyles.scroll}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <ShippingAddressFields
+              receiverName={receiverName}
+              phone={phone}
+              fullText={fullText}
+              label={label}
+              showLabelField
+              onChangeReceiverName={setReceiverName}
+              onChangePhone={setPhone}
+              onChangeFullText={setFullText}
+              onChangeLabel={setLabel}
             />
-            <TextInput
-              style={styles.input}
-              placeholder={t("trading.checkout.phone")}
-              placeholderTextColor={theme.colors.placeholder}
-              value={phone}
-              onChangeText={setPhone}
-              keyboardType="phone-pad"
+
+            <TradingFormDefaultToggle
+              checked={isDefault}
+              label={t("trading.addressBook.setDefault")}
+              onToggle={() => setIsDefault((v) => !v)}
             />
-            <TextInput
-              style={[styles.input, styles.inputMultiline]}
-              placeholder={t("trading.addressBook.fullTextPlaceholder")}
-              placeholderTextColor={theme.colors.placeholder}
-              value={fullText}
-              onChangeText={setFullText}
-              multiline
-              textAlignVertical="top"
-            />
-            <TextInput
-              style={styles.input}
-              placeholder={t("trading.addressBook.labelHint")}
-              placeholderTextColor={theme.colors.placeholder}
-              value={label}
-              onChangeText={setLabel}
-              maxLength={20}
-            />
-            <Pressable
-              style={styles.defaultRow}
-              onPress={() => setIsDefault((v) => !v)}
-            >
-              <View style={[styles.checkbox, isDefault && styles.checkboxOn]}>
-                {isDefault ? (
-                  <Ionicons
-                    name="checkmark"
-                    size={16}
-                    color={theme.colors.textInverted}
-                  />
-                ) : null}
-              </View>
-              <Text style={styles.defaultRowText}>
-                {t("trading.addressBook.setDefault")}
-              </Text>
-            </Pressable>
           </ScrollView>
         </KeyboardAvoidingView>
-      </SafeAreaView>
+      </View>
     </Modal>
   );
 }
 
-const makeStyles = (t: AppTheme) =>
+const makeScreenStyles = (t: AppTheme) =>
   StyleSheet.create({
     safe: { flex: 1, backgroundColor: t.colors.background },
-    header: {
-      height: 48,
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      paddingHorizontal: 16,
-      backgroundColor: t.colors.card,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: t.colors.border,
-    },
-    headerAction: { minWidth: 26, alignItems: "flex-end" },
-    headerTitle: { fontSize: 16, fontWeight: "600", color: t.colors.text },
-    saveText: { color: t.colors.accent, fontWeight: "600" },
     center: {
       flex: 1,
       alignItems: "center",
       justifyContent: "center",
-      paddingHorizontal: 32,
+      paddingHorizontal: TRADING_FORM_PADDING * 2,
     },
-    emptyTitle: {
-      marginTop: 12,
-      fontSize: 15,
-      color: t.colors.text,
-      fontWeight: "600",
-    },
-    emptyHint: {
-      marginTop: 6,
-      fontSize: 12,
-      color: t.colors.gray300,
-      textAlign: "center",
-    },
-    primaryBtn: {
-      marginTop: 24,
-      paddingHorizontal: 28,
-      paddingVertical: 12,
-      backgroundColor: t.colors.accent,
-      borderRadius: 4,
-    },
-    primaryBtnText: { color: t.colors.textInverted, fontWeight: "600" },
-    scroll: { padding: 16 },
-    card: {
-      backgroundColor: t.colors.cardElevated,
-      borderRadius: 12,
-      padding: 14,
-      marginBottom: 12,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: t.colors.border,
-    },
+    scroll: { padding: TRADING_FORM_PADDING, paddingBottom: 32 },
     cardHeader: {
       flexDirection: "row",
       justifyContent: "space-between",
@@ -443,35 +380,31 @@ const makeStyles = (t: AppTheme) =>
       alignItems: "center",
       flex: 1,
       gap: 10,
+      flexWrap: "wrap",
     },
     receiverName: {
-      fontSize: 15,
+      ...t.typography.bodySmall,
+      fontFamily: "PlayfairDisplay-Medium",
       color: t.colors.text,
-      fontWeight: "600",
     },
-    phone: { fontSize: 13, color: t.colors.gray300 },
+    phone: {
+      ...t.typography.caption,
+      color: t.colors.gray300,
+    },
     labelChip: {
       paddingHorizontal: 8,
       paddingVertical: 2,
-      borderRadius: 8,
+      borderRadius: t.borderRadius.sm,
       backgroundColor: t.colors.skeleton,
     },
-    labelChipText: { fontSize: 11, color: t.colors.gray300 },
-    defaultBadge: {
-      paddingHorizontal: 8,
-      paddingVertical: 2,
-      backgroundColor: t.colors.accent,
-      borderRadius: 4,
-    },
-    defaultBadgeText: {
-      fontSize: 11,
-      color: t.colors.textInverted,
-      fontWeight: "600",
+    labelChipText: {
+      ...t.typography.caption,
+      color: t.colors.gray300,
     },
     fullText: {
-      fontSize: 13,
+      ...t.typography.bodySmall,
       color: t.colors.text,
-      lineHeight: 19,
+      lineHeight: 20,
     },
     actions: {
       flexDirection: "row",
@@ -486,39 +419,6 @@ const makeStyles = (t: AppTheme) =>
       paddingHorizontal: 10,
       paddingVertical: 6,
     },
-    actionBtnDanger: {},
-    actionText: { fontSize: 13, color: t.colors.accent },
     actionTextDanger: { color: t.colors.error },
-    formScroll: { padding: 16, gap: 12 },
-    input: {
-      borderWidth: 1,
-      borderColor: t.colors.inputBorder,
-      borderRadius: 8,
-      paddingHorizontal: 12,
-      paddingVertical: 12,
-      fontSize: 14,
-      color: t.colors.text,
-      backgroundColor: t.colors.inputBackground,
-    },
-    inputMultiline: { minHeight: 88 },
-    defaultRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 10,
-      marginTop: 4,
-    },
-    checkbox: {
-      width: 22,
-      height: 22,
-      borderRadius: 4,
-      borderWidth: 1.5,
-      borderColor: t.colors.inputBorder,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    checkboxOn: {
-      backgroundColor: t.colors.accent,
-      borderColor: t.colors.accent,
-    },
-    defaultRowText: { fontSize: 14, color: t.colors.text },
+    formBody: { flex: 1 },
   });

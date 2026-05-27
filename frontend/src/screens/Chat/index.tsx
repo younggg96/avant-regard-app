@@ -247,12 +247,13 @@ const ChatScreen = () => {
           message={item}
           showTime={shouldShowTimestamp(item, prev)}
           isLast={isLast}
+          otherUserId={otherUserId}
           onReportMessage={handleReportMessage}
           onReportUser={handleReportUser}
         />
       );
     },
-    [reversedMessages, handleReportMessage, handleReportUser]
+    [reversedMessages, otherUserId, handleReportMessage, handleReportUser]
   );
 
   return (

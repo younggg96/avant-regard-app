@@ -9,7 +9,7 @@
  *
  * content 字段统一约定为 JSON 字符串；解析失败时返回 null，由 MessageBubble 回退到文本渲染。
  */
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   TouchableOpacity,
   View,
@@ -27,6 +27,7 @@ import {
   formatOrderStatus,
   formatOfferStatus,
   adminRefundOrder,
+  getOrder,
   OrderStatus,
   OfferStatus,
 } from "../../../services/orderService";
@@ -275,6 +276,101 @@ const REFUNDABLE_STATUSES: Set<string> = new Set([
   "completed",
 ]);
 
+// ---------- 「按 orderId 取最新订单状态」缓存 + 订阅 ----------
+//
+// IM 里的 order_status 卡片 content 是发卡那一刻的快照,订单状态推进
+// (pending_payment → paid → shipped → …) 后,聊天历史里的旧卡片仍然
+// 携带旧 status,会导致:
+//   - 已支付订单的旧卡片仍然显示「Pay now」按钮
+//   - 已发货订单的旧 paid 卡片仍然显示「等卖家发货」
+//   - 已退款订单的旧 paid 卡片在客服视角仍然亮着「Refund order」
+//
+// 用 module-level 缓存 + 订阅模式做轻量 effective status override:
+//   - 同 orderId 多张卡片只触发一次 fetch (inflight 去重)
+//   - fetch 完成后所有订阅者(同 orderId 的所有卡片)同步 setState
+//   - 30s 内的缓存视为新鲜,跨多个卡片复用
+// 失败静默回落到 payload 自带的 status,确保离线/网络异常也能渲染。
+interface OrderStatusCacheEntry {
+  status: OrderStatus;
+  fetchedAt: number;
+}
+
+const orderStatusCache = new Map<number, OrderStatusCacheEntry>();
+const orderStatusInflight = new Map<number, Promise<void>>();
+const orderStatusSubscribers = new Map<
+  number,
+  Set<(entry: OrderStatusCacheEntry) => void>
+>();
+const ORDER_STATUS_FRESH_MS = 30_000;
+
+function fetchOrderStatusOnce(orderId: number): Promise<void> {
+  const existing = orderStatusInflight.get(orderId);
+  if (existing) return existing;
+  const p = getOrder(orderId)
+    .then((o) => {
+      const entry: OrderStatusCacheEntry = {
+        status: o.status,
+        fetchedAt: Date.now(),
+      };
+      orderStatusCache.set(orderId, entry);
+      const subs = orderStatusSubscribers.get(orderId);
+      if (subs) subs.forEach((cb) => cb(entry));
+    })
+    .catch(() => {
+      // 静默:网络/鉴权问题时让 UI 回落到 payload 里的快照 status
+    })
+    .finally(() => {
+      orderStatusInflight.delete(orderId);
+    });
+  orderStatusInflight.set(orderId, p);
+  return p;
+}
+
+function useLatestOrderStatus(
+  orderId: number,
+  fallback: OrderStatus,
+): OrderStatus {
+  const [entry, setEntry] = useState<OrderStatusCacheEntry | null>(() => {
+    return orderStatusCache.get(orderId) ?? null;
+  });
+
+  useEffect(() => {
+    let subs = orderStatusSubscribers.get(orderId);
+    if (!subs) {
+      subs = new Set();
+      orderStatusSubscribers.set(orderId, subs);
+    }
+    subs.add(setEntry);
+
+    const cached = orderStatusCache.get(orderId);
+    if (cached) {
+      setEntry(cached);
+    }
+    if (!cached || Date.now() - cached.fetchedAt > ORDER_STATUS_FRESH_MS) {
+      fetchOrderStatusOnce(orderId);
+    }
+
+    return () => {
+      const s = orderStatusSubscribers.get(orderId);
+      if (!s) return;
+      s.delete(setEntry);
+      if (s.size === 0) orderStatusSubscribers.delete(orderId);
+    };
+  }, [orderId]);
+
+  return (entry?.status ?? fallback) as OrderStatus;
+}
+
+/** 退款 / 其它本地立即变更后,主动写入缓存并广播,让屏幕上其它同 orderId
+ * 卡片(典型场景:同一订单的多张历史快照卡)立刻同步到新状态,
+ * 不必等下一轮 30s 缓存过期或 webhook 推新卡。 */
+function publishOrderStatus(orderId: number, status: OrderStatus): void {
+  const entry: OrderStatusCacheEntry = { status, fetchedAt: Date.now() };
+  orderStatusCache.set(orderId, entry);
+  const subs = orderStatusSubscribers.get(orderId);
+  if (subs) subs.forEach((cb) => cb(entry));
+}
+
 export function OrderStatusCardView({
   data,
   isMine,
@@ -296,13 +392,21 @@ export function OrderStatusCardView({
   const theme = useAppTheme();
   const formatPrice = useFormatPrice();
   const styles = useThemedStyles(makeStyles);
-  const pending = data.status === "pending_payment";
-  const hasShipment =
-    !!data.shipment && (data.shipment.carrier || data.shipment.trackingNo);
-  // 本地状态：成功后立刻替换 pill + 隐藏按钮，等后端推的新卡片到达后再覆盖一次。
+  // 同 orderId 的多张快照卡共享一份 effective status:
+  // 后端在状态推进时会发新卡片,但旧卡片(content 里 status 是旧值)
+  // 仍会停留在聊天历史。这里用 hook 拉一次最新订单状态,让所有同
+  // orderId 卡片都按最新状态渲染 pill / 按钮,避免:
+  //   - 已支付订单的旧 pending 卡片仍亮 Pay now
+  //   - 已退款订单的旧 paid 卡片仍亮 Refund order
+  const liveStatus = useLatestOrderStatus(data.orderId, data.status);
+  // 本地状态：admin 退款成功后立刻替换 pill + 隐藏按钮,优先级最高;
+  // 缺省时回落到 hook 返回的最新状态;再回落到 payload 自带的快照状态。
   const [refundLoading, setRefundLoading] = useState(false);
   const [localStatus, setLocalStatus] = useState<OrderStatus | null>(null);
-  const effectiveStatus = (localStatus ?? data.status) as OrderStatus;
+  const effectiveStatus = (localStatus ?? liveStatus ?? data.status) as OrderStatus;
+  const pending = effectiveStatus === "pending_payment";
+  const hasShipment =
+    !!data.shipment && (data.shipment.carrier || data.shipment.trackingNo);
   const canRefund =
     isCustomerService && REFUNDABLE_STATUSES.has(effectiveStatus);
 
@@ -319,8 +423,13 @@ export function OrderStatusCardView({
             setRefundLoading(true);
             try {
               const updated = await adminRefundOrder(data.orderId);
-              setLocalStatus(updated.status as OrderStatus);
-              onRefunded?.(updated.status as OrderStatus);
+              const next = updated.status as OrderStatus;
+              setLocalStatus(next);
+              // 把同 orderId 的其它卡片也立刻同步到 refunded,避免"这张已退款,
+              // 上面那张仍亮 Refund order" 的并发错觉(屏幕上可能挂着 2-3 张
+              // 同订单不同状态快照卡)。
+              publishOrderStatus(data.orderId, next);
+              onRefunded?.(next);
               Alert.alert(t("trading.aftersales.cs.refundSuccess"));
             } catch (e: any) {
               Alert.alert(

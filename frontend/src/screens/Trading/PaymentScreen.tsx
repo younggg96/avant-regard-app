@@ -97,7 +97,12 @@ export default function PaymentScreen() {
   const [remainingMs, setRemainingMs] = useState<number | null>(null);
 
   // 支付倒计时:order.createdAt + 30 分钟。
-  // 到 0 时禁用 pay 按钮 + 显眼提示;实际状态推进由 cron 完成,UI 只是同步告警。
+  //
+  // 注意:倒计时只是「提示」,不是「权威」。真正能否支付以后端 order.status
+  // 为准:只要后端仍返回 pending_payment,我们就允许买家尝试付款(后端
+  // start_payment 会兜底拒绝)。这样可以避免"前端倒计时归零但 cron 未跑"
+  // 时,买家在列表 / 详情页都能点 Pay now,唯独 PaymentScreen 自我封禁
+  // 的诡异 UX(用户报告:点 Pay now 没法买,进详情又能买)。
   useEffect(() => {
     if (!order?.createdAt) {
       setRemainingMs(null);
@@ -114,7 +119,7 @@ export default function PaymentScreen() {
     return () => clearInterval(id);
   }, [order?.createdAt, order?.status]);
 
-  const countdownExpired = remainingMs !== null && remainingMs <= 0;
+  const countdownElapsed = remainingMs !== null && remainingMs <= 0;
   const countdownLabel = (() => {
     if (remainingMs === null) return null;
     if (remainingMs <= 0) return "00:00";

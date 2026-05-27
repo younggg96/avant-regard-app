@@ -59,18 +59,30 @@ def list_provider_options(
     """根据 region/currency 决定向前端展示的支付选项。
 
     规则：
-      - currency=CNY 或 region=CN → 微信 + 支付宝（其它通道隐藏）
-      - 其它 → Stripe（覆盖 US/EU 等）
-      - 开发环境 PAYMENT_PROVIDER=mock 时额外追加 mock 选项，方便联调
+      - currency=CNY 或 region=CN → 微信 + 支付宝 + Stripe (海外卡)
+        Stripe 支持 CNY 直接收单,海外用户买国内商品需要这个;
+        本地用户依然会优先选支付宝/微信(列在前面)。
+      - 其它 → Stripe (覆盖 US/EU 等海外区主通道)
+      - 开发环境 PAYMENT_PROVIDER=mock 或 PAYMENT_ENABLE_MOCK=1 时额外
+        追加 mock 选项,方便联调。
+      - Stripe 选项只有在配置了 STRIPE_API_KEY 时才会展示, 避免没配 key
+        却让用户能选 Stripe 然后拉起 PaymentSheet 时才报错。
     """
     region = (region or "").upper()
     currency = (currency or "").upper()
     options: List[str] = []
 
+    stripe_configured = bool(os.getenv("STRIPE_API_KEY"))
+
     if region == "CN" or currency == "CNY":
         options = ["alipay", "wechat"]
+        if stripe_configured:
+            options.append("stripe")
     else:
-        options = ["stripe"]
+        if stripe_configured:
+            options = ["stripe"]
+        else:
+            options = []
 
     if (os.getenv("PAYMENT_PROVIDER") or "").lower() == "mock":
         options = options + ["mock"]

@@ -1,21 +1,9 @@
 /**
  * CheckoutScreen —— PRD 模块四「立即购买」结算页(填地址 + 复核)。
- *
- * 进入路径:详情页 → 立即购买 → 这里 → 提交订单 → PaymentScreen 选支付方式。
- *
- * 地址来源(PRD 「支付环节地址管理」):
- *   1. 首次加载尝试 getDefaultAddress(),命中即预填;
- *   2. 用户可点"更换地址"打开 AddressPickerSheet 从地址簿选;
- *   3. 也可选择"手动输入新地址",此时下单不会回写地址簿(只作为订单快照)。
- *
- * 订单上的地址永远是「下单瞬间快照」,跟地址簿条目解耦——
- * 用户事后改 / 删地址簿不会影响已存在的订单。
  */
 import React, { useEffect, useState } from "react";
 import {
   View,
-  Text,
-  TextInput,
   Pressable,
   StyleSheet,
   ActivityIndicator,
@@ -35,6 +23,15 @@ import { useFormatPrice } from "../../utils/currency";
 import { OptimizedImage } from "../../components/ui/OptimizedImage";
 import { ImageSize } from "../../utils/imageUtils";
 import { AddressPickerSheet } from "../../components/AddressPickerSheet";
+import ScreenHeader from "../../components/ScreenHeader";
+import { Text } from "../../components/ui";
+import {
+  makeTradingFormStyles,
+  TradingFormField,
+  TradingFormInput,
+  TradingFormTextArea,
+  TRADING_FORM_PADDING,
+} from "../../components/trading/TradingFormShared";
 import { useAppTheme, useThemedStyles, type AppTheme } from "../../theme";
 
 type RouteParams = {
@@ -64,14 +61,13 @@ export default function CheckoutScreen() {
   const { t } = useTranslation();
   const theme = useAppTheme();
   const formatPrice = useFormatPrice();
-  const styles = useThemedStyles(makeStyles);
+  const formStyles = useThemedStyles(makeTradingFormStyles);
+  const styles = useThemedStyles(makeScreenStyles);
 
-  // 地址相关状态
   const [mode, setMode] = useState<Mode>("manual");
   const [selectedAddress, setSelectedAddress] = useState<UserAddress | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
 
-  // 手动输入字段(mode === 'manual' 时使用)
   const [receiverName, setReceiverName] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
@@ -79,8 +75,6 @@ export default function CheckoutScreen() {
   const [step, setStep] = useState<"form" | "submitting">("form");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // 首次加载时尝试拉默认地址。命中就切到 selected 模式,
-  // 拉不到(404 / 网络 / 没地址)就保持手动输入。
   useEffect(() => {
     let cancelled = false;
     getDefaultAddress()
@@ -89,9 +83,7 @@ export default function CheckoutScreen() {
         setSelectedAddress(addr);
         setMode("selected");
       })
-      .catch(() => {
-        // 静默失败,用户用手动模式
-      });
+      .catch(() => {});
     return () => {
       cancelled = true;
     };
@@ -133,16 +125,11 @@ export default function CheckoutScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <View style={styles.header}>
-        <Pressable onPress={() => navigation.goBack()} hitSlop={8}>
-          <Ionicons name="chevron-back" size={26} color={theme.colors.text} />
-        </Pressable>
-        <Text style={styles.headerTitle}>
-          {t("trading.checkout.headerTitle")}
-        </Text>
-        <View style={{ width: 26 }} />
-      </View>
+    <SafeAreaView style={styles.safe} edges={["top"]}>
+      <ScreenHeader
+        title={t("trading.checkout.headerTitle")}
+        showBack
+      />
 
       <ScrollView
         style={{ flex: 1 }}
@@ -181,13 +168,13 @@ export default function CheckoutScreen() {
           </View>
         </View>
 
-        <View style={styles.section}>
+        <View style={formStyles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>
+            <Text style={formStyles.sectionTitle}>
               {t("trading.checkout.shippingSection")}
             </Text>
             <Pressable onPress={() => setPickerOpen(true)} hitSlop={8}>
-              <Text style={styles.linkText}>
+              <Text style={formStyles.linkText}>
                 {mode === "selected"
                   ? t("trading.checkout.changeAddress")
                   : t("trading.checkout.useSavedAddress")}
@@ -206,19 +193,19 @@ export default function CheckoutScreen() {
                 </Text>
                 <Text style={styles.selectedPhone}>{selectedAddress.phone}</Text>
                 {selectedAddress.isDefault ? (
-                  <View style={styles.defaultBadge}>
-                    <Text style={styles.defaultBadgeText}>
+                  <View style={formStyles.defaultBadge}>
+                    <Text style={formStyles.defaultBadgeText}>
                       {t("trading.addressBook.defaultBadge")}
                     </Text>
                   </View>
                 ) : null}
               </View>
-              <Text style={styles.selectedFull} numberOfLines={3}>
+              <Text style={formStyles.bodyText} numberOfLines={3}>
                 {selectedAddress.fullText}
               </Text>
               <View style={styles.modeSwitchRow}>
                 <Pressable onPress={() => setMode("manual")} hitSlop={6}>
-                  <Text style={styles.linkTextSmall}>
+                  <Text style={formStyles.linkText}>
                     {t("trading.checkout.manualEntry")}
                   </Text>
                 </Pressable>
@@ -226,62 +213,62 @@ export default function CheckoutScreen() {
             </Pressable>
           ) : (
             <>
-              <TextInput
-                style={styles.input}
-                placeholder={t("trading.checkout.receiverName")}
-                placeholderTextColor={theme.colors.placeholder}
-                value={receiverName}
-                onChangeText={setReceiverName}
-                autoCapitalize="words"
-              />
-              <TextInput
-                style={styles.input}
-                placeholder={t("trading.checkout.phone")}
-                placeholderTextColor={theme.colors.placeholder}
-                value={phone}
-                onChangeText={setPhone}
-                keyboardType="phone-pad"
-              />
-              <TextInput
-                style={[styles.input, styles.inputMultiline]}
-                placeholder={t("trading.checkout.address")}
-                placeholderTextColor={theme.colors.placeholder}
-                value={address}
-                onChangeText={setAddress}
-                multiline
-                textAlignVertical="top"
-              />
+              <TradingFormField label={t("trading.checkout.receiverName")}>
+                <TradingFormInput
+                  value={receiverName}
+                  onChangeText={setReceiverName}
+                  placeholder={t("trading.checkout.receiverName")}
+                  autoCapitalize="words"
+                />
+              </TradingFormField>
+              <TradingFormField label={t("trading.checkout.phone")}>
+                <TradingFormInput
+                  value={phone}
+                  onChangeText={setPhone}
+                  placeholder={t("trading.checkout.phone")}
+                  keyboardType="phone-pad"
+                />
+              </TradingFormField>
+              <TradingFormField label={t("trading.checkout.address")}>
+                <TradingFormTextArea
+                  value={address}
+                  onChangeText={setAddress}
+                  placeholder={t("trading.checkout.address")}
+                />
+              </TradingFormField>
             </>
           )}
         </View>
 
-        <View style={styles.notice}>
+        <View style={formStyles.notice}>
           <Ionicons
             name="information-circle-outline"
             size={16}
             color={theme.colors.gray300}
           />
-          <Text style={styles.noticeText}>
+          <Text style={formStyles.noticeText}>
             {t("trading.checkout.paymentNextStepHint")}
           </Text>
         </View>
 
-        {errorMsg ? <Text style={styles.error}>{errorMsg}</Text> : null}
+        {errorMsg ? (
+          <Text style={formStyles.errorText}>{errorMsg}</Text>
+        ) : null}
       </ScrollView>
 
-      <View style={styles.footer}>
+      <View style={formStyles.footer}>
         <View style={styles.footerLeft}>
-          <Text style={styles.footerLabel}>
+          <Text style={formStyles.footerLabel}>
             {t("trading.payment.payNowLabel")}
           </Text>
-          <Text style={styles.footerPrice}>
+          <Text style={formStyles.footerPrice}>
             {formatPrice(priceCents, currency)}
           </Text>
         </View>
         <Pressable
           style={[
-            styles.primaryBtn,
-            step === "submitting" && styles.primaryBtnDisabled,
+            formStyles.primaryBtn,
+            step === "submitting" && formStyles.primaryBtnDisabled,
           ]}
           onPress={submit}
           disabled={step === "submitting"}
@@ -289,7 +276,7 @@ export default function CheckoutScreen() {
           {step === "submitting" ? (
             <ActivityIndicator color={theme.colors.textInverted} />
           ) : (
-            <Text style={styles.primaryBtnText}>
+            <Text style={formStyles.primaryBtnText}>
               {t("trading.checkout.submitOrder")}
             </Text>
           )}
@@ -306,31 +293,25 @@ export default function CheckoutScreen() {
   );
 }
 
-const makeStyles = (t: AppTheme) =>
+const makeScreenStyles = (t: AppTheme) =>
   StyleSheet.create({
     safe: { flex: 1, backgroundColor: t.colors.background },
-    header: {
-      height: 48,
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      paddingHorizontal: 16,
-      backgroundColor: t.colors.card,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: t.colors.border,
-    },
-    headerTitle: { fontSize: 16, fontWeight: "600", color: t.colors.text },
-    scroll: { padding: 16, paddingBottom: 120 },
+    scroll: { padding: TRADING_FORM_PADDING, paddingBottom: 120 },
     productCard: {
       flexDirection: "row",
       backgroundColor: t.colors.cardElevated,
-      borderRadius: 12,
+      borderRadius: t.borderRadius.sm,
       padding: 12,
       marginBottom: 16,
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: t.colors.border,
     },
-    coverImage: { width: 80, height: 80, borderRadius: 8, marginRight: 12 },
+    coverImage: {
+      width: 80,
+      height: 80,
+      borderRadius: t.borderRadius.sm,
+      marginRight: 12,
+    },
     coverPlaceholder: {
       backgroundColor: t.colors.skeleton,
       alignItems: "center",
@@ -338,27 +319,22 @@ const makeStyles = (t: AppTheme) =>
     },
     productInfo: { flex: 1, justifyContent: "center" },
     brand: {
-      fontSize: 11,
+      ...t.typography.caption,
       color: t.colors.gray300,
       marginBottom: 4,
       textTransform: "uppercase",
       letterSpacing: 0.5,
     },
     productTitle: {
-      fontSize: 14,
-      fontWeight: "600",
+      ...t.typography.bodySmall,
+      fontFamily: "PlayfairDisplay-Medium",
       color: t.colors.text,
       marginBottom: 6,
       lineHeight: 20,
     },
-    productPrice: { fontSize: 18, fontWeight: "700", color: t.colors.text },
-    section: {
-      backgroundColor: t.colors.cardElevated,
-      borderRadius: 12,
-      padding: 16,
-      marginBottom: 12,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: t.colors.border,
+    productPrice: {
+      ...t.typography.h4,
+      color: t.colors.text,
     },
     sectionHeader: {
       flexDirection: "row",
@@ -366,98 +342,29 @@ const makeStyles = (t: AppTheme) =>
       alignItems: "center",
       marginBottom: 8,
     },
-    sectionTitle: {
-      fontSize: 13,
-      fontWeight: "600",
-      color: t.colors.text,
-    },
-    linkText: { color: t.colors.accent, fontSize: 13, fontWeight: "600" },
-    linkTextSmall: { color: t.colors.accent, fontSize: 12 },
     selectedCard: {
       backgroundColor: t.colors.background,
-      borderRadius: 8,
+      borderRadius: t.borderRadius.sm,
       padding: 12,
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: t.colors.border,
+      gap: 6,
     },
     selectedRow: {
       flexDirection: "row",
       alignItems: "center",
       gap: 8,
-      marginBottom: 6,
       flexWrap: "wrap",
     },
-    selectedName: { fontSize: 14, fontWeight: "600", color: t.colors.text },
-    selectedPhone: { fontSize: 13, color: t.colors.gray300 },
-    defaultBadge: {
-      paddingHorizontal: 6,
-      paddingVertical: 1,
-      backgroundColor: t.colors.accent,
-      borderRadius: 4,
-    },
-    defaultBadgeText: {
-      fontSize: 10,
-      color: t.colors.textInverted,
-      fontWeight: "600",
-    },
-    selectedFull: { fontSize: 13, color: t.colors.text, lineHeight: 18 },
-    modeSwitchRow: { marginTop: 10, alignItems: "flex-end" },
-    input: {
-      borderWidth: 1,
-      borderColor: t.colors.inputBorder,
-      borderRadius: 8,
-      paddingHorizontal: 12,
-      paddingVertical: 12,
-      marginTop: 10,
-      fontSize: 14,
+    selectedName: {
+      ...t.typography.bodySmall,
+      fontFamily: "PlayfairDisplay-Medium",
       color: t.colors.text,
-      backgroundColor: t.colors.inputBackground,
     },
-    inputMultiline: { minHeight: 88 },
-    notice: {
-      flexDirection: "row",
-      alignItems: "flex-start",
-      gap: 8,
-      paddingHorizontal: 4,
-      marginTop: 4,
-    },
-    noticeText: {
-      flex: 1,
-      fontSize: 12,
+    selectedPhone: {
+      ...t.typography.caption,
       color: t.colors.gray300,
-      lineHeight: 18,
     },
-    error: { color: t.colors.error, marginTop: 12, fontSize: 13 },
-    footer: {
-      position: "absolute",
-      bottom: 0,
-      left: 0,
-      right: 0,
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      paddingHorizontal: 16,
-      paddingTop: 12,
-      paddingBottom: 24,
-      backgroundColor: t.colors.card,
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: t.colors.border,
-    },
+    modeSwitchRow: { marginTop: 4, alignItems: "flex-end" },
     footerLeft: { flex: 1, marginRight: 12 },
-    footerLabel: { fontSize: 11, color: t.colors.gray300 },
-    footerPrice: { fontSize: 20, fontWeight: "700", color: t.colors.text },
-    primaryBtn: {
-      backgroundColor: t.colors.accent,
-      paddingHorizontal: 28,
-      paddingVertical: 12,
-      borderRadius: 4,
-      minWidth: 132,
-      alignItems: "center",
-    },
-    primaryBtnDisabled: { opacity: 0.5 },
-    primaryBtnText: {
-      color: t.colors.textInverted,
-      fontSize: 15,
-      fontWeight: "600",
-    },
   });

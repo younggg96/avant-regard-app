@@ -38,6 +38,9 @@ interface MessageBubbleProps {
   message: Message;
   showTime: boolean;
   isLast: boolean;
+  /** 当前会话对方的 userId。用于判定「这是不是客服会话」,
+   * 进而决定订单卡片是否要展示客服退款按钮(避免 admin 在普通私聊里也看到退款按钮)。 */
+  otherUserId?: number;
   onReportMessage?: (message: Message) => void;
   onReportUser?: (message: Message) => void;
 }
@@ -88,6 +91,7 @@ export const MessageBubble = ({
   message,
   showTime,
   isLast,
+  otherUserId,
   onReportMessage,
   onReportUser,
 }: MessageBubbleProps) => {
@@ -103,9 +107,14 @@ export const MessageBubble = ({
   const brandCardStyles = useThemedStyles(makeBrandCardStyles);
   const showCardStyles = useThemedStyles(makeShowCardStyles);
   const userCardStyles = useThemedStyles(makeUserCardStyles);
-  // 客服身份判定：仅当前登录账号为 admin 时，订单卡片才会显示「退款」操作。
-  // 用户身份变化时整棵会话栈会重挂载，这里直接读 store 即可，不需要 memo。
-  const isCustomerService = useAuthStore((s) => !!s.user?.is_admin);
+  // 客服身份判定：必须同时满足
+  //   1) 当前登录账号是 admin
+  //   2) 当前会话对方是官方客服账号(CS_USER_ID)
+  // 否则普通 admin 跟卖家私聊买东西时也会看到「退款」按钮,既越权又违反产品意图。
+  // 仅在「客服窗口」里才允许客服触发主动退款,与 PRD 模块 7 IM 售后流程一致。
+  const isAdmin = useAuthStore((s) => !!s.user?.is_admin);
+  const isCsConversation = isCustomerServiceUser(otherUserId);
+  const isCustomerService = isAdmin && isCsConversation;
 
   const canReport = !isMine && (onReportMessage || onReportUser);
 
@@ -232,7 +241,10 @@ export const MessageBubble = ({
             })
           }
           onPay={
-            orderStatusCard.status === "pending_payment"
+            // pending_payment 卡片的 sender 永远是 buyer(后端 _notify_both_parties 约定),
+            // 所以 isMine=true 才是买家视角。卖家看到的是左侧对方卡片,
+            // 没必要也不应该展示「Pay now」(点了会被后端 PermissionError 挡住,UX 差)。
+            orderStatusCard.status === "pending_payment" && isMine
               ? () =>
                   (navigation.navigate as any)("Payment", {
                     orderId: orderStatusCard.orderId,

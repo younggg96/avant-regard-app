@@ -420,9 +420,14 @@ class OrderService:
                     continue
                 order_id = pending.data[0]["id"]
                 try:
+                    # actor_user_id 是 transition_status 的必传 keyword-only 参数,
+                    # 之前漏传会被外层 except 吃掉,导致超时未付款订单永远停在
+                    # pending_payment(库存恢复了但订单不取消)。系统触发统一传 0,
+                    # 下游 _notify_both_parties 内会按 buyer_user_id 推卡片。
                     self.transition_status(
                         order_id,
                         OrderStatus.REFUNDED_AUTO,
+                        actor_user_id=r.get("buyer_user_id") or 0,
                         is_admin=True,
                         reason="支付超时自动取消",
                     )

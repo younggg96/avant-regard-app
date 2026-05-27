@@ -1,21 +1,14 @@
 /**
  * AddressPickerSheet —— Checkout / OfferModal 用的地址选择底部弹窗。
- *
- * 设计:
- *   - 进入即拉取 listMyAddresses(),默认地址在最上;
- *   - 用户点选一条 → onSelect(address) → 父组件填入表单;
- *   - 列表底部固定"管理地址"按钮,跳 AddressBook 屏幕(可新增/编辑);
- *   - 关闭后父组件用 useFocusEffect 自动刷新已选项(可选)。
  */
 import React, { useCallback, useEffect, useState } from "react";
 import {
-  View,
-  Text,
   Modal,
   Pressable,
   ScrollView,
   ActivityIndicator,
   StyleSheet,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -23,6 +16,8 @@ import { useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 
 import { listMyAddresses, UserAddress } from "../services/addressService";
+import { Text } from "./ui";
+import { makeTradingFormStyles } from "./trading/TradingFormShared";
 import { useAppTheme, useThemedStyles, type AppTheme } from "../theme";
 
 interface Props {
@@ -39,7 +34,8 @@ export function AddressPickerSheet({
   onClose,
 }: Props) {
   const theme = useAppTheme();
-  const styles = useThemedStyles(makeStyles);
+  const formStyles = useThemedStyles(makeTradingFormStyles);
+  const styles = useThemedStyles(makeSheetStyles);
   const { t } = useTranslation();
   const navigation = useNavigation<any>();
 
@@ -76,12 +72,12 @@ export function AddressPickerSheet({
     >
       <Pressable style={styles.backdrop} onPress={onClose}>
         <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
-          <SafeAreaView edges={["bottom"]}>
+          <SafeAreaView edges={["bottom"]} style={styles.safe}>
             <View style={styles.header}>
               <Text style={styles.headerTitle}>
                 {t("trading.checkout.selectAddress")}
               </Text>
-              <Pressable onPress={onClose} hitSlop={8}>
+              <Pressable onPress={onClose} hitSlop={8} style={styles.closeBtn}>
                 <Ionicons name="close" size={22} color={theme.colors.text} />
               </Pressable>
             </View>
@@ -98,8 +94,11 @@ export function AddressPickerSheet({
                     size={36}
                     color={theme.colors.gray300}
                   />
-                  <Text style={styles.emptyText}>
+                  <Text style={formStyles.emptyTitle}>
                     {t("trading.checkout.noSavedAddresses")}
+                  </Text>
+                  <Text style={formStyles.emptyHint}>
+                    {t("trading.addressBook.emptyHint")}
                   </Text>
                 </View>
               ) : (
@@ -116,14 +115,14 @@ export function AddressPickerSheet({
                           <Text style={styles.name}>{it.receiverName}</Text>
                           <Text style={styles.phone}>{it.phone}</Text>
                           {it.isDefault ? (
-                            <View style={styles.defaultBadge}>
-                              <Text style={styles.defaultBadgeText}>
+                            <View style={formStyles.defaultBadge}>
+                              <Text style={formStyles.defaultBadgeText}>
                                 {t("trading.addressBook.defaultBadge")}
                               </Text>
                             </View>
                           ) : null}
                         </View>
-                        <Text style={styles.full} numberOfLines={2}>
+                        <Text style={formStyles.bodyText} numberOfLines={2}>
                           {it.fullText}
                         </Text>
                       </View>
@@ -152,7 +151,7 @@ export function AddressPickerSheet({
                 size={18}
                 color={theme.colors.accent}
               />
-              <Text style={styles.manageBtnText}>
+              <Text style={formStyles.linkText}>
                 {t("trading.addressBook.title")}
               </Text>
             </Pressable>
@@ -163,19 +162,20 @@ export function AddressPickerSheet({
   );
 }
 
-const makeStyles = (t: AppTheme) =>
+const makeSheetStyles = (t: AppTheme) =>
   StyleSheet.create({
     backdrop: {
       flex: 1,
-      backgroundColor: "rgba(0,0,0,0.45)",
+      backgroundColor: t.colors.overlay,
       justifyContent: "flex-end",
     },
     sheet: {
       backgroundColor: t.colors.card,
-      borderTopLeftRadius: 16,
-      borderTopRightRadius: 16,
+      borderTopLeftRadius: t.borderRadius.sm,
+      borderTopRightRadius: t.borderRadius.sm,
       maxHeight: "78%",
     },
+    safe: { flexGrow: 0 },
     header: {
       flexDirection: "row",
       justifyContent: "space-between",
@@ -185,10 +185,19 @@ const makeStyles = (t: AppTheme) =>
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: t.colors.border,
     },
-    headerTitle: { fontSize: 15, fontWeight: "600", color: t.colors.text },
+    headerTitle: {
+      ...t.typography.bodySmall,
+      fontFamily: "PlayfairDisplay-Medium",
+      color: t.colors.text,
+    },
+    closeBtn: {
+      width: 40,
+      height: 40,
+      alignItems: "flex-end",
+      justifyContent: "center",
+    },
     scroll: { maxHeight: 420 },
     center: { padding: 32, alignItems: "center" },
-    emptyText: { marginTop: 8, color: t.colors.gray300 },
     row: {
       flexDirection: "row",
       alignItems: "center",
@@ -208,20 +217,15 @@ const makeStyles = (t: AppTheme) =>
       marginBottom: 4,
       flexWrap: "wrap",
     },
-    name: { fontSize: 14, fontWeight: "600", color: t.colors.text },
-    phone: { fontSize: 12, color: t.colors.gray300 },
-    defaultBadge: {
-      paddingHorizontal: 6,
-      paddingVertical: 1,
-      backgroundColor: t.colors.accent,
-      borderRadius: 4,
+    name: {
+      ...t.typography.bodySmall,
+      fontFamily: "PlayfairDisplay-Medium",
+      color: t.colors.text,
     },
-    defaultBadgeText: {
-      fontSize: 10,
-      color: t.colors.textInverted,
-      fontWeight: "600",
+    phone: {
+      ...t.typography.caption,
+      color: t.colors.gray300,
     },
-    full: { fontSize: 12, color: t.colors.text, lineHeight: 17 },
     manageBtn: {
       flexDirection: "row",
       alignItems: "center",
@@ -231,5 +235,4 @@ const makeStyles = (t: AppTheme) =>
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: t.colors.border,
     },
-    manageBtnText: { color: t.colors.accent, fontWeight: "600" },
   });
