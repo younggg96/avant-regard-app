@@ -19,7 +19,7 @@ from app.services.notification_service import notification_service
 from app.schemas.notification import NotificationType
 from app.api.deps import get_current_user_id, decode_token_without_expiry
 from app.core.response import success, error
-from app.db.supabase import get_supabase
+from app.db.supabase import get_supabase, get_supabase_admin
 from app.services.auth_service import auth_service
 
 router = APIRouter(prefix="/chat", tags=["Chat"])
@@ -235,14 +235,24 @@ async def create_conversation(
         return error(message="Cannot create conversation with yourself", code=400)
 
     try:
-        target = get_supabase().table("users").select("id").eq("id", req.target_user_id).maybe_single().execute()
+        # 用 service role 查用户, 避免 anon key + RLS 导致 maybe_single 抛 204。
+        # 同时不用 maybe_single(): postgrest-py 在 0 行时会抛 APIError,
+        # 被外层 except 吞掉后前端只能看到笼统的 "Chat service unavailable"。
+        target = (
+            get_supabase_admin()
+            .table("users")
+            .select("id")
+            .eq("id", req.target_user_id)
+            .limit(1)
+            .execute()
+        )
         if not target.data:
             return error(message="Target user not found", code=404)
 
         conv_id = chat_service.create_conversation(current_user_id, req.target_user_id)
         return success({"conversationId": conv_id})
     except Exception as e:
-        print(f"Chat create_conversation error: {e}")
+        print(f"Chat create_conversation error (target={req.target_user_id}): {e}")
         return error(message="Chat service unavailable", code=500)
 
 

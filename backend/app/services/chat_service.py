@@ -158,17 +158,23 @@ class ChatService:
         if existing:
             return existing
 
-        conv_result = (
-            self.db.table("conversations")
-            .insert({"last_message_text": None, "last_message_at": None})
-            .execute()
-        )
+        # 不传显式 null, 避免部分 PostgREST 版本对 NULL 列 insert 异常。
+        conv_result = self.db.table("conversations").insert({}).execute()
+        if not conv_result.data:
+            raise RuntimeError("Failed to create conversation row")
         conv_id = conv_result.data[0]["id"]
 
-        self.db.table("conversation_participants").insert([
+        part_result = self.db.table("conversation_participants").insert([
             {"conversation_id": conv_id, "user_id": user_id},
             {"conversation_id": conv_id, "user_id": target_user_id},
         ]).execute()
+        if not part_result.data:
+            # 参与者写入失败时清理孤儿会话, 避免留下空 conversation。
+            try:
+                self.db.table("conversations").delete().eq("id", conv_id).execute()
+            except Exception:
+                pass
+            raise RuntimeError("Failed to add conversation participants")
 
         return conv_id
 

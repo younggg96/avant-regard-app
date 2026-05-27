@@ -3460,7 +3460,9 @@
       "confirmReceiptHint": "确认收货后平台将扣除 {{rate}}% 手续费，余款将进入卖家钱包并锁定 3 天。",
       "confirmReceiptCta": "去确认收货",
       "contactSeller": "联系卖家",
-      "contactBuyer": "联系买家"
+      "contactBuyer": "联系买家",
+      "contactFailed": "无法打开聊天，请稍后重试",
+      "contactUnavailable": "该订单暂时无法联系卖家"
     },
     "confirmReceipt": {
       "headerTitle": "确认收货",

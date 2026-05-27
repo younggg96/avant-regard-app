@@ -940,7 +940,16 @@ class OrderService:
         )
         if not res.data:
             return None
-        return self._format_order(res.data[0])
+        row = res.data[0]
+        order = self._format_order(row)
+        # 买手店订单 DB 里 seller_user_id 可能为空, 只有 seller_merchant_id。
+        # 聊天 / 联系卖家需要真实的 user_id, 这里与 _notify_both_parties 一样
+        # 通过 merchant 反查店主, 避免前端拿到 null 还去 createConversation。
+        if not order.sellerUserId:
+            resolved = self._resolve_seller_user_id(row)
+            if resolved:
+                order = order.model_copy(update={"sellerUserId": resolved})
+        return order
 
     def _build_product_brief_map(self, product_ids: List[int]) -> Dict[int, dict]:
         """批量预取一批 product_id 的卡片摘要 (id / title / brand / cover / 标价)。

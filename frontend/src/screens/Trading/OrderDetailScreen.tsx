@@ -342,10 +342,18 @@ export default function OrderDetailScreen() {
       ? (order?.buyerUserId ?? null)
       : null;
   const canContactCounterparty =
-    contactTargetUserId != null && contactTargetUserId !== meUserId;
+    contactTargetUserId != null &&
+    contactTargetUserId > 0 &&
+    contactTargetUserId !== meUserId;
 
   const handleContactCounterparty = useCallback(async () => {
-    if (!contactTargetUserId) return;
+    if (!contactTargetUserId || contactTargetUserId <= 0) {
+      Alert.alert(
+        t("common.failed"),
+        t("trading.orderDetail.contactUnavailable"),
+      );
+      return;
+    }
     try {
       setActionLoading(true);
       const { conversationId } = await createConversation(contactTargetUserId);
@@ -357,12 +365,12 @@ export default function OrderDetailScreen() {
     } catch (e: any) {
       Alert.alert(
         t("common.failed"),
-        e?.message ?? t("engagement.operationFailed"),
+        e?.message ?? t("trading.orderDetail.contactFailed"),
       );
     } finally {
       setActionLoading(false);
     }
-  }, [contactTargetUserId, isBuyer, navigation, t]);
+  }, [contactTargetUserId, navigation, t]);
 
   const handleAftersalesIssue = useCallback(
     async (issue?: AftersalesIssue) => {

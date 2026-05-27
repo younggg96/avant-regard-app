@@ -3460,7 +3460,9 @@
       "confirmReceiptHint": "Confirming receipt deducts a {{rate}}% platform fee. The seller's payout is held for 3 days before becoming withdrawable.",
       "confirmReceiptCta": "Confirm receipt",
       "contactSeller": "Contact seller",
-      "contactBuyer": "Contact buyer"
+      "contactBuyer": "Contact buyer",
+      "contactFailed": "Could not open chat. Please try again later.",
+      "contactUnavailable": "Seller contact info is unavailable for this order."
     },
     "confirmReceipt": {
       "headerTitle": "Confirm Receipt",
