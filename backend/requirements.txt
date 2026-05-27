@@ -55,4 +55,5 @@ cryptography==44.0.0
 # - PaymentIntent / Refund / Webhook 验签均通过 stripe-python
 # - 服务端 API_VERSION 在 stripe_provider.py 显式 pin,避免 SDK 升级跨版本变更默认行为
 # - 不写 STRIPE_API_KEY 时 provider 自动 fallback 到 stub(开发/CI 友好)
-stripe==11.6.0
+# - v15.1.0 pin 到 2026-04-22.dahlia, 与 Dashboard webhook endpoint API 版本对齐
+stripe==15.1.0

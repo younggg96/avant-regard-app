@@ -45,7 +45,9 @@ except Exception:  # pragma: no cover
     _HAS_STRIPE = False
 
 
-_STRIPE_API_VERSION = "2024-12-18.acacia"
+# 与 stripe_provider._STRIPE_API_VERSION 保持一致, 同时也对齐 Dashboard
+# webhook endpoint 上选的 API 版本 (避免 account.updated payload 字段歧义)。
+_STRIPE_API_VERSION = "2026-04-22.dahlia"
 
 
 def _ensure_live() -> None:

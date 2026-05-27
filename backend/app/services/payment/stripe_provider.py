@@ -47,7 +47,9 @@ _STRIPE_EVENT_MAP = {
 # 显式 pin API 版本,避免 stripe-python 升级隐式拉默认版本造成行为变化。
 # 升级前请阅读 release notes,确认 PaymentIntent / Refund / charge.refunded
 # payload 结构与 client SDK 兼容。
-_STRIPE_API_VERSION = "2024-12-18.acacia"
+# 注: 必须与 Dashboard → Webhooks endpoint 上选的 API 版本一致, 否则
+# webhook payload 字段命名可能不一致 (Stripe 用 endpoint 上的版本推送)。
+_STRIPE_API_VERSION = "2026-04-22.dahlia"
 
 try:  # pragma: no cover - optional dep
     import stripe  # type: ignore
