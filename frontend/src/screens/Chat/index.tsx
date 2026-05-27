@@ -95,10 +95,34 @@ const ChatScreen = () => {
     return peerMessage?.senderAvatar ?? undefined;
   }, [otherUserAvatar, conversations, conversationId, conversationMessages]);
 
-  const reversedMessages = useMemo(
-    () => [...conversationMessages].reverse(),
-    [conversationMessages]
-  );
+  // 把消息按时间倒序铺给 FlatList(inverted)。
+  //
+  // 顺便对 ``order_status`` 卡做一次去重:相同 (orderId, status) 只保留时间
+  // 上最靠后的那一条。新后端按状态固定方向已经做到 1 张/状态,但历史会话
+  // 里仍可能有早期"双向发卡"留下的两张同状态卡片(典型现象:同一订单连续
+  // 两张"Awaiting shipment"卡)。在渲染前做一次轻量级 client-side dedupe,
+  // 让历史会话也立刻干净。
+  const reversedMessages = useMemo(() => {
+    const reversed = [...conversationMessages].reverse();
+    const seenOrderStatus = new Set<string>();
+    return reversed.filter((m) => {
+      if (m.messageType !== "order_status") return true;
+      try {
+        const parsed = JSON.parse(m.content);
+        const orderId = parsed?.orderId;
+        const status = parsed?.status;
+        if (typeof orderId !== "number" || typeof status !== "string") {
+          return true;
+        }
+        const key = `${orderId}:${status}`;
+        if (seenOrderStatus.has(key)) return false;
+        seenOrderStatus.add(key);
+        return true;
+      } catch {
+        return true;
+      }
+    });
+  }, [conversationMessages]);
 
   const otherHasReplied = useMemo(
     () => conversationMessages.some((m) => !m.isMine),

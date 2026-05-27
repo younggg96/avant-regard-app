@@ -31,6 +31,7 @@ from app.core.response import success
 from app.api.deps import get_current_user, get_current_admin_user
 from app.services.order_service import order_service
 from app.services.offer_service import offer_service
+from app.services.admin_service import admin_service
 from app.services.store_product_service import store_product_service
 from app.services.store_merchant_service import store_merchant_service
 from app.schemas.orders import (
@@ -530,6 +531,54 @@ async def list_incoming_offers(
         user_id, role="seller", status=status, page=page, page_size=pageSize
     )
     return success({"items": items, "total": total})
+
+
+# --------------- Admin / 交易管理面板 ---------------
+
+
+@admin_orders_router.get("")
+async def admin_list_orders(
+    page: int = Query(1, ge=1),
+    pageSize: int = Query(20, ge=1, le=100),
+    status: Optional[str] = Query(None, description="订单状态精确匹配"),
+    keyword: Optional[str] = Query(None, description="订单号 / 商品 ID"),
+    userId: Optional[int] = Query(None, description="买家或卖家用户 ID"),
+    startDate: Optional[str] = Query(None, description="ISO 起始时间，按 created_at"),
+    endDate: Optional[str] = Query(None, description="ISO 结束时间，按 created_at"),
+    _admin=Depends(get_current_admin_user),
+):
+    """管理员订单总览：跨所有用户的交易列表，挂上 buyer/seller/product 摘要。"""
+    result = admin_service.get_all_orders(
+        page=page,
+        page_size=pageSize,
+        status=status,
+        keyword=keyword,
+        user_id=userId,
+        start_date=startDate,
+        end_date=endDate,
+    )
+    return success(result)
+
+
+@admin_orders_router.get("/stats")
+async def admin_orders_stats(
+    days: int = Query(30, ge=0, le=365, description="0 表示全量"),
+    _admin=Depends(get_current_admin_user),
+):
+    """订单聚合统计：GMV / 平台佣金 / 卖家实收 / 各状态分布。"""
+    return success(admin_service.get_order_stats(days=days))
+
+
+@admin_orders_router.get("/{order_id}/detail")
+async def admin_order_detail(
+    order_id: int,
+    _admin=Depends(get_current_admin_user),
+):
+    """订单详情（含买卖双方、商品、物流凭证、卖家结算锁）。"""
+    detail = admin_service.get_order_detail(order_id)
+    if not detail:
+        raise HTTPException(status_code=404, detail="订单不存在")
+    return success(detail)
 
 
 # --------------- Admin / 调度器 ---------------

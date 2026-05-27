@@ -238,47 +238,66 @@ class OrderService:
         *,
         actor_user_id: Optional[int] = None,
     ) -> None:
-        """订单状态变化时给相关方发卡片 + push（与微信 / 闲鱼一致的双向触达）。
+        """订单状态变化时按「状态 → 固定卡片方向」发 1 张 order_status 卡片。
 
-        - PENDING_PAYMENT（下单待支付）→ 发给卖家
-        - PAID（买家支付完成）         → 发给卖家
-        - SHIPPED（卖家发货）           → 发给买家
-        - DELIVERED（签收）             → 同时发给买家 + 卖家（双方都需要知道已签收）
-        - COMPLETED（确认收货 / 自动确认）→ 双方都需要知道交易完成
-        - REFUNDED / REFUNDED_AUTO     → 双方都需要知晓终态
-        - SETTLED（T+3 结算到账）       → 双方知晓款项已结算
+        每条状态都只发 1 张消息(同一买卖会话),既避免历史上 DELIVERED 这
+        类状态发两条卡片造成的"双卡片重复"困扰,也让前端按消息 sender 决定
+        左 / 右气泡时方向是可预期的:
+
+          - PENDING_PAYMENT  → 卖家 → 买家   (买家被提醒去支付)
+          - PAID             → 买家 → 卖家   (卖家被提醒去发货)
+          - SHIPPED          → 卖家 → 买家   (买家被提醒关注物流)
+          - REFUNDED         → 卖家 → 买家   (买家被告知退款结果)
+          - REFUNDED_AUTO    → 卖家 → 买家   (同上,系统触发)
+          - DELIVERED        → 居中系统卡    (前端按 status 居中显示,不区分 sender)
+          - COMPLETED        → 居中系统卡    (同上,交易终结的里程碑)
+          - SETTLED          → 居中系统卡    (T+3 钱款释放,双方知晓即可)
+
+        居中系统卡的 sender 选 buyer→seller 方向,理由:
+          - DELIVERED/COMPLETED 通常由买家动作触发,sender=买家在底层数据上
+            最贴近事实;
+          - 同时 push 也走向 seller(seller 更需要知道"包裹到了 / 结算了"
+            的里程碑);
+          - 前端 MessageBubble 按 status 居中渲染,sender 朝向只是底层数据,
+            用户感知不到。
+
+        ``actor_user_id`` 保留为参数(若干 cron / webhook 仍按位置传入),
+        但路由完全由 status 决定,与 actor 无关,以杜绝早期"actor 是 seller
+        还是 buyer 决定方向"导致的边界 case(例如客服仲裁退款 actor=cs)。
         """
         buyer_id = order.buyerUserId
         seller_id = self._resolve_seller_user_id(order_row)
         if not seller_id:
             return
 
-        # 这几类状态对买卖双方都关键，双方都得到一份卡片 + push：
-        if order.status in {
+        status = order.status
+
+        # 居中系统卡(前端按 status 居中渲染), buyer→seller 让 push 到 seller
+        if status in {
             OrderStatus.DELIVERED.value,
             OrderStatus.COMPLETED.value,
-            OrderStatus.REFUNDED.value,
-            OrderStatus.REFUNDED_AUTO.value,
             OrderStatus.SETTLED.value,
         }:
             self._send_order_status_card(
                 order, sender_user_id=buyer_id, recipient_user_id=seller_id
             )
-            self._send_order_status_card(
-                order, sender_user_id=seller_id, recipient_user_id=buyer_id
-            )
             return
 
-        if actor_user_id == seller_id:
-            # 卖家发起（如发货） — 发给买家
-            self._send_order_status_card(
-                order, sender_user_id=seller_id, recipient_user_id=buyer_id
-            )
-        else:
-            # 默认买家或系统发起 — 发给卖家
-            self._send_order_status_card(
-                order, sender_user_id=buyer_id, recipient_user_id=seller_id
-            )
+        # 按业务事件流固定方向:
+        direction_map = {
+            OrderStatus.PENDING_PAYMENT.value: (seller_id, buyer_id),
+            OrderStatus.PAID.value:            (buyer_id, seller_id),
+            OrderStatus.SHIPPED.value:         (seller_id, buyer_id),
+            OrderStatus.REFUNDED.value:        (seller_id, buyer_id),
+            OrderStatus.REFUNDED_AUTO.value:   (seller_id, buyer_id),
+        }
+        routed = direction_map.get(status)
+        if not routed:
+            return
+        sender, recipient = routed
+        self._send_order_status_card(
+            order, sender_user_id=sender, recipient_user_id=recipient
+        )
 
     # ------------------------------------------------------------------
     # Stock holds
@@ -540,7 +559,13 @@ class OrderService:
         override_price_cents: Optional[int] = None,
         notify_chat: bool = True,
     ) -> Tuple[Order, StockHold]:
-        """创建订单 + 库存锁 + 支付意图（pending_payment）。"""
+        """创建订单 + 库存锁 + 支付意图（pending_payment）。
+
+        ``notify_chat=True`` 时会触发一次 ``_notify_both_parties``,按状态路由
+        表给买家发一张 ``pending_payment`` 卡片(seller → buyer 方向),
+        提醒买家完成支付。``buy_now`` 与 ``offer_accept`` 都走这条路径,
+        offer_accept 不再额外发同样的卡片(已经在本方法里发过了)。
+        """
         hold = self.acquire_hold(product_id, buyer_user_id)
 
         prod = (

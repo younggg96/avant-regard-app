@@ -33,6 +33,7 @@ import LotteryAdminTab from "./LotteryAdminTab";
 import ProductReviewTab from "./ProductReviewTab";
 import ProductManagementTab from "./ProductManagementTab";
 import DisputeQueueTab from "./DisputeQueueTab";
+import ChatMonitorTab from "./ChatMonitorTab";
 
 type MenuItemKey =
   | "pending"
@@ -40,6 +41,7 @@ type MenuItemKey =
   | "comments"
   | "users"
   | "customerService"
+  | "chatMonitor"
   | "storeManagement"
   | "productReview"
   | "productManagement"
@@ -76,6 +78,7 @@ const COMPONENT_MAP: Record<MenuItemKey, React.FC> = {
   comments: CommentsTab,
   users: UsersTab,
   customerService: CustomerServiceTab,
+  chatMonitor: ChatMonitorTab,
   storeManagement: StoreManagementTab,
   productReview: ProductReviewTab,
   productManagement: ProductManagementTab,
@@ -145,6 +148,7 @@ const AdminScreen = () => {
         items: [
           { key: "users", label: t("admin.usersManagement"), icon: "person-outline" },
           { key: "customerService", label: t("admin.customerService"), icon: "headset-outline" },
+          { key: "chatMonitor", label: t("admin.chatMonitor.title"), icon: "chatbubble-ellipses-outline" },
         ],
       },
       {

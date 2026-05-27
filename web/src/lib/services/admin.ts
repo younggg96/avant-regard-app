@@ -841,3 +841,163 @@ export const aiPromptsApi = {
       params,
     ),
 };
+
+// ─── Orders (Admin trading panel) ───────────────────────────────────────────
+//
+// 交易系统总览：跨所有用户的订单 / GMV / 佣金。后端实现 see
+// `backend/app/api/routes/orders.py` 内的 admin_orders_router。
+// 状态枚举与 `app/schemas/orders.py::OrderStatus` 严格对齐。
+
+export type AdminOrderStatus =
+  | "pending_payment"
+  | "paid"
+  | "shipped"
+  | "delivered"
+  | "completed"
+  | "settled"
+  | "refunded_auto"
+  | "refunded"
+  | "disputed"
+  | "resolved";
+
+export interface AdminOrderUserBrief {
+  id: number;
+  username: string;
+  phone?: string;
+  email?: string;
+  avatarUrl?: string | null;
+}
+
+export interface AdminOrderMerchantBrief {
+  id: number;
+  storeId?: string | null;
+  storeName?: string;
+  userId?: number | null;
+  status?: string;
+}
+
+export interface AdminOrderProductBrief {
+  id: number;
+  title?: string;
+  brand?: string;
+  priceCents?: number;
+  currency?: string;
+  coverImage?: string | null;
+}
+
+export interface AdminOrderShipment {
+  carrier?: string;
+  trackingNo?: string;
+  images?: string[];
+  signedAt?: string | null;
+  latestStatusCode?: string | null;
+  latestDescription?: string | null;
+  latestLocation?: string | null;
+  latestEventAt?: string | null;
+}
+
+export interface AdminOrderPendingPayout {
+  id: number;
+  amountCents: number;
+  currency: string;
+  status: string;
+  releaseAt?: string;
+  releasedAt?: string | null;
+  createdAt?: string;
+}
+
+export interface AdminOrder {
+  id: number;
+  orderNo: string;
+  productId: number;
+  buyerUserId: number;
+  sellerUserId?: number | null;
+  sellerMerchantId?: number | null;
+  offerId?: number | null;
+  listingPriceCents: number;
+  paidPriceCents: number;
+  commissionRateBps: number;
+  commissionCents: number;
+  sellerPayoutCents: number;
+  currency: string;
+  status: AdminOrderStatus;
+  paymentProvider?: string | null;
+  paymentIntentId?: string | null;
+  shippingDueAt?: string | null;
+  autoConfirmDueAt?: string | null;
+  settlementDueAt?: string | null;
+  paidAt?: string | null;
+  shippedAt?: string | null;
+  deliveredAt?: string | null;
+  completedAt?: string | null;
+  settledAt?: string | null;
+  refundedAt?: string | null;
+  cancelReason?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+  buyer?: AdminOrderUserBrief | null;
+  seller?: AdminOrderUserBrief | null;
+  merchant?: AdminOrderMerchantBrief | null;
+  product?: AdminOrderProductBrief | null;
+  shippingAddress?: Record<string, unknown> | null;
+}
+
+export interface AdminOrderDetail extends AdminOrder {
+  shipment?: AdminOrderShipment | null;
+  pendingPayout?: AdminOrderPendingPayout | null;
+}
+
+export interface AdminOrderListResponse {
+  items: AdminOrder[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface AdminOrderListParams {
+  page?: number;
+  pageSize?: number;
+  status?: AdminOrderStatus;
+  keyword?: string;
+  userId?: number;
+  startDate?: string;
+  endDate?: string;
+}
+
+export interface AdminOrderCurrencyAmount {
+  currency: string;
+  amountCents: number;
+}
+
+export interface AdminOrderStats {
+  days: number;
+  totalOrders: number;
+  completedOrders: number;
+  refundedOrders: number;
+  statusCounts: Partial<Record<AdminOrderStatus, number>> & Record<string, number>;
+  gmv: AdminOrderCurrencyAmount[];
+  commission: AdminOrderCurrencyAmount[];
+  sellerPayout: AdminOrderCurrencyAmount[];
+}
+
+export const adminOrdersApi = {
+  list: (params: AdminOrderListParams = {}) =>
+    apiClient.get<AdminOrderListResponse>("/api/admin/orders", {
+      page: params.page ?? 1,
+      pageSize: params.pageSize ?? 20,
+      status: params.status,
+      keyword: params.keyword,
+      userId: params.userId,
+      startDate: params.startDate,
+      endDate: params.endDate,
+    }),
+
+  detail: (orderId: number) =>
+    apiClient.get<AdminOrderDetail>(`/api/admin/orders/${orderId}/detail`),
+
+  stats: (days = 30) =>
+    apiClient.get<AdminOrderStats>("/api/admin/orders/stats", { days }),
+
+  refund: (orderId: number, reason?: string) =>
+    apiClient.post<AdminOrder>(`/api/admin/orders/${orderId}/refund`, { reason }),
+};

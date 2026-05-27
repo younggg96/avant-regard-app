@@ -1031,6 +1031,135 @@ export async function updateRecommendConfig(
   });
 }
 
+// ==================== 聊天审计 (admin 监控用,只读) ====================
+//
+// 与 chatService 中给普通用户用的接口刻意分开,避免不小心把 admin 权限的
+// 接口路径直接漏到客户端。这里只暴露列表 / 详情 / 搜索三个查询动作,删除
+// 仍走已有的 adminDeleteChatMessage。
+
+export interface AdminChatParticipant {
+  id: number;
+  username: string;
+  avatarUrl: string;
+  email?: string;
+  phone?: string;
+  joinedAt?: string;
+  lastReadAt?: string;
+}
+
+export interface AdminChatConversation {
+  id: number;
+  participants: AdminChatParticipant[];
+  lastMessageText: string | null;
+  lastMessagePreview: string;
+  lastMessageAt: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+  messageCount: number;
+}
+
+export interface AdminChatConversationListResponse {
+  conversations: AdminChatConversation[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface AdminChatMessage {
+  id: number;
+  conversationId: number;
+  senderId: number;
+  senderName: string;
+  senderAvatar: string;
+  content: string;
+  messageType: string;
+  createdAt: string;
+  isDeleted: boolean;
+}
+
+export interface AdminChatConversationDetail {
+  conversation: {
+    id: number;
+    participants: AdminChatParticipant[];
+    lastMessageText: string | null;
+    lastMessageAt: string | null;
+    createdAt: string | null;
+    updatedAt: string | null;
+  };
+  messages: AdminChatMessage[];
+  hasMore: boolean;
+}
+
+export interface AdminChatSearchMessage extends AdminChatMessage {
+  participants: AdminChatParticipant[];
+}
+
+export interface AdminChatSearchResponse {
+  messages: AdminChatSearchMessage[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+/**
+ * GET /api/admin/chat/conversations
+ * 列出会话, 可选按用户名/邮箱/手机号关键字或 userId 过滤。
+ */
+export async function getAdminChatConversations(opts: {
+  keyword?: string;
+  userId?: number;
+  page?: number;
+  pageSize?: number;
+}): Promise<AdminChatConversationListResponse> {
+  const params = new URLSearchParams();
+  if (opts.keyword) params.append("keyword", opts.keyword);
+  if (opts.userId !== undefined) params.append("userId", String(opts.userId));
+  params.append("page", String(opts.page ?? 1));
+  params.append("pageSize", String(opts.pageSize ?? 20));
+  return request<AdminChatConversationListResponse>(
+    `/api/admin/chat/conversations?${params.toString()}`,
+    { method: "GET" }
+  );
+}
+
+/**
+ * GET /api/admin/chat/conversations/{id}
+ * 拉某会话的参与者 + 消息历史(admin 视角, 含已软删).
+ */
+export async function getAdminChatConversationDetail(
+  conversationId: number,
+  opts: { beforeId?: number; limit?: number } = {}
+): Promise<AdminChatConversationDetail> {
+  const params = new URLSearchParams();
+  if (opts.beforeId !== undefined)
+    params.append("beforeId", String(opts.beforeId));
+  if (opts.limit !== undefined) params.append("limit", String(opts.limit));
+  const qs = params.toString();
+  return request<AdminChatConversationDetail>(
+    `/api/admin/chat/conversations/${conversationId}${qs ? `?${qs}` : ""}`,
+    { method: "GET" }
+  );
+}
+
+/**
+ * GET /api/admin/chat/messages/search
+ * 按内容关键字搜消息(仅 text 类型).
+ */
+export async function searchAdminChatMessages(
+  keyword: string,
+  page: number = 1,
+  pageSize: number = 20
+): Promise<AdminChatSearchResponse> {
+  const params = new URLSearchParams();
+  params.append("keyword", keyword);
+  params.append("page", String(page));
+  params.append("pageSize", String(pageSize));
+  return request<AdminChatSearchResponse>(
+    `/api/admin/chat/messages/search?${params.toString()}`,
+    { method: "GET" }
+  );
+}
+
 // 导出 adminService 对象
 export const adminService = {
   // 帖子管理
@@ -1099,6 +1228,10 @@ export const adminService = {
   // 维护模式
   getMaintenanceConfig,
   updateMaintenanceConfig,
+  // 聊天审计
+  getAdminChatConversations,
+  getAdminChatConversationDetail,
+  searchAdminChatMessages,
 };
 
 export default adminService;

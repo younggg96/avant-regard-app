@@ -153,6 +153,32 @@ export default function PaymentScreen() {
     load();
   }, [load]);
 
+  // 倒计时归零时刷新一次订单:cron 已经把 pending_payment 改成 refunded_auto
+  // 的话,这次 refresh 会把 UI 切到「订单已取消」分支(disable + 改文案);
+  // 还没改的话, 继续允许尝试支付,保持和列表/详情页一致。
+  //
+  // 用 ref 锁,确保对同一个 orderId 在倒计时归零后只发一次刷新请求,
+  // 避免 setOrder 触发的重渲染重复触发本 effect。
+  const refreshAfterElapsedRef = React.useRef<number | null>(null);
+  useEffect(() => {
+    if (!countdownElapsed) return;
+    if (refreshAfterElapsedRef.current === orderId) return;
+    refreshAfterElapsedRef.current = orderId;
+    let cancelled = false;
+    (async () => {
+      try {
+        const refreshed = await getOrder(orderId);
+        if (cancelled) return;
+        setOrder(refreshed);
+      } catch {
+        // 静默：刷新失败不影响用户继续尝试支付
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [countdownElapsed, orderId]);
+
   /**
    * Stripe PaymentSheet 拉起逻辑。
    *
@@ -269,6 +295,14 @@ export default function PaymentScreen() {
         t("trading.payment.failedTitle"),
         e?.message ?? t("trading.payment.failedMessage"),
       );
+      // 后端拒绝时(如 cron 刚把订单转 refunded_auto)立刻刷新一次,
+      // 让 UI 切到「订单已取消」分支,避免按钮文案还停留在 Pay now。
+      try {
+        const refreshed = await getOrder(orderId);
+        setOrder(refreshed);
+      } catch {
+        // 静默：刷新失败保持原状即可
+      }
     } finally {
       setPaying(false);
     }
@@ -289,7 +323,15 @@ export default function PaymentScreen() {
     );
   }
 
-  const isPaid = order.status !== "pending_payment";
+  // 注意：order.status 有三种「不是 pending_payment」的情况:
+  //   1) 已支付推进 (paid / shipped / delivered / completed / settled)
+  //   2) 已退款 / 自动取消 (refunded / refunded_auto)
+  //   3) disputed / resolved (售后中)
+  // 只有 1) 才能用「已支付」文案。2)/3) 应该说「订单已取消/不可再支付」。
+  const isTerminal = order.status !== "pending_payment";
+  const isCanceled =
+    order.status === "refunded_auto" || order.status === "refunded";
+  const isPaid = isTerminal && !isCanceled;
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -304,23 +346,34 @@ export default function PaymentScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll}>
-        {countdownLabel && !isPaid ? (
+        {isCanceled ? (
+          <View style={[styles.countdownBox, styles.countdownBoxExpired]}>
+            <Ionicons
+              name="alert-circle"
+              size={16}
+              color={theme.colors.error}
+            />
+            <Text style={styles.countdownText}>
+              {t("trading.payment.orderCanceled")}
+            </Text>
+          </View>
+        ) : countdownLabel && !isTerminal ? (
           <View
             style={[
               styles.countdownBox,
-              countdownExpired && styles.countdownBoxExpired,
+              countdownElapsed && styles.countdownBoxExpired,
             ]}
           >
             <Ionicons
-              name={countdownExpired ? "alert-circle" : "time-outline"}
+              name={countdownElapsed ? "alert-circle" : "time-outline"}
               size={16}
               color={
-                countdownExpired ? theme.colors.error : theme.colors.text
+                countdownElapsed ? theme.colors.error : theme.colors.text
               }
             />
             <Text style={styles.countdownText}>
-              {countdownExpired
-                ? t("trading.payment.holdExpired")
+              {countdownElapsed
+                ? t("trading.payment.holdElapsed")
                 : t("trading.payment.holdCountdown", { time: countdownLabel })}
             </Text>
           </View>
@@ -354,7 +407,7 @@ export default function PaymentScreen() {
                 key={opt.provider}
                 style={[styles.optionRow, active && styles.optionRowActive]}
                 onPress={() => setSelected(opt.provider)}
-                disabled={paying || isPaid}
+                disabled={paying || isTerminal}
               >
                 <View style={[styles.iconWrap, { backgroundColor: meta.color + "1A" }]}>
                   <Ionicons name={meta.name} size={22} color={meta.color} />
@@ -403,19 +456,20 @@ export default function PaymentScreen() {
         <Pressable
           style={[
             styles.primaryBtn,
-            (paying || isPaid || !selected || countdownExpired) &&
-              styles.primaryBtnDisabled,
+            (paying || isTerminal || !selected) && styles.primaryBtnDisabled,
           ]}
           onPress={handlePay}
-          disabled={paying || isPaid || !selected || countdownExpired}
+          disabled={paying || isTerminal || !selected}
         >
           {paying ? (
             <ActivityIndicator color={theme.colors.textInverted} />
           ) : (
             <Text style={styles.primaryBtnText}>
-              {isPaid
-                ? t("trading.payment.alreadyPaid")
-                : t("trading.payment.payNow")}
+              {isCanceled
+                ? t("trading.payment.orderCanceledBtn")
+                : isPaid
+                  ? t("trading.payment.alreadyPaid")
+                  : t("trading.payment.payNow")}
             </Text>
           )}
         </Pressable>

@@ -690,6 +690,76 @@ async def admin_delete_chat_message(
     return success(result)
 
 
+# ==================== 聊天审计 (admin only, read-only) ====================
+#
+# 给运营 / 风控用的「全站聊天检索」入口。三个 endpoint 都强制走 admin 鉴权,
+# 业务逻辑完全在 ``admin_service`` 里, 这里只做参数校验和 HTTP 包装。
+#
+#   GET /api/admin/chat/conversations
+#       列出会话, 支持 keyword(用户名 / 邮箱 / 手机号 / userId) 或 userId 精确过滤。
+#       不传任何过滤参数则返回\"全站最近活跃的会话\"。
+#
+#   GET /api/admin/chat/conversations/{id}
+#       看某个会话的参与者 + 消息列表。这里不过滤 is_deleted, 让 admin 也能看到
+#       软删除内容(便于事后审计)。支持 before_id 分页(往更早的消息翻)。
+#
+#   GET /api/admin/chat/messages/search
+#       按关键字搜消息内容(仅 text 类型, 卡片类 content 是 JSON,搜了没用)。
+#       命中消息会带上所在会话参与者, 让搜索结果可读。
+
+
+@router.get("/chat/conversations")
+async def admin_list_chat_conversations(
+    keyword: Optional[str] = Query(None, description="按用户名/邮箱/手机号/用户ID模糊匹配"),
+    userId: Optional[int] = Query(None, description="只看该用户参与的会话"),
+    page: int = Query(1, ge=1),
+    pageSize: int = Query(20, ge=1, le=100),
+    current_user_id: int = Depends(get_current_admin_user),
+):
+    """管理员: 列出聊天会话(可按用户/关键字筛选)"""
+    result = admin_service.list_chat_conversations(
+        keyword=keyword,
+        user_id=userId,
+        page=page,
+        page_size=pageSize,
+    )
+    return success(result)
+
+
+@router.get("/chat/conversations/{conversation_id}")
+async def admin_get_chat_conversation(
+    conversation_id: int,
+    beforeId: Optional[int] = Query(None, description="分页用,只返回 id < beforeId 的更早消息"),
+    limit: int = Query(100, ge=1, le=200),
+    current_user_id: int = Depends(get_current_admin_user),
+):
+    """管理员: 查看具体会话的参与者 + 消息内容(含已软删除消息)"""
+    result = admin_service.get_chat_conversation_detail(
+        conversation_id,
+        before_id=beforeId,
+        limit=limit,
+    )
+    if not result:
+        raise HTTPException(status_code=404, detail="会话不存在")
+    return success(result)
+
+
+@router.get("/chat/messages/search")
+async def admin_search_chat_messages(
+    keyword: str = Query(..., min_length=1, description="消息内容关键字(仅匹配 text 类型)"),
+    page: int = Query(1, ge=1),
+    pageSize: int = Query(20, ge=1, le=100),
+    current_user_id: int = Depends(get_current_admin_user),
+):
+    """管理员: 按内容关键字搜聊天消息"""
+    result = admin_service.search_chat_messages(
+        keyword,
+        page=page,
+        page_size=pageSize,
+    )
+    return success(result)
+
+
 # ==================== 用户头衔管理 ====================
 
 class AddUserTitleRequest(BaseModel):

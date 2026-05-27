@@ -46,6 +46,7 @@ import {
   contactSupportForOrderWithIssue,
   AftersalesIssue,
 } from "../../services/aftersalesService";
+import { createConversation } from "../../services/chatService";
 import { getCustomerServiceChatParams } from "../../utils/chatNavigationUtils";
 import { ActionSheet, ActionSheetAction } from "../../components/ui/ActionSheet";
 import { useAppTheme, useThemedStyles, type AppTheme } from "../../theme";
@@ -335,6 +336,34 @@ export default function OrderDetailScreen() {
    * - 传入 `issue` 时调用 `/contact-order/{id}/aftersales`，会自动追加问题模板文本。
    * - 不传时退化为既有的「联系客服」入口，仅推一张订单卡片。
    */
+  const contactTargetUserId = isBuyer
+    ? (order?.sellerUserId ?? product?.sellerUserId ?? null)
+    : isSeller
+      ? (order?.buyerUserId ?? null)
+      : null;
+  const canContactCounterparty =
+    contactTargetUserId != null && contactTargetUserId !== meUserId;
+
+  const handleContactCounterparty = useCallback(async () => {
+    if (!contactTargetUserId) return;
+    try {
+      setActionLoading(true);
+      const { conversationId } = await createConversation(contactTargetUserId);
+      navigation.navigate("Chat", {
+        conversationId,
+        otherUserName: t("profile.user"),
+        otherUserId: contactTargetUserId,
+      });
+    } catch (e: any) {
+      Alert.alert(
+        t("common.failed"),
+        e?.message ?? t("engagement.operationFailed"),
+      );
+    } finally {
+      setActionLoading(false);
+    }
+  }, [contactTargetUserId, isBuyer, navigation, t]);
+
   const handleAftersalesIssue = useCallback(
     async (issue?: AftersalesIssue) => {
       if (!order) return;
@@ -870,6 +899,25 @@ export default function OrderDetailScreen() {
                 {t("trading.orderDetail.confirmReceipt")}
               </Text>
             )}
+          </Pressable>
+        ) : null}
+        {canContactCounterparty ? (
+          <Pressable
+            style={styles.secondaryBtn}
+            onPress={handleContactCounterparty}
+            disabled={actionLoading}
+          >
+            <Ionicons
+              name="chatbubble-outline"
+              size={16}
+              color={theme.colors.text}
+              style={{ marginRight: 6 }}
+            />
+            <Text style={styles.secondaryBtnText}>
+              {isBuyer
+                ? t("trading.orderDetail.contactSeller")
+                : t("trading.orderDetail.contactBuyer")}
+            </Text>
           </Pressable>
         ) : null}
         {(isBuyer || isSeller) && canRequestAftersales ? (

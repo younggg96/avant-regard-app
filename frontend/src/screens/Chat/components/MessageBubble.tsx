@@ -229,6 +229,9 @@ export const MessageBubble = ({
         />
       );
     }
+    // 普通 order_status 卡片(PENDING_PAYMENT / PAID / SHIPPED / REFUNDED…):
+    // 按 message sender 走左 / 右气泡。终结里程碑(DELIVERED / COMPLETED /
+    // SETTLED)走组件主 return 上方的居中分支,不会进入 renderContent。
     if (orderStatusCard) {
       return (
         <OrderStatusCardView
@@ -241,10 +244,12 @@ export const MessageBubble = ({
             })
           }
           onPay={
-            // pending_payment 卡片的 sender 永远是 buyer(后端 _notify_both_parties 约定),
-            // 所以 isMine=true 才是买家视角。卖家看到的是左侧对方卡片,
-            // 没必要也不应该展示「Pay now」(点了会被后端 PermissionError 挡住,UX 差)。
-            orderStatusCard.status === "pending_payment" && isMine
+            // pending_payment 卡的 Pay now 按钮:按"我是买家"判定。
+            // 现在 pending_payment 是 seller → buyer,所以买家视角下 isMine=false。
+            // 旧消息可能仍然是 buyer → seller(sender=buyer,isMine=true),
+            // 两种情况都允许:status===pending_payment 时给两边都展示按钮,
+            // 卖家点了会被后端 PermissionError 兜底,UX 上稍微宽松一些以兼容历史数据。
+            orderStatusCard.status === "pending_payment"
               ? () =>
                   (navigation.navigate as any)("Payment", {
                     orderId: orderStatusCard.orderId,
@@ -745,6 +750,54 @@ export const MessageBubble = ({
     );
   };
 
+  // order_status 卡片渲染分两类:
+  //   - DELIVERED / COMPLETED / SETTLED 是「交易终结里程碑」,后端只发 1 张,
+  //     前端居中渲染成「系统提示卡」(无左右气泡 / 无头像 / 不区分 sender),
+  //     和微信 / 闲鱼那种"已签收 / 已完成 / 已结算"的居中卡片一致。
+  //   - PENDING_PAYMENT / PAID / SHIPPED / REFUNDED / REFUNDED_AUTO 是「双方
+  //     轮流推动的对话事件」,后端固定方向只发 1 张,前端按 sender 决定
+  //     左右气泡,跟普通消息一样。
+  const isSystemOrderCard =
+    !!orderStatusCard &&
+    (orderStatusCard.status === "delivered" ||
+      orderStatusCard.status === "completed" ||
+      orderStatusCard.status === "settled");
+
+  if (orderStatusCard && isSystemOrderCard) {
+    return (
+      <View style={styles.messageWrapper}>
+        {showTime && (
+          <DateSeparator dateStr={formatMessageTime(message.createdAt)} />
+        )}
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onLongPress={canReport ? () => setShowMenu(true) : undefined}
+          delayLongPress={400}
+          style={cardStyles.systemRow}
+        >
+          <View style={cardStyles.systemGroup}>
+            <OrderStatusCardView
+              data={orderStatusCard}
+              isMine={false}
+              isCustomerService={isCustomerService}
+              onPress={() =>
+                (navigation.navigate as any)("OrderDetail", {
+                  orderId: orderStatusCard.orderId,
+                })
+              }
+            />
+          </View>
+        </TouchableOpacity>
+
+        <ActionSheet
+          visible={showMenu}
+          actions={menuActions}
+          onClose={() => setShowMenu(false)}
+        />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.messageWrapper}>
       {showTime && (
@@ -874,6 +927,17 @@ const makeCardStyles = (t: AppTheme) => StyleSheet.create({
   tapHintText: {
     fontSize: 12,
     fontWeight: "500",
+  },
+  systemRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 4,
+  },
+  systemGroup: {
+    maxWidth: "82%",
+    alignItems: "center",
   },
 });
 

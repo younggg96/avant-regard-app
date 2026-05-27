@@ -161,30 +161,6 @@ class OfferService:
             return "出价已过期"
         return "出价更新"
 
-    def _send_order_card(self, order, actor_user_id: int, counterpart_user_id: int) -> None:
-        """offer 接受成单后，给买卖双方发一张 order_status 卡片。"""
-        try:
-            chat = self._get_chat()
-            conv_id = chat.create_conversation(actor_user_id, counterpart_user_id)
-            payload = {
-                "orderId": order.id,
-                "orderNo": order.orderNo,
-                "status": order.status,
-                "paidPriceCents": order.paidPriceCents,
-            }
-            chat.send_message(
-                conversation_id=conv_id,
-                sender_id=actor_user_id,
-                content=json.dumps(payload, ensure_ascii=False),
-                message_type="order_status",
-                send_push=True,
-                push_title="出价已成单",
-                push_navigate_to="OrderDetail",
-                push_navigate_params={"orderId": order.id},
-            )
-        except Exception as e:
-            print(f"[offer_service] send order card failed: {e}")
-
     # --------------------------------------------------------- format / chain
 
     @staticmethod
@@ -404,12 +380,14 @@ class OfferService:
         ).eq("id", offer_id).execute()
         updated = {**offer, "status": "accepted"}
 
-        # 通知对手方 + 发一张 order_status 卡片
+        # 通知对手方 offer 已被接受。
+        # 注意:订单本身的 pending_payment 卡片已经由
+        # ``order_service.create_order_from_listing → _notify_both_parties`` 发出
+        # (seller → buyer),这里不要再发一张 order_status 卡,避免双卡。
         initiator = self._initiator_role(offer)
         counterpart = offer["buyer_user_id"] if initiator == "buyer" else self._resolve_seller_user_id(offer)
         if counterpart:
             self._send_offer_card(updated, actor_user_id, counterpart)
-            self._send_order_card(order, actor_user_id, counterpart)
         return order, hold, self._format(updated)
 
     # ------------------------------------------------------------ legacy alias
