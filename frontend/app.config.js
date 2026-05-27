@@ -3,7 +3,7 @@ const IS_NA = process.env.APP_VARIANT === "na";
 const config = {
   name: IS_NA ? "Avant Regard NA" : "Avant Regard",
   slug: "avant-regard",
-  version: "1.3.3",
+  version: "1.3.4",
   orientation: "portrait",
   icon: "./assets/images/logo.jpg",
   userInterfaceStyle: "automatic",
@@ -45,7 +45,7 @@ const config = {
     bundleIdentifier: IS_NA
       ? "com.yanggg96.avant-regard.na"
       : "com.yanggg96.avant-regard",
-    buildNumber: "24",
+    buildNumber: "26",
     associatedDomains: ["applinks:app.avantregard.com"],
   },
   android: {
