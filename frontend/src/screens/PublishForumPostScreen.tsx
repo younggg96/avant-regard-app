@@ -33,6 +33,7 @@ import ScreenHeader from "../components/ScreenHeader";
 import PublishButtons from "../components/PublishButtons";
 import SingleImageUploader from "../components/SingleImageUploader";
 import ImagePickerModal from "../components/ImagePickerModal";
+import ImageCropper from "../components/ImageCropper";
 import { postService, isVideoUrl } from "../services/postService";
 import { getCommunities, Community } from "../services/communityService";
 import { useAuthStore } from "../store/authStore";
@@ -144,6 +145,12 @@ const PublishForumPostScreen = () => {
   const [showImagePicker, setShowImagePicker] = useState(false);
   const [insertAfterBlockId, setInsertAfterBlockId] = useState<string | null>(null);
   const [showAddMenu, setShowAddMenu] = useState<string | null>(null);
+  // 自家 in-app 裁切器 (ImageCropper) 的状态。系统 picker 自带的
+  // `allowsEditing: true` 在 iOS 上会逼回旧的 UIImagePickerController, 连续多
+  // 次 present 会触发 dismissal-race (frame 2 起没反应)；改成: picker 只取
+  // 原图 → 把原图交给 ImageCropper → 用户裁完再走插入逻辑。
+  const [showImageCropper, setShowImageCropper] = useState(false);
+  const [cropperImageUri, setCropperImageUri] = useState<string | null>(null);
 
   // 社区相关
   const [selectedCommunity, setSelectedCommunity] = useState<Community | null>(null);
@@ -360,6 +367,17 @@ const PublishForumPostScreen = () => {
   };
 
   // 处理图片选择
+  // ⚠️ 这里坚持用 `allowsEditing: false` + 自然分辨率, 不能开 `allowsEditing: true`
+  // 配 `aspect: [16, 9]`。后者会让 expo-image-picker 在 iOS 上回退到旧的
+  // UIImagePickerController（带原生裁切 UI 的那条路径），而不是默认的 PHPicker。
+  // UIImagePickerController 对“连续多次 present”非常敏感: 第 1 张能加, 第 2 张
+  // 偶尔还能加, 但只要前一次 dismiss 动画没走完就再次 launchImageLibraryAsync,
+  // 第 3 次起会被 iOS 静默丢弃 → 用户体感就是“+ 添加内容 → 图片”按钮没反应,
+  // 同时 console 也不会有任何报错。其它发布屏 (Lookbook / Outfit / V2 Composer)
+  // 之前已经统一切到 `allowsEditing: false` + 自家裁切器了, 论坛屏当时漏改。
+  // 「裁切大小」的体验改由下面的 in-app `ImageCropper` 接管: picker 只负责选
+  // 原图, 选完跳到 ImageCropper, 用户在 cropper 里自由裁切完成后才走块插入,
+  // 既保留 edit 能力又彻底避开 iOS picker 的 dismissal-race。
   const handleImageSelection = async (source: "camera" | "gallery") => {
     setShowImagePicker(false);
 
@@ -374,55 +392,77 @@ const PublishForumPostScreen = () => {
 
       const result = source === "camera"
         ? await ImagePicker.launchCameraAsync({
-            allowsEditing: true,
-            aspect: [16, 9],
-            quality: 0.8,
+            allowsEditing: false,
+            quality: 1.0,
           })
         : await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            allowsEditing: true,
-            aspect: [16, 9],
-            quality: 0.8,
+            allowsEditing: false,
+            quality: 1.0,
           });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const imageUri = result.assets[0].uri;
+        // ⚠️ 这里 *不* 直接插入图片块, 而是把原图交给 ImageCropper。
+        // insertAfterBlockId 在 cropper 完成 / 取消时才会被清空, 用户在 cropper
+        // 里改主意取消, 也只是退回原状态, 不会把空块插进去。
         if (insertAfterBlockId) {
-          // 插入图片块 + 在其后追加一个空文本块, 一次 setState 完成。
-          // 历史这里走 insertBlockAfter + setTimeout 100ms 再读 contentBlocks,
-          // 但 setTimeout 闭包里读到的是旧 state, 判断 lastBlock.type 永远不
-          // 等于 "image" → 末尾插图后没有文字输入框, 用户无法继续打字。
-          const targetId = insertAfterBlockId;
-          setContentBlocks((prev) => {
-            const idx = prev.findIndex((b) => b.id === targetId);
-            const imageBlock: ContentBlock = {
-              id: generateId(),
-              type: "image",
-              content: imageUri,
-            };
-            const textBlock: ContentBlock = {
-              id: generateId(),
-              type: "text",
-              content: "",
-            };
-            const next = [...prev];
-            const insertAt = idx === -1 ? next.length : idx + 1;
-            next.splice(insertAt, 0, imageBlock);
-            // 仅当图片后没有可编辑文本块时才追加, 避免重复空块。
-            const after = next[insertAt + 1];
-            if (!after || after.type !== "text") {
-              next.splice(insertAt + 1, 0, textBlock);
-            }
-            return next;
-          });
-          setShowAddMenu(null);
+          setCropperImageUri(imageUri);
+          setShowImageCropper(true);
         }
-        setInsertAfterBlockId(null);
       }
     } catch (error) {
       console.error("Image selection error:", error);
       Alert.show(t("publish.imageSelectionFailed"));
     }
+  };
+
+  // 把已经裁好 / 已经选好的图片 URI 作为 image 内容块插入到 insertAfterBlockId
+  // 之后, 必要时追加一个空文本块以便用户继续打字。原 handleImageSelection 的
+  // 插入逻辑直接搬过来, 行为完全等价。
+  const insertImageBlockAt = (
+    targetId: string,
+    imageUri: string,
+  ) => {
+    setContentBlocks((prev) => {
+      const idx = prev.findIndex((b) => b.id === targetId);
+      const imageBlock: ContentBlock = {
+        id: generateId(),
+        type: "image",
+        content: imageUri,
+      };
+      const textBlock: ContentBlock = {
+        id: generateId(),
+        type: "text",
+        content: "",
+      };
+      const next = [...prev];
+      const insertAt = idx === -1 ? next.length : idx + 1;
+      next.splice(insertAt, 0, imageBlock);
+      // 仅当图片后没有可编辑文本块时才追加, 避免重复空块。
+      const after = next[insertAt + 1];
+      if (!after || after.type !== "text") {
+        next.splice(insertAt + 1, 0, textBlock);
+      }
+      return next;
+    });
+    setShowAddMenu(null);
+  };
+
+  const handleCropDone = (croppedUri: string) => {
+    const targetId = insertAfterBlockId;
+    setShowImageCropper(false);
+    setCropperImageUri(null);
+    setInsertAfterBlockId(null);
+    if (targetId) {
+      insertImageBlockAt(targetId, croppedUri);
+    }
+  };
+
+  const handleCropCancel = () => {
+    setShowImageCropper(false);
+    setCropperImageUri(null);
+    setInsertAfterBlockId(null);
   };
 
   const handleVideoSelection = async () => {
@@ -995,6 +1035,20 @@ const PublishForumPostScreen = () => {
       </View>
     );
   };
+
+  // ImageCropper 必须以「整屏 early return」的方式渲染, 而不是塞在 Modal/SafeAreaView
+  // 里。它内部用 PanResponder + react-native-reanimated 做手势, 套在父级 ScrollView
+  // 里手势会被滚动吞掉。其它发布屏 (Lookbook/Outfit/V2 Composer) 也是同款写法。
+  if (showImageCropper && cropperImageUri) {
+    return (
+      <ImageCropper
+        sourceUri={cropperImageUri}
+        aspect="free"
+        onCancel={handleCropCancel}
+        onDone={handleCropDone}
+      />
+    );
+  }
 
   return (
     // 仅保留 top 安全区. bottom 由内部的 PublishButtons 自己用
