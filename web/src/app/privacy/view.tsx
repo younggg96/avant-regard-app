@@ -1,0 +1,252 @@
+"use client";
+
+import Link from "next/link";
+
+/**
+ * Avant Regard public Privacy Policy view.
+ *
+ * Structure:
+ *   - Highlighted "SMS Communications" section rendered VERBATIM in English.
+ *     This block is what Twilio toll-free verification reviewers and US
+ *     carriers (CTIA) look for. Do not edit the wording.
+ *   - English summary of the full privacy policy. Mirrors the Chinese policy
+ *     bundled inside the mobile app.
+ *   - Full Chinese privacy policy (kept for parity with the in-app text and
+ *     for our primary user base).
+ *
+ * If you need to update wording, update the in-app PrivacyContent component
+ * (`frontend/src/screens/Auth/components/PrivacyContent.tsx`) in lockstep so
+ * the in-app modal and the public URL stay consistent.
+ */
+
+const LAST_UPDATED = "2026-05-27";
+const EFFECTIVE_DATE = "2026-05-27";
+
+export function PrivacyView() {
+  return (
+    <article className="mx-auto max-w-content px-6 py-16 md:py-24">
+      <header className="border-b border-black/[0.08] pb-8 dark:border-white/[0.08]">
+        <p className="font-label text-[11px] uppercase tracking-[0.22em] text-black/40 dark:text-white/35">
+          Avant Regard · Legal
+        </p>
+        <h1 className="mt-3 font-serif text-[clamp(2rem,5vw,3rem)] leading-tight tracking-tight text-black dark:text-white">
+          Privacy Policy
+        </h1>
+        <dl className="mt-4 grid gap-1 font-label text-[12px] text-black/55 dark:text-white/45 sm:grid-cols-2">
+          <div className="flex gap-2">
+            <dt className="uppercase tracking-[0.18em]">Last updated</dt>
+            <dd>{LAST_UPDATED}</dd>
+          </div>
+          <div className="flex gap-2">
+            <dt className="uppercase tracking-[0.18em]">Effective</dt>
+            <dd>{EFFECTIVE_DATE}</dd>
+          </div>
+        </dl>
+      </header>
+
+      {/* SMS COMMUNICATIONS — required for Twilio / CTIA compliance.
+          Render verbatim. Anchor allows the mobile app and other surfaces to
+          deep-link directly to this paragraph. */}
+      <section
+        id="sms-communications"
+        className="mt-10 rounded-lg border border-black/[0.08] bg-black/[0.02] p-6 dark:border-white/[0.08] dark:bg-white/[0.03]"
+      >
+        <h2 className="font-serif text-[22px] tracking-tight text-black dark:text-white">
+          SMS Communications
+        </h2>
+        <p className="mt-4 font-label text-[14px] leading-relaxed text-black/75 dark:text-white/75">
+          When you create an account using a mobile phone number, you consent
+          to receive one-time SMS verification codes for the purpose of account
+          authentication and security. Standard message and data rates may
+          apply. You may opt out of SMS communications at any time by replying{" "}
+          <strong className="font-semibold text-black dark:text-white">
+            STOP
+          </strong>{" "}
+          to any message. Phone numbers collected for SMS verification are
+          stored securely and are not sold, rented, or shared with third
+          parties for marketing purposes.
+        </p>
+      </section>
+
+      {/* English summary --------------------------------------------------- */}
+      <section className="mt-12 space-y-6 font-label text-[14px] leading-relaxed text-black/70 dark:text-white/70">
+        <h2 className="font-serif text-[22px] tracking-tight text-black dark:text-white">
+          Overview
+        </h2>
+        <p>
+          Avant Regard (operated by Shanghai Nantek Industrial Co., Ltd.)
+          provides a community and marketplace for designer and second-hand
+          fashion. This policy explains what personal information we collect,
+          how we use and protect it, and the rights you have over it. We follow
+          the principles of lawful, necessary, and transparent processing in
+          line with the PRC Cybersecurity Law, Data Security Law and Personal
+          Information Protection Law, as well as applicable rules in the
+          jurisdictions where we operate.
+        </p>
+
+        <h3 className="font-serif text-[18px] tracking-tight text-black dark:text-white">
+          Information we collect
+        </h3>
+        <ul className="list-disc space-y-2 pl-5">
+          <li>
+            <strong className="font-semibold text-black dark:text-white">
+              Account &amp; authentication
+            </strong>{" "}
+            — phone number or email, password, and (when required by law)
+            real-name verification details.
+          </li>
+          <li>
+            <strong className="font-semibold text-black dark:text-white">
+              Transactions
+            </strong>{" "}
+            — shipping addresses, order details and payment routing metadata
+            (we do not store full payment-instrument numbers).
+          </li>
+          <li>
+            <strong className="font-semibold text-black dark:text-white">
+              Optional profile &amp; usage
+            </strong>{" "}
+            — display name, avatar, preferences, posts, store locations you
+            submit to the Buyer Map, search history and recommendations
+            signals.
+          </li>
+          <li>
+            <strong className="font-semibold text-black dark:text-white">
+              Device &amp; security
+            </strong>{" "}
+            — device model, OS version, IP address, login timestamps and
+            session telemetry used to detect abuse and keep your account safe.
+          </li>
+        </ul>
+
+        <h3 className="font-serif text-[18px] tracking-tight text-black dark:text-white">
+          How we use information
+        </h3>
+        <p>
+          We use personal information only for the purposes stated when it was
+          collected: to operate the service, secure your account, fulfil
+          orders, personalise recommendations you can opt out of, and respond
+          to reports and support requests. Buyer Map location data is used
+          only within the Buyer Map experience. Reports and block operations
+          are visible only to platform reviewers.
+        </p>
+
+        <h3 className="font-serif text-[18px] tracking-tight text-black dark:text-white">
+          Sharing
+        </h3>
+        <p>
+          We do not sell or rent personal information. We share data only as
+          needed to deliver the service (e.g. with payment processors and
+          shipping carriers for the relevant order), to comply with the law,
+          or as anonymised aggregates with our affiliates for service
+          improvement.
+        </p>
+
+        <h3 className="font-serif text-[18px] tracking-tight text-black dark:text-white">
+          Your rights
+        </h3>
+        <p>
+          You can access, correct, export and delete your data, withdraw
+          consent for optional processing, and lodge a complaint at any time.
+          To exercise these rights, contact us at{" "}
+          <a
+            href="mailto:avant.regarde61@gmail.com"
+            className="underline underline-offset-4 hover:text-black dark:hover:text-white"
+          >
+            avant.regarde61@gmail.com
+          </a>
+          .
+        </p>
+
+        <h3 className="font-serif text-[18px] tracking-tight text-black dark:text-white">
+          Contact
+        </h3>
+        <address className="not-italic">
+          Shanghai Nantek Industrial Co., Ltd.
+          <br />
+          Room 2096, Area C, 2F, Building 1, Lane 588 Zhanglian-tang Road,
+          Liantang Town, Qingpu District, Shanghai, PRC
+          <br />
+          Email:{" "}
+          <a
+            href="mailto:avant.regarde61@gmail.com"
+            className="underline underline-offset-4 hover:text-black dark:hover:text-white"
+          >
+            avant.regarde61@gmail.com
+          </a>
+        </address>
+      </section>
+
+      {/* Chinese full text — primary user base ------------------------------- */}
+      <section
+        lang="zh-CN"
+        className="mt-16 space-y-5 border-t border-black/[0.08] pt-12 font-label text-[14px] leading-relaxed text-black/70 dark:border-white/[0.08] dark:text-white/70"
+      >
+        <h2 className="font-serif text-[22px] tracking-tight text-black dark:text-white">
+          Avant Regard 隐私政策（中文版）
+        </h2>
+        <p className="font-label text-[12px] text-black/45 dark:text-white/40">
+          运营方：上海南特克实业有限公司（统一社会信用代码：9131011877976576X6；注册地址：上海市青浦区练塘镇章练塘路588弄15号1幢二层C区2096室）
+        </p>
+
+        <p>
+          欢迎使用 Avant Regard 产品及服务！我们将严格遵循《中华人民共和国网络安全法》《数据安全法》《个人信息保护法》等法律法规，秉持合法正当、最小必要、公开透明的原则保护您的个人信息。
+        </p>
+
+        <h3 className="font-serif text-[18px] tracking-tight text-black dark:text-white">
+          一、个人信息的收集与使用
+        </h3>
+        <p>
+          为完成账号注册与登录，我们需收集手机号码或邮箱、账号密码；完成实名认证时需提供姓名及身份证件信息。为完成交易需收集收货地址、订单及支付路由信息（不存储完整支付账号）。您可自主选择是否提供昵称、头像、性别、生日、买手店位置、浏览历史等非必要信息，拒绝不影响基础功能使用。
+        </p>
+
+        <h3 className="font-serif text-[18px] tracking-tight text-black dark:text-white">
+          二、短信通信（SMS）
+        </h3>
+        <p>
+          当您使用手机号注册账号时，您同意接收用于账号身份验证和安全用途的一次性短信验证码。运营商可能收取标准的短信和数据费用。您可以随时通过对任意短信回复 STOP 退订。我们为短信验证收集的手机号将被安全存储，且不会出于营销目的向任何第三方出售、出租或共享。
+        </p>
+
+        <h3 className="font-serif text-[18px] tracking-tight text-black dark:text-white">
+          三、共享、转移与公开
+        </h3>
+        <p>
+          我们不会向第三方出售、出租您的个人信息。仅在交易履约（向支付机构、物流服务商）、配合法定调查或经您单独同意时共享必要信息；可向关联方共享匿名化、去标识化数据用于服务优化。
+        </p>
+
+        <h3 className="font-serif text-[18px] tracking-tight text-black dark:text-white">
+          四、存储与安全
+        </h3>
+        <p>
+          您的个人信息在中华人民共和国境内存储，并采用加密存储、访问权限控制、安全审计等措施保护，存储期限不超过实现处理目的所需的最短时间。
+        </p>
+
+        <h3 className="font-serif text-[18px] tracking-tight text-black dark:text-white">
+          五、您的权利
+        </h3>
+        <p>
+          您依法享有查阅、复制、更正、补充、删除个人信息以及撤回同意、投诉举报的权利，可通过"我的-设置-隐私管理"或联系客服行使。我们将在收到申请后15个工作日内受理处理。
+        </p>
+
+        <h3 className="font-serif text-[18px] tracking-tight text-black dark:text-white">
+          六、联系我们
+        </h3>
+        <p>
+          客服邮箱：avant.regarde61@gmail.com；客服微信：Avantregard2025；联系地址：上海市青浦区练塘镇章练塘路588弄15号1幢二层C区2096室。
+        </p>
+      </section>
+
+      <footer className="mt-16 border-t border-black/[0.08] pt-6 dark:border-white/[0.08]">
+        <p className="font-label text-[12px] text-black/40 dark:text-white/35">
+          © {new Date().getFullYear()} Avant Regard. All rights reserved.{" "}
+          <Link
+            href="/"
+            className="underline underline-offset-4 hover:text-black dark:hover:text-white"
+          >
+            Return home
+          </Link>
+        </p>
+      </footer>
+    </article>
+  );
+}

@@ -9,5 +9,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${base}/discover`, lastModified: now, priority: 0.9 },
     { url: `${base}/app`, lastModified: now, priority: 0.6 },
     { url: `${base}/download`, lastModified: now, priority: 0.65 },
+    // Privacy policy must be crawlable so Twilio toll-free verification can
+    // reach the SMS Communications section at /privacy#sms-communications.
+    { url: `${base}/privacy`, lastModified: now, priority: 0.5 },
   ];
 }

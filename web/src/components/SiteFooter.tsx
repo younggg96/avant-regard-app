@@ -39,6 +39,7 @@ export function SiteFooter() {
             <ul className="mt-5 space-y-3 font-serif text-sm">
               <li><Link href="/#about" className="link-muted">{t("footer.brandStory")}</Link></li>
               <li><a href="mailto:hello@avantregard.com" className="link-muted">{t("footer.contact")}</a></li>
+              <li><Link href="/privacy" className="link-muted">{t("footer.privacy")}</Link></li>
             </ul>
           </nav>
         </div>

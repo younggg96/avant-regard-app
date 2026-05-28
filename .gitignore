@@ -28,6 +28,10 @@ coverage/
 .env.production.local
 frontend/.env
 frontend/.env.local
+# App-variant env files (CN vs NA) — generated locally by scripts/switch-variant.js
+# Templates at frontend/.env.cn.example / .env.na.example are checked in.
+frontend/.env.cn
+frontend/.env.na
 web/.env
 web/.env.local
 backend/.env

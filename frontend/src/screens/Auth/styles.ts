@@ -202,6 +202,33 @@ const makeAuthStyles = (t: AppTheme) =>
       color: t.colors.gray400,
       marginRight: 8,
     },
+    // SMS opt-in disclosure block (placed above the Send Code button).
+    // Sized to satisfy the SMS Onboarding Compliance PRD: font ≥ 11px,
+    // line-height ratio ≥ 1.4, WCAG AA contrast against the canvas. The
+    // surface uses gray100 so the block reads as a distinct legal notice
+    // rather than blending with body copy.
+    smsDisclosureContainer: {
+      backgroundColor: t.colors.gray100,
+      borderRadius: 10,
+      paddingVertical: 10,
+      paddingHorizontal: 12,
+      marginBottom: 14,
+    },
+    smsDisclosureText: {
+      fontSize: 12,
+      lineHeight: 18,
+      fontFamily: "PlayfairDisplay-Regular",
+      color: t.colors.gray700,
+    },
+    smsDisclosureBold: {
+      fontFamily: "PlayfairDisplay-Bold",
+      color: t.colors.text,
+    },
+    smsDisclosureLink: {
+      fontFamily: "PlayfairDisplay-Medium",
+      color: t.colors.text,
+      textDecorationLine: "underline",
+    },
     verificationContainer: {
       flexDirection: "row",
       alignItems: "center",

@@ -22,6 +22,7 @@ import {
   FormError,
   type AuthMethod,
 } from "@/components/auth/AuthForm";
+import { SmsDisclosure } from "@/components/auth/SmsDisclosure";
 import { useAuthStore } from "@/lib/auth/store";
 import {
   loginWithPassword,
@@ -142,12 +143,18 @@ function LoginPageInner() {
             onChange={(e) => setPassword(e.target.value)}
           />
         ) : (
-          <OtpField
-            value={code}
-            onChange={setCode}
-            onSend={handleSendCode}
-            sendDisabled={!identifierValid}
-          />
+          <>
+            {/* SMS opt-in disclosure for Twilio toll-free verification (CTIA).
+                Shown only when the user is on the phone + OTP path — that's
+                the only login configuration that triggers an SMS. */}
+            {method === "phone" && <SmsDisclosure />}
+            <OtpField
+              value={code}
+              onChange={setCode}
+              onSend={handleSendCode}
+              sendDisabled={!identifierValid}
+            />
+          </>
         )}
 
         <FormError message={error} />

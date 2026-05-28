@@ -101,6 +101,24 @@ export const PrivacyContent: React.FC = () => {
         您在使用用户屏蔽功能后，我们将仅基于您的选择，在平台内屏蔽被屏蔽用户的内容展示、账号互动，不会收集或使用被屏蔽用户的额外个人信息，也不会将您的屏蔽操作告知被屏蔽用户；您使用内容举报功能提交的所有材料，仅由平台审核人员查看处理，不会向任何第三方泄露，也不会用于除举报审核外的其他场景。
       </Text>
 
+      {/* 二·五、短信通信 / SMS Communications
+          说明：该段落同时配套发布在 https://avantregard.com/privacy ，用于满足
+          Twilio toll-free verification 对短信 opt-in 披露的合规要求 (CTIA)。
+          英文版本必须与 PRD 中的版本逐字一致，请勿改写。 */}
+      <Text style={styles.sectionTitle}>二·五、短信通信 / SMS Communications</Text>
+      <Text style={styles.content}>
+        当您使用手机号注册账号时，您同意接收用于账号身份验证和安全用途的一次性短信验证码。运营商可能收取标准的短信和数据费用。您可以随时通过对任意短信回复 STOP 退订。我们为短信验证收集的手机号将被安全存储，且不会出于营销目的向任何第三方出售、出租或共享。
+      </Text>
+      <Text style={styles.content}>
+        SMS Communications. When you create an account using a mobile phone
+        number, you consent to receive one-time SMS verification codes for the
+        purpose of account authentication and security. Standard message and
+        data rates may apply. You may opt out of SMS communications at any time
+        by replying STOP to any message. Phone numbers collected for SMS
+        verification are stored securely and are not sold, rented, or shared
+        with third parties for marketing purposes.
+      </Text>
+
       {/* 三、个人信息的共享、转移与公开 */}
       <Text style={styles.sectionTitle}>三、个人信息的共享、转移与公开</Text>
 

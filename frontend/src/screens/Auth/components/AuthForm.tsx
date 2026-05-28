@@ -7,12 +7,20 @@ import {
   Modal,
   FlatList,
   Pressable,
+  Linking,
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../../../theme";
 import { AuthMode, LoginMethod, FormData, CountryCode } from "../types";
 import { useAuthStyles } from "../styles";
+
+// Twilio toll-free verification (CTIA-compliant) opt-in disclosure.
+// MUST render verbatim — copy is dictated by the SMS Onboarding Compliance PRD
+// and is what US carriers look for during toll-free verification review.
+// Do not translate or paraphrase; "Msg & data rates may apply" and "Reply STOP
+// to opt out" are required phrases.
+const SMS_DISCLOSURE_PRIVACY_URL = "https://avantregard.com/privacy";
 
 // 常用国家区号列表
 export const COUNTRY_CODES: (Omit<CountryCode, 'name'> & { code: string })[] = [
@@ -257,6 +265,35 @@ export const AuthForm: React.FC<AuthFormProps> = ({
           />
         </View>
       )}
+
+      {/* SMS opt-in disclosure (Twilio toll-free verification, CTIA-compliant).
+          Rendered verbatim in English, immediately above the Send Code button,
+          whenever the user is on the phone tab and Send Code is reachable.
+          Tapping Send Code constitutes affirmative consent. */}
+      {loginMethod === "phone" &&
+        (mode === "register" ||
+          mode === "forgotPassword" ||
+          mode === "verification") && (
+          <View
+            style={styles.smsDisclosureContainer}
+            accessibilityRole="text"
+            accessibilityLabel="SMS consent disclosure"
+          >
+            <Text style={styles.smsDisclosureText}>
+              By tapping <Text style={styles.smsDisclosureBold}>Send Code</Text>
+              , you agree to receive a one-time SMS verification code. Msg &
+              data rates may apply. Reply STOP to opt out. See our{" "}
+              <Text
+                style={styles.smsDisclosureLink}
+                onPress={() => Linking.openURL(SMS_DISCLOSURE_PRIVACY_URL)}
+                accessibilityRole="link"
+              >
+                Privacy Policy
+              </Text>
+              .
+            </Text>
+          </View>
+        )}
 
       {/* 验证码输入（注册和忘记密码时显示） */}
       {(mode === "register" ||

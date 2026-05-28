@@ -18,6 +18,7 @@ import {
   FormError,
   type AuthMethod,
 } from "@/components/auth/AuthForm";
+import { SmsDisclosure } from "@/components/auth/SmsDisclosure";
 import { useAuthStore } from "@/lib/auth/store";
 import {
   register as registerPhone,
@@ -149,6 +150,11 @@ function RegisterPageInner() {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
+
+        {/* SMS opt-in disclosure for Twilio toll-free verification (CTIA).
+            Shown only when the user is on the phone tab — otherwise no SMS is
+            sent. */}
+        {method === "phone" && <SmsDisclosure />}
 
         <OtpField
           value={code}
