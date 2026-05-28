@@ -14,13 +14,18 @@ import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../../../theme";
 import { AuthMode, LoginMethod, FormData, CountryCode } from "../types";
 import { useAuthStyles } from "../styles";
+import { config as envConfig } from "../../../config/env";
 
 // Twilio toll-free verification (CTIA-compliant) opt-in disclosure.
 // MUST render verbatim — copy is dictated by the SMS Onboarding Compliance PRD
 // and is what US carriers look for during toll-free verification review.
 // Do not translate or paraphrase; "Msg & data rates may apply" and "Reply STOP
 // to opt out" are required phrases.
-const SMS_DISCLOSURE_PRIVACY_URL = "https://avantregard.com/privacy";
+//
+// The Privacy URL is flavor-specific (set via EXPO_PUBLIC_WEB_URL in
+// .env.cn / .env.na): CN points to avantregard.com, NA to avantregards.com.
+// Both domains host the matching `/privacy#sms-communications` section.
+const SMS_DISCLOSURE_PRIVACY_URL = `${envConfig.EXPO_PUBLIC_WEB_URL.replace(/\/$/, "")}/privacy`;
 
 // 常用国家区号列表
 export const COUNTRY_CODES: (Omit<CountryCode, 'name'> & { code: string })[] = [
