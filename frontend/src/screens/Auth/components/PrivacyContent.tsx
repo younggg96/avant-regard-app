@@ -1,8 +1,17 @@
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
+import { useTranslation } from "react-i18next";
 import { useThemedStyles, type AppTheme } from "../../../theme";
 
 export const PrivacyContent: React.FC = () => {
+  const { i18n } = useTranslation();
+  // The app only ever sets "zh" or "en"; default to the English document for
+  // any non-Chinese locale to mirror the i18n fallback (fallbackLng: "en").
+  if (i18n.language?.startsWith("zh")) return <PrivacyContentZh />;
+  return <PrivacyContentEn />;
+};
+
+const PrivacyContentZh: React.FC = () => {
   const styles = useThemedStyles(makeStyles);
   return (
     <View style={styles.container}>
@@ -244,6 +253,428 @@ export const PrivacyContent: React.FC = () => {
       <Text style={styles.footer}>
         © 2026 Avant Regard. 保留所有权利。{"\n"}
         上海南特克实业有限公司
+      </Text>
+    </View>
+  );
+};
+
+const PrivacyContentEn: React.FC = () => {
+  const styles = useThemedStyles(makeStyles);
+  return (
+    <View style={styles.container}>
+      <Text style={styles.mainTitle}>Avant Regard Privacy Policy</Text>
+      <Text style={styles.lastUpdated}>
+        Last Updated: Saturday, April 4, 2026
+      </Text>
+      <Text style={styles.lastUpdated}>
+        Effective Date: Saturday, April 4, 2026
+      </Text>
+
+      <View style={styles.companyInfo}>
+        <Text style={styles.companyText}>
+          Operator: Avant Regard Inc.{"\n"}
+          This Privacy Policy is governed exclusively by the laws of the United
+          States.
+        </Text>
+      </View>
+
+      <Text style={styles.intro}>
+        Welcome to Avant Regard products and services. We fully recognize the
+        importance of your personal information and strictly comply with
+        applicable U.S. federal and state privacy laws, adhering to the
+        principles of lawfulness, legitimacy, minimum necessity, openness and
+        transparency to protect the security and legitimate rights and interests
+        of your personal information. This Privacy Policy sets forth in detail
+        how we collect, use, store and share your personal information, as well
+        as your rights in relation thereto. It specifically clarifies the
+        exclusive rules for location information under the boutique store map
+        feature, the processing rules for User Generated Content (UGC), and the
+        information processing specifications for platform-provided content
+        reporting and user blocking functions. We recommend that you read this
+        Privacy Policy carefully.
+      </Text>
+
+      <Text style={styles.warning}>
+        By downloading, installing, registering for, logging into, and using our
+        software and services, accessing or publishing UGC within the platform,
+        using the boutique store map feature, or utilizing content reporting and
+        user blocking functions, you acknowledge that you have fully understood
+        and unconditionally agreed to all terms of this Privacy Policy. If you do
+        not agree to this Policy, you shall immediately cease using our software
+        and related services.
+      </Text>
+
+      {/* 1. Scope of Application */}
+      <Text style={styles.sectionTitle}>1. Scope of Application</Text>
+      <Text style={styles.content}>
+        This Privacy Policy applies to all services provided by Avant Regard
+        Inc. via the Avant Regard mobile application, mini-program, official
+        website and all other terminal forms, including secondhand designer
+        fashion transactions, product display, authentication and evaluation,
+        community interaction, fashion show coverage and boutique store map
+        services. It specifically governs location information processing for
+        the boutique store map feature, personal information collection and use
+        related to all UGC, and information processing for content reporting and
+        user blocking functions.
+      </Text>
+      <Text style={styles.content}>
+        This Policy does not apply to third-party services provided through our
+        platform (such as third-party payment and logistics distribution). Third
+        parties shall formulate their own personal information processing rules,
+        and we recommend that you review their respective privacy policies.
+      </Text>
+
+      {/* 2. Collection and Use of Personal Information */}
+      <Text style={styles.sectionTitle}>
+        2. Collection and Use of Personal Information
+      </Text>
+
+      <Text style={styles.subTitle}>2.1 Mandatory Personal Information</Text>
+      <Text style={styles.content}>
+        To enable your normal use of core services, we need to collect the
+        following mandatory personal information. Refusal to provide such
+        information may prevent you from completing account registration or using
+        basic functions:
+      </Text>
+      <Text style={styles.content}>
+        1. Account Registration and Management: Mobile phone number (for account
+        registration, login verification and security alerts), account password
+        set by you. Full name and identity document information may be required
+        for real-name authentication to comply with legal requirements and
+        anti-fraud risk control.
+      </Text>
+      <Text style={styles.content}>
+        2. Transaction and Performance: Recipient name, contact phone number,
+        delivery details, order information (product name, specifications,
+        price, transaction status, etc.), and payment-related information (only
+        for transaction settlement; we do not store complete payment account
+        details).
+      </Text>
+
+      <Text style={styles.subTitle}>2.2 Non-Mandatory Personal Information</Text>
+      <Text style={styles.content}>
+        You may voluntarily choose to provide the following information to
+        enhance your service experience, and provision is not required to use
+        basic services. Location information collected through the boutique store
+        map feature is used exclusively for such feature and shall not be
+        utilized for any other purposes:
+      </Text>
+      <Text style={styles.content}>
+        1. Profile Completion: Nickname, avatar, gender, date of birth (for
+        personalized display and community interaction).
+      </Text>
+      <Text style={styles.content}>2. Feature Usage Related Data:</Text>
+      <Text style={styles.bulletContent}>
+        • Community Interaction: Text, images, videos and other content you
+        upload when publishing posts, which shall be displayed and shared in
+        accordance with this Policy.
+      </Text>
+      <Text style={styles.bulletContent}>
+        • Fashion Show & Boutique Store Map: Fashion show information, boutique
+        store addresses and location positioning actively uploaded by you. Such
+        location data is solely used for venue marking and navigation within the
+        boutique store map feature only. It will not be applied to any other
+        scenarios, associated with other personal data, or shared with any third
+        parties. You may choose whether to upload location information, and
+        refusal will not affect basic browsing of the boutique store map.
+      </Text>
+      <Text style={styles.bulletContent}>
+        • Personalized Recommendations: Browsing records, search history,
+        favorites and preferences (to recommend products and content that may
+        interest you; you may disable this feature at any time).
+      </Text>
+      <Text style={styles.bulletContent}>
+        • Content Reporting & User Blocking: Screenshots of violating content and
+        violation descriptions submitted via the reporting function, and user
+        account identifiers selected for blocking. Such information is used
+        solely for the operation of these functions and no other purposes.
+      </Text>
+      <Text style={styles.content}>
+        3. Device and Log Information: Device model, operating system version, IP
+        address, login time, usage duration, etc. (for software performance
+        optimization and account security assurance; not used independently for
+        positioning or location tracking).
+      </Text>
+
+      <Text style={styles.subTitle}>2.3 Information Usage Rules</Text>
+      <Text style={styles.content}>
+        1. We only use your personal information within the purposes specified
+        in this Policy. In particular, boutique store map location information is
+        strictly limited to display and navigation functions and shall not be
+        used beyond reasonable scope.
+      </Text>
+      <Text style={styles.content}>
+        2. If we intend to use your personal information for purposes not
+        specified herein, we will obtain your separate prior consent via pop-up
+        notifications, in-app messages or other means. The usage purpose of
+        boutique store map location information, content reporting and user
+        blocking related information will not be changed, and no additional
+        consent will be required.
+      </Text>
+      <Text style={styles.content}>
+        3. Anonymized and de-identified data derived from collected personal
+        information may be used for business analysis and service optimization
+        and shall no longer be deemed personal information. Anonymized boutique
+        store map location data, content reporting and user blocking data may
+        only be used for corresponding feature optimization and shall not be
+        applied for other commercial purposes.
+      </Text>
+      <Text style={styles.content}>
+        4. To support platform UGC content review, content reporting and user
+        blocking mechanisms, we may use your account information, published UGC
+        data and reporting submissions to identify violating content, process
+        reports and activate blocking functions. Such processing strictly
+        follows the minimum necessity principle and is solely for platform
+        security operation and protection of your legitimate rights.
+      </Text>
+      <Text style={styles.content}>
+        5. After you enable the user blocking function, we will only hide content
+        and interactions from blocked users within the platform based on your
+        preference. We will not collect additional personal information of
+        blocked users nor notify them of your blocking action. All materials
+        submitted through content reporting are only reviewed by designated
+        platform staff, will not be disclosed to any third parties, and will not
+        be used for purposes other than report review.
+      </Text>
+
+      {/* SMS Communications — required verbatim for Twilio / CTIA compliance.
+          Mirrors https://avantregards.com/privacy. Do not reword. */}
+      <Text style={styles.sectionTitle}>SMS Communications</Text>
+      <Text style={styles.content}>
+        When you create an account using a mobile phone number, you consent to
+        receive one-time SMS verification codes for the purpose of account
+        authentication and security. Standard message and data rates may apply.
+        You may opt out of SMS communications at any time by replying STOP to any
+        message. Phone numbers collected for SMS verification are stored securely
+        and are not sold, rented, or shared with third parties for marketing
+        purposes.
+      </Text>
+
+      {/* 3. Sharing, Transfer and Public Disclosure */}
+      <Text style={styles.sectionTitle}>
+        3. Sharing, Transfer and Public Disclosure of Personal Information
+      </Text>
+
+      <Text style={styles.subTitle}>1. Sharing</Text>
+      <Text style={styles.content}>
+        We will not sell or rent your personal information to any third parties.
+        We may only share information with your separate consent or as required
+        by applicable laws. Boutique store map location information, content
+        reporting and user blocking related data will never be shared with third
+        parties under any circumstances:
+      </Text>
+      <Text style={styles.bulletContent}>
+        • Sharing necessary transaction and delivery information with payment
+        institutions and logistics providers to complete transactions (excluding
+        boutique store map location data and reporting/blocking information).
+      </Text>
+      <Text style={styles.bulletContent}>
+        • Disclosing relevant information to authorized authorities to comply
+        with legal obligations, respond to judicial investigations or protect
+        the legitimate interests of the platform and users. Any disclosure of
+        reporting materials will follow legal procedures and will not expose your
+        personal identifiers.
+      </Text>
+      <Text style={styles.bulletContent}>
+        • Sharing anonymized and de-identified data with affiliates and partners
+        for joint service optimization (excluding identifiable boutique store map
+        location data and reporting/blocking information).
+      </Text>
+
+      <Text style={styles.subTitle}>2. Transfer</Text>
+      <Text style={styles.content}>
+        We will not transfer your personal information to any third party without
+        your explicit consent. Boutique store map location information, content
+        reporting and user blocking related information will not be involved in
+        any third-party transfer, except in statutory circumstances such as
+        corporate merger, acquisition or bankruptcy liquidation, where the
+        receiving party shall continue to abide by the exclusive usage provisions
+        set forth in this Policy.
+      </Text>
+
+      <Text style={styles.subTitle}>3. Public Disclosure</Text>
+      <Text style={styles.content}>
+        Your personal information will only be publicly disclosed if you
+        voluntarily make it public (such as publishing community content or
+        uploading boutique store information within the map feature) or when
+        required by applicable laws. We will take reasonable measures to protect
+        your rights. Location information you actively upload to the boutique
+        store map will only be displayed publicly within that feature. All
+        operations and data related to content reporting and user blocking will
+        not be disclosed on any platform or feature.
+      </Text>
+
+      {/* 4. Storage and Protection */}
+      <Text style={styles.sectionTitle}>
+        4. Storage and Protection of Personal Information
+      </Text>
+      <Text style={styles.content}>
+        1. Storage Period: We store your personal information only for the
+        shortest period necessary to fulfill the purposes set out in this Policy:
+      </Text>
+      <Text style={styles.bulletContent}>
+        • Boutique store map location information: retained from the date of
+        upload until you actively delete it or terminate your account; data will
+        be cleared immediately upon deletion.
+      </Text>
+      <Text style={styles.bulletContent}>
+        • Content reporting materials: retained for 6 months after review
+        completion for compliance traceability, and automatically anonymized upon
+        expiration.
+      </Text>
+      <Text style={styles.bulletContent}>
+        • User blocking records: retained from the setup date until you cancel
+        the block or terminate your account. All data will be deleted or
+        anonymized legally upon expiry.
+      </Text>
+      <Text style={styles.content}>
+        2. Storage Location: Your personal information will be stored in the
+        United States. Boutique store map location information, content reporting
+        and user blocking related data are stored exclusively within the United
+        States with no cross-border transmission. If cross-border storage of
+        other personal information is required, we will obtain your separate
+        consent in advance and comply with relevant legal requirements.
+      </Text>
+      <Text style={styles.content}>
+        3. Security Protection: We adopt technical and administrative measures
+        including encrypted storage, access control and security auditing to
+        prevent personal information leakage, loss and tampering. Boutique store
+        map location information is stored with separate encryption. Content
+        reporting and user blocking data are restricted to designated authorized
+        personnel only, who are bound by strict confidentiality obligations. You
+        acknowledge that inherent network security risks exist, and we cannot
+        guarantee absolute information security.
+      </Text>
+      <Text style={styles.content}>
+        4. We implement dedicated security measures for UGC-related information
+        and content reporting/user blocking operation data to prevent
+        unauthorized access and tampering, ensuring information security for your
+        content publishing, interaction and rights protection activities.
+      </Text>
+
+      {/* 5. Your Rights */}
+      <Text style={styles.sectionTitle}>
+        5. Your Rights to Personal Information
+      </Text>
+      <Text style={styles.content}>
+        You are entitled to the following rights under applicable U.S. privacy
+        laws, which may be exercised via Me - Settings - Privacy Management
+        within the application or by contacting customer support. You hold
+        exclusive management rights over boutique store map location data and
+        content reporting/user blocking records:
+      </Text>
+      <Text style={styles.content}>
+        1. Right to Access and Copy: You may inquire and obtain a copy of your
+        personal information, including uploaded boutique store map location
+        data, reporting records and blocking lists, subject to legal exceptions.
+      </Text>
+      <Text style={styles.content}>
+        2. Right to Rectify and Supplement: You may request correction or
+        supplementation if your personal information is incorrect or incomplete,
+        including erroneous location information on the boutique store map.
+      </Text>
+      <Text style={styles.content}>
+        3. Right to Deletion: You may request deletion of your personal
+        information if: the collection purpose has been fulfilled or storage is
+        no longer required; you withdraw your consent; we violate agreed
+        information processing rules; you voluntarily request deletion of
+        boutique store map location data, UGC content or clearance of reporting
+        records; you may cancel user blocking at any time via in-app functions,
+        and relevant blocking records will be cleared immediately upon
+        cancellation.
+      </Text>
+      <Text style={styles.content}>
+        4. Right to Withdraw Consent: You may withdraw your consent to the
+        collection and use of non-mandatory information at any time. Upon
+        withdrawal of consent for boutique store map location data, we will
+        immediately cease use and delete such information without affecting your
+        basic browsing access to the feature. Withdrawal shall not affect prior
+        lawful processing conducted under your original consent.
+      </Text>
+      <Text style={styles.content}>
+        5. Right to File Complaints: If you believe our information processing
+        infringes your legitimate rights, you may submit complaints via the
+        contact channels specified in this Policy. We will prioritize and
+        promptly handle any information leakage issues arising from UGC
+        publishing, boutique store map usage, content reporting or user blocking
+        functions.
+      </Text>
+      <Text style={styles.content}>
+        6. You may use the Report function on any UGC detail page, user profile
+        or interaction interface to submit violation appeals, or use the Block
+        function to block other users with one click. No additional personal
+        information is required for such operations, which take effect in real
+        time.
+      </Text>
+
+      <Text style={styles.highlight}>
+        We will acknowledge and respond to your rights requests within 15
+        business days without imposing unreasonable barriers.
+      </Text>
+
+      {/* 6. Minor Protection */}
+      <Text style={styles.sectionTitle}>6. Minor Protection</Text>
+      <Text style={styles.content}>
+        1. We do not intentionally provide services to minors under the age of
+        18. Minors shall use our platform under the supervision and explicit
+        consent of their legal guardians. Guardians shall assist minors in
+        properly uploading location information on the boutique store map to
+        avoid unnecessary personal positioning leakage, and guide minors in
+        identifying violating content when using reporting and blocking functions
+        to protect their online rights.
+      </Text>
+      <Text style={styles.content}>
+        2. If we unintentionally collect minor personal information, we will
+        immediately cease processing and delete relevant data. Guardians may
+        contact us with valid proof to inquire about or delete minor-related
+        information including boutique store map location data, UGC content, and
+        reporting/blocking records.
+      </Text>
+      <Text style={styles.content}>
+        3. We apply stricter review and protection measures for UGC published by
+        minors, and optimize the operation path of content reporting and user
+        blocking functions for minors to facilitate rapid rights protection and
+        prevent harm from inappropriate online content and interactions.
+      </Text>
+
+      {/* 7. Updates */}
+      <Text style={styles.sectionTitle}>7. Updates to This Privacy Policy</Text>
+      <Text style={styles.content}>
+        1. We may update this Privacy Policy in response to changes in applicable
+        laws or business adjustments. Any material changes to the usage rules of
+        boutique store map location information, content reporting and user
+        blocking data will be prominently notified separately. Updated terms will
+        be announced via in-app notices or pop-ups and take effect upon
+        publication.
+      </Text>
+      <Text style={styles.content}>
+        2. If updates involve material changes to your legitimate rights and
+        interests (such as expanded information collection scope, revised sharing
+        rules, or changed usage purposes for boutique store map location data,
+        reporting and blocking information), we will provide 30 days' prior
+        notice. Your continued use of our services after the update constitutes
+        acceptance of the revised Privacy Policy.
+      </Text>
+
+      {/* 8. Contact Us */}
+      <Text style={styles.sectionTitle}>8. Contact Us</Text>
+      <Text style={styles.content}>
+        If you have any questions, comments or complaints regarding this Privacy
+        Policy, especially concerning the use of boutique store map location
+        information, UGC data processing, and information handling for content
+        reporting and user blocking functions, please contact us via:
+      </Text>
+      <Text style={styles.contactInfo}>
+        Support Email: Melanie@avantregard.us
+      </Text>
+      <Text style={styles.content}>
+        We will respond and address your feedback in a timely manner upon
+        receipt.
+      </Text>
+
+      <Text style={styles.footer}>
+        © 2026 Avant Regard. All rights reserved.{"\n"}
+        Avant Regard Inc.
       </Text>
     </View>
   );

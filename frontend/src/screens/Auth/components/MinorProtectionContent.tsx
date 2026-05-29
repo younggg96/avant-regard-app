@@ -1,8 +1,17 @@
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
+import { useTranslation } from "react-i18next";
 import { useThemedStyles, type AppTheme } from "../../../theme";
 
 export const MinorProtectionContent: React.FC = () => {
+  const { i18n } = useTranslation();
+  // The app only ever sets "zh" or "en"; default to the English document for
+  // any non-Chinese locale to mirror the i18n fallback (fallbackLng: "en").
+  if (i18n.language?.startsWith("zh")) return <MinorProtectionContentZh />;
+  return <MinorProtectionContentEn />;
+};
+
+const MinorProtectionContentZh: React.FC = () => {
   const styles = useThemedStyles(makeStyles);
   return (
     <View style={styles.container}>
@@ -158,6 +167,245 @@ export const MinorProtectionContent: React.FC = () => {
       <Text style={styles.footer}>
         © 2026 Avant Regard. 保留所有权利。{"\n"}
         上海南特克实业有限公司
+      </Text>
+    </View>
+  );
+};
+
+const MinorProtectionContentEn: React.FC = () => {
+  const styles = useThemedStyles(makeStyles);
+  return (
+    <View style={styles.container}>
+      <Text style={styles.mainTitle}>
+        Avant Regard Minor Personal Information Protection Rules
+      </Text>
+      <Text style={styles.lastUpdated}>Last Updated: April 4, 2026</Text>
+      <Text style={styles.lastUpdated}>Effective Date: April 4, 2026</Text>
+
+      <View style={styles.companyInfo}>
+        <Text style={styles.companyText}>
+          Operator: Avant Regard Inc.{"\n"}
+          These Rules shall be governed exclusively by the laws of the United
+          States.
+        </Text>
+      </View>
+
+      <Text style={styles.intro}>
+        We always attach great importance to minors' online protection and
+        personal information security. In accordance with applicable U.S.
+        privacy and minor protection laws, and combined with Avant Regard's
+        service features including secondhand designer fashion transactions,
+        community interaction, fashion show and boutique store map functions, we
+        formulate these Rules specially to protect the personal information
+        rights and interests of minor users.
+      </Text>
+
+      <Text style={styles.warning}>
+        These Rules serve as supplementary terms to the Avant Regard Privacy
+        Policy and Avant Regard Software License and Service Agreement. They
+        apply to all minor users under the age of 18 who use the Platform
+        services, as well as their legal guardians.
+      </Text>
+
+      <Text style={styles.sectionTitle}>
+        1. Applicable Preconditions & Usage Regulations
+      </Text>
+      <Text style={styles.content}>
+        1. Minor users under the age of 18 shall not use the Platform services
+        independently. They shall read these Rules and all Platform agreements
+        and policies under the accompaniment and guidance of their guardians.
+        Only with the guardian's explicit consent shall the guardian complete
+        all operations such as account registration, login and transactions on
+        behalf of the minor.
+      </Text>
+      <Text style={styles.content}>
+        2. Guardians shall perform their guardianship duties, assist minors in
+        properly using Platform functions, guide them to stay away from
+        inappropriate content and risky trading behaviors, and prevent minors
+        from disclosing personal information or making unnecessary consumption.
+      </Text>
+      <Text style={styles.content}>
+        3. If a minor uses Platform services without guardian consent, the
+        guardian may contact Platform customer service to request account
+        termination. We will cooperate promptly and delete all relevant personal
+        information of the minor.
+      </Text>
+
+      <Text style={styles.sectionTitle}>
+        2. Principles for Collection & Use of Minors' Personal Information
+      </Text>
+      <Text style={styles.content}>
+        1. Minimum Necessity Principle: Only with guardian consent and for the
+        purpose of providing basic Platform services, we collect only necessary
+        personal information of minors, limited to the mobile phone number
+        registered by the guardian on their behalf. We will not additionally
+        collect any sensitive information of minors such as full name, identity
+        document details, facial features, location data or school information,
+        and we do not provide real-name authentication services to minors.
+      </Text>
+      <Text style={styles.content}>
+        2. Exclusive Usage Principle: Collected minor-related information is only
+        used for account security verification and guardian contact. It will not
+        be used for personalized recommendation, commercial promotion or any
+        other purposes, and will never be shared with any third parties.
+      </Text>
+      <Text style={styles.highlight}>
+        3. Proactive Collection Prohibition: We will not actively request or
+        collect personal information from minors in any form. If we detect minors
+        voluntarily posting personal information on the Platform, we will
+        immediately block and delete such content.
+      </Text>
+
+      <Text style={styles.sectionTitle}>
+        3. Platform Function Restrictions & Protection for Minors
+      </Text>
+      <Text style={styles.content}>
+        In consideration of Platform service characteristics, we impose exclusive
+        usage restrictions on minor users to avoid exposure to inappropriate
+        content and prevent personal information leakage risks:
+      </Text>
+      <Text style={styles.content}>
+        1. Community Interaction: Minors may only browse community content under
+        guardian supervision. They are prohibited from publishing any User
+        Generated Content (UGC) including texts, images, videos and reviews, and
+        shall not participate in commenting, liking, reposting or other
+        interactive behaviors.
+      </Text>
+      <Text style={styles.content}>
+        2. Fashion Show & Boutique Store Map: Minors may browse basic map
+        content, but are prohibited from uploading any fashion show information,
+        boutique store addresses or location positioning data. The Platform will
+        not collect any location-related information from minors.
+      </Text>
+      <Text style={styles.content}>
+        3. Transaction & Paid Services: Minors are prohibited from conducting any
+        commodity transactions, purchasing membership plans, authentication
+        services or any other paid services. If minor-related payment behavior is
+        detected, we will suspend the transaction, verify with the guardian, and
+        provide a full refund upon confirmation.
+      </Text>
+      <Text style={styles.content}>
+        4. Report & Block Functions: Guardians may assist minors in using the
+        Platform's content reporting and user blocking features. Upon discovering
+        content inappropriate for minors or violating users, guardians may use
+        one-click report or block. We will complete review and handling within 24
+        hours to safeguard minors' safe online browsing.
+      </Text>
+
+      <Text style={styles.sectionTitle}>
+        4. Storage & Protection of Minors' Personal Information
+      </Text>
+      <Text style={styles.content}>
+        1. We adopt independent encrypted storage for collected minors' personal
+        information, with restricted access assigned to dedicated staff only.
+        Only Platform customer service personnel may access such data when
+        handling guardian inquiries and account issues, and are bound by strict
+        confidentiality obligations.
+      </Text>
+      <Text style={styles.content}>
+        2. All personal information of minors will be completely deleted within 7
+        working days after the account stops being used, with no backup retained
+        and no possibility of recovery after deletion.
+      </Text>
+      <Text style={styles.highlight}>
+        3. If minor personal information is collected accidentally, we will
+        immediately cease data processing and delete relevant information without
+        requiring additional application from the guardian.
+      </Text>
+
+      <Text style={styles.sectionTitle}>
+        5. Guardians' Rights & Operation Guidelines
+      </Text>
+      <Text style={styles.content}>
+        Legal guardians of minor users enjoy the following exclusive rights,
+        which may be exercised via Me – Settings – Privacy Management within the
+        Platform or official customer service channels. We will respond and
+        resolve requests within 15 working days without imposing unreasonable
+        barriers:
+      </Text>
+      <Text style={styles.bulletContent}>
+        1. Right to Access & Verify: Guardians have the right to inquire and
+        verify the minor's personal information collected by the Platform, and we
+        will provide a clear and complete information list.
+      </Text>
+      <Text style={styles.bulletContent}>
+        2. Right to Rectify & Delete: Guardians may request correction or
+        deletion of minors' personal information. Upon deletion request, we will
+        execute immediately and feedback the result.
+      </Text>
+      <Text style={styles.bulletContent}>
+        3. Right to Terminate Account: Guardians may request termination of the
+        minor's Platform account. We will freeze the account immediately and
+        delete all associated personal information.
+      </Text>
+      <Text style={styles.bulletContent}>
+        4. Right to Complain & Suggest: If guardians discover behavior that
+        endangers minors' personal information security or inappropriate content
+        displayed on the Platform, they have the right to file complaints. We
+        will prioritize acceptance, process promptly and feedback the outcome in
+        a timely manner.
+      </Text>
+
+      <Text style={styles.sectionTitle}>
+        6. Platform Responsibilities & Obligations
+      </Text>
+      <Text style={styles.content}>
+        1. We implement stricter content review and management across the
+        Platform through automated review combined with manual verification, to
+        prevent the display of content inappropriate for minors, including
+        violent, vulgar and commercial promotional material.
+      </Text>
+      <Text style={styles.content}>
+        2. We will not push any commercial advertisements or product
+        recommendations to minor users, ensuring a clean and safe browsing
+        environment.
+      </Text>
+      <Text style={styles.content}>
+        3. We regularly conduct training on minor protection to enhance Platform
+        staff's awareness of minor personal information protection and
+        standardize related data processing procedures.
+      </Text>
+      <Text style={styles.content}>
+        4. If personal information leakage of minors is caused by the Platform's
+        own fault, we shall assume corresponding legal liabilities under
+        applicable laws and take effective measures to compensate losses of
+        guardians and minors.
+      </Text>
+
+      <Text style={styles.sectionTitle}>7. Rules Update & Notification</Text>
+      <Text style={styles.content}>
+        1. We may update these Rules in response to amendments of applicable laws
+        and adjustments of Platform services. Updated Rules will be announced via
+        Platform notices and pop-up windows, and take effect upon publication.
+      </Text>
+      <Text style={styles.content}>
+        2. If updates involve material changes affecting minors' personal
+        information protection rights, we will publish a 30-day advance notice and
+        remind guardians through customer service channels. Continued use of
+        Platform services by guardians shall be deemed acceptance of the updated
+        Rules.
+      </Text>
+
+      <Text style={styles.sectionTitle}>8. Contact Us</Text>
+      <Text style={styles.content}>
+        If guardians have any questions, comments or complaints regarding minors'
+        personal information protection and Platform function usage, please
+        contact us through the dedicated channels below. We provide priority
+        processing for all minor protection related matters:
+      </Text>
+      <Text style={styles.contactInfo}>
+        Minor Protection Dedicated Email: Melanie@avantregard.us (Please mark
+        "Minor Protection" in the email subject)
+      </Text>
+      <Text style={styles.content}>
+        We will respond and handle feedback from guardians promptly, and fully
+        protect minor users' online information security and physical and mental
+        health.
+      </Text>
+
+      <Text style={styles.footer}>
+        © 2026 Avant Regard. All rights reserved.{"\n"}
+        Avant Regard Inc.
       </Text>
     </View>
   );

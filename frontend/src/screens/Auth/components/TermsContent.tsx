@@ -1,8 +1,17 @@
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
+import { useTranslation } from "react-i18next";
 import { useThemedStyles, type AppTheme } from "../../../theme";
 
 export const TermsContent: React.FC = () => {
+  const { i18n } = useTranslation();
+  // The app only ever sets "zh" or "en"; default to the English document for
+  // any non-Chinese locale to mirror the i18n fallback (fallbackLng: "en").
+  if (i18n.language?.startsWith("zh")) return <TermsContentZh />;
+  return <TermsContentEn />;
+};
+
+const TermsContentZh: React.FC = () => {
   const styles = useThemedStyles(makeStyles);
   return (
     <View style={styles.container}>
@@ -356,6 +365,624 @@ export const TermsContent: React.FC = () => {
       <Text style={styles.footer}>
         © 2026 Avant Regard. 保留所有权利。{"\n"}
         上海南特克实业有限公司
+      </Text>
+    </View>
+  );
+};
+
+const TermsContentEn: React.FC = () => {
+  const styles = useThemedStyles(makeStyles);
+  return (
+    <View style={styles.container}>
+      <Text style={styles.mainTitle}>
+        Avant Regard UGC and Service Agreement
+      </Text>
+      <Text style={styles.lastUpdated}>Last Updated: April 3, 2026</Text>
+      <Text style={styles.operator}>Operator: Avant Regard Inc.</Text>
+      <Text style={styles.operator}>
+        This Agreement shall be governed exclusively by the laws of the United
+        States.
+      </Text>
+
+      <Text style={styles.intro}>
+        This Avant Regard Software License and Service Agreement (hereinafter
+        referred to as this "Agreement") is entered into between you and Avant
+        Regard Inc. (hereinafter referred to as "Party A") regarding your use of
+        the Avant Regard product (hereinafter referred to as the "Software") and
+        related services. Before using the Software and relevant services, you
+        shall carefully read this Agreement, together with the Avant Regard
+        Privacy Policy and Avant Regard Platform Self-Discipline Convention
+        published by Party A, and fully understand all terms. Special attention
+        shall be paid to clauses that limit or exempt Party A's liability,
+        increase your obligations, exclude your major rights, as well as
+        provisions governing User Generated Content (UGC) specifications,
+        violation handling and platform management measures.
+        {"\n\n"}
+        <Text style={styles.boldText}>
+          Terms limiting or exempting liability and special UGC provisions are
+          marked in bold for your emphasis and careful review.
+        </Text>
+      </Text>
+
+      <Text style={styles.content}>
+        You confirm that you possess full civil capacity under applicable U.S.
+        laws to independently assume legal responsibilities for all your
+        activities using the Software and services. If you are a minor or person
+        with limited civil capacity, you shall read this Agreement under the
+        supervision of your legal guardian and use the Software and services
+        only after obtaining the guardian's explicit consent.
+      </Text>
+
+      <Text style={styles.content}>
+        If you object to any clause of this Agreement or fail to fully
+        understand any provision, you must not access or use the Software and
+        its related services. By downloading, installing, registering an
+        account, logging in and using the Software, you shall be deemed to have
+        fully understood, agreed to and accepted all binding terms of this
+        Agreement. You specifically acknowledge and comply with all prohibitions
+        and violation rules concerning UGC, and consent to all platform
+        management measures adopted by Party A against illegal content and
+        improper conduct.
+      </Text>
+
+      <Text style={styles.content}>
+        If you have any questions, you may contact us via the official contact
+        channel stated herein:{"\n\n"}
+        Support Email: Melanie@avantregard.us{"\n"}
+        Support WeChat: Avantregard2025{"\n\n"}
+        Or through other feedback channels provided within the Software, and we
+        will respond to your inquiries as soon as possible.
+      </Text>
+
+      {/* 1. Scope of Agreement */}
+      <Text style={styles.sectionTitle}>1. Scope of Agreement</Text>
+
+      <Text style={styles.content}>
+        <Text style={styles.subIndex}>1.1</Text> This Agreement governs the
+        rights and obligations between you and Party A in connection with your
+        use of the Software and related services. It applies specifically to all
+        User Generated Content you publish, upload or share on the platform,
+        including without limitation texts, images, videos, reviews, fashion
+        show information, boutique store postings, outfit sharing, product
+        descriptions (collectively referred to as "UGC Content"). Party A may
+        entrust all or part of its rights and obligations under this Agreement
+        to its affiliates or third-party service providers for performance based
+        on business needs. Party A shall publicly announce such entrustment
+        matters on the Software announcement page 30 days in advance without
+        requiring your separate consent. However, if such entrustment
+        substantially impairs your legitimate rights and interests, Party A
+        shall obtain your written separate consent via pop-up notifications, SMS
+        or other means prior to arrangement.
+      </Text>
+
+      <Text style={styles.content}>
+        <Text style={styles.subIndex}>1.2</Text> Party A: means Avant Regard
+        Inc.
+      </Text>
+
+      <Text style={styles.content}>
+        <Text style={styles.subIndex}>1.3</Text> User (also referred to as
+        "you"): any natural person, legal entity or unincorporated organization
+        that legally accesses and uses the Software and services and agrees to
+        abide by the UGC specifications set forth in this Agreement.
+      </Text>
+
+      <Text style={styles.content}>
+        <Text style={styles.subIndex}>1.4</Text> Software: the officially
+        operated mobile application of Avant Regard (iOS version), together with
+        corresponding mobile websites, official accounts and other terminal
+        forms owned and operated legally by Party A. Party A may add or adjust
+        Software terminal forms at its discretion without prior notice.
+      </Text>
+
+      <Text style={styles.content}>
+        <Text style={styles.subIndex}>1.5</Text> Services: all operational
+        services provided by Party A via the Software, including secondhand
+        designer fashion transactions, product display, authentication and
+        evaluation, community interaction, fashion show and boutique store map
+        functions. Services include technical support for UGC storage, display
+        and distribution, as well as management functions such as content
+        reporting, user blocking and blacklisting for regulating improper UGC
+        and protecting user rights. Party A reserves the right to adjust service
+        content and forms as business needs evolve.
+      </Text>
+
+      <Text style={styles.content}>
+        <Text style={styles.subIndex}>1.6</Text> This Agreement also includes
+        continuously updated business rules, supplementary agreements and
+        revised terms published by Party A and its affiliates relating to the
+        Software and services. Special UGC management rules constitute an
+        integral core part of this Agreement. All officially released
+        supplementary terms shall be deemed binding as part of this Agreement.
+        If you do not accept revised provisions, you shall immediately cease
+        using the Software and services.
+      </Text>
+
+      <Text style={styles.contentHighlight}>
+        <Text style={styles.subIndex}>1.7</Text> Special Statement: All UGC you
+        upload in the fashion show and boutique store map features (including
+        without limitation show information, boutique store details, images and
+        reviews) are your independent voluntary conduct. Party A only provides
+        technical services for information storage and display and assumes no
+        liability for the authenticity, accuracy or legality of such content.
+        You shall bear full legal responsibility for all disputes, claims or
+        litigation arising from your uploaded content, and Party A shall not be
+        held liable in any such matters. Party A nevertheless reserves the right
+        to review, regulate and impose penalties on such content in accordance
+        with this Agreement.
+      </Text>
+
+      {/* 2. Products and Services */}
+      <Text style={styles.sectionTitle}>2. Products and Services</Text>
+
+      <Text style={styles.content}>
+        <Text style={styles.subIndex}>2.1</Text> You shall download and install
+        the Software only through officially authorized channels such as
+        official app stores and Party A's official website. Party A cannot
+        guarantee the security or functionality of installation packages
+        obtained from unauthorized third-party channels, and shall not be liable
+        for any losses incurred therefrom.
+      </Text>
+
+      <Text style={styles.content}>
+        <Text style={styles.subIndex}>2.2</Text> Party A grants you a personal,
+        non-transferable, non-exclusive license to install and use the Software
+        on your legally owned devices for non-commercial purposes. Without Party
+        A's prior written consent, you shall not modify, reproduce, reverse
+        engineer, disassemble, decompile the Software, nor transfer or
+        sublicense it to any third party. Party A reserves the right to revoke
+        this license at any time if you breach this Agreement, especially when
+        you publish violating UGC and refuse rectification.
+      </Text>
+
+      <Text style={styles.content}>
+        <Text style={styles.subIndex}>2.3</Text> To ensure the Software's
+        security, stability and functional integrity — particularly to improve
+        UGC review and management efficiency — Party A may update, upgrade or
+        adjust Software functions (including UGC publishing, review, reporting
+        and blocking features) without prior notice. After a new version is
+        released, older versions may cease to function normally. Party A does
+        not guarantee compatibility or continuous availability of outdated
+        versions, and you shall promptly install the latest release.
+      </Text>
+
+      <Text style={styles.content}>
+        <Text style={styles.subIndex}>2.4</Text> You shall independently bear
+        all costs incurred during your use of the Software, including data
+        traffic fees and device wear and tear. You acknowledge and agree that
+        Party A may reasonably utilize your device's processor, storage, camera
+        and other hardware resources for service provision, UGC review and
+        processing of reporting/blocking requests.
+      </Text>
+
+      <Text style={styles.content}>
+        <Text style={styles.subIndex}>2.5</Text> When registering an account or
+        using specific services, you shall provide true, accurate and complete
+        information (such as mobile phone number and identity details) in
+        compliance with applicable laws and Party A's requirements. If your
+        provided information is false or incomplete, Party A may refuse service,
+        suspend or terminate your account access, and restrict all your UGC
+        publishing privileges. You shall bear all consequences arising
+        therefrom.
+      </Text>
+
+      <Text style={styles.contentHighlight}>
+        <Text style={styles.subIndex}>2.6</Text> You acknowledge and agree that
+        Party A has adopted reasonable technical measures to protect your
+        personal information and transaction data, and implements combined
+        automated and manual review for UGC content. Party A shall not be liable
+        for information leakage, loss or tampering caused by circumstances
+        beyond its reasonable control, including force majeure, hacker attacks,
+        telecom operator failures or your own operational errors.
+      </Text>
+
+      <Text style={styles.content}>
+        <Text style={styles.subIndex}>2.7</Text> You shall independently bear
+        the following uncontrollable risks when using the Software and services:
+      </Text>
+      <Text style={styles.subContent}>
+        2.7.1 Software malfunction or abnormal features caused by device
+        incompatibility or outdated system versions, including failure of UGC
+        publishing, reporting and blocking functions;
+        {"\n"}
+        2.7.2 Any losses arising from defective third-party services or illegal
+        content when you jump to external websites or applications via the
+        platform;
+        {"\n"}
+        2.7.3 Infringement disputes and legal risks arising from third-party
+        forwarding or sharing of your published UGC;
+        {"\n"}
+        2.7.4 Login failure, transaction delay and incomplete data
+        synchronization caused by unstable network signals or insufficient
+        bandwidth, including failed UGC posting and delayed report submission.
+      </Text>
+
+      <Text style={styles.contentHighlight}>
+        <Text style={styles.subIndex}>2.8</Text> Publishing product information
+        (classified as UGC) and completing transactions on the platform
+        constitute independent civil conduct between you and the counterparty.
+        Party A only provides technical services for information display and
+        transaction matching, and assumes no guarantee liability for the
+        parties' performance capability, product authenticity or quality. All
+        transaction disputes shall be resolved independently by the involved
+        parties without liability to Party A. Party A retains the right to
+        review and penalize non-compliant product UGC content.
+      </Text>
+
+      <Text style={styles.contentHighlight}>
+        <Text style={styles.subIndex}>2.9</Text> Paid virtual services purchased
+        on the platform such as membership and authentication services are
+        non-refundable upon completion of payment. Service validity commences
+        upon successful purchase and shall not be extended due to non-use.
+        Exclusive UGC publishing privileges for members shall expire
+        automatically upon membership termination.
+      </Text>
+
+      {/* 3. Account and User Conduct */}
+      <Text style={styles.sectionTitle}>3. Account and User Conduct</Text>
+
+      <Text style={styles.contentHighlight}>
+        <Text style={styles.subIndex}>3.1</Text> Account Usage Rules: All
+        Software accounts remain the property of Party A. Upon registration, you
+        only obtain personal usage rights exclusively for the original
+        registrant. Account gifting, lending, rental or resale are strictly
+        prohibited. Party A may immediately suspend or terminate account access,
+        clear account data, and permanently freeze UGC publishing privileges if
+        account transfer or sharing is detected. All resulting losses shall be
+        borne solely by you.
+      </Text>
+
+      <Text style={styles.contentHighlight}>
+        <Text style={styles.subIndex}>3.2</Text> Account Security
+        Responsibility: You shall properly safeguard your account password and
+        verification credentials, and take full responsibility for all
+        activities conducted under your account, including all published UGC and
+        related violations. If your account is stolen or misused, you shall
+        promptly notify Party A. Upon valid application, Party A may assist in
+        account freezing and suspend UGC publishing functions for the
+        compromised account, but shall not be liable for any losses incurred
+        during unauthorized use.
+      </Text>
+
+      <Text style={styles.contentHighlight}>
+        <Text style={styles.subIndex}>3.3</Text> Account Recovery Rules: If your
+        account remains inactive with no login or usage activity for 180
+        consecutive days, Party A reserves the right to reclaim the account
+        without prior notice. All account data will be permanently cleared and
+        unrecoverable, and all UGC published under the account will be removed
+        by Party A.
+      </Text>
+
+      <Text style={styles.contentHighlight}>
+        <Text style={styles.subIndex}>3.4</Text> UGC Publishing Liability: You
+        explicitly agree that all UGC published by you on the platform is
+        independently created by you, represents solely your personal views, and
+        you bear full legal responsibility therefor, separate from Party A. You
+        shall fully compensate for all disputes, litigation and damages arising
+        from UGC that infringes third-party rights (intellectual property,
+        portrait rights, reputation rights, etc.) or violates applicable laws
+        and this Agreement. If Party A suffers losses due to your improper UGC
+        conduct, Party A reserves the right to full indemnification from you.
+        Party A may delete, block or remove violating UGC content without prior
+        notice.
+      </Text>
+
+      <Text style={styles.contentHighlight}>
+        <Text style={styles.subIndex}>3.5</Text> Prohibited Conduct: Party A
+        adopts a zero-tolerance policy against illegal, improper, harmful and
+        abusive UGC and user conduct. You shall not use the Software and
+        services to engage in illegal activities, harm the interests of Party A
+        or other users, or publish/disseminate violating UGC, including without
+        limitation:
+      </Text>
+      <Text style={styles.subContent}>
+        3.5.1 Posting counterfeit, infringing or pirated designer fashion
+        information, or false/misleading product UGC;
+        {"\n"}
+        3.5.2 Malicious order brushing, fake reviews, price manipulation
+        disrupting platform order, or publishing false positive/malicious
+        negative review content;
+        {"\n"}
+        3.5.3 Using plug-ins, scripts or other unauthorized tools to interfere
+        with normal Software operation, including bulk UGC posting and
+        artificial liking/reposting manipulation;
+        {"\n"}
+        3.5.4 Spreading viruses or malware endangering platform and user
+        security, or publishing UGC containing malicious links;
+        {"\n"}
+        3.5.5 Posting commercial advertisements or promotional content without
+        Party A's permission;
+        {"\n"}
+        3.5.6 Publishing insulting, defamatory, threatening, violent,
+        pornographic, vulgar, discriminatory, terrorist or extremist UGC;
+        {"\n"}
+        3.5.7 Engaging in personal attacks, cyber bullying or harassment of
+        other users via UGC;
+        {"\n"}
+        3.5.8 Publishing UGC infringing minor rights or violating public
+        morality;
+        {"\n"}
+        3.5.9 Any other UGC publishing or usage conduct violating applicable
+        laws, this Agreement or platform ecological interests.
+      </Text>
+
+      <Text style={styles.contentHighlight}>
+        <Text style={styles.subIndex}>3.6</Text> UGC Review and Violation
+        Handling: All UGC published on the platform must comply with applicable
+        laws, this Agreement and platform self-discipline rules, and shall not
+        contain prohibited or abusive content. Party A conducts full real-time
+        review via automated technology combined with manual verification
+        without obligation to disclose review standards. For violating UGC,
+        Party A may immediately delete, block, restrict display or remove
+        content. Depending on the severity of violations, Party A may issue
+        warnings, restrict UGC publishing/interactive functions, suspend account
+        access or permanently ban accounts without prior notice. Repeated
+        violations will result in permanent account ban with no appeal for
+        reinstatement.
+      </Text>
+
+      <Text style={styles.contentHighlight}>
+        <Text style={styles.subIndex}>3.7</Text> UGC Reporting and User Blocking
+        Mechanism: To protect all users' legitimate rights and interests, Party
+        A provides convenient UGC reporting and user blocking functions. You may
+        use dedicated in-platform entries to report inappropriate or abusive UGC
+        with one click, and block users who publish violating content or engage
+        in abusive behavior:
+      </Text>
+      <Text style={styles.subContent}>
+        3.7.1 UGC Reporting: When browsing any UGC content, you may click the
+        Report button on the content detail page, select violation type
+        (pornographic vulgarity, personal attack, false information,
+        infringement, etc.) and submit a report. Party A will review and process
+        reports within 24 hours and notify you of results via in-app messages.
+        {"\n"}
+        3.7.2 User Blocking: When browsing user profiles, UGC comment sections
+        or interacting with other users, you may click the Block button to
+        permanently shield all content display, private messages, comments and
+        likes from the selected user. After blocking, the blocked user cannot
+        send you messages, and their UGC will no longer be displayed to you.
+      </Text>
+
+      {/* 4. Intellectual Property and Content License */}
+      <Text style={styles.sectionTitle}>
+        4. Intellectual Property and Content License
+      </Text>
+
+      <Text style={styles.content}>
+        <Text style={styles.subIndex}>4.1</Text> Party A retains all
+        intellectual property rights in the Software, including copyright,
+        trademark, patent and trade secrets. All platform content such as
+        interface design, texts, images, videos and data are protected by U.S.
+        and international intellectual property laws. No unauthorized use is
+        permitted without Party A's written consent.
+      </Text>
+
+      <Text style={styles.content}>
+        <Text style={styles.subIndex}>4.2</Text> You warrant that all UGC
+        uploaded and published by you is legally owned or fully authorized, and
+        does not infringe third-party intellectual property rights. You shall
+        independently resolve any third-party rights claims and bear full
+        liability. If Party A incurs losses due to your infringing UGC, you
+        shall provide full compensation. Party A may immediately remove suspected
+        infringing UGC and impose account restrictions.
+      </Text>
+
+      <Text style={styles.contentHighlight}>
+        <Text style={styles.subIndex}>4.3</Text> By uploading or publishing any
+        UGC on the platform, you irrevocably grant Party A a free, non-exclusive,
+        perpetual, transferable and sub-licensable global license to display,
+        distribute, adapt, edit and compile your UGC on the Software, affiliated
+        platforms and partner channels without additional payment to you. If
+        your UGC is deemed violating, Party A may terminate this license and
+        delete the content at any time.
+      </Text>
+
+      <Text style={styles.content}>
+        <Text style={styles.subIndex}>4.4</Text> Official Content Reposting
+        Authorization: Party A may repost compliant UGC posts (texts, images,
+        videos) for platform promotion, brand marketing and operational
+        activities. Party A will send written notice via in-app message 7
+        working days in advance, specifying content scope and usage period. If
+        you do not raise written objection within 7 working days, you shall be
+        deemed to consent to reposting. Objections will be respected without any
+        adverse impact on your account. Violating UGC is excluded from official
+        reposting authorization.
+      </Text>
+
+      {/* 5. Personal Information Protection */}
+      <Text style={styles.sectionTitle}>
+        5. Personal Information Protection
+      </Text>
+
+      <Text style={styles.content}>
+        <Text style={styles.subIndex}>5.1</Text> Party A shall collect, use,
+        store and protect your personal information lawfully in accordance with
+        the Avant Regard Privacy Policy. Party A will not sell or rent your
+        personal information to any third party unless with your explicit
+        consent or required by applicable laws. Collected personal information
+        is solely used for platform operation, UGC review and processing of
+        reporting/blocking requests and other legitimate purposes.
+      </Text>
+
+      <Text style={styles.content}>
+        <Text style={styles.subIndex}>5.2</Text> You shall maintain awareness of
+        personal information protection and properly safeguard your account
+        credentials, identity data and transaction details, and shall not
+        disclose sensitive information to third parties. Party A shall not be
+        liable for information leakage caused by your own negligence.
+      </Text>
+
+      <Text style={styles.content}>
+        <Text style={styles.subIndex}>5.3</Text> Minors shall use the Software
+        and services under guardian supervision, with guardians assisting in
+        registration and transaction matters. Party A shall adopt protective
+        measures for minor personal information in compliance with laws,
+        implement stricter UGC review for minors, and prohibit minors from
+        publishing inappropriate content.
+      </Text>
+
+      {/* 6. Service Modification, Suspension and Termination */}
+      <Text style={styles.sectionTitle}>
+        6. Service Modification, Suspension and Termination
+      </Text>
+
+      <Text style={styles.contentHighlight}>
+        <Text style={styles.subIndex}>6.1</Text> Party A reserves the right to
+        adjust, suspend or terminate part or all platform services (including
+        UGC publishing, review, reporting and blocking functions) based on
+        business needs. Material service changes will be announced on the
+        Software notice page 30 days in advance. Party A shall not be liable for
+        any losses arising from service adjustment, suspension or termination,
+        including unused membership benefits and virtual assets.
+      </Text>
+
+      <Text style={styles.contentHighlight}>
+        <Text style={styles.subIndex}>6.2</Text> Party A shall not be liable for
+        service interruption (including temporary unavailability of UGC
+        functions) caused by circumstances beyond its reasonable control such as
+        force majeure, war, policy adjustment, hacker attacks or system failure.
+        Party A shall restore services as soon as practicable and notify users
+        promptly.
+      </Text>
+
+      <Text style={styles.contentHighlight}>
+        <Text style={styles.subIndex}>6.3</Text> If you breach this Agreement,
+        especially by publishing violating UGC or engaging in abusive conduct,
+        Party A may suspend or terminate your account access without refunding
+        any paid fees. Upon account termination, all account data will be
+        permanently cleared and unrecoverable, and all your published UGC will
+        be permanently deleted by Party A.
+      </Text>
+
+      {/* 7. Disclaimer */}
+      <Text style={styles.sectionTitle}>7. Disclaimer</Text>
+
+      <Text style={styles.contentHighlight}>
+        <Text style={styles.subIndex}>7.1</Text> Party A only provides a
+        technical platform and assumes no liability for user conduct or
+        transaction outcomes. All transaction disputes between users concerning
+        product quality, returns, payment and related matters shall be resolved
+        independently by the involved parties. Party A undertakes no mediation,
+        guarantee or compensation obligation, but retains the right to review
+        and handle related UGC content per this Agreement.
+      </Text>
+
+      <Text style={styles.contentHighlight}>
+        <Text style={styles.subIndex}>7.2</Text> If Party A is subject to
+        administrative penalties or third-party claims due to your violating UGC
+        or improper conduct breaching laws or this Agreement, you shall fully
+        indemnify Party A for all losses including fines, compensation, attorney
+        fees and litigation costs. Such indemnification covers all reasonable
+        expenses incurred by Party A in handling your violating UGC matters.
+      </Text>
+
+      <Text style={styles.contentHighlight}>
+        <Text style={styles.subIndex}>7.3</Text> Party A makes no express or
+        implied warranty regarding Software operational stability or functional
+        completeness, and shall not be liable for malfunction or data loss
+        caused by system vulnerabilities or version updates. Party A shall
+        nevertheless promptly repair flaws in UGC review, reporting and blocking
+        functions to protect user rights.
+      </Text>
+
+      <Text style={styles.contentHighlight}>
+        <Text style={styles.subIndex}>7.4</Text> All product prices, inventory
+        and descriptions displayed on the platform are provided independently by
+        users. Party A assumes no liability for their authenticity, accuracy or
+        timeliness. All transaction disputes caused by false product information
+        shall be borne entirely by the publishing user. Party A may delete and
+        penalize false product UGC content.
+      </Text>
+
+      <Text style={styles.contentHighlight}>
+        <Text style={styles.subIndex}>7.5</Text> Party A shall not be liable for
+        transaction failure or payment delay caused by factors beyond its
+        control such as telecom network adjustment and third-party payment
+        platform malfunctions.
+      </Text>
+
+      {/* 8. Breach Liability */}
+      <Text style={styles.sectionTitle}>8. Breach Liability</Text>
+
+      <Text style={styles.contentHighlight}>
+        <Text style={styles.subIndex}>8.1</Text> If you breach this Agreement,
+        particularly by publishing prohibited/abusive UGC or engaging in
+        improper conduct, Party A may delete violating content, restrict account
+        functions (especially UGC-related features), suspend account access or
+        permanently ban accounts according to violation severity. Party A may
+        also publicly disclose violation records on the platform as a warning to
+        other users.
+      </Text>
+
+      <Text style={styles.contentHighlight}>
+        <Text style={styles.subIndex}>8.2</Text> If your breach causes losses to
+        Party A or other users, you shall bear full compensation liability.
+        Party A may directly deduct compensation amounts from your account
+        balance or transaction proceeds, and pursue recovery for any shortfall.
+        Compensation covers property loss and mental damages suffered by other
+        users due to your abusive UGC.
+      </Text>
+
+      <Text style={styles.contentHighlight}>
+        <Text style={styles.subIndex}>8.3</Text> All reasonable expenses
+        incurred by Party A in handling your violations, including attorney
+        fees, litigation costs and appraisal fees — especially expenses arising
+        from disputes related to your violating UGC — shall be borne by you.
+      </Text>
+
+      {/* 9. Miscellaneous Provisions */}
+      <Text style={styles.sectionTitle}>9. Miscellaneous Provisions</Text>
+
+      <Text style={styles.content}>
+        <Text style={styles.subIndex}>9.1</Text> The formation, performance,
+        interpretation and dispute resolution of this Agreement shall be
+        governed exclusively by the laws of the United States. Any dispute shall
+        first be resolved through friendly negotiation; if negotiation fails,
+        either party may file litigation with the court of competent
+        jurisdiction.
+      </Text>
+
+      <Text style={styles.content}>
+        <Text style={styles.subIndex}>9.2</Text> Party A may revise this
+        Agreement in response to legal updates, regulatory requirements for UGC
+        management and business development. Revised terms shall take effect upon
+        official publication on the Software notice page. Your continued use of
+        the Software and services constitutes acceptance of the revised
+        Agreement.
+      </Text>
+
+      <Text style={styles.content}>
+        <Text style={styles.subIndex}>9.3</Text> Section headings are for
+        reading convenience only and have no legal binding effect.
+      </Text>
+
+      <Text style={styles.content}>
+        <Text style={styles.subIndex}>9.4</Text> Matters not covered by this
+        Agreement may be supplemented by separate supplementary agreements,
+        which shall have equal legal effect with this Agreement. Supplementary
+        provisions regarding UGC shall constitute an important part of this
+        Agreement.
+      </Text>
+
+      <Text style={styles.content}>
+        <Text style={styles.subIndex}>9.5</Text> If any clause of this Agreement
+        is deemed invalid or unenforceable, the validity of remaining clauses
+        shall not be affected; in particular, provisions concerning UGC zero
+        tolerance, review control, reporting and blocking shall remain fully
+        enforceable.
+      </Text>
+
+      {/* Contact */}
+      <Text style={styles.sectionTitle}>Contact Us</Text>
+      <Text style={styles.content}>
+        If you have any questions, please contact us via:{"\n\n"}
+        Support Email: Melanie@avantregard.us{"\n"}
+        Support WeChat: Avantregard2025
+      </Text>
+
+      <Text style={styles.footer}>
+        © 2026 Avant Regard. All rights reserved.{"\n"}
+        Avant Regard Inc.
       </Text>
     </View>
   );

@@ -1,5 +1,6 @@
 import { Dimensions } from "react-native";
 import i18n from "@/i18n";
+import { IS_NA } from "@/config/env";
 import { AuthMode } from "./types";
 
 export const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -74,8 +75,8 @@ const AUTH_SUBTITLE_KEYS: Record<AuthMode, string> = {
 export const getAuthTitle = (mode: AuthMode): string => i18n.t(AUTH_TITLE_KEYS[mode]);
 export const getAuthSubtitle = (mode: AuthMode): string => i18n.t(AUTH_SUBTITLE_KEYS[mode]);
 
-// 默认国家区号（中国）
-export const DEFAULT_COUNTRY_CODE = {
+// 默认国家区号：北美版默认 +1（美国），中国版默认 +86（中国）。
+const CN_COUNTRY_CODE = {
   code: "CN",
   name: "中国",
   flag: "🇨🇳",
@@ -84,6 +85,18 @@ export const DEFAULT_COUNTRY_CODE = {
     return i18n.t("countries.CN");
   },
 };
+
+const US_COUNTRY_CODE = {
+  code: "US",
+  name: "United States",
+  flag: "🇺🇸",
+  dialCode: "+1",
+  get localizedName() {
+    return i18n.t("countries.US");
+  },
+};
+
+export const DEFAULT_COUNTRY_CODE = IS_NA ? US_COUNTRY_CODE : CN_COUNTRY_CODE;
 
 // 初始表单数据
 export const INITIAL_FORM_DATA = {
