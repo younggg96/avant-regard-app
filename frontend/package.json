@@ -11,6 +11,7 @@
     "expo:web": "expo start --web",
     "check": "node scripts/check-setup.js",
     "postinstall": "node scripts/ensure-local-wechat.js && patch-package",
+    "eas-build-post-install": "node scripts/eas-exclude-wechat-na.js",
     "variant:cn": "node scripts/switch-variant.js cn none",
     "variant:na": "node scripts/switch-variant.js na none",
     "prebuild:cn": "node scripts/switch-variant.js cn prebuild",
