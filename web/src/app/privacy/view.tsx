@@ -1,11 +1,15 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 
 /**
  * Avant Regard public Privacy Policy view.
  *
  * Structure:
+ *   - Header with "you are here" flavor badge (CN vs NA) and links to the
+ *     other flavor's Privacy URL — useful for Twilio toll-free verification
+ *     reviewers and for users who landed on the wrong region's site.
  *   - Highlighted "SMS Communications" section rendered VERBATIM in English.
  *     This block is what Twilio toll-free verification reviewers and US
  *     carriers (CTIA) look for. Do not edit the wording.
@@ -22,7 +26,54 @@ import Link from "next/link";
 const LAST_UPDATED = "2026-05-27";
 const EFFECTIVE_DATE = "2026-05-27";
 
+// Two app flavors → two web domains → two public Privacy URLs.
+// Keep this table in sync with frontend/.env.cn / .env.na (EXPO_PUBLIC_WEB_URL)
+// and frontend/app.config.js (IS_NA bundle id / scheme switches).
+type FlavorKey = "cn" | "na";
+
+const FLAVORS: Record<
+  FlavorKey,
+  { label: string; region: string; host: string; url: string }
+> = {
+  cn: {
+    label: "中国版 · China",
+    region: "Mainland China",
+    host: "avantregard.com",
+    url: "https://avantregard.com/privacy",
+  },
+  na: {
+    label: "北美版 · North America",
+    region: "United States & Canada",
+    host: "avantregards.com",
+    url: "https://avantregards.com/privacy",
+  },
+};
+
+/**
+ * Resolve which flavor the current request is on by inspecting the host name.
+ * Runs on the client because Next.js is rendering this view as a Client
+ * Component (uses `useEffect`). SSR returns `null` so both flavors render the
+ * same neutral fallback, avoiding hydration mismatch.
+ */
+function useCurrentFlavor(): FlavorKey | null {
+  const [flavor, setFlavor] = useState<FlavorKey | null>(null);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const host = window.location.host.toLowerCase();
+    // `avantregards.com` must be matched before `avantregard.com`, otherwise
+    // a naive `includes("avantregard.com")` would catch the NA host too.
+    if (host.includes("avantregards.com")) setFlavor("na");
+    else if (host.includes("avantregard.com")) setFlavor("cn");
+    else setFlavor(null);
+  }, []);
+  return flavor;
+}
+
 export function PrivacyView() {
+  const flavor = useCurrentFlavor();
+  const here = flavor ? FLAVORS[flavor] : null;
+  const other = flavor ? FLAVORS[flavor === "cn" ? "na" : "cn"] : null;
+
   return (
     <article className="mx-auto max-w-content px-6 py-16 md:py-24">
       <header className="border-b border-black/[0.08] pb-8 dark:border-white/[0.08]">
@@ -42,6 +93,41 @@ export function PrivacyView() {
             <dd>{EFFECTIVE_DATE}</dd>
           </div>
         </dl>
+
+        {/* Flavor / region selector — shown on both CN and NA domains so a
+            visitor (or Twilio reviewer) can confirm they are reading the
+            right policy and jump to the other region's mirror. */}
+        <div className="mt-6 flex flex-wrap items-center gap-2 font-label text-[12px]">
+          {(Object.keys(FLAVORS) as FlavorKey[]).map((key) => {
+            const meta = FLAVORS[key];
+            const active = flavor === key;
+            return (
+              <a
+                key={key}
+                href={meta.url}
+                aria-current={active ? "page" : undefined}
+                className={
+                  active
+                    ? "inline-flex items-center gap-1.5 rounded-full border border-black/40 bg-black px-3 py-1 text-white dark:border-white/40 dark:bg-white dark:text-black"
+                    : "inline-flex items-center gap-1.5 rounded-full border border-black/15 px-3 py-1 text-black/60 transition-colors hover:border-black/40 hover:text-black dark:border-white/15 dark:text-white/55 dark:hover:border-white/40 dark:hover:text-white"
+                }
+              >
+                <span
+                  aria-hidden
+                  className={
+                    active
+                      ? "h-1.5 w-1.5 rounded-full bg-white dark:bg-black"
+                      : "h-1.5 w-1.5 rounded-full bg-black/30 dark:bg-white/30"
+                  }
+                />
+                {meta.label}
+                <span className="text-[11px] uppercase tracking-[0.14em] opacity-60">
+                  {meta.host}
+                </span>
+              </a>
+            );
+          })}
+        </div>
       </header>
 
       {/* SMS COMMUNICATIONS — required for Twilio / CTIA compliance.
@@ -66,6 +152,60 @@ export function PrivacyView() {
           stored securely and are not sold, rented, or shared with third
           parties for marketing purposes.
         </p>
+
+        {/* Authoritative public URLs for each app flavor. Listed here so a
+            compliance reviewer (Twilio toll-free verification, US carriers /
+            CTIA) can verify the mobile app's SMS disclosure link resolves to
+            the corresponding region. */}
+        <div className="mt-6 border-t border-black/[0.08] pt-4 dark:border-white/[0.08]">
+          <p className="font-label text-[11px] uppercase tracking-[0.18em] text-black/45 dark:text-white/40">
+            Public Privacy URLs · 双域对照
+          </p>
+          <ul className="mt-3 space-y-2 font-label text-[13px]">
+            {(Object.keys(FLAVORS) as FlavorKey[]).map((key) => {
+              const meta = FLAVORS[key];
+              const active = flavor === key;
+              return (
+                <li
+                  key={key}
+                  className="flex flex-wrap items-baseline gap-x-3 gap-y-1"
+                >
+                  <span className="min-w-[150px] text-black/55 dark:text-white/50">
+                    {meta.label}
+                  </span>
+                  <a
+                    href={meta.url}
+                    className={
+                      active
+                        ? "font-medium text-black underline underline-offset-4 dark:text-white"
+                        : "text-black/70 underline underline-offset-4 hover:text-black dark:text-white/60 dark:hover:text-white"
+                    }
+                  >
+                    {meta.url}
+                  </a>
+                  {active && (
+                    <span className="rounded border border-black/15 px-1.5 py-0.5 text-[10px] uppercase tracking-[0.16em] text-black/60 dark:border-white/15 dark:text-white/55">
+                      You are here
+                    </span>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+          {here && other && (
+            <p className="mt-3 font-label text-[12px] leading-relaxed text-black/50 dark:text-white/40">
+              You are viewing the {here.region} version. Looking for the{" "}
+              {other.region} app? Visit{" "}
+              <a
+                href={other.url}
+                className="text-black underline underline-offset-4 dark:text-white"
+              >
+                {other.url}
+              </a>
+              .
+            </p>
+          )}
+        </div>
       </section>
 
       {/* English summary --------------------------------------------------- */}

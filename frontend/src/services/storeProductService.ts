@@ -200,12 +200,20 @@ export type ProductCondition = "BNWT" | "NEW_99" | "NEW_95" | "USED_8" | "FLAW";
 
 export type SellerKind = "merchant" | "individual";
 
-/** PRD 1.3 规范化 5 视角图。 */
+/**
+ * PRD 1.3 规范化 7 视角图。
+ *
+ * 历史 schema 只有 5 张（front / back / wash_label / brand_label / flaw）。
+ * 为了避免领标 / 洗标只拍到一面而漏掉成分 / 产地信息，新增
+ * `wash_label_back` 和 `brand_label_back` 两个强制槽，构成 7 视角必拍图。
+ */
 export interface PhotoAngles {
   front?: string | null;
   back?: string | null;
   wash_label?: string | null;
+  wash_label_back?: string | null;
   brand_label?: string | null;
+  brand_label_back?: string | null;
   flaw?: string | null;
   extras?: string[];
 }
@@ -259,7 +267,6 @@ export interface StoreProduct {
   completenessScore?: number;
   // PRD 单品 Phase 2
   styleName?: string | null;
-  yearDecade?: string | null;
   accessoriesNote?: string | null;
   shipFromCountry?: string | null;
   shipFromState?: string | null;
@@ -268,19 +275,6 @@ export interface StoreProduct {
   /** 平台抽佣率，单位 bps；100 = 1%。 */
   commissionRateBps?: number;
 }
-
-/** PRD 单品 Phase 2 年代选项。 */
-export const YEAR_DECADE_OPTIONS = [
-  "1950s",
-  "1960s",
-  "1970s",
-  "1980s",
-  "1990s",
-  "2000s",
-  "2010s",
-  "2020s",
-] as const;
-export type YearDecade = (typeof YEAR_DECADE_OPTIONS)[number];
 
 export interface StoreProductListResponse {
   products: StoreProduct[];
@@ -824,7 +818,6 @@ export interface ListingPatchBody {
   photoAngles?: PhotoAngles;
   // PRD 单品 Phase 2
   styleName?: string | null;
-  yearDecade?: string | null;
   accessoriesNote?: string | null;
   shipFromCountry?: string | null;
   shipFromState?: string | null;

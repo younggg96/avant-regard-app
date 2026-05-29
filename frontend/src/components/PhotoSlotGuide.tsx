@@ -17,7 +17,14 @@ import { useTranslation } from "react-i18next";
 import { Box, HStack, VStack, Text, Pressable } from "./ui";
 import { useThemedStyles, useAppTheme, type AppTheme } from "../theme";
 
-export type PhotoAngleKey = "front" | "back" | "detail" | "brand_label" | "wash_label";
+export type PhotoAngleKey =
+  | "front"
+  | "back"
+  | "detail"
+  | "brand_label"
+  | "brand_label_back"
+  | "wash_label"
+  | "wash_label_back";
 
 interface PhotoSlotGuideProps {
   visible: boolean;
@@ -34,7 +41,17 @@ const GUIDE_CONTENT: Record<
   back: { titleKey: "back", tipKey: "backTip", iconLine: "shirt" },
   detail: { titleKey: "detail", tipKey: "detailTip", iconLine: "lens" },
   brand_label: { titleKey: "brandLabel", tipKey: "brandLabelTip", iconLine: "tag" },
+  brand_label_back: {
+    titleKey: "brandLabelBack",
+    tipKey: "brandLabelBackTip",
+    iconLine: "tag",
+  },
   wash_label: { titleKey: "washLabel", tipKey: "washLabelTip", iconLine: "tag" },
+  wash_label_back: {
+    titleKey: "washLabelBack",
+    tipKey: "washLabelBackTip",
+    iconLine: "tag",
+  },
 };
 
 /** 占位示意：用纯 View 拼一张「画框 + 中央示意形状」，避免外部素材依赖。 */

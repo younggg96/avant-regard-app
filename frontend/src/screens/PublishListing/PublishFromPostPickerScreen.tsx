@@ -74,11 +74,15 @@ const PublishFromPostPickerScreen: React.FC = () => {
       categoryName: post.itemCategory || null,
       size: (post.itemSizes ?? [])[0] || "",
       color: (post.itemColors ?? [])[0] || "",
+      // PRD 1.3 7 视角图: 老帖子最多塞前 5 张做"最佳猜测"分配,
+      // 领标/洗标背面 等新增槽留空, 让卖家进入 Step2 时显式补拍。
       photoAngles: {
         front: images[0] ?? null,
         back: images[1] ?? null,
         wash_label: images[2] ?? null,
+        wash_label_back: null,
         brand_label: images[3] ?? null,
+        brand_label_back: null,
         flaw: images[4] ?? null,
         extras: images.slice(5),
       },

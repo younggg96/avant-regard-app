@@ -123,6 +123,7 @@
     "following": "Following",
     "followers": "Followers",
     "likesAndSaves": "Likes & Saves",
+    "myArchive": "My Archive",
     "tabNotes": "Notes",
     "tabBuying": "Buying",
     "tabSelling": "Selling",
@@ -161,7 +162,13 @@
     "invalidPostId": "Invalid post ID",
     "invalidUserId": "Invalid user ID",
     "titles": "Titles",
-    "levelProgress": "Level Progress"
+    "levelProgress": "Level Progress",
+    "quickEntries": {
+      "orders": "Orders",
+      "wallet": "Wallet",
+      "selling": "Listings",
+      "collections": "Saved"
+    }
   },
   "profileContrib": {
     "show": "Shows",
@@ -2896,21 +2903,20 @@
         "pending_payment": "To Pay",
         "paid": "To Ship",
         "shipped": "To Receive",
-        "delivered": "To Review"
+        "completed": "Completed"
       },
       "sellChip": {
-        "in_progress": "In Progress",
-        "pending_payment": "Awaiting Payment",
         "paid": "To Ship",
-        "delivered": "Received",
+        "shipped": "To Receive",
         "completed": "Completed",
-        "canceled": "Canceled"
+        "after_sales": "After-sales"
       },
       "empty": "No matching orders",
       "viewShipment": "View Shipping",
       "confirmReceipt": "Confirm Receipt",
       "ship": "Ship",
-      "viewReview": "View Review"
+      "viewReview": "View Review",
+      "viewAfterSales": "View After-sales"
     },
     "marketplace": {
       "chipAll": "All",
@@ -3072,12 +3078,13 @@
         "styleNamePlaceholder": "e.g. Padded Coat / Runway FW07",
         "styleNameHint": "Optional. Helps buyers search and prevents duplicate listings.",
         "size": "Size",
-        "sizePlaceholder": "M / 42 / S–XL",
+        "sizeStandard": "Size system",
+        "sizePlaceholder": "Pick from above, or type your own",
+        "sizeHint": "Pick a system first, then tap a size; type your own if it isn't listed.",
         "color": "Color",
-        "colorPlaceholder": "Black / Bone / Custom",
-        "colorHint": "Anything works — black, beige, faded indigo, etc.",
+        "colorPlaceholder": "Pick from above, or type your own",
+        "colorHint": "Prefer the preset chips. If custom, use a common color name — avoid overly subjective descriptions.",
         "condition": "Condition",
-        "yearDecade": "Era",
         "accessoriesNote": "Accessories",
         "accessoriesNotePlaceholder": "Dust bag · original box · receipt · spare buttons",
         "price": "Sale price (CNY)",
@@ -3114,6 +3121,39 @@
       "conditionUsed8Sub": "Noticeable wear, fully functional",
       "conditionFlaw": "Has flaws",
       "conditionFlawSub": "Please describe flaws in the notes",
+      "conditionBrandNew": "Brand New",
+      "conditionBrandNewSub": "Unused",
+      "conditionGentlyUsed": "Gently Used",
+      "conditionGentlyUsedSub": "Tried on only, barely visible wear",
+      "conditionUsed": "Used",
+      "conditionUsedSub": "Worn day-to-day, overall in good shape",
+      "conditionWorn": "Worn",
+      "conditionWornSub": "Visible wear & damage — describe in the notes",
+      "colors": {
+        "black": "Black",
+        "white": "White",
+        "gray": "Gray",
+        "beige": "Beige",
+        "brown": "Brown",
+        "red": "Red",
+        "pink": "Pink",
+        "orange": "Orange",
+        "yellow": "Yellow",
+        "green": "Green",
+        "blue": "Blue",
+        "purple": "Purple",
+        "gold": "Gold",
+        "silver": "Silver",
+        "multi": "Multi"
+      },
+      "sizeStandards": {
+        "shoeEur": "Shoes EUR",
+        "shoeUs": "Shoes US",
+        "womensCn": "Women (height/bust)",
+        "mensCn": "Men (height/chest)",
+        "numeric": "Numeric",
+        "compact": "Compact 0–4"
+      },
       "photoGuide": {
         "front": "Front",
         "frontTip": "Lay flat or wear it — full front view, even lighting, clean background.",
@@ -3121,20 +3161,28 @@
         "backTip": "Same composition as the front, showing the full back.",
         "detail": "Detail",
         "detailTip": "Highlight what makes this piece special — fabric texture, hardware, embroidery, etc.",
-        "brandLabel": "Brand label",
-        "brandLabelTip": "Capture the brand tag clearly. Text must be fully legible and the foil/sheen visible.",
-        "washLabel": "Care label",
-        "washLabelTip": "Full care label with composition, size and origin all readable.",
+        "brandLabel": "Brand label · front",
+        "brandLabelTip": "Capture the brand tag's front clearly. Text must be fully legible.",
+        "brandLabelBack": "Brand label · back",
+        "brandLabelBackTip": "Flip the label and take a second shot so origin / batch / extra text stay legible.",
+        "washLabel": "Care label · front",
+        "washLabelTip": "Front of the care label — composition, size, origin all readable.",
+        "washLabelBack": "Care label · back",
+        "washLabelBackTip": "Flip and shoot the back so the wash instructions / safety text are visible.",
         "go": "Got it, take photo"
       },
       "photos": {
-        "requiredHeader": "5 required photos",
-        "requiredHint": "Front · Back · Detail · Brand label · Care label",
+        "requiredHeader": "{{count}} required photos",
+        "requiredHint": "Front · Back · Detail · Brand label (×2) · Care label (×2)",
         "extraHeader": "Extra photos (optional, up to {{max}})",
         "extraHint": "Use for close-ups of flaws, packaging, receipts, etc.",
         "extraLimit": "Up to {{max}} extra photos",
         "longPressRemove": "Long press to remove",
-        "allRequired": "All 5 angle photos are required"
+        "allRequired": "All {{count}} angle photos are required",
+        "batchUpload": "Batch upload · pick multiple",
+        "batchUploading": "Uploading batch…",
+        "batchAllFilled": "All slots are filled — nothing to upload",
+        "tapToCancel": "Tap to cancel"
       },
       "pricing": {
         "referenceHistory": "Reference range {{low}} ~ {{high}} (based on {{sample}} historical sales)",

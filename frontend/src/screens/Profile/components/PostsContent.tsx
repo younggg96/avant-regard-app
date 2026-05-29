@@ -2,9 +2,7 @@ import React, { useEffect } from "react";
 import {
   View,
   Text as RNText,
-  ActivityIndicator,
   StyleSheet,
-  Image as RNImage,
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
@@ -51,10 +49,10 @@ import {
 import { useFormatPrice } from "../../../utils/currency";
 import {
   useStoreActivityStyles,
-  useProfileStyles,
   PF,
 } from "../styles";
-import { useProfileLoadingGif } from "../../../utils/loadingGifs";
+import { PostMasonrySkeleton } from "./PostMasonrySkeleton";
+import { CollectionsTabSkeleton } from "./CollectionsTabSkeleton";
 
 interface PostsContentProps {
   activeTab: TabType;
@@ -183,12 +181,7 @@ const ContributionContent = ({
       </View>
 
       {contribLoading ? (
-        <VStack alignItems="center" justifyContent="center" py="$xl" style={{ minHeight: 200 }}>
-          <ActivityIndicator color={theme.colors.gray400} />
-          <Text fontSize="$sm" style={[{ fontFamily: PF.regular }, { color: theme.colors.gray400 }]} mt="$sm">
-            {t("common.loading")}
-          </Text>
-        </VStack>
+        <PostMasonrySkeleton count={4} />
       ) : data.length === 0 ? (
         <VStack alignItems="center" justifyContent="center" py="$xl" style={{ minHeight: 200 }}>
           <Ionicons name={emptyIcons[contribSubTab] as any} size={24} color={theme.colors.gray300} />
@@ -208,7 +201,7 @@ const ContributionContent = ({
               {columns.map((column, colIndex) => (
                 <VStack key={colIndex} flex={1} space="sm">
                   {column.map(({ post, onPress }) => (
-                    <PostCard key={post.id} post={post} onPress={onPress} />
+                    <PostCard key={post.id} post={post} onPress={onPress} flat />
                   ))}
                 </VStack>
               ))}
@@ -279,8 +272,6 @@ const StoreActivityContent = ({
 }) => {
   const { t } = useTranslation();
   const storeActivityStyles = useStoreActivityStyles();
-  const styles = useProfileStyles();
-  const profileLoadingGif = useProfileLoadingGif();
   // 4 个一级 chip：前 3 个店铺级活动 + 第 4 个"商品"展开 3 个 sub-sub-tab
   const productTotal =
     productLikes.total + productSaved.total + productWanted.total;
@@ -406,13 +397,7 @@ const StoreActivityContent = ({
           onProductPress={onProductPress}
         />
       ) : storeActivityLoading ? (
-        // 用 RNImage（绕过 gluestack Image 默认 width:100%/height:auto），
-        // 让 GIF 用 styles.profileLoadingGif 撑满整个 tab 内容区。
-        <RNImage
-          source={profileLoadingGif}
-          style={styles.profileLoadingGif}
-          resizeMode="cover"
-        />
+        <CollectionsTabSkeleton variant="stores" />
       ) : getDataLength() === 0 ? (
         <VStack alignItems="center" justifyContent="center" py="$sm" style={{ minHeight: 200 }}>
           <Ionicons name={empty.icon as any} size={24} color={theme.colors.gray300} />
@@ -500,9 +485,7 @@ const ProductActivityContent = ({
       </View>
 
       {current.isLoading && !current.hasLoaded ? (
-        <VStack alignItems="center" justifyContent="center" py="$xl" style={{ minHeight: 200 }}>
-          <ActivityIndicator color={theme.colors.gray400} />
-        </VStack>
+        <PostMasonrySkeleton count={4} />
       ) : current.products.length === 0 ? (
         <VStack alignItems="center" justifyContent="center" py="$xl" style={{ minHeight: 200 }}>
           <Ionicons name={emptyIcon as any} size={24} color={theme.colors.gray300} />
@@ -689,12 +672,7 @@ export const PostsContent = ({
   onLike,
 }: PostsContentProps) => {
   const { t } = useTranslation();
-  const styles = useProfileStyles();
   const theme = useAppTheme();
-  // 之前 dark mode 下用 ActivityIndicator 兜底,因为浅色 GIF 砸在暗色页面里
-  // 是一大块刺眼白底; 现在用 useProfileLoadingGif 自动按主题切深/浅版本,
-  // 两端都保留品牌动画体验。
-  const profileLoadingGif = useProfileLoadingGif();
   if (activeTab === "storeActivity") {
     return (
       <StoreActivityContent
@@ -735,15 +713,7 @@ export const PostsContent = ({
   const shouldShowLoading = currentTabData.isLoading && !currentTabData.hasLoaded;
 
   if (shouldShowLoading) {
-    // 用 RNImage（绕过 gluestack Image 默认 width:100%/height:auto），
-    // 让 GIF 用 styles.profileLoadingGif 撑满整个 tab 内容区。
-    return (
-      <RNImage
-        source={profileLoadingGif}
-        style={styles.profileLoadingGif}
-        resizeMode="cover"
-      />
-    );
+    return <PostMasonrySkeleton count={6} />;
   }
 
   if (currentTabData.posts.length > 0) {
@@ -789,7 +759,7 @@ export const PostsContent = ({
                   isEditableTab ? () => onDeletePost(post) : undefined
                 }
               >
-                <PostCard post={post} onPress={() => onPostPress(post)} onLike={onLike} />
+                <PostCard post={post} onPress={() => onPostPress(post)} onLike={onLike} flat />
               </Pressable>
             ))}
           </VStack>

@@ -5,14 +5,13 @@ import type {
   SellerKind,
   PhotoAngles,
   StoreProduct,
-  YearDecade,
 } from "../services/storeProductService";
 
 /**
  * 发布单品 Wizard 全局状态（4-step flow，PRD 单品发布 Phase 2）。
  *
  * 步骤拆分：
- *   - Step 1 / 4 · 基本信息：品牌、款式/系列、单品类型、尺码、颜色、成色、年代、配件
+ *   - Step 1 / 4 · 基本信息：品牌、款式/系列、单品类型、尺码、颜色、成色、配件
  *   - Step 2 / 4 · 5 视角图（强制）+ 最多 7 张额外图
  *   - Step 3 / 4 · 定价描述：价格、参考区间、是否议价、标题、描述、标签
  *   - Step 4 / 4 · 物流：原入手时间、关联秀场、发货地（国 / 省 / 市）、运费方式
@@ -35,7 +34,6 @@ export interface ListingFormState {
   size: string;
   color: string;
   condition: ProductCondition | null;
-  yearDecade: YearDecade | null;
   accessoriesNote: string;
   conditionNote: string;
 
@@ -74,14 +72,15 @@ const EMPTY: ListingFormState = {
   size: "",
   color: "",
   condition: null,
-  yearDecade: null,
   accessoriesNote: "",
   conditionNote: "",
   photoAngles: {
     front: null,
     back: null,
     wash_label: null,
+    wash_label_back: null,
     brand_label: null,
+    brand_label_back: null,
     flaw: null,
     extras: [],
   },
@@ -124,7 +123,6 @@ export const usePublishListingStore = create<PublishListingStore>((set) => ({
       size: listing.size ?? "",
       color: listing.color ?? "",
       condition: (listing.condition as ProductCondition) ?? null,
-      yearDecade: (listing.yearDecade as YearDecade) ?? null,
       accessoriesNote: listing.accessoriesNote ?? "",
       conditionNote: listing.conditionNote ?? "",
       photoAngles: listing.photoAngles ?? EMPTY.photoAngles,
@@ -156,18 +154,26 @@ export const validateStep1 = (s: ListingFormState): string[] => {
   if (!s.size.trim()) missing.push("size");
   if (!s.color.trim()) missing.push("color");
   if (!s.condition) missing.push("condition");
-  if (!s.yearDecade) missing.push("yearDecade");
   return missing;
 };
 
 export const validateStep2 = (s: ListingFormState): string[] => {
   const missing: string[] = [];
   const angles = s.photoAngles;
-  (["front", "back", "wash_label", "brand_label", "flaw"] as const).forEach(
-    (k) => {
-      if (!angles[k]) missing.push(`photo:${k}`);
-    }
-  );
+  // 7 张强制视角图 (新增领标 / 洗标背面). 与后端 PhotoAngles.REQUIRED_SLOTS 对齐。
+  (
+    [
+      "front",
+      "back",
+      "wash_label",
+      "wash_label_back",
+      "brand_label",
+      "brand_label_back",
+      "flaw",
+    ] as const
+  ).forEach((k) => {
+    if (!angles[k]) missing.push(`photo:${k}`);
+  });
   return missing;
 };
 

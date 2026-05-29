@@ -5,6 +5,13 @@ PRD 模块 8 · Plus 订阅服务。
 - confirm_subscription(sub_id) 由 webhook 调（或 mock 直接置 active）
 - is_user_plus(user_id) 给抽佣率 / 鉴定免费券 / 数据面板 用
 - commission_rate_for(user_id) 接入 OrderService 的 _commission_for_user
+
+抽佣率说明:
+    PRD 已改为统一 1% (100 bps) 抽佣, 不再按 Plus / 普通区分。
+    PLUS_COMMISSION_BPS 与 DEFAULT_COMMISSION_BPS 保持 100, 是为了 schema
+    (PlusStatus.commissionRateBps) 仍能向前端返回当前实际费率, 也方便后续
+    若产品恢复差异化抽佣时再回填两个常量。OrderService 里有同名常量, 二者
+    必须一致, 改一处务必同步另一处。
 """
 from __future__ import annotations
 
@@ -24,8 +31,8 @@ from app.services.payment import get_payment_provider
 PLUS_PRICE_MONTHLY_CENTS = 2900
 PLUS_PRICE_ANNUAL_CENTS = 29800
 
-PLUS_COMMISSION_BPS = 600
-DEFAULT_COMMISSION_BPS = 800
+PLUS_COMMISSION_BPS = 100
+DEFAULT_COMMISSION_BPS = 100
 
 
 class PlusService:

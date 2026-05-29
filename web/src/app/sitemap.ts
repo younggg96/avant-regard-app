@@ -11,6 +11,17 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${base}/download`, lastModified: now, priority: 0.65 },
     // Privacy policy must be crawlable so Twilio toll-free verification can
     // reach the SMS Communications section at /privacy#sms-communications.
-    { url: `${base}/privacy`, lastModified: now, priority: 0.5 },
+    // The page itself lists both flavor URLs (CN + NA) for transparency.
+    {
+      url: `${base}/privacy`,
+      lastModified: now,
+      priority: 0.5,
+      alternates: {
+        languages: {
+          "zh-CN": "https://avantregard.com/privacy",
+          "en-US": "https://avantregards.com/privacy",
+        },
+      },
+    },
   ];
 }

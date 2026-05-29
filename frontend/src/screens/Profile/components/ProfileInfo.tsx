@@ -75,9 +75,15 @@ export const ProfileInfo = ({
   // 主头衔与 UserTitlesSection / 访客主页共用 titlesShownOnProfile 规则。
   const primaryTitle = titlesShownOnProfile(userTitles)[0];
 
+  const hasTags =
+    (userProfile?.age != null && userProfile.age > 0) ||
+    !!userInfo?.location ||
+    !!userProfile?.preference;
+
   return (
   <View style={[styles.profileInfo, { backgroundColor: appTheme.colors.card }]}>
-    <View style={styles.avatarRow}>
+    {/* 顶行：头像 + 用户名 / bio 并排，头像上半覆盖 cover */}
+    <View style={styles.headerRow}>
       <View style={styles.avatarWrapper}>
         <Pressable
           onPress={avatarUri ? onAvatarPress : onEditProfile}
@@ -97,63 +103,75 @@ export const ProfileInfo = ({
           <Ionicons name="add" size={14} color="white" />
         </Pressable>
       </View>
-    </View>
 
-    <View style={styles.userNameSection}>
-      <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-        <RNText style={styles.userName}>{userInfo?.username || username || t("profile.user")}</RNText>
-        {currentLevel > 0 ? (
-          <LevelBadge
-            level={currentLevel}
-            size="sm"
-            pendingLevel={pendingLevel}
-          />
-        ) : null}
-        {primaryTitle ? (
-          <View style={titleStyles.chipBadge}>
-            <RNText style={titleStyles.chipBadgeText} numberOfLines={1}>
-              {primaryTitle.title}
-            </RNText>
-          </View>
-        ) : null}
-      </View>
-      <RNText style={styles.bio} numberOfLines={2}>
-        {userInfo?.bio || t("profile.editBioPlaceholder")}
-      </RNText>
-    </View>
-
-    <View style={styles.tagsContainer}>
-      {userProfile?.age != null && userProfile.age > 0 && (
-        <View style={styles.tag}>
-          <RNText style={styles.tagText}>{getGenderText(userProfile?.gender)} {userProfile.age}{t("profile.ageUnit")}</RNText>
+      <View style={styles.headerTextCol}>
+        <View style={styles.userNameLine}>
+          <RNText style={styles.userName} numberOfLines={1}>
+            {userInfo?.username || username || t("profile.user")}
+          </RNText>
+          {currentLevel > 0 ? (
+            <LevelBadge
+              level={currentLevel}
+              size="sm"
+              pendingLevel={pendingLevel}
+            />
+          ) : null}
+          {primaryTitle ? (
+            <View style={titleStyles.chipBadge}>
+              <RNText style={titleStyles.chipBadgeText} numberOfLines={1}>
+                {primaryTitle.title}
+              </RNText>
+            </View>
+          ) : null}
         </View>
-      )}
-      {userInfo?.location && (
-        <View style={styles.tag}>
-          <RNText style={styles.tagText}>{userInfo.location}</RNText>
-        </View>
-      )}
-      {userProfile?.preference && (
-        <View style={styles.tag}>
-          <RNText style={styles.tagText}>{userProfile.preference}</RNText>
-        </View>
-      )}
-    </View>
-
-    <View style={styles.statsContainer}>
-      <Pressable style={styles.statItem} onPress={onFollowingPress}>
-        <RNText style={styles.statNumber}>{followingUsersCount}</RNText>
-        <RNText style={styles.statLabel}>{t("profile.following")}</RNText>
-      </Pressable>
-      <Pressable style={styles.statItem} onPress={onFollowersPress}>
-        <RNText style={styles.statNumber}>{followersCount}</RNText>
-        <RNText style={styles.statLabel}>{t("profile.followers")}</RNText>
-      </Pressable>
-      <View style={styles.statItem}>
-        <RNText style={styles.statNumber}>
-          {likesAndSavesCount != null ? likesAndSavesCount : userId ? "0" : "-"}
+        <RNText style={styles.bio} numberOfLines={2}>
+          {userInfo?.bio || t("profile.editBioPlaceholder")}
         </RNText>
-        <RNText style={styles.statLabel}>{t("profile.likesAndSaves")}</RNText>
+      </View>
+    </View>
+
+    {/* 底行：左侧 stats / 右侧 tags，1:1 */}
+    <View style={styles.statsContainer}>
+      <View style={styles.statsHalf}>
+        <Pressable style={styles.statItem} onPress={onFollowingPress}>
+          <RNText style={styles.statNumber}>{followingUsersCount}</RNText>
+          <RNText style={styles.statLabel}>{t("profile.following")}</RNText>
+        </Pressable>
+        <Pressable style={styles.statItem} onPress={onFollowersPress}>
+          <RNText style={styles.statNumber}>{followersCount}</RNText>
+          <RNText style={styles.statLabel}>{t("profile.followers")}</RNText>
+        </Pressable>
+        <View style={styles.statItem}>
+          <RNText style={styles.statNumber}>
+            {likesAndSavesCount != null ? likesAndSavesCount : userId ? "0" : "-"}
+          </RNText>
+          <RNText style={styles.statLabel}>{t("profile.likesAndSaves")}</RNText>
+        </View>
+      </View>
+
+      <View style={styles.tagsHalf}>
+        {hasTags ? (
+          <>
+            {userProfile?.age != null && userProfile.age > 0 && (
+              <View style={styles.tag}>
+                <RNText style={styles.tagText}>
+                  {getGenderText(userProfile?.gender)} {userProfile.age}
+                  {t("profile.ageUnit")}
+                </RNText>
+              </View>
+            )}
+            {userInfo?.location && (
+              <View style={styles.tag}>
+                <RNText style={styles.tagText}>{userInfo.location}</RNText>
+              </View>
+            )}
+            {userProfile?.preference && (
+              <View style={styles.tag}>
+                <RNText style={styles.tagText}>{userProfile.preference}</RNText>
+              </View>
+            )}
+          </>
+        ) : null}
       </View>
     </View>
   </View>

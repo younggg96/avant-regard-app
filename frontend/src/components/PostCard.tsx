@@ -88,6 +88,8 @@ interface PostCardProps {
   coverImagePriority?: "low" | "normal" | "high";
   showCoverPlaceholder?: boolean;
   coverImageTransition?: number;
+  /** Profile 等扁平列表：surface 底、无阴影 */
+  flat?: boolean;
 }
 
 const PostCardInner = ({
@@ -95,14 +97,11 @@ const PostCardInner = ({
   onPress,
   onAuthorPress,
   onLike,
-  // 默认走原图（ORIGINAL 在 getOptimizedImageUrl 里直通 Storage，不进
-  // proxy）。背景见 PostCoverMedia 的 Quality note：proxy 路径上每隔一段
-  // 时间会有概率把糊掉的字节永久写进 SDImageCache 磁盘，必须卸载重装才
-  // 能复原。直接用原图 + GPU decode 时下采样换掉这条故障路径。
   coverImageSize = ImageSize.ORIGINAL,
   coverImagePriority,
   showCoverPlaceholder = true,
   coverImageTransition,
+  flat = false,
 }: PostCardProps) => {
   const { t } = useTranslation();
   const styles = useThemedStyles(makeStyles);
@@ -154,7 +153,7 @@ const PostCardInner = ({
   const handleLike = useCallback(() => onLike?.(postId), [onLike, postId]);
 
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, flat && styles.cardFlat]}>
       {hasImage ? (
         <Pressable onPress={handlePressPost}>
           <View>
@@ -300,6 +299,15 @@ const makeStyles = (t: AppTheme) =>
       borderRadius: t.borderRadius.md,
       overflow: "hidden",
       ...t.shadows.sm,
+    },
+    cardFlat: {
+      backgroundColor: t.colors.surface,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: t.colors.border,
+      shadowOpacity: 0,
+      elevation: 0,
+      shadowRadius: 0,
+      shadowOffset: { width: 0, height: 0 },
     },
     image: {
       width: "100%",

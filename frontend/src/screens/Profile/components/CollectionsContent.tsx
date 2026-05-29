@@ -61,6 +61,7 @@ import {
   type UserCollection,
 } from "../../../services/tradingExtrasService";
 import { PF } from "../styles";
+import { CollectionsTabSkeleton } from "./CollectionsTabSkeleton";
 
 interface CollectionsContentProps {
   /** 当前激活的 sub-chip */
@@ -138,11 +139,7 @@ export const CollectionsContent: React.FC<CollectionsContentProps> = ({
   // ===== Posts 子分支 =====
   const renderPosts = () => {
     if (postsFavData.isLoading && !postsFavData.hasLoaded) {
-      return (
-        <VStack alignItems="center" justifyContent="center" py="$xl" style={{ minHeight: 200 }}>
-          <ActivityIndicator color={theme.colors.gray400} />
-        </VStack>
-      );
+      return <CollectionsTabSkeleton variant="posts" />;
     }
     if (postsFavData.posts.length === 0) {
       return (
@@ -203,11 +200,7 @@ export const CollectionsContent: React.FC<CollectionsContentProps> = ({
 
   const renderStores = () => {
     if (storeActivityLoading && !storeActivity) {
-      return (
-        <VStack alignItems="center" justifyContent="center" py="$xl" style={{ minHeight: 200 }}>
-          <ActivityIndicator color={theme.colors.gray400} />
-        </VStack>
-      );
+      return <CollectionsTabSkeleton variant="stores" />;
     }
     const list = storeActivity?.favorites ?? [];
     if (list.length === 0) {
@@ -358,11 +351,7 @@ export const CollectionsContent: React.FC<CollectionsContentProps> = ({
 
   const renderProducts = () => {
     if (collectionsLoading && collectionFolders.length === 0) {
-      return (
-        <VStack alignItems="center" justifyContent="center" py="$xl" style={{ minHeight: 200 }}>
-          <ActivityIndicator color={theme.colors.gray400} />
-        </VStack>
-      );
+      return <CollectionsTabSkeleton variant="products" />;
     }
     return (
       <View style={styles.foldersWrap}>

@@ -38,6 +38,7 @@ import {
   StoreProduct,
 } from "../../services/storeProductService";
 import { useFormatPrice } from "../../utils/currency";
+import { orderStatusVisual } from "../../utils/orderStatusVisual";
 import { OptimizedImage } from "../../components/ui/OptimizedImage";
 import { ImageSize } from "../../utils/imageUtils";
 import { useAuthStore } from "../../store/authStore";
@@ -76,58 +77,6 @@ function trackingIcon(
       return { icon: "alert-circle-outline", tone: "warn" };
     default:
       return { icon: "ellipse-outline", tone: "muted" };
-  }
-}
-
-function statusVisual(
-  status: OrderStatus,
-  t: AppTheme,
-): { icon: keyof typeof Ionicons.glyphMap; bg: string; fg: string } {
-  switch (status) {
-    case "pending_payment":
-      return {
-        icon: "wallet-outline",
-        bg: t.mode === "dark" ? "#2A2410" : "#FFF8E6",
-        fg: t.colors.plusGold,
-      };
-    case "paid":
-      return {
-        icon: "cube-outline",
-        bg: t.mode === "dark" ? "#1A1A1A" : "#F5F5F5",
-        fg: t.colors.text,
-      };
-    case "shipped":
-      return {
-        icon: "airplane-outline",
-        bg: t.mode === "dark" ? "#101A24" : "#EEF4FF",
-        fg: t.mode === "dark" ? "#7EB8FF" : "#2563EB",
-      };
-    case "delivered":
-      return {
-        icon: "checkmark-circle-outline",
-        bg: t.mode === "dark" ? "#0F1F14" : "#EEFBF2",
-        fg: t.colors.success,
-      };
-    case "completed":
-    case "settled":
-      return {
-        icon: "ribbon-outline",
-        bg: t.mode === "dark" ? "#0F1F14" : "#EEFBF2",
-        fg: t.colors.success,
-      };
-    case "refunded":
-    case "refunded_auto":
-      return {
-        icon: "return-down-back-outline",
-        bg: t.mode === "dark" ? "#2A1414" : "#FFF5F5",
-        fg: t.colors.error,
-      };
-    default:
-      return {
-        icon: "document-text-outline",
-        bg: t.colors.cardElevated,
-        fg: t.colors.text,
-      };
   }
 }
 
@@ -482,7 +431,7 @@ export default function OrderDetailScreen() {
     );
   }
 
-  const visual = statusVisual(order.status as OrderStatus, theme);
+  const visual = orderStatusVisual(order.status as OrderStatus, theme);
   const coverImage = product?.images?.[0];
   const currency = order.currency ?? product?.currency ?? "CNY";
 

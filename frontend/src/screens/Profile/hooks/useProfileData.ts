@@ -132,6 +132,7 @@ export function useProfileData() {
     null,
   );
   const [collectionsLoading, setCollectionsLoading] = useState(false);
+  const [headerLoading, setHeaderLoading] = useState(true);
   const [collectionsLoaded, setCollectionsLoaded] = useState(false);
 
   const [tabsData, setTabsData] = useState<Record<TabType, TabData>>({
@@ -177,6 +178,7 @@ export function useProfileData() {
     setDefaultCollectionTotal(0);
     setDefaultCollectionCover(null);
     setCollectionsLoaded(false);
+    setHeaderLoading(true);
   }, []);
 
   const loadUserInfo = useCallback(async () => {
@@ -467,15 +469,35 @@ export function useProfileData() {
     [user?.userId, userInfo, tabsData, updateTabState]
   );
 
-  const loadAllProfileData = useCallback(() => {
-    loadUserInfo();
-    loadUserProfile();
-    loadFollowingUsersCount();
-    loadFollowersCount();
-    loadFollowedBrands();
-    loadUserTitles();
-    loadPostStats();
-  }, [loadUserInfo, loadUserProfile, loadFollowingUsersCount, loadFollowersCount, loadFollowedBrands, loadUserTitles, loadPostStats]);
+  const loadAllProfileData = useCallback(async () => {
+    if (!user?.userId) {
+      setHeaderLoading(false);
+      return;
+    }
+    setHeaderLoading(true);
+    try {
+      await Promise.all([
+        loadUserInfo(),
+        loadUserProfile(),
+        loadFollowingUsersCount(),
+        loadFollowersCount(),
+        loadFollowedBrands(),
+        loadUserTitles(),
+        loadPostStats(),
+      ]);
+    } finally {
+      setHeaderLoading(false);
+    }
+  }, [
+    user?.userId,
+    loadUserInfo,
+    loadUserProfile,
+    loadFollowingUsersCount,
+    loadFollowersCount,
+    loadFollowedBrands,
+    loadUserTitles,
+    loadPostStats,
+  ]);
 
   return {
     userInfo,
@@ -511,6 +533,7 @@ export function useProfileData() {
     defaultCollectionCover,
     collectionsLoading,
     collectionsLoaded,
+    headerLoading,
     loadCollectionFolders,
     tabsData,
     setTabsData,

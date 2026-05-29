@@ -184,19 +184,35 @@ class StoreProductCategory(BaseModel):
 
 
 class PhotoAngles(BaseModel):
-    """PRD 1.3 规范化 5 视角图 + 最多 4 张额外图。
+    """PRD 1.3 规范化 7 视角图 + 最多 7 张额外图。
 
-    `front / back / wash_label / brand_label / flaw` 提交审核前必填；
-    `extras` 可空、最多 4 张。`flaw` 即使无瑕疵也必填一张证明照（PRD 1.3）。
+    7 个强制槽 (提交审核前必填)：
+      - `front / back`                      —— 单品正反面
+      - `wash_label` / `wash_label_back`    —— 洗标正反面（防止只拍一面看不全）
+      - `brand_label` / `brand_label_back`  —— 领标 / 品牌标正反面
+      - `flaw`                              —— 细节 / 瑕疵；无瑕疵也需提供一张兜底证明
+
+    历史草稿只填了原来的 5 张：会被前端 UI 提示「补两张标签背面」，后端拒绝
+    提交直到补齐；不强制 DB 迁移老数据。
     """
     front: Optional[str] = Field(None, description="正面")
     back: Optional[str] = Field(None, description="背面")
-    wash_label: Optional[str] = Field(None, description="洗标")
-    brand_label: Optional[str] = Field(None, description="领标 / 品牌标")
+    wash_label: Optional[str] = Field(None, description="洗标正面")
+    wash_label_back: Optional[str] = Field(None, description="洗标背面（成分/水洗反面）")
+    brand_label: Optional[str] = Field(None, description="领标 / 品牌标正面")
+    brand_label_back: Optional[str] = Field(None, description="领标 / 品牌标背面")
     flaw: Optional[str] = Field(None, description="瑕疵细节图；无瑕疵也需提供一张兜底证明")
-    extras: List[str] = Field(default_factory=list, max_length=4)
+    extras: List[str] = Field(default_factory=list, max_length=7)
 
-    REQUIRED_SLOTS: tuple = ("front", "back", "wash_label", "brand_label", "flaw")
+    REQUIRED_SLOTS: tuple = (
+        "front",
+        "back",
+        "wash_label",
+        "wash_label_back",
+        "brand_label",
+        "brand_label_back",
+        "flaw",
+    )
 
     def required_complete(self) -> bool:
         return all(getattr(self, k) for k in self.REQUIRED_SLOTS)
@@ -235,12 +251,6 @@ class StoreProductCreate(BaseModel):
     photoAngles: Optional[PhotoAngles] = None
     # PRD 单品 Phase 2 新字段
     styleName: Optional[str] = Field(None, max_length=200, description="款式 / Runway 系列名")
-    yearDecade: Optional[str] = Field(
-        None,
-        max_length=8,
-        pattern=r"^(19[5-9]0s|20[0-2]0s)$",
-        description="年代（1950s ~ 2020s）",
-    )
     accessoriesNote: Optional[str] = Field(None, description="配件说明")
     shipFromCountry: Optional[str] = Field(None, max_length=80, description="发货国家")
     shipFromState: Optional[str] = Field(None, max_length=80, description="发货省 / 州")
@@ -290,11 +300,6 @@ class StoreProductUpdate(BaseModel):
     photoAngles: Optional[PhotoAngles] = None
     # PRD 单品 Phase 2 新字段
     styleName: Optional[str] = Field(None, max_length=200)
-    yearDecade: Optional[str] = Field(
-        None,
-        max_length=8,
-        pattern=r"^(19[5-9]0s|20[0-2]0s)$",
-    )
     accessoriesNote: Optional[str] = None
     shipFromCountry: Optional[str] = Field(None, max_length=80)
     shipFromState: Optional[str] = Field(None, max_length=80)
@@ -374,7 +379,6 @@ class StoreProduct(BaseModel):
     updatedAt: Optional[str] = None
     # PRD 单品 Phase 2 新字段
     styleName: Optional[str] = None
-    yearDecade: Optional[str] = None
     accessoriesNote: Optional[str] = None
     shipFromCountry: Optional[str] = None
     shipFromState: Optional[str] = None

@@ -145,7 +145,6 @@ class StoreProductService:
             completenessScore=int(row.get("completeness_score") or 0),
             # PRD 单品 Phase 2
             styleName=row.get("style_name"),
-            yearDecade=row.get("year_decade"),
             accessoriesNote=row.get("accessories_note"),
             shipFromCountry=row.get("ship_from_country"),
             shipFromState=row.get("ship_from_state"),
@@ -444,7 +443,6 @@ class StoreProductService:
             "photo_angles": photo_angles_payload,
             # PRD 单品 Phase 2 新字段
             "style_name": getattr(data, "styleName", None),
-            "year_decade": getattr(data, "yearDecade", None),
             "accessories_note": getattr(data, "accessoriesNote", None),
             "ship_from_country": getattr(data, "shipFromCountry", None),
             "ship_from_state": getattr(data, "shipFromState", None),
@@ -554,7 +552,6 @@ class StoreProductService:
             "photoAngles": "photo_angles",
             # PRD 单品 Phase 2
             "styleName": "style_name",
-            "yearDecade": "year_decade",
             "accessoriesNote": "accessories_note",
             "shipFromCountry": "ship_from_country",
             "shipFromState": "ship_from_state",
@@ -1118,7 +1115,17 @@ class StoreProductService:
             raise ValueError("仅草稿状态可提交审核")
 
         photo_angles = raw.get("photo_angles") or {}
-        required_slots = ("front", "back", "wash_label", "brand_label", "flaw")
+        # 与 PhotoAngles.REQUIRED_SLOTS 保持一致 —— 后端是唯一权威, 前端校验只是
+        # 用户体验. 任何缺失都拒提交, 让卖家在 wizard step2 补齐.
+        required_slots = (
+            "front",
+            "back",
+            "wash_label",
+            "wash_label_back",
+            "brand_label",
+            "brand_label_back",
+            "flaw",
+        )
         missing = [k for k in required_slots if not photo_angles.get(k)]
         if missing:
             raise ValueError(f"以下视角图缺失：{','.join(missing)}")

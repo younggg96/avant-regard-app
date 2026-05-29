@@ -113,11 +113,15 @@ const PublishListingStep4Screen: React.FC = () => {
     description: form.description,
     brand: form.brand,
     categoryId: form.categoryId,
+    // PRD 1.3 7 视角图 + extras: 顺序固定, 让首图(列表卡片封面)始终是正面.
+    // photoAngles 字段本身也透传一份, 让详情页能区分"哪张是领标背面"等。
     images: [
       form.photoAngles.front,
       form.photoAngles.back,
       form.photoAngles.wash_label,
+      form.photoAngles.wash_label_back,
       form.photoAngles.brand_label,
+      form.photoAngles.brand_label_back,
       form.photoAngles.flaw,
       ...(form.photoAngles.extras ?? []),
     ].filter(Boolean) as string[],
@@ -133,7 +137,6 @@ const PublishListingStep4Screen: React.FC = () => {
     photoAngles: form.photoAngles,
     tags: form.tags,
     styleName: form.styleName || null,
-    yearDecade: form.yearDecade,
     accessoriesNote: form.accessoriesNote || null,
     shipFromCountry: form.shipFromCountry,
     shipFromState: form.shipFromState,

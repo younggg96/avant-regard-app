@@ -28,45 +28,40 @@ export type TabType = "published" | "pending" | "draft" | "saved" | "liked" | "f
 /**
  * 「交易 → 购买」下的状态过滤 chip。
  *  - all = 不过滤;其余每一项映射到一组允许的 OrderStatus, 在前端筛选。
- *  - 「待评价」=== delivered (买家已收货, 后续等待评价/确认收货)。
+ *  - completed = delivered + completed + settled (原「待评价」并入「已完成」)。
  */
 export type BuyingFilterType =
   | "all"
   | "pending_payment"
   | "paid"
   | "shipped"
-  | "delivered";
+  | "completed";
 
 /**
- * 「交易 → 出售」下的状态过滤 chip。
- *  - in_progress = paid + shipped (货已发出, 仍在运送中)
- *  - canceled = refunded + refunded_auto (买家取消 / 系统超时回滚)
+ * 「交易 → 出售」下的状态过滤 chip —— 精简为卖家最关心的 5 档:
+ *  全部 / 待发货 / 待收货 / 已完成 / 售后中。
  */
 export type SellingFilterType =
   | "all"
-  | "in_progress"
-  | "pending_payment"
   | "paid"
-  | "delivered"
+  | "shipped"
   | "completed"
-  | "canceled";
+  | "after_sales";
 
 export const BUYING_FILTER_TO_STATUSES: Record<BuyingFilterType, OrderStatus[] | null> = {
   all: null,
   pending_payment: ["pending_payment"],
   paid: ["paid"],
   shipped: ["shipped"],
-  delivered: ["delivered"],
+  completed: ["delivered", "completed", "settled"],
 };
 
 export const SELLING_FILTER_TO_STATUSES: Record<SellingFilterType, OrderStatus[] | null> = {
   all: null,
-  in_progress: ["paid", "shipped"],
-  pending_payment: ["pending_payment"],
   paid: ["paid"],
-  delivered: ["delivered"],
-  completed: ["completed", "settled"],
-  canceled: ["refunded", "refunded_auto"],
+  shipped: ["shipped"],
+  completed: ["delivered", "completed", "settled"],
+  after_sales: ["disputed", "refunded", "refunded_auto", "resolved"],
 };
 
 export type ContribSubTab = "show" | "brand" | "store";

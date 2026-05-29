@@ -1,16 +1,25 @@
 /**
  * PRD 单品发布 · Step 1 / 4：基本信息。
  *
- * 字段：
- *   - 卖家身份（个人 / 买手店）
- *   - 品牌（搜索选择，找不到可联系小客服）
- *   - 单品类型 / 款式（系列名）
- *   - 尺码、颜色（颜色支持自由填写）
- *   - 成色（5 档）
- *   - 年代（1950s ~ 2020s）
- *   - 配件说明（可选）
+ * 字段:
+ *   - 品牌 (搜索选择, 找不到可联系小客服)
+ *   - 款式 / 系列 (选填)
+ *   - 尺码 (按"体系"分组的快捷 chip + 自定义输入)
+ *   - 颜色 (预设色板 chip + 自定义输入)
+ *   - 成色 (4 档, 描述精简化避免"几新"主观分歧)
+ *   - 配件说明 (选填)
  *
- * 沿用主题化样式；全部 borderRadius=4；i18n key 在 trading.publishListing.* 下。
+ * 设计变更说明 (重要):
+ *   1. 移除「出售身份」选择: sellerKind 不再让卖家手选, 默认走 individual.
+ *      个人 / 买手在身份资料里就已区分, 这里再放一次只会让流程变重.
+ *   2. 颜色 / 尺码改成"先选预设, 再可自定义". 旧版完全自由输入导致
+ *      "雾霾蓝/做旧靛蓝" 这种诗意文案大量入库, 后台筛选 / 推荐无法对齐.
+ *   3. 成色文案改成动作描述 (全新/试穿/日常/磨损), 不再用 "99新/95新/8成新"
+ *      —— 不同人对几新的定义差异巨大, 改成行为描述能显著降低交易纠纷.
+ *      enum 值仍复用 BNWT / NEW_99 / USED_8 / FLAW (后端不变),
+ *      只是 UI 上不再暴露 NEW_95 这种容易争议的中间档.
+ *   4. 移除「年代」字段: 多数卖家无法准确判断衣物年份, 强制 / 选填都会污染
+ *      数据, 产品决定完全删除该字段 (前后端 schema 同步移除).
  */
 import React, { useCallback, useMemo, useState } from "react";
 import {
@@ -46,18 +55,18 @@ import {
   TOTAL_PUBLISH_STEPS,
 } from "../../store/publishListingStore";
 import type { Brand } from "../../services/brandService";
-import {
-  YEAR_DECADE_OPTIONS,
-  type ProductCondition,
-  type SellerKind,
-  type YearDecade,
-} from "../../services/storeProductService";
+import { type ProductCondition } from "../../services/storeProductService";
 import {
   makePublishListingFormStyles,
   PublishListingFieldRow,
   PublishListingFeeNotice,
   PublishListingTextArea,
 } from "./publishListingFormShared";
+import {
+  COLOR_PRESETS,
+  SIZE_STANDARDS,
+  type SizeStandardKey,
+} from "./publishListingPresets";
 
 const PublishListingStep1Screen: React.FC = () => {
   const { t } = useTranslation();
@@ -68,18 +77,25 @@ const PublishListingStep1Screen: React.FC = () => {
   const patch = usePublishListingStore((s) => s.patch);
 
   const [brandSheetVisible, setBrandSheetVisible] = useState(false);
+  const [sizeStandard, setSizeStandard] = useState<SizeStandardKey>("womensCn");
 
+  // 4 档成色: 描述用"动作 + 状态", 不再用主观的"几新"百分比.
+  // enum value 复用后端已有的 4 个值 (跳过 NEW_95), 后端 schema 不需要改。
   const conditionOptions = useMemo<
     Array<{ value: ProductCondition; labelKey: string; subKey: string }>
   >(
     () => [
-      { value: "BNWT",   labelKey: "conditionBnwt",   subKey: "conditionBnwtSub" },
-      { value: "NEW_99", labelKey: "conditionNew99",  subKey: "conditionNew99Sub" },
-      { value: "NEW_95", labelKey: "conditionNew95",  subKey: "conditionNew95Sub" },
-      { value: "USED_8", labelKey: "conditionUsed8",  subKey: "conditionUsed8Sub" },
-      { value: "FLAW",   labelKey: "conditionFlaw",   subKey: "conditionFlawSub" },
+      { value: "BNWT",   labelKey: "conditionBrandNew",  subKey: "conditionBrandNewSub" },
+      { value: "NEW_99", labelKey: "conditionGentlyUsed", subKey: "conditionGentlyUsedSub" },
+      { value: "USED_8", labelKey: "conditionUsed",       subKey: "conditionUsedSub" },
+      { value: "FLAW",   labelKey: "conditionWorn",       subKey: "conditionWornSub" },
     ],
     []
+  );
+
+  const activeStandard = useMemo(
+    () => SIZE_STANDARDS.find((s) => s.key === sizeStandard) ?? SIZE_STANDARDS[0],
+    [sizeStandard]
   );
 
   const canContinue = useMemo(() => validateStep1(form).length === 0, [form]);
@@ -121,23 +137,6 @@ const PublishListingStep1Screen: React.FC = () => {
           keyboardShouldPersistTaps="handled"
         >
           <VStack gap="$lg">
-            <PublishListingFieldRow label={t("trading.publishListing.fields.sellerKind")}>
-              <View style={chipRowStyle}>
-                {(["individual", "merchant"] as SellerKind[]).map((k) => (
-                  <AnimatedChip
-                    key={k}
-                    label={
-                      k === "individual"
-                        ? t("trading.publishListing.fields.sellerIndividual")
-                        : t("trading.publishListing.fields.sellerMerchant")
-                    }
-                    isActive={form.sellerKind === k}
-                    onPress={() => patch({ sellerKind: k })}
-                  />
-                ))}
-              </View>
-            </PublishListingFieldRow>
-
             <PublishListingFieldRow
               label={t("trading.publishListing.fields.brand")}
               required
@@ -176,33 +175,75 @@ const PublishListingStep1Screen: React.FC = () => {
               />
             </PublishListingFieldRow>
 
+            {/* 尺码: 先选体系 -> 选具体码 -> 仍可自定义输入. */}
             <PublishListingFieldRow
               label={t("trading.publishListing.fields.size")}
               required
+              hint={t("trading.publishListing.fields.sizeHint")}
             >
-              <Input
-                value={form.size}
-                onChangeText={(v) => patch({ size: v })}
-                placeholder={t("trading.publishListing.fields.sizePlaceholder")}
-                placeholderTextColor={theme.colors.gray400}
-                variant="underlined"
-                size="sm"
-              />
+              <VStack space="sm">
+                <Text style={styles.subLabel}>
+                  {t("trading.publishListing.fields.sizeStandard")}
+                </Text>
+                <View style={chipRowStyle}>
+                  {SIZE_STANDARDS.map((std) => (
+                    <AnimatedChip
+                      key={std.key}
+                      label={t(
+                        `trading.publishListing.sizeStandards.${std.labelKey}`
+                      )}
+                      isActive={sizeStandard === std.key}
+                      onPress={() => setSizeStandard(std.key)}
+                    />
+                  ))}
+                </View>
+                <View style={chipRowStyle}>
+                  {activeStandard.options.map((opt) => (
+                    <AnimatedChip
+                      key={`${activeStandard.key}-${opt.value}-${opt.label}`}
+                      label={opt.label}
+                      isActive={form.size === opt.value}
+                      onPress={() => patch({ size: opt.value })}
+                    />
+                  ))}
+                </View>
+                <Input
+                  value={form.size}
+                  onChangeText={(v) => patch({ size: v })}
+                  placeholder={t("trading.publishListing.fields.sizePlaceholder")}
+                  placeholderTextColor={theme.colors.gray400}
+                  variant="underlined"
+                  size="sm"
+                />
+              </VStack>
             </PublishListingFieldRow>
 
+            {/* 颜色: 预设色板 chip + 自定义输入兜底 */}
             <PublishListingFieldRow
               label={t("trading.publishListing.fields.color")}
               required
               hint={t("trading.publishListing.fields.colorHint")}
             >
-              <Input
-                value={form.color}
-                onChangeText={(v) => patch({ color: v })}
-                placeholder={t("trading.publishListing.fields.colorPlaceholder")}
-                placeholderTextColor={theme.colors.gray400}
-                variant="underlined"
-                size="sm"
-              />
+              <VStack space="sm">
+                <View style={chipRowStyle}>
+                  {COLOR_PRESETS.map((c) => (
+                    <AnimatedChip
+                      key={c.value}
+                      label={t(`trading.publishListing.colors.${c.labelKey}`)}
+                      isActive={form.color === c.value}
+                      onPress={() => patch({ color: c.value })}
+                    />
+                  ))}
+                </View>
+                <Input
+                  value={form.color}
+                  onChangeText={(v) => patch({ color: v })}
+                  placeholder={t("trading.publishListing.fields.colorPlaceholder")}
+                  placeholderTextColor={theme.colors.gray400}
+                  variant="underlined"
+                  size="sm"
+                />
+              </VStack>
             </PublishListingFieldRow>
 
             <PublishListingFieldRow
@@ -237,22 +278,6 @@ const PublishListingStep1Screen: React.FC = () => {
                   );
                 })}
               </VStack>
-            </PublishListingFieldRow>
-
-            <PublishListingFieldRow
-              label={t("trading.publishListing.fields.yearDecade")}
-              required
-            >
-              <View style={chipRowStyle}>
-                {YEAR_DECADE_OPTIONS.map((d) => (
-                  <AnimatedChip
-                    key={d}
-                    label={d}
-                    isActive={form.yearDecade === d}
-                    onPress={() => patch({ yearDecade: d as YearDecade })}
-                  />
-                ))}
-              </View>
             </PublishListingFieldRow>
 
             <PublishListingFieldRow
@@ -301,6 +326,11 @@ const makeStyles = (t: AppTheme) =>
   StyleSheet.create({
     container: { flex: 1, backgroundColor: t.colors.background },
     flex: { flex: 1 },
+    subLabel: {
+      fontSize: 12,
+      color: t.colors.gray500,
+      marginBottom: 2,
+    },
     ...makePublishListingFormStyles(t),
   });
 

@@ -123,6 +123,7 @@
     "following": "关注",
     "followers": "粉丝",
     "likesAndSaves": "获赞与收藏",
+    "myArchive": "我的档案",
     "tabNotes": "笔记",
     "tabBuying": "购买",
     "tabSelling": "在售",
@@ -161,7 +162,13 @@
     "invalidPostId": "无效的帖子 ID",
     "invalidUserId": "无效的用户 ID",
     "titles": "头衔",
-    "levelProgress": "等级进度"
+    "levelProgress": "等级进度",
+    "quickEntries": {
+      "orders": "我的订单",
+      "wallet": "我的钱包",
+      "selling": "我的在售",
+      "collections": "我的收藏"
+    }
   },
   "profileContrib": {
     "show": "秀场",
@@ -2896,21 +2903,20 @@
         "pending_payment": "待付款",
         "paid": "待发货",
         "shipped": "待收货",
-        "delivered": "待评价"
+        "completed": "已完成"
       },
       "sellChip": {
-        "in_progress": "进行中",
-        "pending_payment": "待支付",
         "paid": "待发货",
-        "delivered": "已收货",
+        "shipped": "待收货",
         "completed": "已完成",
-        "canceled": "已取消"
+        "after_sales": "售后中"
       },
       "empty": "暂无相关订单",
       "viewShipment": "查看物流",
       "confirmReceipt": "确认收货",
       "ship": "去发货",
-      "viewReview": "查看评价"
+      "viewReview": "查看评价",
+      "viewAfterSales": "查看售后"
     },
     "marketplace": {
       "chipAll": "全部",
@@ -3007,7 +3013,7 @@
     },
     "myListings": {
       "title": "我的在售",
-      "sectionTitle": "我的出售",
+      "sectionTitle": "我的在售",
       "tabAll": "全部",
       "tabActive": "在售",
       "tabDraft": "草稿",
@@ -3072,12 +3078,13 @@
         "styleNamePlaceholder": "如：羽绒外套 / Runway FW07",
         "styleNameHint": "可选。帮助买家搜索，避免重复上架。",
         "size": "尺码",
-        "sizePlaceholder": "M / 42 / S–XL",
+        "sizeStandard": "尺码体系",
+        "sizePlaceholder": "选择上方预设，或直接输入",
+        "sizeHint": "先选体系，再点对应尺码；不在选项内可手动输入。",
         "color": "颜色",
-        "colorPlaceholder": "黑色 / 米白 / 自定义",
-        "colorHint": "写清楚是什么颜色即可，比如雾霾蓝、做旧靛蓝。",
+        "colorPlaceholder": "选择上方颜色，或自定义输入",
+        "colorHint": "优先选预设；自定义颜色请用通用色名，避免使用过于主观的描述。",
         "condition": "成色",
-        "yearDecade": "年代",
         "accessoriesNote": "配件说明",
         "accessoriesNotePlaceholder": "防尘袋 · 原盒 · 购买票据 · 备用扣子等",
         "price": "售价（元）",
@@ -3114,6 +3121,39 @@
       "conditionUsed8Sub": "明显使用痕迹，功能完好",
       "conditionFlaw": "有瑕疵",
       "conditionFlawSub": "请在说明中详细描述瑕疵情况",
+      "conditionBrandNew": "全新",
+      "conditionBrandNewSub": "未使用",
+      "conditionGentlyUsed": "轻微使用",
+      "conditionGentlyUsedSub": "仅试穿，几乎看不出痕迹",
+      "conditionUsed": "正常使用",
+      "conditionUsedSub": "日常穿着，整体状态完好",
+      "conditionWorn": "明显穿着痕迹",
+      "conditionWornSub": "有磨损，痕迹明显，请在描述中说明",
+      "colors": {
+        "black": "黑色",
+        "white": "白色",
+        "gray": "灰色",
+        "beige": "米色",
+        "brown": "棕色",
+        "red": "红色",
+        "pink": "粉色",
+        "orange": "橙色",
+        "yellow": "黄色",
+        "green": "绿色",
+        "blue": "蓝色",
+        "purple": "紫色",
+        "gold": "金色",
+        "silver": "银色",
+        "multi": "彩色"
+      },
+      "sizeStandards": {
+        "shoeEur": "鞋码 EUR",
+        "shoeUs": "鞋码 US",
+        "womensCn": "女装 (身高/胸围)",
+        "mensCn": "男装 (身高/胸围)",
+        "numeric": "数字尺码",
+        "compact": "简码 0–4"
+      },
       "photoGuide": {
         "front": "正面",
         "frontTip": "整件铺平或上身，光线均匀，背景干净，能看到正面全貌。",
@@ -3121,20 +3161,28 @@
         "backTip": "同正面构图，需要展示背面全貌。",
         "detail": "细节",
         "detailTip": "突出单品的特色——面料纹理、五金、刺绣或 logo 等。",
-        "brandLabel": "领标",
-        "brandLabelTip": "清晰拍摄品牌吊牌或缝合标，文字必须可读，最好能看到标签的光泽。",
-        "washLabel": "洗标",
-        "washLabelTip": "完整展示洗涤标签，成分、尺码、产地信息清晰可见。",
+        "brandLabel": "领标 · 正面",
+        "brandLabelTip": "清晰拍摄品牌吊牌或缝合标的正面，文字必须可读，最好能看到标签的光泽。",
+        "brandLabelBack": "领标 · 背面",
+        "brandLabelBackTip": "翻到背面再拍一张，确保产地 / 批次号 / 备用文字都清晰可读。",
+        "washLabel": "洗标 · 正面",
+        "washLabelTip": "完整展示洗涤标签正面，成分、尺码、产地信息清晰可见。",
+        "washLabelBack": "洗标 · 背面",
+        "washLabelBackTip": "翻到背面再拍一张，露出洗涤说明 / 安全警示文字。",
         "go": "明白了，去拍"
       },
       "photos": {
-        "requiredHeader": "5 张必拍图",
-        "requiredHint": "正面 · 背面 · 细节 · 领标 · 洗标",
+        "requiredHeader": "{{count}} 张必拍图",
+        "requiredHint": "正面 · 背面 · 细节 · 领标正反 · 洗标正反",
         "extraHeader": "追加图片（选填，最多 {{max}} 张）",
         "extraHint": "可用于展示瑕疵、配件、原盒、购买凭证等。",
         "extraLimit": "最多再加 {{max}} 张",
         "longPressRemove": "长按可删除",
-        "allRequired": "5 张必拍图全部完成后才能进入下一步"
+        "allRequired": "{{count}} 张必拍图全部完成后才能进入下一步",
+        "batchUpload": "批量上传 · 一次选多张",
+        "batchUploading": "正在批量上传…",
+        "batchAllFilled": "所有槽位已填满，无需再选",
+        "tapToCancel": "点击取消"
       },
       "pricing": {
         "referenceHistory": "平台参考区间 {{low}} ~ {{high}}（基于 {{sample}} 单成交价）",

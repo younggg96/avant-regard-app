@@ -145,6 +145,24 @@ const makeProfileStyles = (t: AppTheme) =>
       marginTop: -(AVATAR_SIZE / 2),
       paddingHorizontal: 16,
     },
+    headerRow: {
+      flexDirection: "row",
+      alignItems: "flex-end",
+      marginTop: -(AVATAR_SIZE / 2),
+      paddingHorizontal: 16,
+      gap: 16,
+    },
+    headerTextCol: {
+      flex: 1,
+      paddingBottom: t.spacing.xs,
+      minWidth: 0,
+    },
+    userNameLine: {
+      flexDirection: "row",
+      alignItems: "center",
+      flexWrap: "wrap",
+      gap: 8,
+    },
     avatarWrapper: {
       borderRadius: (AVATAR_SIZE + AVATAR_BORDER * 2) / 2,
       borderWidth: AVATAR_BORDER,
@@ -164,7 +182,7 @@ const makeProfileStyles = (t: AppTheme) =>
     },
     avatarText: {
       color: t.colors.textInverted,
-      fontSize: 22,
+      fontSize: 26,
       fontWeight: "bold",
       fontFamily: PF.bold,
     },
@@ -186,10 +204,11 @@ const makeProfileStyles = (t: AppTheme) =>
       marginTop: 8,
     },
     userName: {
-      fontSize: 20,
+      fontSize: 22,
       fontWeight: "bold",
       color: t.colors.text,
       fontFamily: PF.bold,
+      flexShrink: 1,
     },
     userIdText: {
       fontSize: 12,
@@ -211,6 +230,14 @@ const makeProfileStyles = (t: AppTheme) =>
       paddingHorizontal: 16,
       marginTop: 8,
     },
+    tagsHalf: {
+      flex: 1,
+      flexDirection: "row",
+      flexWrap: "wrap",
+      alignItems: "center",
+      justifyContent: "flex-end",
+      gap: 6,
+    },
     tag: {
       paddingHorizontal: 10,
       paddingVertical: 4,
@@ -224,25 +251,34 @@ const makeProfileStyles = (t: AppTheme) =>
     },
     statsContainer: {
       flexDirection: "row",
-      paddingHorizontal: 16,
-      marginTop: 10,
-      gap: 18,
+      alignItems: "center",
+      paddingHorizontal: t.spacing.md,
+      marginTop: t.spacing.md,
+      paddingBottom: t.spacing.xs,
+      gap: t.spacing.md,
+    },
+    statsHalf: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: t.spacing.lg,
     },
     statItem: {
-      flexDirection: "row",
-      alignItems: "baseline",
-      gap: 4,
+      alignItems: "center",
     },
     statNumber: {
       fontSize: 16,
       fontWeight: "bold",
       color: t.colors.text,
       fontFamily: PF.bold,
+      lineHeight: 20,
     },
     statLabel: {
       fontSize: 12,
       color: t.colors.gray600,
       fontFamily: PF.regular,
+      marginTop: t.spacing.xs,
+      lineHeight: 16,
     },
     followedBrandsSection: {
       paddingTop: 4,
@@ -268,15 +304,15 @@ const makeProfileStyles = (t: AppTheme) =>
       color: t.colors.gray300,
       fontFamily: PF.medium,
     },
-    /** ArchiveEntryCard / LevelProgressCard 等 profile 内嵌卡片共用 */
+    /** QuickEntriesGrid 等 profile 内嵌卡片共用 —— 扁平 surface 底，无阴影 */
     profileInsetCard: {
       marginHorizontal: t.spacing.md,
-      paddingHorizontal: 12,
-      paddingVertical: 10,
-      borderRadius: 10,
+      paddingHorizontal: t.spacing.md,
+      paddingVertical: t.spacing.sm,
+      borderRadius: t.borderRadius.md,
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: t.colors.border,
-      backgroundColor: t.colors.cardElevated,
+      backgroundColor: t.colors.surface,
     },
     brandChip: {
       flexDirection: "row",

@@ -7,10 +7,9 @@
  * 视角, 内部按需懒加载对应订单列表。
  *
  * 结构:
- *   - 状态 chip: 购买视角 = 全部 / 待付款 / 待发货 / 待收货 / 待评价
- *               在售视角 = 全部 / 进行中 / 待支付 / 待发货 / 已收货 /
- *                           已完成 / 已取消
- *   - 列表: OrderCard
+ *   - 状态 chip: 购买视角 = 全部 / 待付款 / 待发货 / 待收货 / 已完成
+ *               在售视角 = 全部 / 待发货 / 待收货 / 已完成 / 售后中
+ *   - 列表: OrderCard (与购买侧共用同一套卡片组件)
  *
  * 数据策略:
  *   - 进入 tab 时一次性拉「全部」的 buying / selling 订单 (pageSize=50),
@@ -23,7 +22,6 @@
  */
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
   StyleSheet,
   View,
 } from "react-native";
@@ -57,6 +55,7 @@ import {
   SELLING_FILTER_TO_STATUSES,
 } from "../types";
 import { OrderCard } from "./OrderCard";
+import { TradingContentSkeleton } from "./TradingContentSkeleton";
 import { AnimatedChip, chipRowStyle } from "../../../components/ui";
 
 type Mode = "buying" | "selling";
@@ -66,17 +65,15 @@ const buyingFilters: BuyingFilterType[] = [
   "pending_payment",
   "paid",
   "shipped",
-  "delivered",
+  "completed",
 ];
 
 const sellingFilters: SellingFilterType[] = [
   "all",
-  "in_progress",
-  "pending_payment",
   "paid",
-  "delivered",
+  "shipped",
   "completed",
-  "canceled",
+  "after_sales",
 ];
 
 const useFilterCounts = (
@@ -214,11 +211,14 @@ export const TradingContent: React.FC<Props> = ({
     </View>
   );
 
-  const renderLoading = () => (
-    <View style={styles.empty}>
-      <ActivityIndicator color={theme.colors.gray400} />
-    </View>
-  );
+  const isInitialLoading =
+    mode === "buying"
+      ? loadingBuy && buyOrders.length === 0
+      : loadingSell && sellOrders.length === 0;
+
+  if (isInitialLoading) {
+    return <TradingContentSkeleton />;
+  }
 
   return (
     <VStack>
@@ -262,10 +262,7 @@ export const TradingContent: React.FC<Props> = ({
       <Animated.View style={[styles.listWrap, listAnimStyle]}>
         <Box>
         {mode === "buying" ? (
-          loadingBuy && buyOrders.length === 0 ? (
-            renderLoading()
-          ) : (
-            (() => {
+          (() => {
               const list = filterOrdersByChip(buyOrders, buyingFilter, "buying");
               if (list.length === 0) return renderEmpty();
               return list.map((order) => (
@@ -301,9 +298,6 @@ export const TradingContent: React.FC<Props> = ({
                 />
               ));
             })()
-          )
-        ) : loadingSell && sellOrders.length === 0 ? (
-          renderLoading()
         ) : (
           (() => {
             const list = filterOrdersByChip(sellOrders, sellingFilter, "selling");
@@ -320,7 +314,22 @@ export const TradingContent: React.FC<Props> = ({
                     : undefined
                 }
                 onViewShipment={
-                  order.status === "shipped" || order.status === "delivered"
+                  order.status === "shipped"
+                    ? () => goOrderDetail(order.id)
+                    : undefined
+                }
+                onReview={
+                  order.status === "completed" ||
+                  order.status === "settled" ||
+                  order.status === "delivered"
+                    ? () => goOrderReviews(order.id)
+                    : undefined
+                }
+                onViewAfterSales={
+                  order.status === "disputed" ||
+                  order.status === "refunded" ||
+                  order.status === "refunded_auto" ||
+                  order.status === "resolved"
                     ? () => goOrderDetail(order.id)
                     : undefined
                 }
@@ -338,24 +347,24 @@ TradingContent.displayName = "TradingContent";
 const makeStyles = (t: AppTheme) =>
   StyleSheet.create({
     chipScrollRow: {
-      paddingVertical: 10,
+      paddingVertical: t.spacing.sm,
       paddingHorizontal: t.spacing.md,
     },
     chipItem: {
-      marginBottom: 6,
+      marginBottom: t.spacing.xs,
     },
     listWrap: {
       paddingHorizontal: t.spacing.md,
-      paddingTop: 4,
+      paddingTop: t.spacing.xs,
     },
     empty: {
       alignItems: "center",
       justifyContent: "center",
-      paddingVertical: 48,
+      paddingVertical: t.spacing.xxl,
     },
     emptyText: {
-      marginTop: 12,
-      fontSize: 13,
+      marginTop: t.spacing.sm,
+      ...t.typography.bodySmall,
       color: t.colors.gray400,
     },
   });

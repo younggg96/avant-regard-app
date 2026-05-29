@@ -1,15 +1,21 @@
 /**
- * PRD 单品发布 · Step 2 / 4：规范化 5 视角图 + 最多 7 张额外图。
+ * PRD 单品发布 · Step 2 / 4：规范化 7 视角图 + 最多 7 张额外图。
  *
- * 5 个必填卡槽：正面 / 背面 / 细节 / 领标 / 洗标
- * - 点击空槽时弹 PhotoSlotGuide，先讲清楚构图要求再让卖家拍。
- * - 已上传的图可重新点击替换；长按移除。
- * - extras 上限 7 张，让总数最多 12 张（PRD 建议）。
+ * 7 个必填卡槽 (与后端 `PhotoAngles.REQUIRED_SLOTS` 对齐)：
+ *   - 正面 / 背面 (front / back)
+ *   - 细节 (flaw —— 旧 schema 字段名, UI 已改成"细节")
+ *   - 领标正面 / 背面 (brand_label / brand_label_back)
+ *   - 洗标正面 / 背面 (wash_label / wash_label_back)
  *
- * 注意：旧 schema 把"瑕疵细节"作为第 5 个槽 (flaw)，本版本改为更通用的
- * "细节" (detail)；为了向后兼容，仍把图 URL 存在 photoAngles.flaw 字段。
+ * 设计要点:
+ *   1. 多选上传: 顶部 "批量上传" 按钮使用 `allowsMultipleSelection`, 一次最多
+ *      `remaining` 张, 自动按顺序填到空槽 (前→后→细节→领标×2→洗标×2). 单击
+ *      具体卡槽仍走 PhotoSlotGuide → 单选拍照, 保证每张都对应明确说明.
+ *   2. 上传稳定性: 调用 `uploadImageFromUri` 时传入 AbortSignal, 用户点 spinner
+ *      可以取消; 单文件超时 90s + 1 次自动重试; 即使卡死也能恢复无需杀进程。
+ *   3. 已上传的图可重新点击替换; 长按移除. extras 上限 7 张 (总数最多 14).
  */
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Dimensions,
@@ -33,7 +39,10 @@ import PhotoSlotGuide, {
 } from "../../components/PhotoSlotGuide";
 import { useAppTheme, useThemedStyles, type AppTheme } from "../../theme";
 import { Alert } from "../../utils/Alert";
-import { uploadImageFromUri } from "../admin/adminUtils";
+import {
+  uploadImageFromUri,
+  UploadCancelledError,
+} from "../admin/adminUtils";
 import {
   usePublishListingStore,
   TOTAL_PUBLISH_STEPS,
@@ -45,30 +54,43 @@ import {
   PUBLISH_LISTING_FORM_PADDING,
 } from "./publishListingFormShared";
 
-// 数据层 key 与 UI 层 key 的桥接：UI 里"细节"对应 DB 里的 flaw 字段（兼容旧数据）。
+// 数据层 key 与 UI 层 key 的桥接:
+//   - UI 里"细节"对应 DB 里的 `flaw` 字段 (兼容老数据, 不动 schema 名).
+//   - 领标 / 洗标 正反面各占一个 store key, 共 7 个强制槽.
 type StoreAngleKey = keyof Pick<
   PhotoAngles,
-  "front" | "back" | "wash_label" | "brand_label" | "flaw"
+  | "front"
+  | "back"
+  | "wash_label"
+  | "wash_label_back"
+  | "brand_label"
+  | "brand_label_back"
+  | "flaw"
 >;
 
 const SLOT_ORDER: Array<{
   storeKey: StoreAngleKey;
   guideKey: GuideAngle;
   titleKey: string;
-  tipKey: string;
 }> = [
-  { storeKey: "front",        guideKey: "front",        titleKey: "front",       tipKey: "frontTip" },
-  { storeKey: "back",         guideKey: "back",         titleKey: "back",        tipKey: "backTip" },
-  { storeKey: "flaw",         guideKey: "detail",       titleKey: "detail",      tipKey: "detailTip" },
-  { storeKey: "brand_label",  guideKey: "brand_label",  titleKey: "brandLabel",  tipKey: "brandLabelTip" },
-  { storeKey: "wash_label",   guideKey: "wash_label",   titleKey: "washLabel",   tipKey: "washLabelTip" },
+  { storeKey: "front",             guideKey: "front",             titleKey: "front" },
+  { storeKey: "back",              guideKey: "back",              titleKey: "back" },
+  { storeKey: "flaw",              guideKey: "detail",            titleKey: "detail" },
+  { storeKey: "brand_label",       guideKey: "brand_label",       titleKey: "brandLabel" },
+  { storeKey: "brand_label_back",  guideKey: "brand_label_back",  titleKey: "brandLabelBack" },
+  { storeKey: "wash_label",        guideKey: "wash_label",        titleKey: "washLabel" },
+  { storeKey: "wash_label_back",   guideKey: "wash_label_back",   titleKey: "washLabelBack" },
 ];
 
+const REQUIRED_COUNT = SLOT_ORDER.length; // 7
 const MAX_EXTRAS = 7;
 
 const { width: SCREEN_W } = Dimensions.get("window");
 const GAP = 12;
-const TILE_W = (SCREEN_W - PUBLISH_LISTING_FORM_PADDING * 2 - GAP * 2) / 3;
+// 4 列网格 (7 张分两行: 4+3) —— 比原来的 3 列更紧凑, 不至于因 7 张图把页面撑得太长.
+const COLS = 4;
+const TILE_W =
+  (SCREEN_W - PUBLISH_LISTING_FORM_PADDING * 2 - GAP * (COLS - 1)) / COLS;
 
 const PublishListingStep2Screen: React.FC = () => {
   const { t } = useTranslation();
@@ -79,11 +101,19 @@ const PublishListingStep2Screen: React.FC = () => {
   const photoAngles = usePublishListingStore((s) => s.photoAngles);
   const patch = usePublishListingStore((s) => s.patch);
 
+  // uploadingKey 是粗粒度的"哪一个槽 / extras 正在上传"标识, 同时也用来禁用
+  // 重复点击. batchUploading 用来给"批量上传"按钮独立显示 spinner。
   const [uploadingKey, setUploadingKey] = useState<string | null>(null);
+  const [batchUploading, setBatchUploading] = useState(false);
   const [guideKey, setGuideKey] = useState<GuideAngle | null>(null);
   const [pendingStoreKey, setPendingStoreKey] = useState<StoreAngleKey | null>(
-    null
+    null,
   );
+
+  // AbortController 池: key (槽名 / "extras" / "batch") → controller.
+  // 用 ref 是因为我们需要在 setState 之外通过 controller.abort() 触发取消,
+  // 不需要把它放进 React state 重渲染。
+  const uploadControllersRef = useRef<Map<string, AbortController>>(new Map());
 
   const stepLabels = useMemo(
     () => [
@@ -92,15 +122,87 @@ const PublishListingStep2Screen: React.FC = () => {
       t("trading.publishListing.steps.pricing"),
       t("trading.publishListing.steps.logistics"),
     ],
-    [t]
+    [t],
   );
 
   const allComplete = useMemo(
     () => SLOT_ORDER.every(({ storeKey }) => !!photoAngles[storeKey]),
-    [photoAngles]
+    [photoAngles],
   );
 
-  const launchPicker = async (storeKey: StoreAngleKey) => {
+  // 已使用某个 key 时不重复发起请求, 取消旧的再发新的。
+  const startUpload = (key: string): AbortController => {
+    const prev = uploadControllersRef.current.get(key);
+    if (prev) prev.abort();
+    const ctl = new AbortController();
+    uploadControllersRef.current.set(key, ctl);
+    return ctl;
+  };
+
+  const finishUpload = (key: string) => {
+    uploadControllersRef.current.delete(key);
+  };
+
+  const cancelUpload = (key: string) => {
+    const ctl = uploadControllersRef.current.get(key);
+    if (ctl) ctl.abort();
+  };
+
+  /**
+   * 单个槽位的上传 (从相册选一张). 失败 / 取消都会重置 uploadingKey.
+   */
+  const launchPicker = useCallback(
+    async (storeKey: StoreAngleKey) => {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") {
+        Alert.show(t("common.photoPermissionRequired"));
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 5],
+        quality: 0.85,
+      });
+      if (result.canceled || !result.assets[0]) return;
+
+      const ctl = startUpload(storeKey);
+      setUploadingKey(storeKey);
+      try {
+        const url = await uploadImageFromUri(result.assets[0].uri, {
+          signal: ctl.signal,
+        });
+        // 注意: 这里读 store 的最新值, 避免上传期间用户改了别的槽导致覆盖.
+        const latest = usePublishListingStore.getState().photoAngles;
+        patch({ photoAngles: { ...latest, [storeKey]: url } });
+      } catch (e) {
+        if (e instanceof UploadCancelledError) return;
+        Alert.show(e instanceof Error ? e.message : t("common.uploadFailed"));
+      } finally {
+        finishUpload(storeKey);
+        setUploadingKey((cur) => (cur === storeKey ? null : cur));
+      }
+    },
+    [patch, t],
+  );
+
+  /**
+   * 多选批量上传 —— 一次性把剩余空槽全填满, 不在意构图引导.
+   *
+   * 用户先点这里时, 我们按 SLOT_ORDER 顺序把每张图分配到下一个空槽; 全填完
+   * 后剩余的图自动塞到 extras (不超 MAX_EXTRAS). 上传是串行的, 避免同时几个
+   * fetch 撞到带宽瓶颈反而都超时。
+   */
+  const handleBatchUpload = useCallback(async () => {
+    if (batchUploading) return;
+    const latest = usePublishListingStore.getState().photoAngles;
+    const emptySlots = SLOT_ORDER.filter(({ storeKey }) => !latest[storeKey]);
+    const remainingExtras = MAX_EXTRAS - (latest.extras?.length ?? 0);
+    const limit = emptySlots.length + Math.max(0, remainingExtras);
+    if (limit <= 0) {
+      Alert.show(t("trading.publishListing.photos.batchAllFilled"));
+      return;
+    }
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
       Alert.show(t("common.photoPermissionRequired"));
@@ -108,24 +210,51 @@ const PublishListingStep2Screen: React.FC = () => {
     }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [4, 5],
+      allowsMultipleSelection: true,
+      selectionLimit: limit,
       quality: 0.85,
     });
-    if (result.canceled || !result.assets[0]) return;
-    setUploadingKey(storeKey);
+    if (result.canceled || !result.assets?.length) return;
+
+    setBatchUploading(true);
+    const ctl = startUpload("batch");
+
     try {
-      const url = await uploadImageFromUri(result.assets[0].uri);
-      patch({ photoAngles: { ...photoAngles, [storeKey]: url } });
-    } catch (e) {
-      Alert.show(e instanceof Error ? e.message : t("common.uploadFailed"));
+      let slotPtr = 0;
+      for (const asset of result.assets) {
+        if (ctl.signal.aborted) break;
+        try {
+          const url = await uploadImageFromUri(asset.uri, { signal: ctl.signal });
+          const cur = usePublishListingStore.getState().photoAngles;
+          if (slotPtr < emptySlots.length) {
+            const slot = emptySlots[slotPtr].storeKey;
+            patch({ photoAngles: { ...cur, [slot]: url } });
+            slotPtr += 1;
+          } else {
+            const extras = cur.extras ?? [];
+            if (extras.length >= MAX_EXTRAS) break;
+            patch({
+              photoAngles: { ...cur, extras: [...extras, url] },
+            });
+          }
+        } catch (e) {
+          if (e instanceof UploadCancelledError) break;
+          // 单张失败不阻断整个批次, 显示一次提示就继续下一张.
+          Alert.show(e instanceof Error ? e.message : t("common.uploadFailed"));
+        }
+      }
     } finally {
-      setUploadingKey(null);
+      finishUpload("batch");
+      setBatchUploading(false);
     }
-  };
+  }, [batchUploading, patch, t]);
 
   const handleSlotPress = (storeKey: StoreAngleKey, guideAngle: GuideAngle) => {
-    // 首次点开（槽是空的）→ 先讲构图要求；已有图 → 直接换图
+    if (uploadingKey === storeKey) {
+      // 正在上传 → 第二次点击视为取消请求
+      cancelUpload(storeKey);
+      return;
+    }
     if (!photoAngles[storeKey]) {
       setPendingStoreKey(storeKey);
       setGuideKey(guideAngle);
@@ -135,31 +264,54 @@ const PublishListingStep2Screen: React.FC = () => {
   };
 
   const handleRemoveSlot = (storeKey: StoreAngleKey) => {
+    if (uploadingKey === storeKey) cancelUpload(storeKey);
     patch({ photoAngles: { ...photoAngles, [storeKey]: null } });
   };
 
+  /**
+   * 追加图 (extras) 多选上传 —— 与批量上传不同, 这里完全不动必填槽, 只补 extras.
+   */
   const handlePickExtra = async () => {
     const extras = photoAngles.extras ?? [];
-    if (extras.length >= MAX_EXTRAS) {
+    const remaining = MAX_EXTRAS - extras.length;
+    if (remaining <= 0) {
       Alert.show(t("trading.publishListing.photos.extraLimit", { max: MAX_EXTRAS }));
+      return;
+    }
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      Alert.show(t("common.photoPermissionRequired"));
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: false,
+      allowsMultipleSelection: true,
+      selectionLimit: remaining,
       quality: 0.85,
     });
-    if (result.canceled || !result.assets[0]) return;
+    if (result.canceled || !result.assets?.length) return;
+
+    const ctl = startUpload("extras");
     setUploadingKey("extras");
     try {
-      const url = await uploadImageFromUri(result.assets[0].uri);
-      patch({
-        photoAngles: { ...photoAngles, extras: [...extras, url] },
-      });
-    } catch (e) {
-      Alert.show(e instanceof Error ? e.message : t("common.uploadFailed"));
+      for (const asset of result.assets) {
+        if (ctl.signal.aborted) break;
+        try {
+          const url = await uploadImageFromUri(asset.uri, { signal: ctl.signal });
+          const cur = usePublishListingStore.getState().photoAngles;
+          const curExtras = cur.extras ?? [];
+          if (curExtras.length >= MAX_EXTRAS) break;
+          patch({
+            photoAngles: { ...cur, extras: [...curExtras, url] },
+          });
+        } catch (e) {
+          if (e instanceof UploadCancelledError) break;
+          Alert.show(e instanceof Error ? e.message : t("common.uploadFailed"));
+        }
+      }
     } finally {
-      setUploadingKey(null);
+      finishUpload("extras");
+      setUploadingKey((cur) => (cur === "extras" ? null : cur));
     }
   };
 
@@ -175,11 +327,17 @@ const PublishListingStep2Screen: React.FC = () => {
 
   const handleNext = () => {
     if (!allComplete) {
-      Alert.show(t("trading.publishListing.photos.allRequired"));
+      Alert.show(
+        t("trading.publishListing.photos.allRequired", { count: REQUIRED_COUNT }),
+      );
       return;
     }
     navigation.navigate("PublishListingStep3");
   };
+
+  const filledCount = SLOT_ORDER.filter(
+    ({ storeKey }) => !!photoAngles[storeKey],
+  ).length;
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
@@ -194,12 +352,54 @@ const PublishListingStep2Screen: React.FC = () => {
       />
       <PublishListingFeeNotice />
       <ScrollView contentContainerStyle={styles.scroll}>
-        <Text style={styles.sectionTitle}>
-          {t("trading.publishListing.photos.requiredHeader")}
-        </Text>
-        <Text style={styles.sectionHint}>
-          {t("trading.publishListing.photos.requiredHint")}
-        </Text>
+        <HStack alignItems="center" justifyContent="space-between" style={styles.headerRow}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.sectionTitle}>
+              {t("trading.publishListing.photos.requiredHeader", {
+                count: REQUIRED_COUNT,
+              })}
+            </Text>
+            <Text style={styles.sectionHint}>
+              {t("trading.publishListing.photos.requiredHint")}
+            </Text>
+          </View>
+          <Text style={styles.progressBadge}>
+            {filledCount}/{REQUIRED_COUNT}
+          </Text>
+        </HStack>
+
+        {/* 批量上传按钮: 一次选多张图按顺序填空槽 → extras */}
+        <Pressable
+          style={styles.batchButton}
+          onPress={handleBatchUpload}
+          disabled={batchUploading}
+        >
+          {batchUploading ? (
+            <HStack alignItems="center" space="sm">
+              <ActivityIndicator size="small" color={theme.colors.accent} />
+              <Text style={styles.batchButtonText}>
+                {t("trading.publishListing.photos.batchUploading")}
+              </Text>
+              <Text
+                style={styles.batchCancelText}
+                onPress={() => cancelUpload("batch")}
+              >
+                {t("common.cancel")}
+              </Text>
+            </HStack>
+          ) : (
+            <HStack alignItems="center" space="sm">
+              <Ionicons
+                name="cloud-upload-outline"
+                size={18}
+                color={theme.colors.accent}
+              />
+              <Text style={styles.batchButtonText}>
+                {t("trading.publishListing.photos.batchUpload")}
+              </Text>
+            </HStack>
+          )}
+        </Pressable>
 
         <View style={styles.angleGrid}>
           {SLOT_ORDER.map(({ storeKey, guideKey: gk, titleKey }) => {
@@ -211,28 +411,32 @@ const PublishListingStep2Screen: React.FC = () => {
                 style={styles.angleTile}
                 onPress={() => handleSlotPress(storeKey, gk)}
                 onLongPress={() => url && handleRemoveSlot(storeKey)}
-                disabled={isUploading}
               >
                 <Box style={styles.angleThumb}>
                   {url ? (
                     <>
                       <OptimizedImage uri={url} style={styles.angleImage} />
                       <View style={styles.angleEditOverlay}>
-                        <Ionicons name="camera-outline" size={14} color="#fff" />
+                        <Ionicons name="camera-outline" size={12} color="#fff" />
                       </View>
                     </>
                   ) : (
                     <Box style={styles.angleEmpty}>
                       {isUploading ? (
-                        <ActivityIndicator />
+                        <>
+                          <ActivityIndicator />
+                          <Text style={styles.angleCancelHint}>
+                            {t("trading.publishListing.photos.tapToCancel")}
+                          </Text>
+                        </>
                       ) : (
                         <>
                           <Ionicons
                             name="add"
-                            size={26}
+                            size={22}
                             color={theme.colors.textSecondary}
                           />
-                          <Text style={styles.angleEmptyHint}>
+                          <Text style={styles.angleEmptyHint} numberOfLines={2}>
                             {t(`trading.publishListing.photoGuide.${titleKey}`)}
                           </Text>
                         </>
@@ -240,7 +444,7 @@ const PublishListingStep2Screen: React.FC = () => {
                     </Box>
                   )}
                 </Box>
-                <Text style={styles.angleTitle} numberOfLines={1}>
+                <Text style={styles.angleTitle} numberOfLines={2}>
                   {t(`trading.publishListing.photoGuide.${titleKey}`)}
                 </Text>
               </Pressable>
@@ -268,7 +472,14 @@ const PublishListingStep2Screen: React.FC = () => {
             </Pressable>
           ))}
           {(photoAngles.extras ?? []).length < MAX_EXTRAS && (
-            <Pressable style={styles.extraAdd} onPress={handlePickExtra}>
+            <Pressable
+              style={styles.extraAdd}
+              onPress={() =>
+                uploadingKey === "extras"
+                  ? cancelUpload("extras")
+                  : handlePickExtra()
+              }
+            >
               {uploadingKey === "extras" ? (
                 <ActivityIndicator />
               ) : (
@@ -325,15 +536,44 @@ const makeStyles = (t: AppTheme) => {
     nextButton: shared.nextButton,
     nextButtonDisabled: shared.nextButtonDisabled,
     nextButtonText: shared.nextButtonText,
+    headerRow: {
+      marginBottom: 8,
+    },
+    progressBadge: {
+      fontSize: 13,
+      fontWeight: "600",
+      color: t.colors.gray500,
+    },
+    batchButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      paddingVertical: 10,
+      borderRadius: t.borderRadius.sm,
+      borderWidth: 1,
+      borderColor: t.colors.gray200,
+      backgroundColor: t.colors.card,
+      marginBottom: 16,
+    },
+    batchButtonText: {
+      fontSize: 13,
+      fontWeight: "500",
+      color: t.colors.text,
+    },
+    batchCancelText: {
+      fontSize: 12,
+      color: t.colors.error,
+      marginLeft: 6,
+      paddingHorizontal: 6,
+    },
     angleGrid: {
       flexDirection: "row",
       flexWrap: "wrap",
-      marginHorizontal: -GAP / 2,
+      gap: GAP,
     },
     angleTile: {
       width: TILE_W,
-      marginHorizontal: GAP / 2,
-      marginBottom: GAP + 4,
+      marginBottom: 4,
     },
     angleThumb: {
       width: "100%",
@@ -350,9 +590,9 @@ const makeStyles = (t: AppTheme) => {
       position: "absolute",
       right: 6,
       bottom: 6,
-      width: 20,
-      height: 20,
-      borderRadius: 10,
+      width: 18,
+      height: 18,
+      borderRadius: 9,
       backgroundColor: "rgba(0,0,0,0.55)",
       alignItems: "center",
       justifyContent: "center",
@@ -362,20 +602,28 @@ const makeStyles = (t: AppTheme) => {
       height: "100%",
       justifyContent: "center",
       alignItems: "center",
-      paddingHorizontal: 6,
+      paddingHorizontal: 4,
       gap: 4,
     },
     angleEmptyHint: {
-      fontSize: 12,
+      fontSize: 10,
       color: t.colors.gray400,
       textAlign: "center",
+      lineHeight: 13,
+    },
+    angleCancelHint: {
+      fontSize: 9,
+      color: t.colors.gray400,
+      textAlign: "center",
+      marginTop: 4,
     },
     angleTitle: {
-      fontSize: 12,
+      fontSize: 11,
       fontWeight: "500",
       color: t.colors.gray600,
       marginTop: 6,
       textAlign: "center",
+      lineHeight: 14,
     },
     extraTile: {
       width: 80,

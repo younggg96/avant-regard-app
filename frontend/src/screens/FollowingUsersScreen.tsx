@@ -40,6 +40,7 @@ import { userInfoService } from "../services/userInfoService";
 type RouteParams = {
   FollowingUsers: {
     userId: number;
+    initialTab?: SubTab;
   };
 };
 
@@ -59,7 +60,9 @@ const FollowingUsersScreen = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isPrivate, setIsPrivate] = useState(false);
-  const [activeTab, setActiveTab] = useState<SubTab>("users");
+  const [activeTab, setActiveTab] = useState<SubTab>(
+    route.params?.initialTab ?? "users",
+  );
   const [searchQuery, setSearchQuery] = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
 

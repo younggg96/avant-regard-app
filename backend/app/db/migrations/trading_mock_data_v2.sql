@@ -220,7 +220,7 @@ INSERT INTO orders (
 )
 SELECT 'MOCKV2-COMP-' || p.pid, p.pid, b.bid, p.seller_user_id,
        p.price_cents, p.price_cents,
-       800, (p.price_cents * 0.08)::bigint, (p.price_cents * 0.92)::bigint,
+       100, (p.price_cents * 0.01)::bigint, (p.price_cents * 0.99)::bigint,
        'CNY', 'completed',
        NOW() - INTERVAL '14 days', NOW() - INTERVAL '12 days',
        NOW() - INTERVAL '8 days', NOW() - INTERVAL '5 days',
@@ -248,7 +248,7 @@ INSERT INTO orders (
 )
 SELECT 'MOCKV2-SHIP-' || p.pid, p.pid, b.bid, p.seller_user_id,
        p.price_cents, p.price_cents,
-       800, (p.price_cents * 0.08)::bigint, (p.price_cents * 0.92)::bigint,
+       100, (p.price_cents * 0.01)::bigint, (p.price_cents * 0.99)::bigint,
        'CNY', 'shipped',
        NOW() - INTERVAL '5 days', NOW() - INTERVAL '3 days',
        'mock_v2'
@@ -275,7 +275,7 @@ INSERT INTO orders (
 )
 SELECT 'MOCKV2-PAID-' || p.pid, p.pid, b.bid, p.seller_user_id,
        p.price_cents, p.price_cents,
-       800, (p.price_cents * 0.08)::bigint, (p.price_cents * 0.92)::bigint,
+       100, (p.price_cents * 0.01)::bigint, (p.price_cents * 0.99)::bigint,
        'CNY', 'paid',
        NOW() - INTERVAL '1 day', NOW() + INTERVAL '2 days',
        'mock_v2'

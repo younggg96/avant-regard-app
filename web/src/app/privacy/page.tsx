@@ -21,8 +21,17 @@ import { PrivacyView } from "./view";
 export const metadata: Metadata = {
   title: "Privacy Policy",
   description:
-    "Avant Regard privacy policy, including our SMS Communications policy for one-time verification codes used during account authentication.",
-  alternates: { canonical: "/privacy" },
+    "Avant Regard privacy policy, including our SMS Communications policy for one-time verification codes used during account authentication. Available at avantregard.com/privacy (China) and avantregards.com/privacy (North America).",
+  alternates: {
+    canonical: "/privacy",
+    // Each flavor's privacy page is the authoritative mirror for its own
+    // region. Cross-link them so search engines surface the right one based
+    // on the visitor's locale.
+    languages: {
+      "zh-CN": "https://avantregard.com/privacy",
+      "en-US": "https://avantregards.com/privacy",
+    },
+  },
   openGraph: {
     type: "article",
     title: "Avant Regard · Privacy Policy",

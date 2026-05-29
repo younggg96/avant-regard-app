@@ -46,9 +46,10 @@ import { useProfileData } from "./hooks/useProfileData";
 import { CoverSection } from "./components/CoverSection";
 import { CollapsedHeader } from "./components/CollapsedHeader";
 import { ProfileInfo } from "./components/ProfileInfo";
-import { FollowedBrands } from "./components/FollowedBrands";
-import { LevelProgressCard } from "./components/LevelProgressCard";
-import { ArchiveEntryCard } from "./components/ArchiveEntryCard";
+import { ProfileInfoSkeleton } from "./components/ProfileInfoSkeleton";
+import { ProfileSecondaryRow } from "./components/ProfileSecondaryRow";
+import { ProfileSecondaryRowSkeleton } from "./components/ProfileSecondaryRowSkeleton";
+import { QuickEntriesGrid } from "./components/QuickEntriesGrid";
 import { ProfileTabBar } from "./components/ProfileTabBar";
 import { TopTabBar } from "../../components/ui";
 import { TradingContent } from "./components/TradingContent";
@@ -151,6 +152,7 @@ const ProfileScreen = () => {
     defaultCollectionTotal,
     defaultCollectionCover,
     collectionsLoading,
+    headerLoading,
     loadCollectionFolders,
     tabsData,
     setTabsData,
@@ -611,33 +613,39 @@ const ProfileScreen = () => {
           unreadCount={totalInteractionUnread}
         />
 
-        <ProfileInfo
-          avatarUri={avatarUri}
-          userInfo={userInfo}
-          userProfile={userProfile}
-          username={displayUsername}
-          followingUsersCount={followingUsersCount}
-          followersCount={followersCount}
-          likesAndSavesCount={postStats?.totalLikesAndSaves}
-          userId={user?.userId}
-          userTitles={userTitles}
-          onEditProfile={() => (navigation as any).navigate("EditProfile")}
-          onFollowingPress={() => (navigation as any).navigate("FollowingUsers", { userId: user?.userId })}
-          onFollowersPress={() => (navigation as any).navigate("Followers", { userId: userInfo?.userId })}
-          onAvatarPress={() => setAvatarPreviewVisible(true)}
-        />
+        {headerLoading ? (
+          <ProfileInfoSkeleton />
+        ) : (
+          <ProfileInfo
+            avatarUri={avatarUri}
+            userInfo={userInfo}
+            userProfile={userProfile}
+            username={displayUsername}
+            followingUsersCount={followingUsersCount}
+            followersCount={followersCount}
+            likesAndSavesCount={postStats?.totalLikesAndSaves}
+            userId={user?.userId}
+            userTitles={userTitles}
+            onEditProfile={() => (navigation as any).navigate("EditProfile")}
+            onFollowingPress={() => (navigation as any).navigate("FollowingUsers", { userId: user?.userId })}
+            onFollowersPress={() => (navigation as any).navigate("Followers", { userId: userInfo?.userId })}
+            onAvatarPress={() => setAvatarPreviewVisible(true)}
+          />
+        )}
+
+        {/* 2026-05 改版 · 核心快捷入口
+            买家订单 / 卖家钱包 / 卖家在售 / MY ARCHIVE —— 放在 ProfileInfo
+            正下方，是整个个人主页最显眼的二级入口位。次要入口（等级 /
+            关注品牌 / 月度抽奖）继续保持二级折叠态。 */}
+        <QuickEntriesGrid />
 
         <MonthlyLotteryEntry isOwnProfile currentLevel={ownLevel} />
 
-        <FollowedBrands
-          brands={followedBrands}
-          onBrandPress={(name) => (navigation as any).navigate("BrandDetail", { name })}
-        />
-
-        {/* PDF p.11 + p.19 · MY ARCHIVE 入口卡片（仅增加不减少） */}
-        <ArchiveEntryCard isOwnProfile />
-
-        <LevelProgressCard />
+        {headerLoading ? (
+          <ProfileSecondaryRowSkeleton />
+        ) : (
+          <ProfileSecondaryRow brands={followedBrands} userId={user?.userId} />
+        )}
 
         {/* Inline 一级 tab bar (笔记 / 购买 / 在售)。
             sticky 版用此处的 onLayout 作为锚点 —— 滚到这里之上时,
