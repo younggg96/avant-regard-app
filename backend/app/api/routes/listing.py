@@ -329,10 +329,11 @@ async def submit_listing(
     else:
         if raw.get("seller_user_id") != current_user_id:
             raise HTTPException(status_code=403, detail="无权限操作")
-        # 个人 C2C 卖家强制实名门
+        # 个人 C2C 卖家强制实名门。
+        # is_identity_verified 统一判定:seller_kyc.approved(中国阿里云二要素 /
+        # 海外 Stripe Identity)或 海外 Stripe Connect active(自带 KYC, 短路)。
         from app.services.kyc_service import kyc_service
-        kyc = kyc_service.get(current_user_id)
-        if not kyc or kyc.status != "approved":
+        if not kyc_service.is_identity_verified(current_user_id):
             raise HTTPException(
                 status_code=403,
                 detail="请先完成实名认证后再上架(我的钱包 → 实名认证)",

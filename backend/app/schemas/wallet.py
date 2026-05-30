@@ -136,6 +136,34 @@ class KYCRecord(BaseModel):
     rejectReason: Optional[str] = None
     submittedAt: Optional[str] = None
     reviewedAt: Optional[str] = None
+    # 走哪条通道:aliyun(中国大陆二要素) / stripe_identity(海外证件+自拍) / mock_*
+    provider: Optional[str] = None
+    # 海外会话式才有:核验出的证件国别(ISO 2 字母)。
+    verifiedCountry: Optional[str] = None
+
+
+class IdentitySessionRequest(BaseModel):
+    """发起会话式实名(海外证件 + 活体自拍)。
+
+    region: 前端按 App flavor 传 "CN" / "US";后端归一化后决定走哪条路,
+            CN 仍走同步二要素(本接口对 CN 返回 mode='id_two_factor')。
+    appScheme: 当前 App variant 自定义 scheme(avantregard / avantregardna),
+            透传到 Stripe Identity 跳板页, 完成后跳回正确的 App。
+    """
+    region: Optional[str] = Field(None, max_length=16)
+    appScheme: Optional[str] = Field(None, max_length=32)
+    email: Optional[str] = Field(None, max_length=200)
+
+
+class IdentitySession(BaseModel):
+    """会话式实名返回给前端的句柄。"""
+    mode: str                          # id_two_factor(CN) | document_selfie(海外)
+    provider: str
+    status: str                        # requires_input | processing | verified | canceled
+    sessionId: Optional[str] = None
+    clientSecret: Optional[str] = None  # 嵌入式 SDK 用
+    url: Optional[str] = None           # 跳转式托管页 url(expo-web-browser 打开)
+    kycStatus: str = "none"             # 同步后的 seller_kyc.status
 
 
 class KYCAdminDecision(BaseModel):

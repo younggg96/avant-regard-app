@@ -65,6 +65,7 @@ import {
 import {
   COLOR_PRESETS,
   SIZE_STANDARDS,
+  getColorDisplayText,
   type SizeStandardKey,
 } from "./publishListingPresets";
 
@@ -96,6 +97,11 @@ const PublishListingStep1Screen: React.FC = () => {
   const activeStandard = useMemo(
     () => SIZE_STANDARDS.find((s) => s.key === sizeStandard) ?? SIZE_STANDARDS[0],
     [sizeStandard]
+  );
+
+  const colorInputValue = useMemo(
+    () => getColorDisplayText(form.color, t),
+    [form.color, t]
   );
 
   const canContinue = useMemo(() => validateStep1(form).length === 0, [form]);
@@ -236,7 +242,7 @@ const PublishListingStep1Screen: React.FC = () => {
                   ))}
                 </View>
                 <Input
-                  value={form.color}
+                  value={colorInputValue}
                   onChangeText={(v) => patch({ color: v })}
                   placeholder={t("trading.publishListing.fields.colorPlaceholder")}
                   placeholderTextColor={theme.colors.gray400}

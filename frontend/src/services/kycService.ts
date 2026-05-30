@@ -30,6 +30,31 @@ export interface KYCRecord {
   rejectReason?: string | null;
   submittedAt?: string | null;
   reviewedAt?: string | null;
+  /** 走哪条通道:aliyun(中国大陆二要素) / stripe_identity(海外证件+自拍) / mock_*。 */
+  provider?: string | null;
+  /** 海外会话式才有:核验出的证件国别(ISO 2 字母)。 */
+  verifiedCountry?: string | null;
+}
+
+/** 会话式实名(海外证件 + 活体自拍)句柄。 */
+export type IdentitySessionMode = "id_two_factor" | "document_selfie";
+export type IdentitySessionStatus =
+  | "requires_input"
+  | "processing"
+  | "verified"
+  | "canceled"
+  | "requires_action";
+
+export interface IdentitySession {
+  /** id_two_factor → 中国大陆走二要素表单;document_selfie → 海外托管页。 */
+  mode: IdentitySessionMode;
+  provider: string;
+  status: IdentitySessionStatus;
+  sessionId?: string | null;
+  clientSecret?: string | null;
+  /** 跳转式托管页 url,用 expo-web-browser 打开。 */
+  url?: string | null;
+  kycStatus: KYCStatus;
 }
 
 export interface KYCSubmitBody {
@@ -85,6 +110,31 @@ export async function verifyIdentityAuto(body: {
   return request<KYCRecord>("/api/kyc/me/verify-identity", {
     method: "POST",
     body: JSON.stringify(body),
+  });
+}
+
+/**
+ * 发起会话式实名(海外证件 + 活体自拍)。
+ *   - region=CN → 返回 mode='id_two_factor',前端走二要素表单;
+ *   - region=US/海外 → 返回 mode='document_selfie' + 托管页 url,
+ *     前端用 expo-web-browser 打开,完成后调 refreshIdentitySession 同步。
+ * appScheme: 当前 App variant 自定义 scheme,透传给托管页跳板。
+ */
+export async function startIdentitySession(body: {
+  region: "CN" | "US";
+  appScheme?: string;
+  email?: string;
+}): Promise<IdentitySession> {
+  return request<IdentitySession>("/api/kyc/me/identity-session", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+/** 从托管页跳回 App 后主动拉一次会话状态(防 webhook 延迟)。 */
+export async function refreshIdentitySession(): Promise<IdentitySession> {
+  return request<IdentitySession>("/api/kyc/me/identity-session/refresh", {
+    method: "POST",
   });
 }
 

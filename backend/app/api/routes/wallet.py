@@ -40,6 +40,7 @@ from app.schemas.wallet import (
     WithdrawalAdminUpdate,
     VerifyIdentityRequest,
     VerifyBankCardRequest,
+    IdentitySessionRequest,
 )
 
 
@@ -52,6 +53,8 @@ admin_kyc_router = APIRouter(prefix="/admin/kyc", tags=["交易系统 / 后台�
 # 我们渲染一段 HTML 立刻 JS 跳到 App 的 deep link, expo-web-browser
 # 的 ASWebAuthenticationSession 看到 scheme 匹配会自动 dismiss。
 connect_bridge_router = APIRouter(prefix="/connect", tags=["Stripe Connect / 跳板"])
+# Stripe Identity 托管页完成后的 https → App scheme 跳板, 与 Connect 同理。
+identity_bridge_router = APIRouter(prefix="/identity", tags=["实名认证 / 跳板"])
 
 
 # =============================== Wallet ===============================
@@ -240,6 +243,44 @@ async def verify_identity_auto(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return success(rec.dict())
+
+
+@kyc_router.post("/me/identity-session")
+async def start_identity_session(
+    body: IdentitySessionRequest,
+    user_id: int = Depends(get_current_user),
+):
+    """发起会话式实名(海外证件 + 活体自拍)。
+
+    - region=CN → 返回 mode='id_two_factor', 前端走既有二要素表单;
+    - region=US/海外 → 创建第三方会话(Stripe Identity), 返回托管页 url,
+      前端用 expo-web-browser 打开, 完成后跳回 App 再调 refresh 同步状态。
+    """
+    try:
+        session = kyc_service.start_identity_session(
+            user_id,
+            region=body.region,
+            app_scheme=_resolve_scheme(body.appScheme),
+            email=body.email,
+        )
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return success(session.dict())
+
+
+@kyc_router.post("/me/identity-session/refresh")
+async def refresh_identity_session(user_id: int = Depends(get_current_user)):
+    """主动从第三方拉一次会话状态。前端从托管页跳回 App 时调一次,
+    防止 webhook 还没到就让用户看到 stale 状态。"""
+    try:
+        session = kyc_service.sync_identity_session(user_id)
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return success(session.dict())
 
 
 @kyc_router.post("/me/verify-bank-card")
@@ -521,5 +562,22 @@ async def connect_refresh_bridge(scheme: Optional[str] = None) -> HTMLResponse:
             cta="Open Avant Regard",
             deep_link=f"{s}://connect/refresh",
             footer="Tap the button above to return to the app.",
+        )
+    )
+
+
+@identity_bridge_router.get("/return", response_class=HTMLResponse)
+async def identity_return_bridge(scheme: Optional[str] = None) -> HTMLResponse:
+    """Stripe Identity 托管页完成后跳板页。
+    用户完成证件 + 自拍 → Stripe 跳到这里 → JS 自动跳回 App,
+    App 再调 /api/kyc/me/identity-session/refresh 同步状态。"""
+    s = _resolve_scheme(scheme)
+    return HTMLResponse(
+        _bridge_html(
+            title="Verification submitted",
+            message="You can return to the Avant Regard app now.",
+            cta="Open Avant Regard",
+            deep_link=f"{s}://kyc/return",
+            footer="If the app doesn't open automatically, tap the button above.",
         )
     )

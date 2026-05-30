@@ -25,19 +25,37 @@ import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import * as ImagePicker from "expo-image-picker";
+import * as WebBrowser from "expo-web-browser";
+import Constants from "expo-constants";
 
 import {
   getMyKyc,
   KYCRecord,
   KYCStatus,
   submitKyc,
+  startIdentitySession,
+  refreshIdentitySession,
 } from "../../services/kycService";
 import { uploadImage } from "../../services/postService";
 import { OptimizedImage } from "../../components/ui/OptimizedImage";
 import { ImageSize } from "../../utils/imageUtils";
+import { IS_NA } from "../../config/env";
 import { useAppTheme, useThemedStyles, type AppTheme } from "../../theme";
 
 type PhotoKey = "idFront" | "idBack" | "holderPhoto";
+
+// 与 PayoutAccountsScreen 同样的 scheme 解析 — 决定 Stripe Identity 托管页
+// 跳板应跳哪个 App variant 的 deep link(avantregard / avantregardna)。
+function resolveAppScheme(): string {
+  const expoCfg = (Constants.expoConfig ??
+    (Constants as { manifest?: unknown }).manifest) as
+    | { scheme?: string | string[] }
+    | undefined;
+  const s = expoCfg?.scheme;
+  if (Array.isArray(s) && s.length > 0) return String(s[0]);
+  if (typeof s === "string" && s.length > 0) return s;
+  return "avantregard";
+}
 
 export default function KycVerificationScreen() {
   const navigation = useNavigation<any>();
@@ -48,6 +66,7 @@ export default function KycVerificationScreen() {
   const [record, setRecord] = useState<KYCRecord | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [verifying, setVerifying] = useState(false);
 
   const [realName, setRealName] = useState("");
   const [idCardNo, setIdCardNo] = useState("");
@@ -151,6 +170,38 @@ export default function KycVerificationScreen() {
     }
   };
 
+  // 海外(美国等)证件 + 活体自拍流程:发起会话 → 打开 Stripe 托管页 →
+  // 完成后跳回 App → refresh 同步状态。
+  const startUsVerification = async () => {
+    if (verifying) return;
+    setVerifying(true);
+    try {
+      const appScheme = resolveAppScheme();
+      const session = await startIdentitySession({ region: "US", appScheme });
+      // mock provider 没有托管页 url,创建即 verified,直接刷新状态即可。
+      if (session.url) {
+        await WebBrowser.openAuthSessionAsync(
+          session.url,
+          `${appScheme}://kyc/return`,
+        );
+      }
+      // 不论用户完成还是中途取消,都拉一次最新状态。
+      const fresh = await refreshIdentitySession();
+      await load();
+      if (fresh.kycStatus === "approved") {
+        Alert.alert(t("trading.kyc.us.verifiedTitle"), "", [
+          { text: t("common.confirm"), onPress: () => navigation.goBack() },
+        ]);
+      } else if (fresh.kycStatus === "rejected") {
+        Alert.alert(t("trading.kyc.us.failedTitle"));
+      }
+    } catch (e: any) {
+      Alert.alert(t("common.failed"), e?.message ?? t("trading.kyc.us.startFailed"));
+    } finally {
+      setVerifying(false);
+    }
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={styles.safe}>
@@ -179,7 +230,9 @@ export default function KycVerificationScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll}>
-        <Text style={styles.intro}>{t("trading.kyc.intro")}</Text>
+        <Text style={styles.intro}>
+          {t(IS_NA ? "trading.kyc.us.intro" : "trading.kyc.intro")}
+        </Text>
 
         <View style={[styles.statusCard, statusColor(status, theme)]}>
           <Ionicons
@@ -219,90 +272,133 @@ export default function KycVerificationScreen() {
           </View>
         </View>
 
-        <View style={styles.section}>
-          <Field label={t("trading.kyc.realNameLabel")}>
-            <TextInput
-              style={styles.input}
-              placeholder={t("trading.kyc.realNamePlaceholder")}
-              placeholderTextColor={theme.colors.placeholder}
-              value={realName}
-              onChangeText={setRealName}
-              autoCapitalize="none"
-              editable={!isApproved && !isPending}
-            />
-          </Field>
-          <Field label={t("trading.kyc.idCardLabel")}>
-            <TextInput
-              style={styles.input}
-              placeholder={t("trading.kyc.idCardPlaceholder")}
-              placeholderTextColor={theme.colors.placeholder}
-              value={idCardNo}
-              onChangeText={setIdCardNo}
-              autoCapitalize="characters"
-              editable={!isApproved && !isPending}
-            />
-          </Field>
-          <Field label={t("trading.kyc.phoneLabel")}>
-            <TextInput
-              style={styles.input}
-              placeholder={t("trading.kyc.phonePlaceholder")}
-              placeholderTextColor={theme.colors.placeholder}
-              value={phone}
-              onChangeText={setPhone}
-              keyboardType="phone-pad"
-              editable={!isApproved && !isPending}
-            />
-          </Field>
-        </View>
+        {IS_NA ? (
+          <View style={styles.section}>
+            {[1, 2, 3].map((n) => (
+              <View key={n} style={styles.usStep}>
+                <View style={styles.usStepBadge}>
+                  <Text style={styles.usStepBadgeText}>{n}</Text>
+                </View>
+                <Text style={styles.usStepText}>
+                  {t(`trading.kyc.us.step${n}`)}
+                </Text>
+              </View>
+            ))}
+            <Text style={styles.usPrivacy}>{t("trading.kyc.us.privacy")}</Text>
+          </View>
+        ) : (
+          <>
+            <View style={styles.section}>
+              <Field label={t("trading.kyc.realNameLabel")}>
+                <TextInput
+                  style={styles.input}
+                  placeholder={t("trading.kyc.realNamePlaceholder")}
+                  placeholderTextColor={theme.colors.placeholder}
+                  value={realName}
+                  onChangeText={setRealName}
+                  autoCapitalize="none"
+                  editable={!isApproved && !isPending}
+                />
+              </Field>
+              <Field label={t("trading.kyc.idCardLabel")}>
+                <TextInput
+                  style={styles.input}
+                  placeholder={t("trading.kyc.idCardPlaceholder")}
+                  placeholderTextColor={theme.colors.placeholder}
+                  value={idCardNo}
+                  onChangeText={setIdCardNo}
+                  autoCapitalize="characters"
+                  editable={!isApproved && !isPending}
+                />
+              </Field>
+              <Field label={t("trading.kyc.phoneLabel")}>
+                <TextInput
+                  style={styles.input}
+                  placeholder={t("trading.kyc.phonePlaceholder")}
+                  placeholderTextColor={theme.colors.placeholder}
+                  value={phone}
+                  onChangeText={setPhone}
+                  keyboardType="phone-pad"
+                  editable={!isApproved && !isPending}
+                />
+              </Field>
+            </View>
 
-        <View style={styles.section}>
-          <PhotoSlot
-            label={t("trading.kyc.idFrontLabel")}
-            uri={photos.idFront}
-            loading={uploadingKey === "idFront"}
-            onPress={() => pickPhoto("idFront")}
-            disabled={isApproved || isPending}
-          />
-          <PhotoSlot
-            label={t("trading.kyc.idBackLabel")}
-            uri={photos.idBack}
-            loading={uploadingKey === "idBack"}
-            onPress={() => pickPhoto("idBack")}
-            disabled={isApproved || isPending}
-          />
-          <PhotoSlot
-            label={t("trading.kyc.holderPhotoLabel")}
-            uri={photos.holderPhoto}
-            loading={uploadingKey === "holderPhoto"}
-            onPress={() => pickPhoto("holderPhoto")}
-            disabled={isApproved || isPending}
-          />
-        </View>
+            <View style={styles.section}>
+              <PhotoSlot
+                label={t("trading.kyc.idFrontLabel")}
+                uri={photos.idFront}
+                loading={uploadingKey === "idFront"}
+                onPress={() => pickPhoto("idFront")}
+                disabled={isApproved || isPending}
+              />
+              <PhotoSlot
+                label={t("trading.kyc.idBackLabel")}
+                uri={photos.idBack}
+                loading={uploadingKey === "idBack"}
+                onPress={() => pickPhoto("idBack")}
+                disabled={isApproved || isPending}
+              />
+              <PhotoSlot
+                label={t("trading.kyc.holderPhotoLabel")}
+                uri={photos.holderPhoto}
+                loading={uploadingKey === "holderPhoto"}
+                onPress={() => pickPhoto("holderPhoto")}
+                disabled={isApproved || isPending}
+              />
+            </View>
+          </>
+        )}
       </ScrollView>
 
       <View style={styles.footer}>
-        <Pressable
-          style={[
-            styles.primaryBtn,
-            (submitting || isApproved || isPending) && styles.disabled,
-          ]}
-          onPress={submit}
-          disabled={submitting || isApproved || isPending}
-        >
-          {submitting ? (
-            <ActivityIndicator color={theme.colors.textInverted} />
-          ) : (
-            <Text style={styles.primaryBtnText}>
-              {isApproved
-                ? t("trading.kyc.statusApproved")
-                : isPending
-                ? t("trading.kyc.statusPending")
-                : status === "rejected"
-                ? t("trading.kyc.resubmit")
-                : t("trading.kyc.submit")}
-            </Text>
-          )}
-        </Pressable>
+        {IS_NA ? (
+          <Pressable
+            style={[
+              styles.primaryBtn,
+              (verifying || isApproved) && styles.disabled,
+            ]}
+            onPress={startUsVerification}
+            disabled={verifying || isApproved}
+          >
+            {verifying ? (
+              <ActivityIndicator color={theme.colors.textInverted} />
+            ) : (
+              <Text style={styles.primaryBtnText}>
+                {isApproved
+                  ? t("trading.kyc.statusApproved")
+                  : isPending
+                  ? t("trading.kyc.us.continueCta")
+                  : status === "rejected"
+                  ? t("trading.kyc.us.retryCta")
+                  : t("trading.kyc.us.startCta")}
+              </Text>
+            )}
+          </Pressable>
+        ) : (
+          <Pressable
+            style={[
+              styles.primaryBtn,
+              (submitting || isApproved || isPending) && styles.disabled,
+            ]}
+            onPress={submit}
+            disabled={submitting || isApproved || isPending}
+          >
+            {submitting ? (
+              <ActivityIndicator color={theme.colors.textInverted} />
+            ) : (
+              <Text style={styles.primaryBtnText}>
+                {isApproved
+                  ? t("trading.kyc.statusApproved")
+                  : isPending
+                  ? t("trading.kyc.statusPending")
+                  : status === "rejected"
+                  ? t("trading.kyc.resubmit")
+                  : t("trading.kyc.submit")}
+              </Text>
+            )}
+          </Pressable>
+        )}
       </View>
     </SafeAreaView>
   );
@@ -433,7 +529,7 @@ const makeStyles = (t: AppTheme) =>
       flexDirection: "row",
       alignItems: "flex-start",
       padding: 12,
-      borderRadius: 8,
+      borderRadius: 4,
       marginBottom: 16,
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: t.colors.border,
@@ -447,7 +543,7 @@ const makeStyles = (t: AppTheme) =>
     },
     section: {
       backgroundColor: t.colors.cardElevated,
-      borderRadius: 12,
+      borderRadius: 4,
       padding: 16,
       marginBottom: 12,
       borderWidth: StyleSheet.hairlineWidth,
@@ -462,12 +558,43 @@ const makeStyles = (t: AppTheme) =>
     input: {
       borderWidth: 1,
       borderColor: t.colors.inputBorder,
-      borderRadius: 8,
+      borderRadius: 4,
       paddingVertical: 10,
       paddingHorizontal: 12,
       fontSize: 14,
       color: t.colors.text,
       backgroundColor: t.colors.inputBackground,
+    },
+    usStep: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      marginBottom: 14,
+    },
+    usStepBadge: {
+      width: 22,
+      height: 22,
+      borderRadius: 4,
+      backgroundColor: t.colors.accent,
+      alignItems: "center",
+      justifyContent: "center",
+      marginRight: 10,
+    },
+    usStepBadgeText: {
+      color: t.colors.textInverted,
+      fontSize: 12,
+      fontWeight: "700",
+    },
+    usStepText: {
+      flex: 1,
+      fontSize: 13,
+      lineHeight: 19,
+      color: t.colors.text,
+    },
+    usPrivacy: {
+      fontSize: 12,
+      lineHeight: 18,
+      color: t.colors.gray300,
+      marginTop: 4,
     },
     photoSlot: { marginBottom: 12 },
     photoLabel: {
@@ -477,7 +604,7 @@ const makeStyles = (t: AppTheme) =>
     },
     photoFrame: {
       height: 140,
-      borderRadius: 8,
+      borderRadius: 4,
       borderWidth: 1,
       borderColor: t.colors.inputBorder,
       borderStyle: "dashed",

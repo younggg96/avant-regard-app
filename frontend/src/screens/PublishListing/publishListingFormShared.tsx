@@ -49,7 +49,7 @@ export const makePublishListingFormStyles = (t: AppTheme) =>
       backgroundColor: t.colors.inputBackground,
       paddingVertical: 8,
       paddingHorizontal: 0,
-      fontSize: 14,
+      ...t.typography.bodySmall,
       color: t.colors.text,
     },
     textArea: {
@@ -61,7 +61,7 @@ export const makePublishListingFormStyles = (t: AppTheme) =>
       minHeight: 110,
     },
     textAreaInput: {
-      fontSize: 14,
+      ...t.typography.bodySmall,
       color: t.colors.text,
       minHeight: 90,
       textAlignVertical: "top",
@@ -223,12 +223,14 @@ export const PublishListingTextArea: React.FC<
   React.ComponentProps<typeof TextInput>
 > = (props) => {
   const styles = useThemedStyles(makePublishListingFormStyles);
+  const theme = useAppTheme();
   return (
     <View style={styles.textArea}>
       <TextInput
         style={styles.textAreaInput}
         multiline
         textAlignVertical="top"
+        placeholderTextColor={theme.colors.placeholder}
         {...props}
       />
     </View>

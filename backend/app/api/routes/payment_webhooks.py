@@ -114,21 +114,35 @@ async def stripe_webhook(request: Request) -> Response:
             raw_event.get("type") if isinstance(raw_event, dict)
             else getattr(raw_event, "type", None)
         )
+        def _event_object(ev: object) -> dict:
+            if isinstance(ev, dict):
+                return ev.get("data", {}).get("object", {}) or {}
+            obj = ev.data.object  # type: ignore
+            return obj.to_dict() if hasattr(obj, "to_dict") else dict(obj)
+
         if evt_type and evt_type.startswith("account."):
             # account.updated / account.application.* / account.external_account.*
             # 都用同一个 sync 入口处理 — 我们只关心 status 字段。
             from app.services.payment.stripe_connect_service import (
                 stripe_connect_service,
             )
-            if isinstance(raw_event, dict):
-                payload = raw_event.get("data", {}).get("object", {}) or {}
-            else:
-                obj = raw_event.data.object  # type: ignore
-                payload = obj.to_dict() if hasattr(obj, "to_dict") else dict(obj)
+            payload = _event_object(raw_event)
             try:
                 stripe_connect_service.handle_account_updated_webhook(payload)
             except Exception as e:
                 print(f"[webhook] connect account update failed: {e}", flush=True)
+                raise HTTPException(status_code=500, detail=str(e))
+            return Response(content="success", media_type="text/plain", status_code=200)
+
+        if evt_type and evt_type.startswith("identity.verification_session."):
+            # identity.verification_session.verified / .processing / .canceled / .requires_input
+            # 统一回写 seller_kyc 实名状态(海外证件 + 活体自拍)。
+            from app.services.kyc_service import kyc_service
+            payload = _event_object(raw_event)
+            try:
+                kyc_service.handle_identity_webhook(payload)
+            except Exception as e:
+                print(f"[webhook] identity session update failed: {e}", flush=True)
                 raise HTTPException(status_code=500, detail=str(e))
             return Response(content="success", media_type="text/plain", status_code=200)
 

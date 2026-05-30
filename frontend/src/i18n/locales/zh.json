@@ -3058,6 +3058,8 @@
       "submitAutoApproved": "自动审核通过，已上架。",
       "submitPendingReview": "已提交审核，通过后会自动上架。",
       "submitFailed": "提交失败，请稍后再试。",
+      "needKyc": "发布商品前需先完成实名认证。",
+      "goKyc": "去实名认证",
       "saveDraft": "保存草稿",
       "nextToPhotos": "下一步 · 上传图片",
       "nextToPricing": "下一步 · 定价描述",
@@ -3087,11 +3089,13 @@
         "condition": "成色",
         "accessoriesNote": "配件说明",
         "accessoriesNotePlaceholder": "防尘袋 · 原盒 · 购买票据 · 备用扣子等",
-        "price": "售价（元）",
+        "price": "价格",
+        "priceUnit": "元",
         "titleField": "商品标题",
         "titlePlaceholder": "自动以品牌+款式生成，可手动调整",
         "description": "商品描述",
-        "descriptionPlaceholder": "尺寸、上身效果、保存状态等",
+        "descriptionPlaceholder": "尺寸、上身效果、成色细节（如袖口轻微起球）等",
+        "descriptionHint": "请如实描述成色，即使全新也建议补充（PRD 1.3 透明度要求）。",
         "conditionNote": "成色补充说明",
         "conditionNotePlaceholder": "如：袖口轻微起球，其余完好",
         "conditionNoteHint": "即使全新也建议补充，PRD 1.3 透明度要求。",
@@ -3190,6 +3194,7 @@
         "referenceLoading": "正在加载参考价…",
         "median": "中位 {{price}}",
         "applyMedian": "应用中位价",
+        "expectedPayoutShort": "预计到手 {{price}}",
         "expectedPayout": "预计到手 ≈ {{price}}（平台手续费 {{fee}}）"
       },
       "logistics": {
@@ -3640,7 +3645,20 @@
       "statusRejected": "未通过",
       "rejectReasonTitle": "未通过原因",
       "approvedHint": "已通过实名认证，可以绑定放款账户并提现。",
-      "pendingHint": "资料已提交，预计 1-2 个工作日审核。"
+      "pendingHint": "资料已提交，预计 1-2 个工作日审核。",
+      "us": {
+        "intro": "为保障交易安全，发布商品前需完成身份验证。我们使用 Stripe 进行证件与人脸核验，全程在 Stripe 完成，平台不存储你的证件影像。",
+        "step1": "准备一张有效的政府签发证件（驾照、护照或身份证）。",
+        "step2": "在 Stripe 安全页面拍摄证件正反面。",
+        "step3": "完成一次活体自拍，与证件照片比对。",
+        "privacy": "你的证件与自拍由 Stripe 加密处理，仅用于身份核验，平台不会保存原始影像。",
+        "startCta": "开始身份验证",
+        "continueCta": "继续 / 刷新状态",
+        "retryCta": "重新验证",
+        "verifiedTitle": "身份验证已通过",
+        "failedTitle": "身份验证未通过，请重试",
+        "startFailed": "发起验证失败，请稍后再试"
+      }
     },
     "payoutAccount": {
       "headerTitle": "放款账户",

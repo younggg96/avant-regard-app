@@ -36,6 +36,7 @@ import {
   type ListingCreateBody,
   type ListingPatchBody,
 } from "../../services/storeProductService";
+import { ApiError } from "../../services/http";
 import { showService } from "../../services/showService";
 import {
   makePublishListingFormStyles,
@@ -78,7 +79,8 @@ const PublishListingStep4Screen: React.FC = () => {
           show_url: s.showUrl || "",
           year: s.year || 0,
           category: s.category || "",
-          show_id: typeof s.id === "string" ? Number(s.id) : s.id,
+          // shows.id 是字符串 slug, 不能转 Number (会变 NaN → 提交触发外键违规)。
+          show_id: s.id != null ? String(s.id) : undefined,
         }))
       );
     } catch {
@@ -130,8 +132,7 @@ const PublishListingStep4Screen: React.FC = () => {
     color: form.color,
     condition: form.condition ?? undefined,
     conditionNote: form.conditionNote,
-    originalShowId:
-      form.originalShowId != null ? String(form.originalShowId) : null,
+    originalShowId: form.originalShowId ?? null,
     originalAcquiredAt: form.originalAcquiredAt,
     acceptOffer: form.acceptOffer,
     photoAngles: form.photoAngles,
@@ -195,6 +196,17 @@ const PublishListingStep4Screen: React.FC = () => {
       );
       navigation.navigate("SellerListings");
     } catch (e) {
+      // 后端在个人卖家未实名时返回 403,引导用户先去完成实名认证再上架。
+      if (e instanceof ApiError && e.status === 403) {
+        Alert.alert(t("trading.publishListing.needKyc"), "", [
+          { text: t("common.cancel"), style: "cancel" },
+          {
+            text: t("trading.publishListing.goKyc"),
+            onPress: () => navigation.navigate("KycVerification"),
+          },
+        ]);
+        return;
+      }
       Alert.show(
         e instanceof Error ? e.message : t("trading.publishListing.submitFailed")
       );
@@ -401,7 +413,8 @@ const PublishListingStep4Screen: React.FC = () => {
             )
             .join(" ");
           patch({
-            originalShowId: show.show_id ?? null,
+            originalShowId:
+              show.show_id != null ? String(show.show_id) : null,
             originalShowLabel: label || show.title || null,
           });
           setShowSheetVisible(false);

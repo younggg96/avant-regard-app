@@ -3058,6 +3058,8 @@
       "submitAutoApproved": "Auto-approved and listed.",
       "submitPendingReview": "Submitted for review. We'll notify you once it's live.",
       "submitFailed": "Submission failed. Try again later.",
+      "needKyc": "You must verify your identity before listing items.",
+      "goKyc": "Verify identity",
       "saveDraft": "Save draft",
       "nextToPhotos": "Next · Photos",
       "nextToPricing": "Next · Pricing",
@@ -3087,11 +3089,13 @@
         "condition": "Condition",
         "accessoriesNote": "Accessories",
         "accessoriesNotePlaceholder": "Dust bag · original box · receipt · spare buttons",
-        "price": "Sale price (CNY)",
+        "price": "Price",
+        "priceUnit": "CNY",
         "titleField": "Listing title",
         "titlePlaceholder": "Auto-filled from brand + style",
         "description": "Description",
-        "descriptionPlaceholder": "Measurements, fit notes, condition details…",
+        "descriptionPlaceholder": "Measurements, fit, condition details (e.g. light pilling on cuffs)…",
+        "descriptionHint": "Describe the condition honestly — recommended even when flawless (PRD 1.3 transparency).",
         "conditionNote": "Condition notes",
         "conditionNotePlaceholder": "e.g. Light pilling on cuffs; rest of the piece is clean",
         "conditionNoteHint": "Required even when flawless — PRD 1.3 transparency rule.",
@@ -3190,6 +3194,7 @@
         "referenceLoading": "Loading reference range…",
         "median": "Median {{price}}",
         "applyMedian": "Use median",
+        "expectedPayoutShort": "Net payout {{price}}",
         "expectedPayout": "Net payout ≈ {{price}} · platform fee {{fee}}"
       },
       "logistics": {
@@ -3640,7 +3645,20 @@
       "statusRejected": "Rejected",
       "rejectReasonTitle": "Rejection reason",
       "approvedHint": "Verified. You can now bind a payout account and request withdrawals.",
-      "pendingHint": "Application submitted, review typically takes 1-2 business days."
+      "pendingHint": "Application submitted, review typically takes 1-2 business days.",
+      "us": {
+        "intro": "To keep the marketplace safe, you must verify your identity before listing items. We use Stripe to verify your ID and a selfie — the whole flow happens on Stripe and we never store your ID images.",
+        "step1": "Have a valid government-issued ID ready (driver's license, passport, or ID card).",
+        "step2": "Capture the front and back of your ID on Stripe's secure page.",
+        "step3": "Take a live selfie to match against your ID photo.",
+        "privacy": "Your ID and selfie are encrypted and handled by Stripe for verification only. We do not retain the original images.",
+        "startCta": "Start verification",
+        "continueCta": "Continue / refresh status",
+        "retryCta": "Verify again",
+        "verifiedTitle": "Identity verified",
+        "failedTitle": "Verification failed, please try again",
+        "startFailed": "Couldn't start verification, please try again later"
+      }
     },
     "payoutAccount": {
       "headerTitle": "Payout Accounts",

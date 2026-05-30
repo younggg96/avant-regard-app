@@ -141,3 +141,22 @@ export const SIZE_STANDARDS: ReadonlyArray<{
 ];
 
 export type SizeStandardKey = (typeof SIZE_STANDARDS)[number]["key"];
+
+/** 按入库值（中文）查找预设 */
+export function getColorPresetByStoredValue(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  return COLOR_PRESETS.find((c) => c.value === trimmed);
+}
+
+/** 表单展示：预设走 i18n，自定义文本原样显示 */
+export function getColorDisplayText(
+  value: string,
+  t: (key: string) => string
+): string {
+  const preset = getColorPresetByStoredValue(value);
+  if (preset) {
+    return t(`trading.publishListing.colors.${preset.labelKey}`);
+  }
+  return value;
+}

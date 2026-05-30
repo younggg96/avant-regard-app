@@ -154,6 +154,27 @@ class Settings(BaseSettings):
     VERIFY_PROVIDER: str = "mock"  # mock / aliyun
 
     # =====================================================
+    # 会话式实名(海外 / 美国:证件影像 + 活体自拍)
+    # =====================================================
+    # 中国大陆走上面的同步二要素;海外没有"姓名 + 证件号"廉价比对接口,
+    # 必须走证件 OCR + 活体自拍的第三方托管流程。
+    #   - mock                 开发用,创建会话即视为通过
+    #   - stripe / stripe_identity  复用 STRIPE_API_KEY,走 Stripe Identity
+    IDENTITY_SESSION_PROVIDER: str = "mock"  # mock / stripe
+
+    # Stripe Identity 托管页完成后回跳的 https 跳板 URL(再由跳板页 JS
+    # 跳回 App 的 deep link, 复用 Connect 那套"https → 自定义 scheme"中继)。
+    # 未配置时用一个会 404 的占位; mock provider 不依赖它。
+    STRIPE_IDENTITY_RETURN_URL: str = ""
+
+    # 海外卖家若已完成 Stripe Connect onboarding(status=active),Connect 本身
+    # 已经做过一轮 KYC(AML)。开启后:Connect active 即视同实名通过,免去再走
+    # 一次 Stripe Identity,避免重复验证。
+    #   - 仅影响海外:中国大陆卖家不会创建 Connect 账号,该短路对其天然不生效。
+    #   - 想强制所有海外卖家都过一次活体自拍(Identity)时设为 False。
+    KYC_CONNECT_COUNTS_AS_VERIFIED: bool = True
+
+    # =====================================================
     # 支付通道(Stripe / 支付宝 / 微信支付)
     # =====================================================
     # 默认 provider:留空或 "mock" 时 OrderService 创建订单走 stub intent,

@@ -268,7 +268,17 @@ class StripeConnectService:
         except Exception as e:
             print(f"[connect] sync update failed: {e}", flush=True)
             return row
+        prev_status = row["status"]
         row.update(update)
+
+        # Connect onboarding 完成(刚翻到 active)→ 视同实名通过, 回写 seller_kyc,
+        # 海外卖家免去再走一次 Stripe Identity(避免重复验证)。
+        if new_status == "active" and prev_status != "active":
+            try:
+                from app.services.kyc_service import kyc_service
+                kyc_service.mark_verified_via_connect(row["user_id"])
+            except Exception as e:
+                print(f"[connect] mark kyc via connect failed: {e}", flush=True)
         return row
 
     # -----------------------------------------------------------------

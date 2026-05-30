@@ -50,7 +50,9 @@ export interface ListingFormState {
   tags: string[];
 
   // Step 4 · 物流 / 其他
-  originalShowId: number | null;
+  // 注意: shows.id 是字符串 slug (如 "julius_2009_xxx"), 不是自增数字主键。
+  // 这里必须存字符串, 否则提交时 Number() 会得到 NaN → 外键 (original_show_id) 违规。
+  originalShowId: string | null;
   originalShowLabel: string | null;
   originalAcquiredAt: string | null;
   shipFromCountry: string | null;
@@ -133,9 +135,7 @@ export const usePublishListingStore = create<PublishListingStore>((set) => ({
       acceptOffer: listing.acceptOffer ?? true,
       tags: listing.tags ?? [],
       originalShowId:
-        listing.originalShowId != null && !Number.isNaN(Number(listing.originalShowId))
-          ? Number(listing.originalShowId)
-          : null,
+        listing.originalShowId != null ? String(listing.originalShowId) : null,
       originalShowLabel: null,
       originalAcquiredAt: listing.originalAcquiredAt ?? null,
       shipFromCountry: listing.shipFromCountry ?? "中国",
@@ -181,7 +181,8 @@ export const validateStep3 = (s: ListingFormState): string[] => {
   const missing: string[] = [];
   if (!s.title.trim()) missing.push("title");
   if (!s.priceCents || s.priceCents <= 0) missing.push("price");
-  if (!s.conditionNote.trim()) missing.push("conditionNote");
+  // 描述与成色说明已合并为单一「商品描述」, 必填.
+  if (!s.description.trim()) missing.push("description");
   return missing;
 };
 

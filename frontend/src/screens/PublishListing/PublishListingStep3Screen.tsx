@@ -1,7 +1,13 @@
 /**
- * PRD 单品发布 · Step 3 / 4：智能定价 + 描述。
+ * PRD 单品发布 · Step 3 / 4：定价 + 描述。
+ *
+ * 变更说明:
+ *   1. 「商品描述」与「成色补充说明」合并为单一「商品描述」, 减少重复填写.
+ *   2. 暂时下线「平台参考区间」—— 早期成交数据不足时, 给出的区间反而会让卖家
+ *      觉得"定低了"而焦虑; 待历史成交样本充足后再恢复。
+ *   3. 价格栏改为「¥ 数字 + 右侧 元 单位」的紧凑布局, 下方仅保留预计到手。
  */
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -11,6 +17,7 @@ import {
   TouchableOpacity,
   Switch,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
@@ -28,11 +35,8 @@ import {
 import {
   calculateExpectedPayout,
   centsToPriceInput,
-  getBrandPriceRange,
   parsePriceInputToCents,
   PLATFORM_COMMISSION_BPS,
-  suggestPriceRange,
-  type BrandPriceRange,
 } from "../../services/storeProductService";
 import { useFormatPrice } from "../../utils/currency";
 import {
@@ -55,69 +59,16 @@ const PublishListingStep3Screen: React.FC = () => {
     form.priceCents ? centsToPriceInput(form.priceCents) : ""
   );
   const [tagsInput, setTagsInput] = useState(form.tags.join(", "));
-  const [brandRange, setBrandRange] = useState<BrandPriceRange | null>(null);
-  const [rangeLoading, setRangeLoading] = useState(false);
 
   const priceCents = useMemo(
     () => parsePriceInputToCents(priceInput),
     [priceInput]
   );
 
-  useEffect(() => {
-    if (!form.brand.trim()) {
-      setBrandRange(null);
-      return;
-    }
-    setRangeLoading(true);
-    let cancelled = false;
-    getBrandPriceRange(form.brand, form.condition || undefined)
-      .then((r) => {
-        if (!cancelled) setBrandRange(r);
-      })
-      .catch(() => {
-        if (!cancelled) setBrandRange(null);
-      })
-      .finally(() => {
-        if (!cancelled) setRangeLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [form.brand, form.condition]);
-
-  const fallbackRange = useMemo(
-    () => suggestPriceRange(form.brand, form.condition, priceCents ?? 0),
-    [form.brand, form.condition, priceCents]
-  );
-
-  const displayRange = useMemo(() => {
-    if (brandRange && brandRange.source === "history" && brandRange.sampleSize >= 3) {
-      return {
-        low: brandRange.lowCents,
-        high: brandRange.highCents,
-        median: brandRange.medianCents,
-        source: "history" as const,
-        sample: brandRange.sampleSize,
-      };
-    }
-    return {
-      low: fallbackRange.low,
-      high: fallbackRange.high,
-      median: 0,
-      source: "fallback" as const,
-      sample: 0,
-    };
-  }, [brandRange, fallbackRange]);
-
   const expectedPayout = useMemo(
     () => calculateExpectedPayout(priceCents ?? 0, PLATFORM_COMMISSION_BPS),
     [priceCents]
   );
-
-  const handleApplyMedian = useCallback(() => {
-    if (!brandRange || brandRange.medianCents <= 0) return;
-    setPriceInput(centsToPriceInput(brandRange.medianCents));
-  }, [brandRange]);
 
   const handleNext = () => {
     if (priceCents != null) patch({ priceCents });
@@ -175,62 +126,48 @@ const PublishListingStep3Screen: React.FC = () => {
                 {t("trading.publishListing.fields.price")}
                 <Text style={{ color: theme.colors.error }}> *</Text>
               </Text>
-              <HStack alignItems="baseline" space="sm">
-                <Text style={styles.currencyBig}>¥</Text>
-                <TextInput
-                  style={styles.priceInput}
-                  keyboardType="decimal-pad"
-                  value={priceInput}
-                  onChangeText={setPriceInput}
-                  placeholder="0"
-                  placeholderTextColor={theme.colors.placeholder}
-                />
+              <HStack alignItems="center" justifyContent="space-between">
+                <HStack alignItems="baseline" space="xs" style={styles.priceInputRow}>
+                  <Text style={styles.currencySymbol}>¥</Text>
+                  <TextInput
+                    style={styles.priceInput}
+                    keyboardType="decimal-pad"
+                    value={priceInput}
+                    onChangeText={setPriceInput}
+                    placeholder="0"
+                    placeholderTextColor={theme.colors.placeholder}
+                  />
+                </HStack>
+                <Text style={styles.priceUnit}>
+                  {t("trading.publishListing.fields.priceUnit")}
+                </Text>
               </HStack>
 
-              {displayRange.low > 0 && (
-                <VStack space="xs" style={styles.rangeBlock}>
-                  <Text style={styles.rangeText}>
-                    {displayRange.source === "history"
-                      ? t("trading.publishListing.pricing.referenceHistory", {
-                          low: formatPrice(displayRange.low),
-                          high: formatPrice(displayRange.high),
-                          sample: displayRange.sample,
-                        })
-                      : t("trading.publishListing.pricing.referenceFallback", {
-                          low: formatPrice(displayRange.low),
-                          high: formatPrice(displayRange.high),
-                        })}
-                  </Text>
-                  {displayRange.source === "history" && displayRange.median > 0 && (
-                    <HStack alignItems="center" space="sm">
-                      <Text style={styles.rangeMedian}>
-                        {t("trading.publishListing.pricing.median", {
-                          price: formatPrice(displayRange.median),
-                        })}
-                      </Text>
-                      <Pressable onPress={handleApplyMedian} style={styles.applyBtn}>
-                        <Text style={styles.applyBtnText}>
-                          {t("trading.publishListing.pricing.applyMedian")}
-                        </Text>
-                      </Pressable>
-                    </HStack>
-                  )}
-                </VStack>
-              )}
-
-              {rangeLoading && !displayRange.low && (
-                <Text style={styles.rangeLoading}>
-                  {t("trading.publishListing.pricing.referenceLoading")}
-                </Text>
-              )}
-
               {priceCents != null && priceCents > 0 && (
-                <Text style={styles.payoutText}>
-                  {t("trading.publishListing.pricing.expectedPayout", {
-                    price: formatPrice(expectedPayout),
-                    fee: "1%",
-                  })}
-                </Text>
+                <HStack
+                  alignItems="center"
+                  justifyContent="flex-end"
+                  space="xs"
+                  style={styles.payoutRow}
+                >
+                  <Text style={styles.payoutText}>
+                    {t("trading.publishListing.pricing.expectedPayoutShort", {
+                      price: formatPrice(expectedPayout),
+                    })}
+                  </Text>
+                  <Pressable
+                    hitSlop={8}
+                    onPress={() =>
+                      Alert.show(t("trading.publishListing.feeNotice"))
+                    }
+                  >
+                    <Ionicons
+                      name="information-circle-outline"
+                      size={15}
+                      color={theme.colors.gray400}
+                    />
+                  </Pressable>
+                </HStack>
               )}
             </VStack>
 
@@ -255,6 +192,7 @@ const PublishListingStep3Screen: React.FC = () => {
             <PublishListingFieldRow
               label={t("trading.publishListing.fields.description")}
               required
+              hint={t("trading.publishListing.fields.descriptionHint")}
             >
               <PublishListingTextArea
                 value={form.description}
@@ -262,19 +200,6 @@ const PublishListingStep3Screen: React.FC = () => {
                 placeholder={t("trading.publishListing.fields.descriptionPlaceholder")}
                 placeholderTextColor={theme.colors.placeholder}
                 maxLength={1000}
-              />
-            </PublishListingFieldRow>
-
-            <PublishListingFieldRow
-              label={t("trading.publishListing.fields.conditionNote")}
-              required
-              hint={t("trading.publishListing.fields.conditionNoteHint")}
-            >
-              <PublishListingTextArea
-                value={form.conditionNote}
-                onChangeText={(v) => patch({ conditionNote: v })}
-                placeholder={t("trading.publishListing.fields.conditionNotePlaceholder")}
-                placeholderTextColor={theme.colors.placeholder}
               />
             </PublishListingFieldRow>
 
@@ -333,39 +258,32 @@ const makeStyles = (t: AppTheme) => {
     nextButton: shared.nextButton,
     nextButtonText: shared.nextButtonText,
     priceBlock: {
-      paddingBottom: 8,
+      paddingBottom: 10,
       borderBottomWidth: 1,
       borderBottomColor: t.colors.inputBorder,
     },
-    currencyBig: {
-      fontSize: 22,
+    priceInputRow: {
+      flex: 1,
+    },
+    currencySymbol: {
+      fontSize: 20,
+      fontFamily: t.typography.h3.fontFamily,
       color: t.colors.gray400,
-      fontWeight: "500",
     },
     priceInput: {
-      fontSize: 36,
-      fontWeight: "700",
+      flex: 1,
+      fontSize: 30,
+      fontFamily: t.typography.h1.fontFamily,
       color: t.colors.text,
-      minWidth: 160,
-      paddingVertical: 4,
+      paddingVertical: 2,
     },
-    rangeBlock: { marginTop: 6 },
-    rangeText: { fontSize: 14, color: t.colors.gray400 },
-    rangeMedian: { fontSize: 14, color: t.colors.gray400 },
-    rangeLoading: { fontSize: 14, color: t.colors.gray400, marginTop: 6 },
-    applyBtn: {
-      paddingHorizontal: 10,
-      paddingVertical: 4,
-      borderRadius: t.borderRadius.sm,
-      borderWidth: 1,
-      borderColor: t.colors.gray200,
+    priceUnit: {
+      fontSize: 15,
+      color: t.colors.gray400,
+      marginLeft: 8,
     },
-    applyBtnText: {
-      fontSize: 12,
-      color: t.colors.text,
-      fontWeight: "500",
-    },
-    payoutText: { fontSize: 14, color: t.colors.gray500, marginTop: 4 },
+    payoutRow: { marginTop: 2 },
+    payoutText: { fontSize: 13, color: t.colors.gray500 },
   });
 };
 

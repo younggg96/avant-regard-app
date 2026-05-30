@@ -6,7 +6,6 @@ import {
   Alert,
   Modal,
   Pressable,
-  Text as RNText,
   ScrollView,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -14,6 +13,7 @@ import { useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 
 import { useAppTheme, useThemedStyles, type AppTheme } from "../theme";
+import { Text } from "./ui";
 import { useDiscoverTabStore } from "../store/discoverTabStore";
 import { useMainBottomTabStore } from "../store/mainBottomTabStore";
 import { useAuthStore } from "../store/authStore";
@@ -250,9 +250,9 @@ const PublishTabButtonV2: React.FC<{ onPress?: (event: unknown) => void }> = () 
           <Pressable style={styles.sheetContainer} onPress={() => {}}>
             <View style={styles.sheetHandle} />
             {sheetMode === "all" ? (
-              <RNText style={styles.sheetTitle}>
+              <Text style={styles.sheetTitle}>
                 {t("publish.publishSheetAll.title")}
-              </RNText>
+              </Text>
             ) : null}
             <ScrollView
               style={sheetMode === "all" ? styles.sheetScroll : undefined}
@@ -295,8 +295,8 @@ const SheetItem: React.FC<{
         <Ionicons name={icon} size={22} color={theme.colors.text} />
       </View>
       <View style={styles.sheetItemBody}>
-        <RNText style={styles.sheetItemTitle}>{title}</RNText>
-        <RNText style={styles.sheetItemSubtitle}>{subtitle}</RNText>
+        <Text style={styles.sheetItemTitle}>{title}</Text>
+        <Text style={styles.sheetItemSubtitle}>{subtitle}</Text>
       </View>
       <Ionicons
         name="chevron-forward"
@@ -349,8 +349,7 @@ const makeStyles = (t: AppTheme) =>
       marginBottom: 12,
     },
     sheetTitle: {
-      fontSize: 17,
-      fontWeight: "600",
+      ...t.typography.h4,
       color: t.colors.text,
       marginBottom: 4,
     },
@@ -372,9 +371,13 @@ const makeStyles = (t: AppTheme) =>
       marginRight: 14,
     },
     sheetItemBody: { flex: 1 },
-    sheetItemTitle: { fontSize: 16, fontWeight: "600", color: t.colors.text },
+    sheetItemTitle: {
+      ...t.typography.body,
+      fontFamily: t.typography.h4.fontFamily,
+      color: t.colors.text,
+    },
     sheetItemSubtitle: {
-      fontSize: 12,
+      ...t.typography.caption,
       color: t.colors.textSecondary,
       marginTop: 2,
     },

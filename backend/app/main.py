@@ -62,6 +62,7 @@ from app.api.routes.wallet import (
     admin_wallet_router as admin_wallet_router,
     admin_kyc_router as admin_kyc_router,
     connect_bridge_router as connect_bridge_router,
+    identity_bridge_router as identity_bridge_router,
 )
 from app.api.routes.address import router as address_router
 from app.api.routes.payment_webhooks import router as payment_webhooks_router
@@ -326,6 +327,8 @@ app.include_router(admin_kyc_router, prefix="/api")
 # Stripe Connect 跳板 — Stripe 把浏览器导到这里(必须 https),
 # 这里是 GET HTML, 不挂 auth 中间件, 公开访问。
 app.include_router(connect_bridge_router, prefix="/api")
+# Stripe Identity 跳板 — 同 Connect, GET HTML 公开访问。
+app.include_router(identity_bridge_router, prefix="/api")
 app.include_router(address_router, prefix="/api")
 app.include_router(payment_webhooks_router, prefix="/api")
 app.include_router(trading_support_router, prefix="/api")

@@ -76,8 +76,11 @@ export const Input: React.FC<InputProps> = ({
   const t = useAppTheme();
 
   const themeSx = useMemo(() => {
+    const typography =
+      size === "lg" ? t.typography.body : t.typography.bodySmall;
     const base = {
       color: t.colors.text,
+      fontFamily: typography.fontFamily,
       ...(disabled ? { opacity: 0.6 } : {}),
     };
 
@@ -107,7 +110,7 @@ export const Input: React.FC<InputProps> = ({
       borderColor: t.colors.inputBorder,
       backgroundColor: t.colors.inputBackground,
     };
-  }, [t, variant, disabled]);
+  }, [t, variant, disabled, size]);
 
   const mergedSx = { ...themeSx, ...(sxProp as object) };
 

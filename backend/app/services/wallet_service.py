@@ -145,6 +145,10 @@ class WalletService:
         from app.services.kyc_service import kyc_service
         kyc = kyc_service.get(user_id)
         kyc_status = kyc.status if kyc else "none"
+        # 海外短路:已凭 Stripe Connect active 视同实名时, 钱包入口直接显示已实名,
+        # 不再提示重复验证(避免 seller_kyc 尚未回写时的不一致)。
+        if kyc_status != "approved" and kyc_service.connect_satisfies_kyc(user_id):
+            kyc_status = "approved"
         has_default = kyc_service.has_default_payout(user_id)
 
         # 未来 24h 释放

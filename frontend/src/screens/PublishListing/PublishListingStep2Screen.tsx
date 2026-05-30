@@ -14,6 +14,8 @@
  *   2. 上传稳定性: 调用 `uploadImageFromUri` 时传入 AbortSignal, 用户点 spinner
  *      可以取消; 单文件超时 90s + 1 次自动重试; 即使卡死也能恢复无需杀进程。
  *   3. 已上传的图可重新点击替换; 长按移除. extras 上限 7 张 (总数最多 14).
+ *   4. 裁剪: 不走系统固定 4:5 裁剪, 选图后走 `ImageCropper` / `BatchImageCropper`,
+ *      支持自由 / 1:1 / 4:3 / 16:9 / 9:16 多种比例.
  */
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
@@ -37,6 +39,8 @@ import WizardStepper from "../../components/WizardStepper";
 import PhotoSlotGuide, {
   type PhotoAngleKey as GuideAngle,
 } from "../../components/PhotoSlotGuide";
+import ImageCropper from "../../components/ImageCropper";
+import BatchImageCropper from "../../components/BatchImageCropper";
 import { useAppTheme, useThemedStyles, type AppTheme } from "../../theme";
 import { Alert } from "../../utils/Alert";
 import {
@@ -109,6 +113,14 @@ const PublishListingStep2Screen: React.FC = () => {
   const [pendingStoreKey, setPendingStoreKey] = useState<StoreAngleKey | null>(
     null,
   );
+  const [cropperUri, setCropperUri] = useState<string | null>(null);
+  const [cropTargetKey, setCropTargetKey] = useState<StoreAngleKey | null>(
+    null,
+  );
+  const [batchCropUris, setBatchCropUris] = useState<string[]>([]);
+  const [batchCropMode, setBatchCropMode] = useState<
+    "required" | "extras" | null
+  >(null);
 
   // AbortController 池: key (槽名 / "extras" / "batch") → controller.
   // 用 ref 是因为我们需要在 setState 之外通过 controller.abort() 触发取消,
@@ -148,31 +160,12 @@ const PublishListingStep2Screen: React.FC = () => {
     if (ctl) ctl.abort();
   };
 
-  /**
-   * 单个槽位的上传 (从相册选一张). 失败 / 取消都会重置 uploadingKey.
-   */
-  const launchPicker = useCallback(
-    async (storeKey: StoreAngleKey) => {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== "granted") {
-        Alert.show(t("common.photoPermissionRequired"));
-        return;
-      }
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [4, 5],
-        quality: 0.85,
-      });
-      if (result.canceled || !result.assets[0]) return;
-
+  const uploadToSlot = useCallback(
+    async (storeKey: StoreAngleKey, uri: string) => {
       const ctl = startUpload(storeKey);
       setUploadingKey(storeKey);
       try {
-        const url = await uploadImageFromUri(result.assets[0].uri, {
-          signal: ctl.signal,
-        });
-        // 注意: 这里读 store 的最新值, 避免上传期间用户改了别的槽导致覆盖.
+        const url = await uploadImageFromUri(uri, { signal: ctl.signal });
         const latest = usePublishListingStore.getState().photoAngles;
         patch({ photoAngles: { ...latest, [storeKey]: url } });
       } catch (e) {
@@ -186,15 +179,119 @@ const PublishListingStep2Screen: React.FC = () => {
     [patch, t],
   );
 
+  const uploadBatchUris = useCallback(
+    async (uris: string[], mode: "required" | "extras") => {
+      if (mode === "required") {
+        setBatchUploading(true);
+        const ctl = startUpload("batch");
+        try {
+          const latest = usePublishListingStore.getState().photoAngles;
+          const emptySlots = SLOT_ORDER.filter(
+            ({ storeKey }) => !latest[storeKey],
+          );
+          let slotPtr = 0;
+          for (const uri of uris) {
+            if (ctl.signal.aborted) break;
+            try {
+              const url = await uploadImageFromUri(uri, { signal: ctl.signal });
+              const cur = usePublishListingStore.getState().photoAngles;
+              if (slotPtr < emptySlots.length) {
+                const slot = emptySlots[slotPtr].storeKey;
+                patch({ photoAngles: { ...cur, [slot]: url } });
+                slotPtr += 1;
+              } else {
+                const extras = cur.extras ?? [];
+                if (extras.length >= MAX_EXTRAS) break;
+                patch({
+                  photoAngles: { ...cur, extras: [...extras, url] },
+                });
+              }
+            } catch (e) {
+              if (e instanceof UploadCancelledError) break;
+              Alert.show(
+                e instanceof Error ? e.message : t("common.uploadFailed"),
+              );
+            }
+          }
+        } finally {
+          finishUpload("batch");
+          setBatchUploading(false);
+        }
+        return;
+      }
+
+      const ctl = startUpload("extras");
+      setUploadingKey("extras");
+      try {
+        for (const uri of uris) {
+          if (ctl.signal.aborted) break;
+          try {
+            const url = await uploadImageFromUri(uri, { signal: ctl.signal });
+            const cur = usePublishListingStore.getState().photoAngles;
+            const curExtras = cur.extras ?? [];
+            if (curExtras.length >= MAX_EXTRAS) break;
+            patch({
+              photoAngles: { ...cur, extras: [...curExtras, url] },
+            });
+          } catch (e) {
+            if (e instanceof UploadCancelledError) break;
+            Alert.show(
+              e instanceof Error ? e.message : t("common.uploadFailed"),
+            );
+          }
+        }
+      } finally {
+        finishUpload("extras");
+        setUploadingKey((cur) => (cur === "extras" ? null : cur));
+      }
+    },
+    [patch, t],
+  );
+
   /**
-   * 多选批量上传 —— 一次性把剩余空槽全填满, 不在意构图引导.
-   *
-   * 用户先点这里时, 我们按 SLOT_ORDER 顺序把每张图分配到下一个空槽; 全填完
-   * 后剩余的图自动塞到 extras (不超 MAX_EXTRAS). 上传是串行的, 避免同时几个
-   * fetch 撞到带宽瓶颈反而都超时。
+   * 单个槽位: 相册选图 → 自定义裁剪 → 上传.
+   */
+  const launchPicker = useCallback(
+    async (storeKey: StoreAngleKey) => {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") {
+        Alert.show(t("common.photoPermissionRequired"));
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: false,
+        quality: 1.0,
+      });
+      if (result.canceled || !result.assets[0]) return;
+
+      setCropTargetKey(storeKey);
+      setCropperUri(result.assets[0].uri);
+    },
+    [t],
+  );
+
+  const handleSingleCropDone = useCallback(
+    async (croppedUri: string) => {
+      const target = cropTargetKey;
+      setCropperUri(null);
+      setCropTargetKey(null);
+      if (!target) return;
+      await uploadToSlot(target, croppedUri);
+    },
+    [cropTargetKey, uploadToSlot],
+  );
+
+  const handleSingleCropCancel = useCallback(() => {
+    setCropperUri(null);
+    setCropTargetKey(null);
+  }, []);
+
+  /**
+   * 多选批量上传 —— 选图后逐张裁剪, 再按顺序填入空槽 → extras.
    */
   const handleBatchUpload = useCallback(async () => {
-    if (batchUploading) return;
+    if (batchUploading || cropperUri || batchCropUris.length) return;
     const latest = usePublishListingStore.getState().photoAngles;
     const emptySlots = SLOT_ORDER.filter(({ storeKey }) => !latest[storeKey]);
     const remainingExtras = MAX_EXTRAS - (latest.extras?.length ?? 0);
@@ -212,42 +309,29 @@ const PublishListingStep2Screen: React.FC = () => {
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsMultipleSelection: true,
       selectionLimit: limit,
-      quality: 0.85,
+      allowsEditing: false,
+      quality: 1.0,
     });
     if (result.canceled || !result.assets?.length) return;
 
-    setBatchUploading(true);
-    const ctl = startUpload("batch");
+    setBatchCropUris(result.assets.map((asset) => asset.uri));
+    setBatchCropMode("required");
+  }, [batchCropUris.length, batchUploading, cropperUri, t]);
 
-    try {
-      let slotPtr = 0;
-      for (const asset of result.assets) {
-        if (ctl.signal.aborted) break;
-        try {
-          const url = await uploadImageFromUri(asset.uri, { signal: ctl.signal });
-          const cur = usePublishListingStore.getState().photoAngles;
-          if (slotPtr < emptySlots.length) {
-            const slot = emptySlots[slotPtr].storeKey;
-            patch({ photoAngles: { ...cur, [slot]: url } });
-            slotPtr += 1;
-          } else {
-            const extras = cur.extras ?? [];
-            if (extras.length >= MAX_EXTRAS) break;
-            patch({
-              photoAngles: { ...cur, extras: [...extras, url] },
-            });
-          }
-        } catch (e) {
-          if (e instanceof UploadCancelledError) break;
-          // 单张失败不阻断整个批次, 显示一次提示就继续下一张.
-          Alert.show(e instanceof Error ? e.message : t("common.uploadFailed"));
-        }
-      }
-    } finally {
-      finishUpload("batch");
-      setBatchUploading(false);
-    }
-  }, [batchUploading, patch, t]);
+  const handleBatchCropDone = useCallback(
+    (croppedUris: string[]) => {
+      const mode = batchCropMode;
+      setBatchCropUris([]);
+      setBatchCropMode(null);
+      if (mode) void uploadBatchUris(croppedUris, mode);
+    },
+    [batchCropMode, uploadBatchUris],
+  );
+
+  const handleBatchCropCancel = useCallback(() => {
+    setBatchCropUris([]);
+    setBatchCropMode(null);
+  }, []);
 
   const handleSlotPress = (storeKey: StoreAngleKey, guideAngle: GuideAngle) => {
     if (uploadingKey === storeKey) {
@@ -287,32 +371,13 @@ const PublishListingStep2Screen: React.FC = () => {
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsMultipleSelection: true,
       selectionLimit: remaining,
-      quality: 0.85,
+      allowsEditing: false,
+      quality: 1.0,
     });
     if (result.canceled || !result.assets?.length) return;
 
-    const ctl = startUpload("extras");
-    setUploadingKey("extras");
-    try {
-      for (const asset of result.assets) {
-        if (ctl.signal.aborted) break;
-        try {
-          const url = await uploadImageFromUri(asset.uri, { signal: ctl.signal });
-          const cur = usePublishListingStore.getState().photoAngles;
-          const curExtras = cur.extras ?? [];
-          if (curExtras.length >= MAX_EXTRAS) break;
-          patch({
-            photoAngles: { ...cur, extras: [...curExtras, url] },
-          });
-        } catch (e) {
-          if (e instanceof UploadCancelledError) break;
-          Alert.show(e instanceof Error ? e.message : t("common.uploadFailed"));
-        }
-      }
-    } finally {
-      finishUpload("extras");
-      setUploadingKey((cur) => (cur === "extras" ? null : cur));
-    }
+    setBatchCropUris(result.assets.map((asset) => asset.uri));
+    setBatchCropMode("extras");
   };
 
   const handleRemoveExtra = (index: number) => {
@@ -338,6 +403,28 @@ const PublishListingStep2Screen: React.FC = () => {
   const filledCount = SLOT_ORDER.filter(
     ({ storeKey }) => !!photoAngles[storeKey],
   ).length;
+
+  if (batchCropMode && batchCropUris.length > 0) {
+    return (
+      <BatchImageCropper
+        sourceUris={batchCropUris}
+        aspect="free"
+        onCancel={handleBatchCropCancel}
+        onDone={handleBatchCropDone}
+      />
+    );
+  }
+
+  if (cropperUri) {
+    return (
+      <ImageCropper
+        sourceUri={cropperUri}
+        aspect="free"
+        onCancel={handleSingleCropCancel}
+        onDone={handleSingleCropDone}
+      />
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>

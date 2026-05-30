@@ -25,7 +25,7 @@ export interface Show {
   show_url: string;
   year: number;
   category: string;
-  show_id?: number;  // 数据库中的秀场 ID
+  show_id?: number | string;  // 数据库中的秀场 ID (shows.id 为字符串 slug)
 }
 
 interface ShowSelectorModalProps {
