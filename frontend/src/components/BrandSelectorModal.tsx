@@ -13,6 +13,7 @@ import { Box, Text, Pressable, HStack, Input, VStack } from "./ui";
 import { OptimizedImage } from "./ui/OptimizedImage";
 import { ImageSize } from "../utils/imageUtils";
 import { theme, useThemedStyles, type AppTheme, useAppTheme } from "../theme";
+import KeyboardFriend from "./KeyboardFriend";
 import { Brand } from "../services/brandService";
 
 const { width: screenWidth } = Dimensions.get("window");
@@ -61,8 +62,9 @@ const BrandSelectorModal: React.FC<BrandSelectorModalProps> = ({
       transparent={true}
     >
       <Pressable style={styles.overlay} onPress={onClose}>
+        <KeyboardFriend mode="sheet" style={styles.modalContent}>
         <Pressable
-          style={styles.modalContent}
+          style={{ flex: 1 }}
           onPress={(e: GestureResponderEvent) => e.stopPropagation()}
         >
           <Box style={styles.handleBar} />
@@ -213,6 +215,7 @@ const BrandSelectorModal: React.FC<BrandSelectorModalProps> = ({
             />
           </SafeAreaView>
         </Pressable>
+        </KeyboardFriend>
       </Pressable>
     </Modal>
   );

@@ -76,6 +76,15 @@ const IMAGE_SIZE_CONFIG: Record<
 const OBJECT_PUBLIC_PATH = "/storage/v1/object/public/";
 
 /**
+ * 已知的外部图片 host，这些域名的图片需要走后端代理来绕过防盗链。
+ * 与后端 `_EXTERNAL_IMAGE_HOSTS` 保持同步。
+ */
+const EXTERNAL_IMAGE_HOSTS = [
+  "assets.vogue.com",
+  "images.vogue.com",
+];
+
+/**
  * 图片转换总开关。
  *
  * 打开时所有 Storage URL 会改写为 `${API_BASE}/api/files/image?...`，
@@ -97,7 +106,13 @@ const IMAGE_PROXY_ENDPOINT = `${config.EXPO_PUBLIC_API_BASE_URL.replace(
 )}/api/files/image`;
 
 function canTransform(url: string): boolean {
-  return url.includes(OBJECT_PUBLIC_PATH);
+  if (url.includes(OBJECT_PUBLIC_PATH)) return true;
+  try {
+    const host = new URL(url).hostname;
+    return EXTERNAL_IMAGE_HOSTS.includes(host);
+  } catch {
+    return false;
+  }
 }
 
 /**

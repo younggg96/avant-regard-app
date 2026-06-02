@@ -22,6 +22,7 @@ import * as ImagePicker from "expo-image-picker";
 import { theme, useThemedStyles, type AppTheme } from "../theme";
 import { useAuthStore } from "../store/authStore";
 import ScreenHeader from "../components/ScreenHeader";
+import KeyboardFriend from "../components/KeyboardFriend";
 import { userInfoService, Gender } from "../services/userInfoService";
 import { brandService, Brand } from "../services/brandService";
 import { OptimizedImage } from "../components/ui/OptimizedImage";
@@ -916,11 +917,8 @@ const EditProfileScreen = () => {
           activeOpacity={1}
           onPress={() => setShowBrandModal(false)}
         >
-          <TouchableOpacity
-            activeOpacity={1}
-            style={styles.modalContainer}
-            onPress={() => { }}
-          >
+          <KeyboardFriend mode="sheet" style={styles.modalContainer}>
+            <TouchableOpacity activeOpacity={1} onPress={() => { }}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>
                 {t("profileReminder.selectBrandsTitle", { count: selectedBrandIds.length })}
@@ -963,6 +961,7 @@ const EditProfileScreen = () => {
               <FlatList
                 data={brandOptions}
                 keyExtractor={(item) => String(item.id)}
+                keyboardShouldPersistTaps="handled"
                 renderItem={({ item }) => {
                   const isSelected = selectedBrandIds.includes(item.id);
                   return (
@@ -1039,7 +1038,8 @@ const EditProfileScreen = () => {
             >
               <Text style={styles.confirmButtonText}>{t("common.confirm")}</Text>
             </TouchableOpacity>
-          </TouchableOpacity>
+            </TouchableOpacity>
+          </KeyboardFriend>
         </TouchableOpacity>
       </Modal>
     </SafeAreaView>

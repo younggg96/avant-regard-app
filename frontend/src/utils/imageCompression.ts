@@ -113,6 +113,43 @@ export async function compressImage(uri: string): Promise<{
 }
 
 /**
+ * Bake the EXIF orientation flag into the actual pixels.
+ *
+ * iOS / many Android cameras store a photo's "which way is up" as an EXIF
+ * `Orientation` tag instead of physically rotating the pixel buffer. When a
+ * user straightens a sideways/upside-down shot in the system Photos app, the
+ * edit often only flips that tag too. Our upload path streams the raw file
+ * bytes straight to Storage, and several of our consumers (and some web
+ * browsers) ignore the orientation tag — so the buyer ends up seeing the
+ * pre-rotation, upside-down frame even though the seller "fixed" it.
+ *
+ * Running a single `expo-image-manipulator` pass re-encodes the image with the
+ * orientation already applied to the pixels (output orientation = normal), so
+ * every downstream viewer renders it the same way the seller saw it. This is
+ * intentionally a no-resize, max-quality pass: detail shots (brand / care
+ * labels) must stay crisp, and the listing upload does not otherwise compress.
+ *
+ * Failures are swallowed (returns the original uri) — a manipulator hiccup must
+ * never block the seller from uploading.
+ */
+export async function normalizeImageOrientation(uri: string): Promise<string> {
+  if (uri.startsWith("http://") || uri.startsWith("https://")) return uri;
+  try {
+    const result = await ImageManipulator.manipulateAsync(uri, [], {
+      compress: 1,
+      format: ImageManipulator.SaveFormat.JPEG,
+    });
+    return result.uri;
+  } catch (error) {
+    console.warn(
+      "[imageCompression] orientation normalize failed, using original:",
+      error,
+    );
+    return uri;
+  }
+}
+
+/**
  * High-level entry point used by `postService.uploadImage`. Wraps
  * `compressImage` with:
  *  - a remote-URL short-circuit (the caller may pass an already-uploaded

@@ -134,7 +134,7 @@ export const makePublishListingFormStyles = (t: AppTheme) =>
       lineHeight: 16,
     },
     modeChipSubActive: {
-      color: t.colors.gray400,
+      color: t.colors.white,
     },
     footer: {
       padding: PUBLISH_LISTING_FORM_PADDING,

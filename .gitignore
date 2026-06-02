@@ -96,3 +96,4 @@ backend/.venv/
 .eslintcache
 backend/.agents/*
 backend/skills-lock.json
+backend/.env.cn

@@ -15,7 +15,8 @@ import { useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 
-import { Box, HStack, Text, VStack, Pressable, Input } from "../../components/ui";
+import { Box, HStack, Text, VStack, Pressable } from "../../components/ui";
+import WheelDatePickerSheet from "../../components/WheelDatePickerSheet";
 import ScreenHeader from "../../components/ScreenHeader";
 import WizardStepper from "../../components/WizardStepper";
 import RegionPicker from "../../components/RegionPicker";
@@ -43,6 +44,7 @@ import {
   PublishListingFeeNotice,
   PublishListingFieldRow,
 } from "./publishListingFormShared";
+import { formatRegionDisplay } from "../../data/regionCatalog";
 
 const PublishListingStep4Screen: React.FC = () => {
   const { t } = useTranslation();
@@ -57,6 +59,7 @@ const PublishListingStep4Screen: React.FC = () => {
   const [savingDraft, setSavingDraft] = useState(false);
 
   const [regionVisible, setRegionVisible] = useState(false);
+  const [acquiredDateVisible, setAcquiredDateVisible] = useState(false);
   const [showSheetVisible, setShowSheetVisible] = useState(false);
   const [showQuery, setShowQuery] = useState("");
   const [showResults, setShowResults] = useState<ShowSelectorItem[]>([]);
@@ -91,10 +94,13 @@ const PublishListingStep4Screen: React.FC = () => {
   }, [showQuery]);
 
   const regionLabel = useMemo(() => {
-    const parts = [form.shipFromCountry, form.shipFromState, form.shipFromCity]
-      .filter(Boolean)
-      .join(" · ");
-    return parts || t("trading.publishListing.logistics.regionPlaceholder");
+    const label = formatRegionDisplay(
+      form.shipFromCountry,
+      form.shipFromState,
+      form.shipFromCity,
+      t
+    );
+    return label || t("trading.publishListing.logistics.regionPlaceholder");
   }, [form.shipFromCountry, form.shipFromState, form.shipFromCity, t]);
 
   const stepLabels = useMemo(
@@ -240,18 +246,27 @@ const PublishListingStep4Screen: React.FC = () => {
           <VStack gap="$lg">
             <PublishListingFieldRow
               label={t("trading.publishListing.fields.originalAcquiredAt")}
+              hint={t("trading.publishListing.fields.originalAcquiredAtHint")}
             >
-              <Input
-                value={form.originalAcquiredAt ?? ""}
-                onChangeText={(v) =>
-                  patch({ originalAcquiredAt: v.trim() || null })
-                }
-                placeholder="YYYY-MM-DD"
-                placeholderTextColor={theme.colors.gray400}
-                variant="underlined"
-                size="sm"
-                autoCorrect={false}
-              />
+              <Pressable
+                onPress={() => setAcquiredDateVisible(true)}
+                style={styles.selectorRow}
+              >
+                <Text
+                  style={[
+                    styles.selectorText,
+                    !form.originalAcquiredAt && styles.placeholderText,
+                  ]}
+                >
+                  {form.originalAcquiredAt ||
+                    t("trading.publishListing.fields.selectAcquiredDateOptional")}
+                </Text>
+                <Ionicons
+                  name="calendar-outline"
+                  size={18}
+                  color={theme.colors.gray400}
+                />
+              </Pressable>
             </PublishListingFieldRow>
 
             <PublishListingFieldRow
@@ -380,6 +395,14 @@ const PublishListingStep4Screen: React.FC = () => {
           </TouchableOpacity>
         </HStack>
       </KeyboardAvoidingView>
+
+      <WheelDatePickerSheet
+        visible={acquiredDateVisible}
+        value={form.originalAcquiredAt}
+        onClose={() => setAcquiredDateVisible(false)}
+        onConfirm={(iso) => patch({ originalAcquiredAt: iso })}
+        onClear={() => patch({ originalAcquiredAt: null })}
+      />
 
       <RegionPicker
         visible={regionVisible}

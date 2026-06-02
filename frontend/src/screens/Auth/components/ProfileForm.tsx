@@ -19,6 +19,7 @@ import { PROVINCES, AGE_RANGES } from "../constants";
 import { useAuthStyles } from "../styles";
 import { Alert } from "../../../utils/Alert";
 import { useProfileLoadingGif } from "../../../utils/loadingGifs";
+import KeyboardFriend from "../../../components/KeyboardFriend";
 
 interface ProfileFormProps {
   formData: FormData;
@@ -306,7 +307,7 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({
         presentationStyle="pageSheet"
         onRequestClose={() => setShowBrandPicker(false)}
       >
-        <View style={styles.brandModalContainer}>
+        <KeyboardFriend mode="screen" style={styles.brandModalContainer}>
           <View style={styles.brandModalHeader}>
             <Text style={styles.brandModalTitle}>
               {t("auth.selectFavBrands")}（{formData.followedBrandIds?.length || 0}/5）
@@ -352,6 +353,7 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({
             <FlatList
               data={brandOptions}
               keyExtractor={(item) => String(item.id)}
+              keyboardShouldPersistTaps="handled"
               renderItem={({ item }) => {
                 const isSelected = formData.followedBrandIds?.includes(item.id);
                 return (
@@ -423,7 +425,7 @@ export const ProfileForm: React.FC<ProfileFormProps> = ({
           >
             <Text style={styles.brandConfirmButtonText}>{t("common.confirm")}</Text>
           </TouchableOpacity>
-        </View>
+        </KeyboardFriend>
       </Modal>
     </View>
   );

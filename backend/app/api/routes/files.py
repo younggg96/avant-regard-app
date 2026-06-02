@@ -121,7 +121,11 @@ _IMAGE_CACHE_DIR = os.environ.get(
 os.makedirs(_IMAGE_CACHE_DIR, exist_ok=True)
 
 _STORAGE_HOST = urlparse(settings.SUPABASE_URL).hostname or ""
-_ALLOWED_HOSTS = {_STORAGE_HOST} - {""}
+_EXTERNAL_IMAGE_HOSTS = {
+    "assets.vogue.com",
+    "images.vogue.com",
+}
+_ALLOWED_HOSTS = ({_STORAGE_HOST} | _EXTERNAL_IMAGE_HOSTS) - {""}
 
 # 输出尺寸上限：与 Supabase Image Transformation 保持一致，既够用又能
 # 防止恶意请求把服务端放大图浪费 CPU。
@@ -281,10 +285,18 @@ async def proxy_image(
         )
 
     try:
+        parsed_url = urlparse(url)
+        headers = {}
+        if parsed_url.hostname in _EXTERNAL_IMAGE_HOSTS:
+            headers["Referer"] = f"{parsed_url.scheme}://{parsed_url.hostname}/"
+            headers["User-Agent"] = (
+                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            )
         async with httpx.AsyncClient(
             timeout=_FETCH_TIMEOUT_S, follow_redirects=True
         ) as client:
-            resp = await client.get(url)
+            resp = await client.get(url, headers=headers)
     except httpx.HTTPError as e:
         raise HTTPException(status_code=502, detail=f"回源失败: {e}")
 

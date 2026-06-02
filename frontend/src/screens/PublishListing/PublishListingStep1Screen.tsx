@@ -80,7 +80,7 @@ const PublishListingStep1Screen: React.FC = () => {
   const [brandSheetVisible, setBrandSheetVisible] = useState(false);
   const [sizeStandard, setSizeStandard] = useState<SizeStandardKey>("womensCn");
 
-  // 4 档成色: 描述用"动作 + 状态", 不再用主观的"几新"百分比.
+  // 4 档成色: 全新 / 几乎全新 / 轻微使用 / 明显使用（标题直观，副标题补充细节）.
   // enum value 复用后端已有的 4 个值 (跳过 NEW_95), 后端 schema 不需要改。
   const conditionOptions = useMemo<
     Array<{ value: ProductCondition; labelKey: string; subKey: string }>

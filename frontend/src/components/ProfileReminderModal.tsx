@@ -20,6 +20,7 @@ import { useAuthStore } from "../store/authStore";
 import { userInfoService, Gender } from "../services/userInfoService";
 import { brandService } from "../services/brandService";
 import { Alert } from "../utils/Alert";
+import KeyboardFriend from "./KeyboardFriend";
 
 // 品牌选项类型
 interface BrandOption {
@@ -466,7 +467,7 @@ const ProfileReminderModal: React.FC<ProfileReminderModalProps> = ({
         presentationStyle="pageSheet"
         onRequestClose={() => setShowBrandPicker(false)}
       >
-        <View style={styles.brandModalContainer}>
+        <KeyboardFriend mode="screen" style={styles.brandModalContainer}>
           <View style={styles.brandModalHeader}>
             <Text style={styles.brandModalTitle}>
               {t("profileReminder.selectBrandsTitle", { count: followedBrandIds.length })}
@@ -509,6 +510,7 @@ const ProfileReminderModal: React.FC<ProfileReminderModalProps> = ({
             <FlatList
               data={brandOptions}
               keyExtractor={(item) => String(item.id)}
+              keyboardShouldPersistTaps="handled"
               renderItem={({ item }) => {
                 const isSelected = followedBrandIds.includes(item.id);
                 return (
@@ -560,7 +562,7 @@ const ProfileReminderModal: React.FC<ProfileReminderModalProps> = ({
           >
             <Text style={styles.brandConfirmButtonText}>{t("profileReminder.confirm")}</Text>
           </TouchableOpacity>
-        </View>
+        </KeyboardFriend>
       </Modal>
     </Modal>
   );

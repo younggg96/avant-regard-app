@@ -47,6 +47,7 @@ import {
   uploadImageFromUri,
   UploadCancelledError,
 } from "../admin/adminUtils";
+import { normalizeImageOrientation } from "../../utils/imageCompression";
 import {
   usePublishListingStore,
   TOTAL_PUBLISH_STEPS,
@@ -121,6 +122,9 @@ const PublishListingStep2Screen: React.FC = () => {
   const [batchCropMode, setBatchCropMode] = useState<
     "required" | "extras" | null
   >(null);
+  // 追加图排序: 长按一张进入"排序模式", 再点另一张交换位置 (复用 Lookbook 的
+  // tap-to-swap 交互, 不引入额外拖拽依赖, 行为与全站一致)。
+  const [reorderFromIndex, setReorderFromIndex] = useState<number | null>(null);
 
   // AbortController 池: key (槽名 / "extras" / "batch") → controller.
   // 用 ref 是因为我们需要在 setState 之外通过 controller.abort() 触发取消,
@@ -165,7 +169,8 @@ const PublishListingStep2Screen: React.FC = () => {
       const ctl = startUpload(storeKey);
       setUploadingKey(storeKey);
       try {
-        const url = await uploadImageFromUri(uri, { signal: ctl.signal });
+        const upright = await normalizeImageOrientation(uri);
+        const url = await uploadImageFromUri(upright, { signal: ctl.signal });
         const latest = usePublishListingStore.getState().photoAngles;
         patch({ photoAngles: { ...latest, [storeKey]: url } });
       } catch (e) {
@@ -193,7 +198,10 @@ const PublishListingStep2Screen: React.FC = () => {
           for (const uri of uris) {
             if (ctl.signal.aborted) break;
             try {
-              const url = await uploadImageFromUri(uri, { signal: ctl.signal });
+              const upright = await normalizeImageOrientation(uri);
+              const url = await uploadImageFromUri(upright, {
+                signal: ctl.signal,
+              });
               const cur = usePublishListingStore.getState().photoAngles;
               if (slotPtr < emptySlots.length) {
                 const slot = emptySlots[slotPtr].storeKey;
@@ -226,7 +234,10 @@ const PublishListingStep2Screen: React.FC = () => {
         for (const uri of uris) {
           if (ctl.signal.aborted) break;
           try {
-            const url = await uploadImageFromUri(uri, { signal: ctl.signal });
+            const upright = await normalizeImageOrientation(uri);
+            const url = await uploadImageFromUri(upright, {
+              signal: ctl.signal,
+            });
             const cur = usePublishListingStore.getState().photoAngles;
             const curExtras = cur.extras ?? [];
             if (curExtras.length >= MAX_EXTRAS) break;
@@ -388,6 +399,35 @@ const PublishListingStep2Screen: React.FC = () => {
         extras: extras.filter((_, i) => i !== index),
       },
     });
+    // 删除后退出排序模式, 避免 reorderFromIndex 指向已变化的下标。
+    setReorderFromIndex(null);
+  };
+
+  // 长按追加图: 进入 / 退出排序模式。
+  const handleExtraLongPress = (index: number) => {
+    if (reorderFromIndex === index) {
+      setReorderFromIndex(null);
+      return;
+    }
+    setReorderFromIndex(index);
+    Alert.show(t("trading.publishListing.photos.reorderHint"), "", 1500);
+  };
+
+  // 排序模式下点击另一张追加图 → 交换位置 (点自己则退出)。
+  const handleExtraReorderTap = (toIndex: number) => {
+    const from = reorderFromIndex;
+    if (from === null) return;
+    if (from === toIndex) {
+      setReorderFromIndex(null);
+      return;
+    }
+    const extras = [...(photoAngles.extras ?? [])];
+    const tmp = extras[from];
+    extras[from] = extras[toIndex];
+    extras[toIndex] = tmp;
+    patch({ photoAngles: { ...photoAngles, extras } });
+    setReorderFromIndex(null);
+    Alert.show(t("trading.publishListing.photos.positionSwapped"), "", 1000);
   };
 
   const handleNext = () => {
@@ -546,26 +586,53 @@ const PublishListingStep2Screen: React.FC = () => {
           {t("trading.publishListing.photos.extraHint")}
         </Text>
         <HStack flexWrap="wrap" style={{ gap: 8 } as any}>
-          {(photoAngles.extras ?? []).map((url, i) => (
-            <Pressable
-              key={url + i}
-              style={styles.extraTile}
-              onLongPress={() => handleRemoveExtra(i)}
-            >
-              <OptimizedImage uri={url} style={styles.extraImage} />
-              <View style={styles.angleEditOverlay}>
-                <Ionicons name="trash-outline" size={12} color="#fff" />
-              </View>
-            </Pressable>
-          ))}
+          {(photoAngles.extras ?? []).map((url, i) => {
+            const isSelected = reorderFromIndex === i;
+            return (
+              <Pressable
+                key={url + i}
+                style={[styles.extraTile, isSelected && styles.extraTileSelected]}
+                onPress={() => {
+                  if (reorderFromIndex !== null) handleExtraReorderTap(i);
+                }}
+                onLongPress={() => handleExtraLongPress(i)}
+              >
+                <OptimizedImage uri={url} style={styles.extraImage} />
+                {isSelected ? (
+                  <View style={styles.extraSwapOverlay}>
+                    <Ionicons name="swap-horizontal" size={22} color="#fff" />
+                  </View>
+                ) : (
+                  <>
+                    <View style={styles.extraOrderBadge}>
+                      <Text style={styles.extraOrderBadgeText}>{i + 1}</Text>
+                    </View>
+                    <TouchableOpacity
+                      style={styles.extraRemoveBtn}
+                      onPress={() => handleRemoveExtra(i)}
+                      hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                    >
+                      <Ionicons name="close" size={12} color="#fff" />
+                    </TouchableOpacity>
+                  </>
+                )}
+              </Pressable>
+            );
+          })}
           {(photoAngles.extras ?? []).length < MAX_EXTRAS && (
             <Pressable
               style={styles.extraAdd}
-              onPress={() =>
-                uploadingKey === "extras"
-                  ? cancelUpload("extras")
-                  : handlePickExtra()
-              }
+              onPress={() => {
+                if (reorderFromIndex !== null) {
+                  setReorderFromIndex(null);
+                  return;
+                }
+                if (uploadingKey === "extras") {
+                  cancelUpload("extras");
+                } else {
+                  handlePickExtra();
+                }
+              }}
             >
               {uploadingKey === "extras" ? (
                 <ActivityIndicator />
@@ -575,8 +642,15 @@ const PublishListingStep2Screen: React.FC = () => {
             </Pressable>
           )}
         </HStack>
-        <Text style={styles.hintSmall}>
-          {t("trading.publishListing.photos.longPressRemove")}
+        <Text
+          style={[
+            styles.hintSmall,
+            reorderFromIndex !== null && styles.hintSmallActive,
+          ]}
+        >
+          {reorderFromIndex !== null
+            ? t("trading.publishListing.photos.reorderModeHint")
+            : t("trading.publishListing.photos.longPressRemove")}
         </Text>
       </ScrollView>
 
@@ -619,6 +693,10 @@ const makeStyles = (t: AppTheme) => {
     sectionTitle: shared.sectionTitle,
     sectionHint: shared.sectionHint,
     hintSmall: shared.hintSmall,
+    hintSmallActive: {
+      color: t.colors.accent,
+      fontWeight: "500",
+    },
     footer: shared.footer,
     nextButton: shared.nextButton,
     nextButtonDisabled: shared.nextButtonDisabled,
@@ -719,7 +797,46 @@ const makeStyles = (t: AppTheme) => {
       overflow: "hidden",
       position: "relative",
     },
+    extraTileSelected: {
+      borderWidth: 2,
+      borderColor: t.colors.accent,
+      opacity: 0.85,
+    },
     extraImage: { width: "100%", height: "100%" },
+    extraSwapOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: "rgba(0,0,0,0.35)",
+    },
+    extraOrderBadge: {
+      position: "absolute",
+      left: 4,
+      bottom: 4,
+      minWidth: 16,
+      height: 16,
+      paddingHorizontal: 4,
+      borderRadius: 8,
+      backgroundColor: "rgba(0,0,0,0.6)",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    extraOrderBadgeText: {
+      color: "#fff",
+      fontSize: 10,
+      fontWeight: "600",
+    },
+    extraRemoveBtn: {
+      position: "absolute",
+      top: 4,
+      right: 4,
+      width: 18,
+      height: 18,
+      borderRadius: 9,
+      backgroundColor: "rgba(0,0,0,0.6)",
+      alignItems: "center",
+      justifyContent: "center",
+    },
     extraAdd: {
       width: 80,
       height: 80,

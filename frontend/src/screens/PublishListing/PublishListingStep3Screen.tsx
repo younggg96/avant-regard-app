@@ -38,7 +38,7 @@ import {
   parsePriceInputToCents,
   PLATFORM_COMMISSION_BPS,
 } from "../../services/storeProductService";
-import { useFormatPrice } from "../../utils/currency";
+import { formatPriceDisplay } from "../../utils/currency";
 import {
   makePublishListingFormStyles,
   PublishListingFeeNotice,
@@ -51,7 +51,6 @@ const PublishListingStep3Screen: React.FC = () => {
   const navigation = useNavigation<any>();
   const styles = useThemedStyles(makeStyles);
   const theme = useAppTheme();
-  const formatPrice = useFormatPrice();
   const form = usePublishListingStore();
   const patch = usePublishListingStore((s) => s.patch);
 
@@ -152,7 +151,7 @@ const PublishListingStep3Screen: React.FC = () => {
                 >
                   <Text style={styles.payoutText}>
                     {t("trading.publishListing.pricing.expectedPayoutShort", {
-                      price: formatPrice(expectedPayout),
+                      price: formatPriceDisplay(expectedPayout, "CNY", "CNY"),
                     })}
                   </Text>
                   <Pressable
@@ -258,27 +257,28 @@ const makeStyles = (t: AppTheme) => {
     nextButton: shared.nextButton,
     nextButtonText: shared.nextButtonText,
     priceBlock: {
-      paddingBottom: 10,
+      paddingBottom: 8,
       borderBottomWidth: 1,
       borderBottomColor: t.colors.inputBorder,
     },
     priceInputRow: {
       flex: 1,
+      paddingVertical: 8,
     },
     currencySymbol: {
-      fontSize: 20,
-      fontFamily: t.typography.h3.fontFamily,
+      ...t.typography.bodySmall,
       color: t.colors.gray400,
     },
     priceInput: {
       flex: 1,
-      fontSize: 30,
-      fontFamily: t.typography.h1.fontFamily,
+      ...t.typography.h4,
       color: t.colors.text,
-      paddingVertical: 2,
+      paddingVertical: 0,
+      lineHeight: 22,
+      ...(Platform.OS === "android" ? { includeFontPadding: false } : null),
     },
     priceUnit: {
-      fontSize: 15,
+      ...t.typography.bodySmall,
       color: t.colors.gray400,
       marginLeft: 8,
     },

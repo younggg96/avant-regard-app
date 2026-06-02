@@ -17,7 +17,6 @@ import {
   Modal,
   StyleSheet,
   TouchableWithoutFeedback,
-  ScrollView,
   FlatList,
   TextInput,
   View,
@@ -25,8 +24,17 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 
-import { Box, HStack, VStack, Text, Pressable } from "./ui";
+import { Box, HStack, Text, Pressable } from "./ui";
+import KeyboardFriend, { KeyboardFriendScrollView } from "./KeyboardFriend";
 import { useThemedStyles, useAppTheme, type AppTheme } from "../theme";
+import {
+  CN_REGIONS,
+  REGION_COUNTRY_CANONICAL,
+  displayCity,
+  displayCountry,
+  displayState,
+  isChinaCountry,
+} from "../data/regionCatalog";
 
 export interface RegionValue {
   country: string | null;
@@ -41,53 +49,6 @@ interface RegionPickerProps {
   onChange: (value: RegionValue) => void;
 }
 
-const COUNTRY_OPTIONS = [
-  "中国",
-  "日本",
-  "美国",
-  "英国",
-  "法国",
-  "意大利",
-  "德国",
-  "韩国",
-  "加拿大",
-  "澳大利亚",
-  "新加坡",
-  "西班牙",
-  "比利时",
-  "荷兰",
-  "瑞士",
-  "其他",
-] as const;
-
-// 中国常用省 / 直辖市 + 部分头部城市
-const CN_STATES: { state: string; cities: string[] }[] = [
-  { state: "北京市", cities: ["北京"] },
-  { state: "上海市", cities: ["上海"] },
-  { state: "天津市", cities: ["天津"] },
-  { state: "重庆市", cities: ["重庆"] },
-  {
-    state: "广东省",
-    cities: ["广州", "深圳", "佛山", "东莞", "珠海", "汕头", "中山"],
-  },
-  { state: "江苏省", cities: ["南京", "苏州", "无锡", "常州", "南通", "扬州"] },
-  { state: "浙江省", cities: ["杭州", "宁波", "温州", "金华", "嘉兴", "绍兴"] },
-  { state: "山东省", cities: ["济南", "青岛", "烟台", "潍坊", "威海"] },
-  { state: "四川省", cities: ["成都", "绵阳", "德阳", "宜宾"] },
-  { state: "湖北省", cities: ["武汉", "宜昌", "襄阳"] },
-  { state: "湖南省", cities: ["长沙", "株洲", "湘潭"] },
-  { state: "福建省", cities: ["福州", "厦门", "泉州"] },
-  { state: "辽宁省", cities: ["沈阳", "大连", "鞍山"] },
-  { state: "陕西省", cities: ["西安", "咸阳"] },
-  { state: "河南省", cities: ["郑州", "洛阳", "开封"] },
-  { state: "河北省", cities: ["石家庄", "唐山", "保定"] },
-  { state: "云南省", cities: ["昆明", "大理"] },
-  { state: "广西壮族自治区", cities: ["南宁", "桂林"] },
-  { state: "贵州省", cities: ["贵阳"] },
-  { state: "海南省", cities: ["海口", "三亚"] },
-  { state: "其他", cities: [] },
-];
-
 const RegionPicker: React.FC<RegionPickerProps> = ({
   visible,
   value,
@@ -99,18 +60,24 @@ const RegionPicker: React.FC<RegionPickerProps> = ({
   const styles = useThemedStyles(makeStyles);
 
   const [tab, setTab] = useState<"country" | "state" | "city">("country");
-  const isCN = (value.country ?? "中国") === "中国";
+  const isCN = isChinaCountry(value.country);
 
   const stateOptions = useMemo(() => {
     if (!isCN) return [] as string[];
-    return CN_STATES.map((s) => s.state);
+    return CN_REGIONS.map((s) => s.state);
   }, [isCN]);
 
   const cityOptions = useMemo(() => {
     if (!isCN) return [] as string[];
-    const found = CN_STATES.find((s) => s.state === value.state);
-    return found?.cities ?? [];
+    const found = CN_REGIONS.find((s) => s.state === value.state);
+    return found?.cities.map((c) => c.name) ?? [];
   }, [isCN, value.state]);
+
+  const tabPreview = (k: "country" | "state" | "city") => {
+    if (k === "country") return displayCountry(value.country, t);
+    if (k === "state") return displayState(value.state, value.country, t);
+    return displayCity(value.city, value.country, value.state, t);
+  };
 
   const renderListPickerItem = (
     label: string,
@@ -142,6 +109,7 @@ const RegionPicker: React.FC<RegionPickerProps> = ({
       <TouchableWithoutFeedback onPress={onClose}>
         <View style={styles.overlay}>
           <TouchableWithoutFeedback>
+            <KeyboardFriend mode="sheet">
             <Box style={styles.sheet}>
               <HStack alignItems="center" justifyContent="space-between" style={styles.header}>
                 <Text style={styles.title}>
@@ -170,7 +138,7 @@ const RegionPicker: React.FC<RegionPickerProps> = ({
                     </Text>
                     {/* 当前值的预览 */}
                     <Text style={styles.tabValue} numberOfLines={1}>
-                      {value[k] ?? "—"}
+                      {tabPreview(k)}
                     </Text>
                   </Pressable>
                 ))}
@@ -178,18 +146,21 @@ const RegionPicker: React.FC<RegionPickerProps> = ({
 
               {tab === "country" && (
                 <FlatList
-                  data={COUNTRY_OPTIONS as readonly string[]}
+                  data={REGION_COUNTRY_CANONICAL as readonly string[]}
                   keyExtractor={(c) => c}
                   renderItem={({ item }) =>
-                    renderListPickerItem(item, value.country === item, () => {
-                      onChange({
-                        country: item,
-                        // 切国家时清空 state / city
-                        state: null,
-                        city: null,
-                      });
-                      setTab(item === "中国" ? "state" : "state");
-                    })
+                    renderListPickerItem(
+                      displayCountry(item, t),
+                      value.country === item,
+                      () => {
+                        onChange({
+                          country: item,
+                          state: null,
+                          city: null,
+                        });
+                        setTab("state");
+                      }
+                    )
                   }
                   style={styles.list}
                 />
@@ -202,18 +173,21 @@ const RegionPicker: React.FC<RegionPickerProps> = ({
                       data={stateOptions}
                       keyExtractor={(s) => s}
                       renderItem={({ item }) =>
-                        renderListPickerItem(item, value.state === item, () => {
-                          onChange({ ...value, state: item, city: null });
-                          setTab("city");
-                        })
+                        renderListPickerItem(
+                          displayState(item, value.country, t),
+                          value.state === item,
+                          () => {
+                            onChange({ ...value, state: item, city: null });
+                            setTab("city");
+                          }
+                        )
                       }
                       style={styles.list}
                     />
                   ) : (
-                    <ScrollView
+                    <KeyboardFriendScrollView
                       style={styles.list}
                       contentContainerStyle={styles.inputPadding}
-                      keyboardShouldPersistTaps="handled"
                     >
                       <Text style={styles.inputLabel}>
                         {t("trading.publishListing.logistics.stateLabel")}
@@ -235,7 +209,7 @@ const RegionPicker: React.FC<RegionPickerProps> = ({
                           {t("trading.publishListing.logistics.tab_city")}
                         </Text>
                       </Pressable>
-                    </ScrollView>
+                    </KeyboardFriendScrollView>
                   )}
                 </>
               )}
@@ -247,18 +221,21 @@ const RegionPicker: React.FC<RegionPickerProps> = ({
                       data={cityOptions}
                       keyExtractor={(c) => c}
                       renderItem={({ item }) =>
-                        renderListPickerItem(item, value.city === item, () => {
-                          onChange({ ...value, city: item });
-                          onClose();
-                        })
+                        renderListPickerItem(
+                          displayCity(item, value.country, value.state, t),
+                          value.city === item,
+                          () => {
+                            onChange({ ...value, city: item });
+                            onClose();
+                          }
+                        )
                       }
                       style={styles.list}
                     />
                   ) : (
-                    <ScrollView
+                    <KeyboardFriendScrollView
                       style={styles.list}
                       contentContainerStyle={styles.inputPadding}
-                      keyboardShouldPersistTaps="handled"
                     >
                       <Text style={styles.inputLabel}>
                         {t("trading.publishListing.logistics.cityLabel")}
@@ -277,11 +254,12 @@ const RegionPicker: React.FC<RegionPickerProps> = ({
                           {t("common.done")}
                         </Text>
                       </Pressable>
-                    </ScrollView>
+                    </KeyboardFriendScrollView>
                   )}
                 </>
               )}
             </Box>
+            </KeyboardFriend>
           </TouchableWithoutFeedback>
         </View>
       </TouchableWithoutFeedback>

@@ -18,7 +18,7 @@
 """
 
 from typing import Optional, List, Tuple, Iterable, Dict
-from datetime import datetime
+from datetime import datetime, date
 import hashlib
 
 from app.db.supabase import get_supabase, get_supabase_admin, execute_with_retry
@@ -566,6 +566,10 @@ class StoreProductService:
                 v = v.value
             if isinstance(v, PhotoAngles):
                 v = v.model_dump(exclude={"REQUIRED_SLOTS"})
+            # date / datetime 不能直接交给 supabase client(json.dumps 会报
+            # "Object of type date is not JSON serializable")，统一转 ISO 字符串。
+            if isinstance(v, (datetime, date)):
+                v = v.isoformat()
             db_patch[field_map[k]] = v
 
         # 折扣价合法性（update 场景）：要同时考虑是否也在改 priceCents
@@ -1050,6 +1054,10 @@ class StoreProductService:
                 v = v.value
             if isinstance(v, PhotoAngles):
                 v = v.model_dump(exclude={"REQUIRED_SLOTS"})
+            # date / datetime 不能直接交给 supabase client(json.dumps 会报
+            # "Object of type date is not JSON serializable")，统一转 ISO 字符串。
+            if isinstance(v, (datetime, date)):
+                v = v.isoformat()
             db_patch[field_map[k]] = v
 
         if not db_patch:
