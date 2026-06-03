@@ -452,7 +452,7 @@ const DiscoverScreen: React.FC = () => {
   const handleInteractionPress = useCallback(() => {
     (navigation.navigate as any)("Main", {
       screen: "Interaction",
-      params: { subTab: "messages" },
+      params: { subTab: "trading" },
     });
   }, [navigation]);
 

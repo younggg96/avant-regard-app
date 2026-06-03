@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Pressable,
   StyleSheet,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
@@ -79,6 +80,7 @@ const ChatScreen = () => {
     connectWebSocket,
     refreshBlockedUsers,
     conversations,
+    deleteMessage,
   } = useChatStore();
 
   const markChatNotificationsRead = useNotificationStore(
@@ -272,6 +274,26 @@ const ChatScreen = () => {
     setShowReport(true);
   }, []);
 
+  const handleDeleteMessage = useCallback(
+    (msg: Message) => {
+      Alert.alert(
+        t("chat.deleteMessage"),
+        t("chat.deleteMessageConfirm"),
+        [
+          { text: t("common.cancel"), style: "cancel" },
+          {
+            text: t("common.delete"),
+            style: "destructive",
+            onPress: () => {
+              deleteMessage(conversationId, msg.id).catch(() => {});
+            },
+          },
+        ]
+      );
+    },
+    [conversationId, deleteMessage, t]
+  );
+
   const renderMessage = useCallback(
     ({ item, index }: { item: Message; index: number }) => {
       const prev =
@@ -287,10 +309,11 @@ const ChatScreen = () => {
           otherUserId={otherUserId}
           onReportMessage={handleReportMessage}
           onReportUser={handleReportUser}
+          onDeleteMessage={handleDeleteMessage}
         />
       );
     },
-    [reversedMessages, otherUserId, handleReportMessage, handleReportUser]
+    [reversedMessages, otherUserId, handleReportMessage, handleReportUser, handleDeleteMessage]
   );
 
   return (

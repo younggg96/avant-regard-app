@@ -385,6 +385,45 @@ async def batch_delete_conversations(
         return error(message="Failed to delete conversations", code=500)
 
 
+@router.delete("/messages/{message_id}")
+async def delete_message(
+    message_id: int,
+    current_user_id: int = Depends(get_current_user_id),
+):
+    """Delete (soft) one of the current user's own messages.
+
+    Only the original sender may delete. On success the message is hidden for
+    both parties and the other online participants get a ``message_deleted``
+    WS push so their open chat removes the bubble in realtime.
+    """
+    try:
+        conversation_id = chat_service.delete_message(message_id, current_user_id)
+        if conversation_id is None:
+            return error(message="Cannot delete this message", code=403)
+    except Exception as e:
+        print(f"Chat delete_message error: {e}")
+        return error(message="Failed to delete message", code=500)
+
+    try:
+        participants = (
+            get_supabase_admin()
+            .table("conversation_participants")
+            .select("user_id")
+            .eq("conversation_id", conversation_id)
+            .execute()
+        )
+        payload = {
+            "type": "message_deleted",
+            "data": {"messageId": message_id, "conversationId": conversation_id},
+        }
+        for p in participants.data or []:
+            await manager.send_to_user(p["user_id"], payload)
+    except Exception as e:
+        print(f"Failed to broadcast message deletion: {e}")
+
+    return success({"deleted": True})
+
+
 @router.get("/unread-count")
 async def get_unread_count(current_user_id: int = Depends(get_current_user_id)):
     """Get total unread message count across all conversations."""

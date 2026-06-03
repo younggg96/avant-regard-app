@@ -506,6 +506,42 @@ class ChatService:
                 deleted.append(cid)
         return deleted
 
+    def delete_message(self, message_id: int, user_id: int) -> Optional[int]:
+        """Soft-delete a single message.
+
+        只有消息的发送者本人可以删除自己发出的那条消息（与微信 / 闲鱼的「删除」
+        语义一致）。采用软删除（``is_deleted=True``）而非物理删除，方便审计 / 举报
+        留痕，``get_messages`` 已经按 ``is_deleted=False`` 过滤，所以删除后双方都
+        不会再拉到这条记录。
+
+        返回该消息所属的 ``conversation_id``（用于 WS 广播给对端），无权限或不存在
+        时返回 ``None``。
+        """
+        result = (
+            self.db.table("messages")
+            .select("id, sender_id, conversation_id")
+            .eq("id", message_id)
+            .maybe_single()
+            .execute()
+        )
+        if not result.data:
+            return None
+
+        msg = result.data
+        if msg["sender_id"] != user_id:
+            return None
+
+        conversation_id = msg["conversation_id"]
+        if not self._is_participant(conversation_id, user_id):
+            return None
+
+        self.db.table("messages") \
+            .update({"is_deleted": True}) \
+            .eq("id", message_id) \
+            .execute()
+
+        return conversation_id
+
     def get_total_unread_count(self, user_id: int) -> int:
         """Get total unread message count across all conversations."""
         conversations = self.get_conversations(user_id)

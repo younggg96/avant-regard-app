@@ -6,8 +6,10 @@ import {
   StyleSheet,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import * as Clipboard from "expo-clipboard";
 import { useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
+import { Alert } from "../../../utils/Alert";
 import { theme, useThemedStyles, type AppTheme } from "../../../theme";
 import { UserAvatar } from "../../../components/ui/UserAvatar";
 import { CustomerServiceAvatar } from "../../../components/ui/CustomerServiceAvatar";
@@ -43,6 +45,7 @@ interface MessageBubbleProps {
   otherUserId?: number;
   onReportMessage?: (message: Message) => void;
   onReportUser?: (message: Message) => void;
+  onDeleteMessage?: (message: Message) => void;
 }
 
 function tryParsePostCard(content: string): PostSharePayload | null {
@@ -94,6 +97,7 @@ export const MessageBubble = ({
   otherUserId,
   onReportMessage,
   onReportUser,
+  onDeleteMessage,
 }: MessageBubbleProps) => {
   const { t } = useTranslation();
   const isMine = message.isMine;
@@ -115,8 +119,6 @@ export const MessageBubble = ({
   const isAdmin = useAuthStore((s) => !!s.user?.is_admin);
   const isCsConversation = isCustomerServiceUser(otherUserId);
   const isCustomerService = isAdmin && isCsConversation;
-
-  const canReport = !isMine && (onReportMessage || onReportUser);
 
   const isPostCard = message.messageType === "post_card";
   const postCard = isPostCard ? tryParsePostCard(message.content) : null;
@@ -148,8 +150,36 @@ export const MessageBubble = ({
       ? tryParseDisputeCard(message.content)
       : null;
 
+  // 纯文本消息才允许「复制文字」(卡片消息的 content 是 JSON, 复制无意义)。
+  const isCopyable = message.messageType === "text" && !!message.content;
+
+  const handleCopy = async () => {
+    try {
+      await Clipboard.setStringAsync(message.content);
+      Alert.show(t("chat.copied"));
+    } catch (e) {
+      console.error("Failed to copy message:", e);
+    }
+  };
+
   const menuActions = useMemo<ActionSheetAction[]>(() => {
     const list: ActionSheetAction[] = [];
+    if (isCopyable) {
+      list.push({
+        label: t("chat.copyText"),
+        icon: <Ionicons name="copy-outline" size={20} color={theme.colors.text} />,
+        onPress: handleCopy,
+      });
+    }
+    // 只能删除自己发出的消息(软删除, 双方都不再可见)。
+    if (isMine && onDeleteMessage) {
+      list.push({
+        label: t("chat.deleteMessage"),
+        icon: <Ionicons name="trash-outline" size={20} color={theme.colors.error} />,
+        destructive: true,
+        onPress: () => onDeleteMessage(message),
+      });
+    }
     if (onReportMessage) {
       list.push({
         label: t("chat.reportMessage"),
@@ -167,7 +197,9 @@ export const MessageBubble = ({
       });
     }
     return list;
-  }, [message, onReportMessage, onReportUser, t]);
+  }, [message, isMine, isCopyable, onDeleteMessage, onReportMessage, onReportUser, t]);
+
+  const canShowMenu = menuActions.length > 0;
 
   const handlePostCardPress = () => {
     if (!postCard) return;
@@ -771,7 +803,7 @@ export const MessageBubble = ({
         )}
         <TouchableOpacity
           activeOpacity={0.8}
-          onLongPress={canReport ? () => setShowMenu(true) : undefined}
+          onLongPress={canShowMenu ? () => setShowMenu(true) : undefined}
           delayLongPress={400}
           style={cardStyles.systemRow}
         >
@@ -805,7 +837,7 @@ export const MessageBubble = ({
       )}
       <TouchableOpacity
         activeOpacity={0.8}
-        onLongPress={canReport ? () => setShowMenu(true) : undefined}
+        onLongPress={canShowMenu ? () => setShowMenu(true) : undefined}
         delayLongPress={400}
         style={[
           styles.bubbleRow,

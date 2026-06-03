@@ -52,6 +52,7 @@ export interface Message {
 export type WSIncomingMessage =
   | { type: "new_message"; data: Message }
   | { type: "message_sent"; data: Message }
+  | { type: "message_deleted"; data: { messageId: number; conversationId: number } }
   | { type: "conversation_read"; conversation_id: number }
   | { type: "pong" }
   | { type: "error"; message: string };
@@ -158,6 +159,12 @@ export async function deleteConversation(
   conversationId: number
 ): Promise<void> {
   await request(`/api/chat/conversations/${conversationId}`, {
+    method: "DELETE",
+  });
+}
+
+export async function deleteMessage(messageId: number): Promise<void> {
+  await request(`/api/chat/messages/${messageId}`, {
     method: "DELETE",
   });
 }
@@ -315,6 +322,7 @@ export const chatService = {
   markConversationUnread,
   deleteConversation,
   deleteConversationsBatch,
+  deleteMessage,
   getUnreadCount,
   chatWS,
 };

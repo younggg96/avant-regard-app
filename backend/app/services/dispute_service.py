@@ -218,9 +218,18 @@ class DisputeService:
             if cs_id and seller_id and cs_id != seller_id and seller_id != buyer_id:
                 pairs.append((seller_id, cs_id))
 
+            # 按「会话」去重：买家↔卖家、买家↔客服、卖家↔客服在多数情况下是三个
+            # 不同会话，但当官方客服账号本身就是买家 / 卖家（如测试用 admin 卖家、
+            # 或 cs == seller），不同 pair 会落到同一个会话，导致同一张争议卡片被
+            # 发两次。用无序的参与者集合去重，确保每个会话只发一张卡片。
+            seen_conversations: set = set()
             for sender, recipient in pairs:
                 if not sender or not recipient or sender == recipient:
                     continue
+                conv_key = frozenset((sender, recipient))
+                if conv_key in seen_conversations:
+                    continue
+                seen_conversations.add(conv_key)
                 self._send_dispute_card(
                     sender_user_id=sender,
                     recipient_user_id=recipient,

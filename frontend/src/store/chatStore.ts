@@ -8,6 +8,7 @@ import {
   getUnreadCount,
   deleteConversation as deleteConversationApi,
   deleteConversationsBatch as deleteConversationsBatchApi,
+  deleteMessage as deleteMessageApi,
   markConversationRead as markConversationReadApi,
   markConversationUnread as markConversationUnreadApi,
   WSIncomingMessage,
@@ -35,6 +36,8 @@ interface ChatActions {
   refreshBlockedUsers: () => Promise<void>;
   setCurrentConversation: (id: number | null) => void;
   addMessage: (conversationId: number, message: Message) => void;
+  removeMessage: (conversationId: number, messageId: number) => void;
+  deleteMessage: (conversationId: number, messageId: number) => Promise<void>;
   connectWebSocket: () => void;
   disconnectWebSocket: () => void;
   handleWSMessage: (msg: WSIncomingMessage) => void;
@@ -181,6 +184,36 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
     });
   },
 
+  removeMessage: (conversationId, messageId) => {
+    set((state) => {
+      const existing = state.messages[conversationId];
+      if (!existing) return state;
+      const next = existing.filter((m) => m.id !== messageId);
+      if (next.length === existing.length) return state;
+      return {
+        messages: { ...state.messages, [conversationId]: next },
+      };
+    });
+  },
+
+  deleteMessage: async (conversationId, messageId) => {
+    // Optimistically drop the bubble; restore it if the server rejects the
+    // delete (e.g. trying to delete someone else's message).
+    const prev = get().messages[conversationId];
+    get().removeMessage(conversationId, messageId);
+    try {
+      await deleteMessageApi(messageId);
+    } catch (e) {
+      console.error("Failed to delete message:", e);
+      if (prev) {
+        set((state) => ({
+          messages: { ...state.messages, [conversationId]: prev },
+        }));
+      }
+      throw e;
+    }
+  },
+
   markConversationRead: async (conversationId) => {
     // Always broadcast via WS so other tabs/devices update in realtime.
     // Note: WS send is fire-and-forget and is silently dropped when the
@@ -314,6 +347,9 @@ export const useChatStore = create<ChatStore>()((set, get) => ({
       }
       case "message_sent":
         state.addMessage(msg.data.conversationId, msg.data);
+        break;
+      case "message_deleted":
+        state.removeMessage(msg.data.conversationId, msg.data.messageId);
         break;
       case "conversation_read":
         set((s) => ({

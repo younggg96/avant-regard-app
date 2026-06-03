@@ -178,6 +178,7 @@ import { LevelUpgradeModal, useLevelWatcher } from "./src/components/level";
 // Stores & Services
 import { useChatStore } from "./src/store/chatStore";
 import { useNotificationStore } from "./src/store/notificationStore";
+import { useMainBottomTabStore } from "./src/store/mainBottomTabStore";
 
 // Components
 import TabBarIcon from "./src/components/TabBarIcon";
@@ -391,6 +392,13 @@ function TabNavigator() {
           tabBarIcon: ({ color, focused }) => (
             <TabBarIcon name="interaction" color={color} focused={focused} />
           ),
+        }}
+        listeners={{
+          // 底部这枚图标是地图：点它永远回到「买手店地图」子 Tab，
+          // 即便互动页此刻停在「消息 / 交易」上。
+          tabPress: () => {
+            useMainBottomTabStore.getState().requestMapJump();
+          },
         }}
       />
       <Tab.Screen
