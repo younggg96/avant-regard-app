@@ -255,7 +255,8 @@ const SellerListingsScreen: React.FC = () => {
   };
 
   const canBatchOffline = tab === "active" || tab === "all";
-  const canBatchDelete = tab === "draft" || tab === "rejected" || tab === "all";
+  const canBatchDelete =
+    tab === "draft" || tab === "rejected" || tab === "offline" || tab === "all";
   const showManageAction = canBatchOffline || canBatchDelete;
 
   const menuActions = useMemo(() => {
@@ -287,6 +288,13 @@ const SellerListingsScreen: React.FC = () => {
         onPress: () => handleSingleOffline(menuProduct.id),
       });
       actions.push({ label: t("trading.myListings.actionView"), onPress: goDetail });
+    } else if (menuProduct.status === "offline") {
+      actions.push({ label: t("trading.myListings.actionView"), onPress: goDetail });
+      actions.push({
+        label: t("trading.myListings.actionDelete"),
+        destructive: true,
+        onPress: () => handleSingleDelete(menuProduct.id),
+      });
     } else {
       actions.push({ label: t("trading.myListings.actionView"), onPress: goDetail });
     }

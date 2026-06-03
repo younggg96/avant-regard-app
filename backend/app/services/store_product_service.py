@@ -967,7 +967,7 @@ class StoreProductService:
         seller_user_id: Optional[int] = None,
         merchant_id: Optional[int] = None,
     ) -> int:
-        """批量删除（只允许 draft / rejected）。返回删除数量。"""
+        """批量删除（允许 draft / rejected / offline）。返回删除数量。"""
         if not product_ids:
             return 0
         q = self.db.table("store_products").select("id, status, seller_kind, seller_user_id, merchant_id").in_("id", product_ids)
@@ -979,7 +979,7 @@ class StoreProductService:
                 raise ValueError("无权限操作")
             if kind == "merchant" and r.get("merchant_id") != merchant_id:
                 raise ValueError("无权限操作")
-            if r.get("status") in ("draft", "rejected"):
+            if r.get("status") in ("draft", "rejected", "offline"):
                 target_ids.append(r["id"])
         if not target_ids:
             return 0

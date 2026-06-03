@@ -11,7 +11,7 @@ PRD 模块一对应的服务接口，区别于旧的「买手店商品 CRUD」�
   - POST   /listings/{id}/submit           —— 提交审核 (draft → reviewing)
   - POST   /listings/{id}/transition       —— 卖家可触发的状态切换 (上下架等)
   - POST   /listings/batch/offline         —— 批量下架
-  - POST   /listings/batch/delete          —— 批量删除草稿/被拒
+  - POST   /listings/batch/delete          —— 批量删除草稿/被拒/已下架
   - GET    /sellers/me/listings            —— 卖家自己的库存
   - GET    /sellers/me/profile             —— 当前用户的卖家档案
   - PUT    /sellers/me/profile             —— 维护卖家档案
@@ -414,7 +414,7 @@ async def batch_delete(
     payload: BatchListingAction,
     current_user_id: int = Depends(get_current_user),
 ):
-    """批量删除草稿 / 被拒商品（PRD 1.6）。"""
+    """批量删除草稿 / 被拒 / 已下架商品（PRD 1.6）。"""
     merchant = store_merchant_service.get_merchant_by_user(current_user_id)
     try:
         deleted = 0
