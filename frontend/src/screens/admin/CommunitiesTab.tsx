@@ -313,7 +313,7 @@ const CommunitiesTab = () => {
           />
         ) : (
           <Box style={[styles.communityCoverImage, styles.communityCoverPlaceholder]}>
-            <Ionicons name="image-outline" size={32} color={theme.colors.gray300} />
+            <Ionicons name="image-outline" size={28} color={theme.colors.gray300} />
           </Box>
         )}
       </Pressable>
@@ -355,11 +355,11 @@ const CommunitiesTab = () => {
 
         <HStack style={styles.communityMeta}>
           <HStack style={styles.communityMetaItem}>
-            <Ionicons name="people-outline" size={14} color={theme.colors.gray400} />
+            <Ionicons name="people-outline" size={12} color={theme.colors.gray400} />
             <Text style={styles.communityMetaText}>{community.memberCount} {t("community.members")}</Text>
           </HStack>
           <HStack style={styles.communityMetaItem}>
-            <Ionicons name="document-text-outline" size={14} color={theme.colors.gray400} />
+            <Ionicons name="document-text-outline" size={12} color={theme.colors.gray400} />
             <Text style={styles.communityMetaText}>{community.postCount} {t("community.posts")}</Text>
           </HStack>
           <HStack style={styles.communityMetaItem}>
@@ -370,18 +370,18 @@ const CommunitiesTab = () => {
 
       <HStack style={styles.communityActions}>
         <Pressable style={[styles.communityActionBtn, styles.communityPostsBtn]} onPress={() => handleOpenCommunityPosts(community)} disabled={actionLoading}>
-          <Ionicons name="list-outline" size={18} color={theme.colors.white} />
+          <Ionicons name="list-outline" size={16} color={theme.colors.white} />
           <Text style={styles.communityActionText}>{t("admin.posts")}</Text>
         </Pressable>
         <Pressable style={[styles.communityActionBtn, styles.communityEditBtn]} onPress={() => handleOpenEditModal(community)} disabled={actionLoading}>
-          <Ionicons name="create-outline" size={18} color={theme.colors.white} />
+          <Ionicons name="create-outline" size={16} color={theme.colors.white} />
           <Text style={styles.communityActionText}>{t("common.edit")}</Text>
         </Pressable>
         <Pressable style={[styles.communityActionBtn, community.isActive ? styles.communityDisableBtn : styles.communityEnableBtn]} onPress={() => handleToggleStatus(community)} disabled={actionLoading}>
-          <Ionicons name={community.isActive ? "eye-off-outline" : "eye-outline"} size={18} color={theme.colors.white} />
+          <Ionicons name={community.isActive ? "eye-off-outline" : "eye-outline"} size={16} color={theme.colors.white} />
         </Pressable>
         <Pressable style={[styles.communityActionBtn, styles.communityDeleteBtn]} onPress={() => handleDelete(community.id, community.name)} disabled={actionLoading}>
-          <Ionicons name="trash-outline" size={18} color={theme.colors.white} />
+          <Ionicons name="trash-outline" size={16} color={theme.colors.white} />
         </Pressable>
       </HStack>
     </Box>
@@ -394,7 +394,7 @@ const CommunitiesTab = () => {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
         <Pressable style={styles.addCommunityButton} onPress={handleOpenCreateModal}>
-          <Ionicons name="add-circle-outline" size={24} color={theme.colors.white} />
+          <Ionicons name="add-circle-outline" size={20} color={theme.colors.white} />
           <Text style={styles.addCommunityButtonText}>{t("admin.createCommunity")}</Text>
         </Pressable>
 
@@ -405,7 +405,7 @@ const CommunitiesTab = () => {
           </Box>
         ) : communities.length === 0 ? (
           <Box style={sharedStyles.emptyContainer}>
-            <Ionicons name="people-outline" size={48} color={theme.colors.gray300} />
+            <Ionicons name="people-outline" size={40} color={theme.colors.gray300} />
             <Text style={sharedStyles.emptyText}>{t("admin.noCommunities")}</Text>
             <Text style={sharedStyles.emptySubtext}>{t("admin.noCommunitiesHint")}</Text>
           </Box>
@@ -443,7 +443,7 @@ const CommunitiesTab = () => {
                   />
                 ) : (
                   <Box style={[styles.communityFormIcon, styles.communityFormIconPlaceholder]}>
-                    <Ionicons name="image-outline" size={24} color={theme.colors.gray300} />
+                    <Ionicons name="image-outline" size={20} color={theme.colors.gray300} />
                   </Box>
                 )}
                 <Pressable style={sharedStyles.uploadSmallButton} onPress={handleUploadIcon} disabled={iconUploading}>
@@ -466,7 +466,7 @@ const CommunitiesTab = () => {
                 />
               ) : (
                 <Box style={[styles.communityFormCover, styles.communityFormCoverPlaceholder]}>
-                  <Ionicons name="image-outline" size={32} color={theme.colors.gray300} />
+                  <Ionicons name="image-outline" size={28} color={theme.colors.gray300} />
                 </Box>
               )}
               <Pressable style={sharedStyles.uploadImageButton} onPress={handleUploadCover} disabled={coverUploading}>
@@ -474,7 +474,7 @@ const CommunitiesTab = () => {
                   <ActivityIndicator color={theme.colors.white} size="small" />
                 ) : (
                   <>
-                    <Ionicons name="cloud-upload-outline" size={20} color={theme.colors.white} />
+                    <Ionicons name="cloud-upload-outline" size={18} color={theme.colors.white} />
                     <Text style={sharedStyles.uploadImageButtonText}>{form.coverUrl ? t("admin.changeCover") : t("admin.uploadCover")}</Text>
                   </>
                 )}
@@ -586,7 +586,7 @@ const CommunitiesTab = () => {
           <Box style={[sharedStyles.modalContent, styles.communityPostsModalContent]}>
             <HStack style={styles.communityPostsHeader}>
               <Pressable style={styles.communityPostsCloseBtn} onPress={() => setPostsModalVisible(false)}>
-                <Ionicons name="close" size={24} color={theme.colors.black} />
+                <Ionicons name="close" size={22} color={theme.colors.black} />
               </Pressable>
               <Text style={styles.communityPostsTitle}>{selectedCommunityName}</Text>
               <Text style={styles.communityPostsCount}>{t("admin.totalPosts", { count: postsTotal })}</Text>
@@ -599,7 +599,7 @@ const CommunitiesTab = () => {
               </Box>
             ) : communityPosts.length === 0 ? (
               <Box style={sharedStyles.emptyContainer}>
-                <Ionicons name="document-text-outline" size={48} color={theme.colors.gray300} />
+                <Ionicons name="document-text-outline" size={40} color={theme.colors.gray300} />
                 <Text style={sharedStyles.emptyText}>{t("admin.noPosts")}</Text>
               </Box>
             ) : (
@@ -622,10 +622,10 @@ const CommunitiesTab = () => {
                           (navigation as any).navigate("PostDetail", { postId: post.id });
                         }}
                       >
-                        <Ionicons name="eye-outline" size={18} color={theme.colors.black} />
+                        <Ionicons name="eye-outline" size={16} color={theme.colors.black} />
                       </Pressable>
                       <Pressable style={styles.communityPostDeleteBtn} onPress={() => handleDeleteCommunityPost(post.id)} disabled={actionLoading}>
-                        <Ionicons name="trash-outline" size={18} color={theme.colors.white} />
+                        <Ionicons name="trash-outline" size={16} color={theme.colors.white} />
                       </Pressable>
                     </HStack>
                   </HStack>
@@ -675,7 +675,7 @@ const CommunitiesTab = () => {
                     style={styles.communityDetailCloseBtn}
                     onPress={() => setDetailModalVisible(false)}
                   >
-                    <Ionicons name="close" size={22} color={theme.colors.text} />
+                    <Ionicons name="close" size={20} color={theme.colors.text} />
                   </Pressable>
                 </HStack>
 
@@ -700,7 +700,7 @@ const CommunitiesTab = () => {
                         styles.communityCoverPlaceholder,
                       ]}
                     >
-                      <Ionicons name="image-outline" size={40} color={theme.colors.gray300} />
+                      <Ionicons name="image-outline" size={32} color={theme.colors.gray300} />
                     </Box>
                   )}
 
@@ -872,39 +872,43 @@ const CommunitiesTab = () => {
 const makeStyles = (t: AppTheme) => StyleSheet.create({
   communitiesList: {
     flex: 1,
-    padding: t.spacing.md,
+    padding: 10,
   },
   addCommunityButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: t.colors.text,
-    paddingVertical: t.spacing.md,
-    borderRadius: t.borderRadius.md,
-    marginBottom: t.spacing.md,
+    paddingVertical: 8,
+    borderRadius: 4,
+    marginBottom: 10,
     gap: t.spacing.sm,
   },
   addCommunityButtonText: {
     ...t.typography.button,
+    fontSize: 13,
+    lineHeight: 17,
     color: t.colors.textInverted,
   },
   communitiesHeader: {
-    marginBottom: t.spacing.md,
+    marginBottom: t.spacing.sm,
   },
   communitiesHeaderText: {
     ...t.typography.bodySmall,
+    fontSize: 12,
+    lineHeight: 16,
     color: t.colors.gray400,
   },
   communityCard: {
     backgroundColor: t.colors.card,
-    borderRadius: t.borderRadius.lg,
+    borderRadius: 4,
     overflow: "hidden",
-    marginBottom: t.spacing.md,
+    marginBottom: 10,
     ...t.shadows.sm,
   },
   communityCoverImage: {
     width: "100%",
-    height: 100,
+    height: 80,
     backgroundColor: t.colors.gray100,
   },
   communityCoverPlaceholder: {
@@ -917,7 +921,7 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
     right: t.spacing.sm,
     paddingHorizontal: t.spacing.sm,
     paddingVertical: 2,
-    borderRadius: t.borderRadius.sm,
+    borderRadius: 4,
   },
   communityStatusActive: {
     backgroundColor: t.colors.success,
@@ -927,6 +931,8 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   },
   communityStatusText: {
     ...t.typography.caption,
+    fontSize: 11,
+    lineHeight: 14,
     color: t.colors.textInverted,
     fontWeight: "600",
   },
@@ -937,24 +943,26 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
     backgroundColor: "#FFD700",
     paddingHorizontal: t.spacing.sm,
     paddingVertical: 2,
-    borderRadius: t.borderRadius.sm,
+    borderRadius: 4,
   },
   communityOfficialText: {
     ...t.typography.caption,
+    fontSize: 11,
+    lineHeight: 14,
     color: "#000000",
     fontWeight: "600",
   },
   communityInfo: {
-    padding: t.spacing.md,
+    padding: 10,
   },
   communityHeader: {
     alignItems: "center",
-    marginBottom: t.spacing.sm,
+    marginBottom: 6,
   },
   communityIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 32,
+    height: 32,
+    borderRadius: 4,
     backgroundColor: t.colors.gray100,
   },
   communityIconPlaceholder: {
@@ -963,6 +971,8 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   },
   communityIconText: {
     ...t.typography.h4,
+    fontSize: 14,
+    lineHeight: 18,
     color: t.colors.gray400,
   },
   communityTitleContainer: {
@@ -971,31 +981,41 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   },
   communityTitle: {
     ...t.typography.h4,
+    fontSize: 14,
+    lineHeight: 18,
     color: t.colors.text,
   },
   communitySlug: {
     ...t.typography.caption,
+    fontSize: 11,
+    lineHeight: 14,
     color: t.colors.gray300,
   },
   communityDescription: {
     ...t.typography.bodySmall,
+    fontSize: 12,
+    lineHeight: 16,
     color: t.colors.gray400,
-    marginBottom: t.spacing.sm,
+    marginBottom: 6,
   },
   communityMeta: {
     alignItems: "center",
-    gap: t.spacing.md,
+    gap: 10,
   },
   communityMetaItem: {
     alignItems: "center",
-    gap: 4,
+    gap: 3,
   },
   communityMetaText: {
     ...t.typography.caption,
+    fontSize: 11,
+    lineHeight: 14,
     color: t.colors.gray400,
   },
   communityCategory: {
     ...t.typography.caption,
+    fontSize: 11,
+    lineHeight: 14,
     color: t.colors.textInverted,
     backgroundColor: t.colors.text,
     paddingHorizontal: 6,
@@ -1012,11 +1032,13 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: t.spacing.sm,
+    paddingVertical: 7,
     gap: 4,
   },
   communityActionText: {
     ...t.typography.caption,
+    fontSize: 11,
+    lineHeight: 14,
     color: t.colors.textInverted,
     fontWeight: "600",
   },
@@ -1038,17 +1060,17 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   communityModalContent: {
     height: "85%",
     width: "92%",
-    padding: t.spacing.lg,
+    padding: 12,
   },
   communityFormImageRow: {
     alignItems: "center",
-    gap: t.spacing.md,
-    marginBottom: t.spacing.md,
+    gap: 10,
+    marginBottom: 10,
   },
   communityFormIcon: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 48,
+    height: 48,
+    borderRadius: 4,
     backgroundColor: t.colors.gray100,
   },
   communityFormIconPlaceholder: {
@@ -1057,10 +1079,10 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   },
   communityFormCover: {
     width: "100%",
-    height: 120,
-    borderRadius: t.borderRadius.md,
+    height: 100,
+    borderRadius: 4,
     backgroundColor: t.colors.gray100,
-    marginBottom: t.spacing.sm,
+    marginBottom: 6,
   },
   communityFormCoverPlaceholder: {
     alignItems: "center",
@@ -1073,7 +1095,7 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   },
   communityPostsHeader: {
     alignItems: "center",
-    padding: t.spacing.md,
+    padding: 10,
     borderBottomWidth: 1,
     borderBottomColor: t.colors.border,
   },
@@ -1082,48 +1104,60 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   },
   communityPostsTitle: {
     ...t.typography.h4,
+    fontSize: 14,
+    lineHeight: 18,
     color: t.colors.text,
     flex: 1,
     marginLeft: t.spacing.sm,
   },
   communityPostsCount: {
     ...t.typography.caption,
+    fontSize: 11,
+    lineHeight: 14,
     color: t.colors.gray400,
   },
   communityPostsList: {
     flex: 1,
-    padding: t.spacing.md,
+    padding: 10,
   },
   communityPostCard: {
     alignItems: "center",
     backgroundColor: t.colors.gray50,
-    borderRadius: t.borderRadius.md,
-    padding: t.spacing.md,
-    marginBottom: t.spacing.sm,
+    borderRadius: 4,
+    padding: 10,
+    marginBottom: 6,
   },
   communityPostInfo: {
     flex: 1,
   },
   communityPostId: {
     ...t.typography.caption,
+    fontSize: 11,
+    lineHeight: 14,
     color: t.colors.gray300,
     marginBottom: 2,
   },
   communityPostTitle: {
     ...t.typography.bodySmall,
+    fontSize: 12,
+    lineHeight: 16,
     color: t.colors.text,
     fontWeight: "500",
-    marginBottom: 4,
+    marginBottom: 3,
   },
   communityPostMeta: {
     gap: t.spacing.sm,
   },
   communityPostAuthor: {
     ...t.typography.caption,
+    fontSize: 11,
+    lineHeight: 14,
     color: t.colors.gray400,
   },
   communityPostDate: {
     ...t.typography.caption,
+    fontSize: 11,
+    lineHeight: 14,
     color: t.colors.gray300,
   },
   communityPostActions: {
@@ -1131,26 +1165,28 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   },
   communityPostViewBtn: {
     backgroundColor: t.colors.gray200,
-    padding: t.spacing.sm,
-    borderRadius: t.borderRadius.md,
+    padding: 7,
+    borderRadius: 4,
   },
   communityPostDeleteBtn: {
     backgroundColor: t.colors.error,
-    padding: t.spacing.sm,
-    borderRadius: t.borderRadius.md,
+    padding: 7,
+    borderRadius: 4,
   },
   communityDetailModalContent: {
     height: "88%",
     width: "92%",
-    padding: t.spacing.md,
+    padding: 10,
   },
   communityDetailHeader: {
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: t.spacing.sm,
+    marginBottom: 6,
   },
   communityDetailTitle: {
     ...t.typography.h4,
+    fontSize: 15,
+    lineHeight: 20,
     color: t.colors.text,
     flex: 1,
     marginRight: t.spacing.sm,
@@ -1163,58 +1199,63 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   },
   communityDetailCover: {
     width: "100%",
-    height: 180,
-    borderRadius: t.borderRadius.md,
+    height: 140,
+    borderRadius: 4,
     backgroundColor: t.colors.gray100,
-    marginBottom: t.spacing.md,
+    marginBottom: 10,
   },
   communityDetailIdentity: {
     alignItems: "center",
-    marginBottom: t.spacing.sm,
+    marginBottom: 6,
   },
   communityDetailIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 40,
+    height: 40,
+    borderRadius: 4,
     backgroundColor: t.colors.gray100,
     marginRight: t.spacing.sm,
   },
   communityDetailBadges: {
     flexWrap: "wrap",
     gap: t.spacing.xs,
-    marginBottom: t.spacing.md,
+    marginBottom: 10,
   },
   communityDetailBadge: {
     paddingHorizontal: t.spacing.sm,
     paddingVertical: 2,
-    borderRadius: t.borderRadius.sm,
+    borderRadius: 4,
   },
   communityDetailCategoryBadge: {
     backgroundColor: t.colors.text,
   },
   communityDetailCategoryText: {
     ...t.typography.caption,
+    fontSize: 11,
+    lineHeight: 14,
     color: t.colors.textInverted,
     fontWeight: "600",
   },
   communityDetailSectionTitle: {
     ...t.typography.bodySmall,
+    fontSize: 12,
+    lineHeight: 16,
     color: t.colors.gray300,
     fontWeight: "600",
     marginBottom: t.spacing.xs,
   },
   communityDetailDescription: {
     ...t.typography.body,
+    fontSize: 13,
+    lineHeight: 18,
     color: t.colors.text,
-    lineHeight: 22,
-    marginBottom: t.spacing.md,
+    marginBottom: 10,
   },
   communityDetailMetaCard: {
     backgroundColor: t.colors.surface,
-    borderRadius: t.borderRadius.md,
-    padding: t.spacing.md,
-    marginBottom: t.spacing.md,
-    gap: t.spacing.sm,
+    borderRadius: 4,
+    padding: 10,
+    marginBottom: 10,
+    gap: 6,
   },
   communityDetailMetaRow: {
     justifyContent: "space-between",
@@ -1222,10 +1263,14 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   },
   communityDetailMetaLabel: {
     ...t.typography.bodySmall,
+    fontSize: 12,
+    lineHeight: 16,
     color: t.colors.gray400,
   },
   communityDetailMetaValue: {
     ...t.typography.bodySmall,
+    fontSize: 12,
+    lineHeight: 16,
     color: t.colors.text,
     fontWeight: "500",
   },

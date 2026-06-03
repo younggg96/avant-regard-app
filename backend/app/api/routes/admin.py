@@ -1032,8 +1032,11 @@ async def update_recommend_config(
     current_user_id: int = Depends(get_current_admin_user),
 ):
     """更新推荐算法配置"""
-    from app.db.supabase import get_supabase
-    db = get_supabase()
+    # Use the service-role client: app_config has RLS enabled and the anon
+    # role has no INSERT/UPDATE policy, so writing via get_supabase() fails with
+    # "new row violates row-level security policy". Admin writes bypass RLS.
+    from app.db.supabase import get_supabase_admin
+    db = get_supabase_admin()
     config = request.model_dump()
     try:
         db.table("app_config").upsert(

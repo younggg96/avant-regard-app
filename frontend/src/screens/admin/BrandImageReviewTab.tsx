@@ -260,17 +260,17 @@ const makeStyles = (t: AppTheme) =>
   StyleSheet.create({
     previewImage: {
       width: "100%",
-      height: 200,
-      borderRadius: 8,
+      height: 160,
+      borderRadius: 4,
       marginBottom: 8,
       backgroundColor: t.colors.gray100,
     },
     compactActions: {
       flexDirection: "row",
       justifyContent: "flex-end",
-      gap: 8,
+      gap: 6,
       marginTop: 4,
-      paddingTop: 8,
+      paddingTop: 6,
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: t.colors.border,
     },
@@ -279,8 +279,8 @@ const makeStyles = (t: AppTheme) =>
       alignItems: "center",
       gap: 4,
       paddingHorizontal: 10,
-      paddingVertical: 6,
-      borderRadius: 6,
+      paddingVertical: 5,
+      borderRadius: 4,
       borderWidth: StyleSheet.hairlineWidth,
     },
     approveBtn: {
@@ -288,7 +288,8 @@ const makeStyles = (t: AppTheme) =>
       borderColor: t.colors.accent,
     },
     approveBtnText: {
-      fontSize: 12,
+      fontSize: 11,
+      lineHeight: 14,
       fontWeight: "600",
       color: t.colors.textInverted,
     },
@@ -301,7 +302,8 @@ const makeStyles = (t: AppTheme) =>
       backgroundColor: t.colors.surface,
     },
     rejectBtnText: {
-      fontSize: 12,
+      fontSize: 11,
+      lineHeight: 14,
       fontWeight: "600",
       color: t.colors.error,
     },

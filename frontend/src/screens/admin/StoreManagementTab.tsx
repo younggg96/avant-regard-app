@@ -553,7 +553,7 @@ const StoreManagementTab = () => {
             />
           ) : (
             <Box style={[styles.compactThumb, styles.compactThumbPlaceholder]}>
-              <Ionicons name="storefront-outline" size={18} color={theme.colors.gray300} />
+              <Ionicons name="storefront-outline" size={16} color={theme.colors.gray300} />
             </Box>
           )}
 
@@ -591,7 +591,7 @@ const StoreManagementTab = () => {
             </Text>
           </HStack>
 
-          <Ionicons name="chevron-forward" size={18} color={theme.colors.gray300} />
+          <Ionicons name="chevron-forward" size={16} color={theme.colors.gray300} />
         </HStack>
       </Pressable>
     );
@@ -614,7 +614,7 @@ const StoreManagementTab = () => {
             contentFit="cover"
           />
           <Pressable style={styles.imageDeleteBtn} onPress={() => onDelete(idx)}>
-            <Ionicons name="close-circle" size={20} color={theme.colors.error} />
+            <Ionicons name="close-circle" size={18} color={theme.colors.error} />
           </Pressable>
         </Box>
       ))}
@@ -626,7 +626,7 @@ const StoreManagementTab = () => {
         {imageUploading ? (
           <ActivityIndicator size="small" color={theme.colors.gray300} />
         ) : (
-          <Ionicons name="add" size={28} color={theme.colors.gray300} />
+          <Ionicons name="add" size={24} color={theme.colors.gray300} />
         )}
       </Pressable>
     </HStack>
@@ -691,7 +691,7 @@ const StoreManagementTab = () => {
             size="sm"
           />
           <Pressable style={styles.searchButton} onPress={handleSearch}>
-            <Ionicons name="search" size={18} color={theme.colors.white} />
+            <Ionicons name="search" size={16} color={theme.colors.white} />
           </Pressable>
           <Pressable
             style={[
@@ -702,7 +702,7 @@ const StoreManagementTab = () => {
           >
             <Ionicons
               name="filter"
-              size={18}
+              size={16}
               color={activeFilterCount > 0 ? theme.colors.white : theme.colors.text}
             />
             {activeFilterCount > 0 && (
@@ -710,7 +710,7 @@ const StoreManagementTab = () => {
             )}
           </Pressable>
           <Button size="sm" onPress={handleOpenCreate} style={styles.createButton}>
-            <Ionicons name="add" size={18} color={theme.colors.white} />
+            <Ionicons name="add" size={16} color={theme.colors.white} />
             <ButtonText style={styles.createButtonText}>{t("admin.add")}</ButtonText>
           </Button>
         </HStack>
@@ -781,7 +781,7 @@ const StoreManagementTab = () => {
           </VStack>
         ) : stores.length === 0 ? (
           <VStack style={sharedStyles.emptyContainer}>
-            <Ionicons name="storefront-outline" size={48} color={theme.colors.gray200} />
+            <Ionicons name="storefront-outline" size={40} color={theme.colors.gray200} />
             <Text style={sharedStyles.emptyText}>{t("admin.noStores")}</Text>
           </VStack>
         ) : (
@@ -796,7 +796,7 @@ const StoreManagementTab = () => {
               onPress={() => fetchStores(page - 1)}
               style={{ opacity: page <= 1 ? 0.3 : 1 }}
             >
-              <Ionicons name="chevron-back" size={24} color={theme.colors.text} />
+              <Ionicons name="chevron-back" size={20} color={theme.colors.text} />
             </Pressable>
             <Text style={styles.paginationText}>
               {t("admin.pagination", { page, total: totalPages })}
@@ -806,7 +806,7 @@ const StoreManagementTab = () => {
               onPress={() => fetchStores(page + 1)}
               style={{ opacity: page >= totalPages ? 0.3 : 1 }}
             >
-              <Ionicons name="chevron-forward" size={24} color={theme.colors.text} />
+              <Ionicons name="chevron-forward" size={20} color={theme.colors.text} />
             </Pressable>
           </HStack>
         )}
@@ -830,7 +830,7 @@ const StoreManagementTab = () => {
                 style={styles.storeDetailCloseBtn}
                 onPress={() => setDetailModalVisible(false)}
               >
-                <Ionicons name="close" size={22} color={theme.colors.text} />
+                <Ionicons name="close" size={20} color={theme.colors.text} />
               </Pressable>
             </HStack>
             {detailStore ? (
@@ -1246,21 +1246,21 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   },
   searchInput: {
     flex: 1,
-    height: 40,
+    height: 34,
   },
   searchButton: {
     backgroundColor: t.colors.text,
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    height: 40,
+    borderRadius: 4,
+    paddingHorizontal: 12,
+    height: 34,
     justifyContent: "center",
     alignItems: "center",
   },
   filterButton: {
     backgroundColor: t.colors.gray100,
-    borderRadius: 8,
-    width: 40,
-    height: 40,
+    borderRadius: 4,
+    width: 34,
+    height: 34,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -1272,65 +1272,65 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
     top: 2,
     right: 2,
     backgroundColor: t.colors.error,
-    borderRadius: 8,
-    width: 16,
-    height: 16,
+    borderRadius: 4,
+    width: 14,
+    height: 14,
     textAlign: "center",
-    fontSize: 10,
+    fontSize: 9,
     color: t.colors.textInverted,
     fontWeight: "600",
-    lineHeight: 16,
+    lineHeight: 14,
     overflow: "hidden",
   },
   createButton: {
-    height: 40,
-    borderRadius: 8,
-    paddingHorizontal: 14,
+    height: 34,
+    borderRadius: 4,
+    paddingHorizontal: 10,
     gap: 4,
   },
   createButtonText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "600",
   },
   filterPanel: {
     backgroundColor: t.colors.gray50,
-    borderRadius: 8,
-    padding: 12,
+    borderRadius: 4,
+    padding: 10,
     marginBottom: 8,
   },
   filterRow: {
     marginBottom: 8,
   },
   filterLabel: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "600",
     color: t.colors.gray400,
-    marginBottom: 6,
+    marginBottom: 4,
   },
   filterChips: {
     flexDirection: "row",
   },
   totalText: {
-    paddingBottom: 8,
+    paddingBottom: 6,
     fontSize: 12,
     color: t.colors.gray400,
   },
   compactCard: {
     backgroundColor: t.colors.card,
-    borderRadius: t.borderRadius.lg,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    marginBottom: 8,
+    borderRadius: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    marginBottom: 6,
     ...t.shadows.sm,
   },
   compactCardRow: {
     alignItems: "center",
-    gap: 10,
+    gap: 8,
   },
   compactThumb: {
-    width: 44,
-    height: 44,
-    borderRadius: 8,
+    width: 38,
+    height: 38,
+    borderRadius: 4,
     backgroundColor: t.colors.gray100,
   },
   compactThumbPlaceholder: {
@@ -1342,14 +1342,14 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
     minWidth: 0,
   },
   compactName: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: "600",
     color: t.colors.text,
   },
   compactMeta: {
     fontSize: 11,
     color: t.colors.gray300,
-    marginTop: 2,
+    marginTop: 1,
   },
   compactStatus: {
     alignItems: "center",
@@ -1361,10 +1361,10 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   },
   storeDetailModalContent: {
     backgroundColor: t.colors.card,
-    borderRadius: t.borderRadius.lg,
+    borderRadius: 4,
     height: "88%",
     width: "92%",
-    padding: t.spacing.md,
+    padding: 10,
   },
   storeDetailHeader: {
     alignItems: "center",
@@ -1376,6 +1376,8 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   },
   storeDetailTitle: {
     ...t.typography.h4,
+    fontSize: 15,
+    lineHeight: 20,
     color: t.colors.text,
     flex: 1,
     marginRight: t.spacing.sm,
@@ -1384,21 +1386,21 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
     padding: t.spacing.xs,
   },
   storeDetailScroll: {
-    paddingBottom: t.spacing.lg,
+    paddingBottom: t.spacing.md,
   },
   detailCoverImage: {
     width: "100%",
-    height: 180,
-    borderRadius: t.borderRadius.md,
-    marginBottom: t.spacing.md,
+    height: 150,
+    borderRadius: 4,
+    marginBottom: t.spacing.sm,
     backgroundColor: t.colors.gray100,
   },
   detailMetaCard: {
     backgroundColor: t.colors.surface,
-    borderRadius: t.borderRadius.md,
-    padding: t.spacing.md,
-    marginBottom: t.spacing.md,
-    gap: t.spacing.sm,
+    borderRadius: 4,
+    padding: 10,
+    marginBottom: t.spacing.sm,
+    gap: 6,
   },
   detailMetaRow: {
     justifyContent: "space-between",
@@ -1424,26 +1426,26 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
     marginBottom: t.spacing.xs,
   },
   detailDescription: {
-    fontSize: 13,
+    fontSize: 12,
     color: t.colors.text,
-    lineHeight: 19,
-    marginBottom: t.spacing.md,
+    lineHeight: 17,
+    marginBottom: t.spacing.sm,
   },
   detailEmptyImages: {
     fontSize: 12,
     color: t.colors.gray300,
-    marginBottom: t.spacing.md,
+    marginBottom: t.spacing.sm,
   },
   detailImagesGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8,
-    marginBottom: t.spacing.md,
+    gap: 6,
+    marginBottom: t.spacing.sm,
   },
   detailImageItem: {
-    width: 88,
-    height: 88,
-    borderRadius: 8,
+    width: 72,
+    height: 72,
+    borderRadius: 4,
     overflow: "hidden",
     backgroundColor: t.colors.gray100,
   },
@@ -1456,8 +1458,8 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
     marginTop: t.spacing.xs,
   },
   statusDot: {
-    width: 8,
-    height: 8,
+    width: 7,
+    height: 7,
     borderRadius: 4,
   },
   statusText: {
@@ -1466,16 +1468,16 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   },
   storeMeta: {
     flexWrap: "wrap",
-    gap: 6,
-    marginTop: 6,
+    gap: 4,
+    marginTop: 4,
     marginBottom: 4,
   },
   metaChip: {
     fontSize: 11,
     color: t.colors.gray400,
     backgroundColor: t.colors.gray100,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
     borderRadius: 4,
     overflow: "hidden",
   },
@@ -1487,7 +1489,7 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
     fontSize: 12,
     color: t.colors.gray400,
     marginTop: 4,
-    lineHeight: 18,
+    lineHeight: 16,
   },
   storeId: {
     fontSize: 11,
@@ -1499,30 +1501,30 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
     gap: 4,
   },
   pagination: {
-    paddingVertical: 16,
+    paddingVertical: 10,
   },
   paginationText: {
-    fontSize: 14,
+    fontSize: 13,
     color: t.colors.gray500,
   },
   formModalContent: {
     height: "85%",
     width: "92%",
-    padding: t.spacing.lg,
+    padding: t.spacing.md,
   },
   switchRow: {
-    marginTop: t.spacing.md,
+    marginTop: t.spacing.sm,
     marginBottom: t.spacing.sm,
   },
   imagesGrid: {
     flexWrap: "wrap",
     gap: 8,
-    marginBottom: 12,
+    marginBottom: 8,
   },
   imageItem: {
-    width: 80,
-    height: 80,
-    borderRadius: 8,
+    width: 64,
+    height: 64,
+    borderRadius: 4,
     overflow: "hidden",
     borderWidth: 1,
     borderColor: t.colors.gray200,
@@ -1537,12 +1539,12 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
     top: 2,
     right: 2,
     backgroundColor: "rgba(255,255,255,0.9)",
-    borderRadius: 10,
+    borderRadius: 4,
   },
   imageAddBtn: {
-    width: 80,
-    height: 80,
-    borderRadius: 8,
+    width: 64,
+    height: 64,
+    borderRadius: 4,
     borderWidth: 1,
     borderColor: t.colors.gray200,
     borderStyle: "dashed",
@@ -1552,20 +1554,20 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   },
   listImagesRow: {
     flexDirection: "row",
-    marginBottom: 8,
+    marginBottom: 6,
     flexGrow: 0,
   },
   listImageThumb: {
-    width: 60,
-    height: 60,
-    borderRadius: 6,
+    width: 50,
+    height: 50,
+    borderRadius: 4,
     marginRight: 6,
     backgroundColor: t.colors.gray100,
   },
   listImageMore: {
-    width: 60,
-    height: 60,
-    borderRadius: 6,
+    width: 50,
+    height: 50,
+    borderRadius: 4,
     backgroundColor: t.colors.gray100,
     alignItems: "center",
     justifyContent: "center",

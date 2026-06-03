@@ -51,7 +51,7 @@ type TabType = "pending" | "approved" | "all";
 
 /** iOS Switch 默认偏大，统一缩小以匹配 admin 列表行高 */
 const COMPACT_SWITCH_PROPS = Platform.select({
-  ios: { style: { transform: [{ scaleX: 0.82 }, { scaleY: 0.82 }] } as const },
+  ios: { style: { transform: [{ scaleX: 0.82 }, { scaleY: 0.82 }] } },
   default: {},
 });
 
@@ -340,34 +340,34 @@ const MerchantReviewScreen = () => {
 
     return (
       <Pressable
-        style={[{ backgroundColor: theme.colors.white }, { borderColor: theme.colors.gray100 }]}
-        rounded="$lg"
-        p="$md"
-        mb="$md"
+        style={[{ backgroundColor: theme.colors.card }, { borderColor: theme.colors.border }]}
+        rounded={4}
+        p={10}
+        mb="$sm"
         borderWidth={1}
 
         onPress={() => isPending ? openDetailModal(item) : openManageModal(item)}
         sx={{
           shadowColor: "#000",
-          shadowOffset: { width: 0, height: 2 },
+          shadowOffset: { width: 0, height: 1 },
           shadowOpacity: 0.05,
-          shadowRadius: 4,
+          shadowRadius: 2,
           elevation: 2,
         }}
       >
-        <HStack justifyContent="between" alignItems="start" mb="$sm">
+        <HStack justifyContent="between" alignItems="start" mb={6}>
           <VStack flex={1}>
-            <Text fontSize="$lg" fontWeight="$bold" style={{ color: theme.colors.text }} numberOfLines={1}>
+            <Text fontSize={14} lineHeight={18} fontWeight="$bold" style={{ color: theme.colors.text }} numberOfLines={1}>
               {item.storeName || item.storeId}
             </Text>
             {item.storeCity && (
-              <Text fontSize="$sm" style={{ color: theme.colors.gray300 }} mt="$xs">
+              <Text fontSize={11} lineHeight={14} style={{ color: theme.colors.gray300 }} mt={2}>
                 {item.storeCity}
               </Text>
             )}
           </VStack>
-          <Box bg={statusColor.bg} px="$sm" py="$xs" rounded="$sm">
-            <Text fontSize="$xs" fontWeight="$bold" color={statusColor.text}>
+          <Box bg={statusColor.bg} px={6} py={1} rounded={4}>
+            <Text fontSize={11} lineHeight={14} fontWeight="$bold" color={statusColor.text}>
               {statusColor.label}
             </Text>
           </Box>
@@ -375,27 +375,27 @@ const MerchantReviewScreen = () => {
 
         {/* 联系人信息 */}
         {item.contactName && (
-          <HStack alignItems="center" mb="$xs">
-            <Ionicons name="person-outline" size={14} color={theme.colors.gray300} />
-            <Text fontSize="$sm" style={{ color: theme.colors.gray300 }} ml="$xs">
+          <HStack alignItems="center" mb={4}>
+            <Ionicons name="person-outline" size={12} color={theme.colors.gray300} />
+            <Text fontSize={11} lineHeight={14} style={{ color: theme.colors.gray300 }} ml="$xs">
               {item.contactName}
             </Text>
           </HStack>
         )}
 
         {item.contactPhone && (
-          <HStack alignItems="center" mb="$xs">
-            <Ionicons name="call-outline" size={14} color={theme.colors.gray300} />
-            <Text fontSize="$sm" style={{ color: theme.colors.gray300 }} ml="$xs">
+          <HStack alignItems="center" mb={4}>
+            <Ionicons name="call-outline" size={12} color={theme.colors.gray300} />
+            <Text fontSize={11} lineHeight={14} style={{ color: theme.colors.gray300 }} ml="$xs">
               {item.contactPhone}
             </Text>
           </HStack>
         )}
 
         {item.contactEmail && (
-          <HStack alignItems="center" mb="$sm">
-            <Ionicons name="mail-outline" size={14} color={theme.colors.gray300} />
-            <Text fontSize="$sm" style={{ color: theme.colors.gray300 }} ml="$xs">
+          <HStack alignItems="center" mb={6}>
+            <Ionicons name="mail-outline" size={12} color={theme.colors.gray300} />
+            <Text fontSize={11} lineHeight={14} style={{ color: theme.colors.gray300 }} ml="$xs">
               {item.contactEmail}
             </Text>
           </HStack>
@@ -404,31 +404,31 @@ const MerchantReviewScreen = () => {
         <HStack
           justifyContent="between"
           alignItems="center"
-          mt="$sm"
-          pt="$sm"
+          mt={6}
+          pt={6}
           borderTopWidth={1}
-          style={{ borderTopColor: theme.colors.gray100 }}
+          style={{ borderTopColor: theme.colors.border }}
         >
           <HStack alignItems="center">
             <Box
-              w={24}
-              h={24}
-              rounded="$sm"
+              w={20}
+              h={20}
+              rounded={4}
               style={{ backgroundColor: theme.colors.gray100 }}
               justifyContent="center"
               alignItems="center"
               mr="$xs"
             >
-              <Ionicons name="person" size={12} color={theme.colors.gray300} />
+              <Ionicons name="person" size={11} color={theme.colors.gray300} />
             </Box>
-            <Text fontSize="$xs" style={{ color: theme.colors.gray300 }}>
+            <Text fontSize={11} lineHeight={14} style={{ color: theme.colors.gray300 }}>
               {item.username || `${t("merchant.user")} ${item.userId}`}
             </Text>
-            <Text fontSize="$xs" style={{ color: theme.colors.gray200 }} ml="$sm">
+            <Text fontSize={11} lineHeight={14} style={{ color: theme.colors.gray200 }} ml="$sm">
               {formatDate(item.createdAt)}
             </Text>
           </HStack>
-          <Ionicons name="chevron-forward" size={16} color={theme.colors.gray200} />
+          <Ionicons name="chevron-forward" size={14} color={theme.colors.gray200} />
         </HStack>
       </Pressable>
     );
@@ -449,13 +449,13 @@ const MerchantReviewScreen = () => {
       <VStack flex={1} justifyContent="center" alignItems="center" py="$2xl">
         <Ionicons
           name={activeTab === "pending" ? "checkmark-circle-outline" : "storefront-outline"}
-          size={64}
+          size={48}
           color={theme.colors.gray200}
         />
-        <Text fontSize="$lg" fontWeight="$medium" style={{ color: theme.colors.text }} mt="$md">
+        <Text fontSize={14} lineHeight={18} fontWeight="$medium" style={{ color: theme.colors.text }} mt="$sm">
           {msg.title}
         </Text>
-        <Text style={{ color: theme.colors.gray300 }} mt="$sm">
+        <Text fontSize={12} lineHeight={16} style={{ color: theme.colors.gray300 }} mt="$xs">
           {msg.subtitle}
         </Text>
       </VStack>
@@ -481,7 +481,7 @@ const MerchantReviewScreen = () => {
         />
         <VStack flex={1} justifyContent="center" alignItems="center">
           <ActivityIndicator  color={theme.colors.text} />
-          <Text style={{ color: theme.colors.gray300 }} mt="$md">
+          <Text fontSize={12} lineHeight={16} style={{ color: theme.colors.gray300 }} mt="$sm">
             {t("common.loading")}
           </Text>
         </VStack>
@@ -572,42 +572,42 @@ const MerchantReviewScreen = () => {
             {selectedMerchant && (
               <RNScrollView showsVerticalScrollIndicator={false}>
                 {/* 店铺名称 */}
-                <Text fontSize="$xl" fontWeight="$bold" style={{ color: theme.colors.text }} mb="$xs">
+                <Text fontSize={16} lineHeight={20} fontWeight="$bold" style={{ color: theme.colors.text }} mb={2}>
                   {selectedMerchant.storeName || selectedMerchant.storeId}
                 </Text>
                 {selectedMerchant.storeAddress && (
-                  <Text fontSize="$sm" style={{ color: theme.colors.gray300 }} mb="$md">
+                  <Text fontSize={12} lineHeight={16} style={{ color: theme.colors.gray300 }} mb="$sm">
                     {selectedMerchant.storeAddress}
                   </Text>
                 )}
 
                 {/* 申请者信息 */}
-                <Box style={{ backgroundColor: theme.colors.gray50 }} rounded="$md" p="$md" mb="$md">
+                <Box style={{ backgroundColor: theme.colors.gray50 }} rounded={4} p="$sm" mb="$sm">
                   <HStack alignItems="center">
                     <Ionicons
                       name="person-circle-outline"
-                      size={20}
+                      size={18}
                       color={theme.colors.gray300}
                     />
-                    <Text fontSize="$sm" style={{ color: theme.colors.gray300 }} ml="$sm">
+                    <Text fontSize={12} lineHeight={16} style={{ color: theme.colors.gray300 }} ml="$xs">
                       {t("merchant.applicant")}{selectedMerchant.username || `${t("merchant.user")} ${selectedMerchant.userId}`}
                     </Text>
-                    <Text fontSize="$sm" style={{ color: theme.colors.gray200 }} ml="auto">
+                    <Text fontSize={11} lineHeight={14} style={{ color: theme.colors.gray200 }} ml="auto">
                       {formatDate(selectedMerchant.createdAt)}
                     </Text>
                   </HStack>
                 </Box>
 
                 {/* 联系信息 */}
-                <VStack mb="$md">
-                  <Text fontSize="$sm" fontWeight="$semibold" style={{ color: theme.colors.gray300 }} mb="$sm">
+                <VStack mb="$sm">
+                  <Text fontSize={11} lineHeight={14} fontWeight="$semibold" style={{ color: theme.colors.gray300 }} mb="$xs">
                     {t("merchant.contactInfo")}
                   </Text>
 
                   {selectedMerchant.contactName && (
                     <HStack alignItems="center" mb="$xs">
-                      <Ionicons name="person-outline" size={16} color={theme.colors.gray400} />
-                      <Text fontSize="$md" style={{ color: theme.colors.text }} ml="$sm">
+                      <Ionicons name="person-outline" size={14} color={theme.colors.gray400} />
+                      <Text fontSize={13} lineHeight={18} style={{ color: theme.colors.text }} ml="$xs">
                         {selectedMerchant.contactName}
                       </Text>
                     </HStack>
@@ -620,13 +620,13 @@ const MerchantReviewScreen = () => {
                       }
                     >
                       <HStack alignItems="center" mb="$xs">
-                        <Ionicons name="call-outline" size={16} color={theme.colors.gray400} />
-                        <Text fontSize="$md" style={{ color: theme.colors.text }} ml="$sm">
+                        <Ionicons name="call-outline" size={14} color={theme.colors.gray400} />
+                        <Text fontSize={13} lineHeight={18} style={{ color: theme.colors.text }} ml="$xs">
                           {selectedMerchant.contactPhone}
                         </Text>
                         <Ionicons
                           name="open-outline"
-                          size={14}
+                          size={12}
                           color={theme.colors.gray300}
                           style={{ marginLeft: 4 }}
                         />
@@ -641,13 +641,13 @@ const MerchantReviewScreen = () => {
                       }
                     >
                       <HStack alignItems="center" mb="$xs">
-                        <Ionicons name="mail-outline" size={16} color={theme.colors.gray400} />
-                        <Text fontSize="$md" style={{ color: theme.colors.text }} ml="$sm">
+                        <Ionicons name="mail-outline" size={14} color={theme.colors.gray400} />
+                        <Text fontSize={13} lineHeight={18} style={{ color: theme.colors.text }} ml="$xs">
                           {selectedMerchant.contactEmail}
                         </Text>
                         <Ionicons
                           name="open-outline"
-                          size={14}
+                          size={12}
                           color={theme.colors.gray300}
                           style={{ marginLeft: 4 }}
                         />
@@ -658,8 +658,8 @@ const MerchantReviewScreen = () => {
 
                 {/* 营业执照/证明材料 */}
                 {selectedMerchant.businessLicense && (
-                  <VStack mb="$lg">
-                    <Text fontSize="$sm" fontWeight="$semibold" style={{ color: theme.colors.gray300 }} mb="$sm">
+                  <VStack mb="$md">
+                    <Text fontSize={11} lineHeight={14} fontWeight="$semibold" style={{ color: theme.colors.gray300 }} mb="$xs">
                       {t("merchant.proofMaterial")}
                     </Text>
                     <OptimizedImage
@@ -691,35 +691,35 @@ const MerchantReviewScreen = () => {
                 </VStack> */}
 
                 {/* 权限信息 */}
-                <VStack mb="$lg">
-                  <Text fontSize="$sm" fontWeight="$semibold" style={{ color: theme.colors.gray300 }} mb="$sm">
+                <VStack mb="$md">
+                  <Text fontSize={11} lineHeight={14} fontWeight="$semibold" style={{ color: theme.colors.gray300 }} mb="$xs">
                     {t("merchant.permissions")}
                   </Text>
                   <HStack flexWrap="wrap" gap="$xs">
                     {selectedMerchant.canPostBanner && (
-                      <Box bg="#E3F2FD" px="$sm" py="$xs" rounded="$sm">
-                        <Text fontSize="$xs" color="#1976D2">
+                      <Box bg="#E3F2FD" px={6} py={1} rounded={4}>
+                        <Text fontSize={11} lineHeight={14} color="#1976D2">
                           Banner
                         </Text>
                       </Box>
                     )}
                     {selectedMerchant.canPostAnnouncement && (
-                      <Box bg="#FFF3E0" px="$sm" py="$xs" rounded="$sm">
-                        <Text fontSize="$xs" color="#F57C00">
+                      <Box bg="#FFF3E0" px={6} py={1} rounded={4}>
+                        <Text fontSize={11} lineHeight={14} color="#F57C00">
                           {t("merchant.announcement")}
                         </Text>
                       </Box>
                     )}
                     {selectedMerchant.canPostActivity && (
-                      <Box bg="#E8F5E9" px="$sm" py="$xs" rounded="$sm">
-                        <Text fontSize="$xs" color="#388E3C">
+                      <Box bg="#E8F5E9" px={6} py={1} rounded={4}>
+                        <Text fontSize={11} lineHeight={14} color="#388E3C">
                           {t("merchant.activity")}
                         </Text>
                       </Box>
                     )}
                     {selectedMerchant.canPostDiscount && (
-                      <Box bg="#FCE4EC" px="$sm" py="$xs" rounded="$sm">
-                        <Text fontSize="$xs" color="#C2185B">
+                      <Box bg="#FCE4EC" px={6} py={1} rounded={4}>
+                        <Text fontSize={11} lineHeight={14} color="#C2185B">
                           {t("merchant.discount")}
                         </Text>
                       </Box>
@@ -728,25 +728,25 @@ const MerchantReviewScreen = () => {
                 </VStack>
 
                 {/* 操作按钮 */}
-                <HStack gap="$sm" mt="$md" mb="$lg">
+                <HStack gap="$sm" mt="$sm" mb="$md">
                   <Pressable
                     flex={1}
                     py="$sm"
-                    rounded="$sm"
+                    rounded={4}
                     borderWidth={1}
                     style={{ borderColor: theme.colors.error }}
                     alignItems="center"
                     onPress={() => openRejectModal(selectedMerchant)}
                     disabled={isSubmitting}
                   >
-                    <Text fontSize="$md" fontWeight="$semibold" style={{ color: theme.colors.error }}>
+                    <Text fontSize={13} lineHeight={18} fontWeight="$semibold" style={{ color: theme.colors.error }}>
                       {t("merchant.rejected")}
                     </Text>
                   </Pressable>
                   <Pressable
                     flex={1}
                     py="$sm"
-                    rounded="$sm"
+                    rounded={4}
                     style={{ backgroundColor: theme.colors.text }}
                     alignItems="center"
                     onPress={() => handleApprove(selectedMerchant)}
@@ -755,7 +755,7 @@ const MerchantReviewScreen = () => {
                     {isSubmitting ? (
                       <ActivityIndicator color={theme.colors.textInverted} />
                     ) : (
-                      <Text fontSize="$md" fontWeight="$semibold" style={{ color: theme.colors.textInverted }}>
+                      <Text fontSize={13} lineHeight={18} fontWeight="$semibold" style={{ color: theme.colors.textInverted }}>
                         {t("merchant.approved")}
                       </Text>
                     )}
@@ -795,10 +795,10 @@ const MerchantReviewScreen = () => {
               },
             ]}
           >
-            <Text fontSize="$lg" fontWeight="$bold" style={{ color: theme.colors.text }} mb="$md">
+            <Text fontSize={14} lineHeight={18} fontWeight="$bold" style={{ color: theme.colors.text }} mb="$sm">
               {t("merchant.rejectReason")}
             </Text>
-            <Text fontSize="$sm" style={{ color: theme.colors.gray300 }} mb="$md">
+            <Text fontSize={12} lineHeight={16} style={{ color: theme.colors.gray300 }} mb="$sm">
               {t("merchant.rejectReasonPrompt", { store: selectedMerchant?.storeName || selectedMerchant?.storeId })}
             </Text>
             <TextInput
@@ -810,33 +810,33 @@ const MerchantReviewScreen = () => {
               multiline
               maxLength={200}
             />
-            <HStack gap="$sm" mt="$lg">
+            <HStack gap="$sm" mt="$md">
               <Pressable
                 flex={1}
-                py="$md"
-                rounded="$sm"
+                py="$sm"
+                rounded={4}
                 borderWidth={1}
                 style={{ borderColor: theme.colors.gray200 }}
                 alignItems="center"
                 onPress={closeRejectModal}
               >
-                <Text fontSize="$md" fontWeight="$semibold" style={{ color: theme.colors.text }}>
+                <Text fontSize={13} lineHeight={18} fontWeight="$semibold" style={{ color: theme.colors.text }}>
                   {t("common.cancel")}
                 </Text>
               </Pressable>
               <Pressable
                 flex={1}
-                py="$md"
-                rounded="$sm"
+                py="$sm"
+                rounded={4}
                 style={{ backgroundColor: theme.colors.error }}
                 alignItems="center"
                 onPress={handleConfirmReject}
                 disabled={isSubmitting}
               >
                 {isSubmitting ? (
-                  <ActivityIndicator  color={theme.colors.white} />
+                  <ActivityIndicator  color={theme.colors.textInverted} />
                 ) : (
-                  <Text fontSize="$md" fontWeight="$semibold" style={{ color: theme.colors.white }}>
+                  <Text fontSize={13} lineHeight={18} fontWeight="$semibold" style={{ color: theme.colors.textInverted }}>
                     {t("merchant.confirmReject")}
                   </Text>
                 )}
@@ -864,30 +864,30 @@ const MerchantReviewScreen = () => {
             {manageMerchant && (
               <RNScrollView showsVerticalScrollIndicator={false}>
                 {/* 店铺名称 */}
-                <Text fontSize="$xl" fontWeight="$bold" style={{ color: theme.colors.text }} mb="$xs">
+                <Text fontSize={16} lineHeight={20} fontWeight="$bold" style={{ color: theme.colors.text }} mb={2}>
                   {manageMerchant.storeName || manageMerchant.storeId}
                 </Text>
                 {manageMerchant.storeAddress && (
-                  <Text fontSize="$sm" style={{ color: theme.colors.gray300 }} mb="$md">
+                  <Text fontSize={12} lineHeight={16} style={{ color: theme.colors.gray300 }} mb="$sm">
                     {manageMerchant.storeAddress}
                   </Text>
                 )}
 
                 {/* 状态 */}
-                <Box style={{ backgroundColor: theme.colors.gray50 }} rounded="$md" p="$md" mb="$md">
+                <Box style={{ backgroundColor: theme.colors.gray50 }} rounded={4} p="$sm" mb="$sm">
                   <HStack alignItems="center" justifyContent="space-between">
                     <HStack alignItems="center">
                       <Ionicons
                         name="shield-checkmark-outline"
-                        size={20}
+                        size={18}
                         color={theme.colors.gray400}
                       />
-                      <Text fontSize="$sm" style={{ color: theme.colors.gray400 }} ml="$sm">
+                      <Text fontSize={12} lineHeight={16} style={{ color: theme.colors.gray400 }} ml="$xs">
                         {t("merchant.merchantStatus")}
                       </Text>
                     </HStack>
-                    <Box bg={getStatusColor(manageMerchant.status).bg} px="$sm" py="$xs" rounded="$sm">
-                      <Text fontSize="$xs" fontWeight="$bold" color={getStatusColor(manageMerchant.status).text}>
+                    <Box bg={getStatusColor(manageMerchant.status).bg} px={6} py={1} rounded={4}>
+                      <Text fontSize={11} lineHeight={14} fontWeight="$bold" color={getStatusColor(manageMerchant.status).text}>
                         {getStatusColor(manageMerchant.status).label}
                       </Text>
                     </Box>
@@ -895,15 +895,15 @@ const MerchantReviewScreen = () => {
                 </Box>
 
                 {/* 联系信息 */}
-                <VStack mb="$md">
-                  <Text fontSize="$sm" fontWeight="$semibold" style={{ color: theme.colors.gray300 }} mb="$sm">
+                <VStack mb="$sm">
+                  <Text fontSize={11} lineHeight={14} fontWeight="$semibold" style={{ color: theme.colors.gray300 }} mb="$xs">
                     {t("merchant.contactInfo")}
                   </Text>
 
                   {manageMerchant.contactName && (
                     <HStack alignItems="center" mb="$xs">
-                      <Ionicons name="person-outline" size={16} color={theme.colors.gray400} />
-                      <Text fontSize="$md" style={{ color: theme.colors.text }} ml="$sm">
+                      <Ionicons name="person-outline" size={14} color={theme.colors.gray400} />
+                      <Text fontSize={13} lineHeight={18} style={{ color: theme.colors.text }} ml="$xs">
                         {manageMerchant.contactName}
                       </Text>
                     </HStack>
@@ -916,8 +916,8 @@ const MerchantReviewScreen = () => {
                       }
                     >
                       <HStack alignItems="center" mb="$xs">
-                        <Ionicons name="call-outline" size={16} color={theme.colors.gray400} />
-                        <Text fontSize="$md" style={{ color: theme.colors.text }} ml="$sm">
+                        <Ionicons name="call-outline" size={14} color={theme.colors.gray400} />
+                        <Text fontSize={13} lineHeight={18} style={{ color: theme.colors.text }} ml="$xs">
                           {manageMerchant.contactPhone}
                         </Text>
                       </HStack>
@@ -931,8 +931,8 @@ const MerchantReviewScreen = () => {
                       }
                     >
                       <HStack alignItems="center" mb="$xs">
-                        <Ionicons name="mail-outline" size={16} color={theme.colors.gray400} />
-                        <Text fontSize="$md" style={{ color: theme.colors.text }} ml="$sm">
+                        <Ionicons name="mail-outline" size={14} color={theme.colors.gray400} />
+                        <Text fontSize={13} lineHeight={18} style={{ color: theme.colors.text }} ml="$xs">
                           {manageMerchant.contactEmail}
                         </Text>
                       </HStack>
@@ -941,15 +941,15 @@ const MerchantReviewScreen = () => {
                 </VStack>
 
                 {/* 权限管理 */}
-                <VStack mb="$lg">
-                  <Text fontSize="$sm" fontWeight="$semibold" style={{ color: theme.colors.gray300 }} mb="$sm">
+                <VStack mb="$md">
+                  <Text fontSize={11} lineHeight={14} fontWeight="$semibold" style={{ color: theme.colors.gray300 }} mb="$xs">
                     {t("merchant.permissionManage")}
                   </Text>
 
                   <View style={styles.permissionItem}>
                     <HStack alignItems="center">
-                      <Ionicons name="image-outline" size={18} color={theme.colors.gray400} />
-                      <Text fontSize="$md" style={{ color: theme.colors.text }} ml="$sm">{t("merchant.bannerPublish")}</Text>
+                      <Ionicons name="image-outline" size={16} color={theme.colors.gray400} />
+                      <Text fontSize={13} lineHeight={18} style={{ color: theme.colors.text }} ml="$xs">{t("merchant.bannerPublish")}</Text>
                     </HStack>
                     <Switch
                       {...COMPACT_SWITCH_PROPS}
@@ -963,8 +963,8 @@ const MerchantReviewScreen = () => {
 
                   <View style={styles.permissionItem}>
                     <HStack alignItems="center">
-                      <Ionicons name="megaphone-outline" size={18} color={theme.colors.gray400} />
-                      <Text fontSize="$md" style={{ color: theme.colors.text }} ml="$sm">{t("merchant.announcementPublish")}</Text>
+                      <Ionicons name="megaphone-outline" size={16} color={theme.colors.gray400} />
+                      <Text fontSize={13} lineHeight={18} style={{ color: theme.colors.text }} ml="$xs">{t("merchant.announcementPublish")}</Text>
                     </HStack>
                     <Switch
                       {...COMPACT_SWITCH_PROPS}
@@ -978,8 +978,8 @@ const MerchantReviewScreen = () => {
 
                   <View style={styles.permissionItem}>
                     <HStack alignItems="center">
-                      <Ionicons name="calendar-outline" size={18} color={theme.colors.gray400} />
-                      <Text fontSize="$md" style={{ color: theme.colors.text }} ml="$sm">{t("merchant.activityPublish")}</Text>
+                      <Ionicons name="calendar-outline" size={16} color={theme.colors.gray400} />
+                      <Text fontSize={13} lineHeight={18} style={{ color: theme.colors.text }} ml="$xs">{t("merchant.activityPublish")}</Text>
                     </HStack>
                     <Switch
                       {...COMPACT_SWITCH_PROPS}
@@ -993,8 +993,8 @@ const MerchantReviewScreen = () => {
 
                   <View style={styles.permissionItem}>
                     <HStack alignItems="center">
-                      <Ionicons name="pricetag-outline" size={18} color={theme.colors.gray400} />
-                      <Text fontSize="$md" style={{ color: theme.colors.text }} ml="$sm">{t("merchant.discountPublish")}</Text>
+                      <Ionicons name="pricetag-outline" size={16} color={theme.colors.gray400} />
+                      <Text fontSize={13} lineHeight={18} style={{ color: theme.colors.text }} ml="$xs">{t("merchant.discountPublish")}</Text>
                     </HStack>
                     <Switch
                       {...COMPACT_SWITCH_PROPS}
@@ -1008,20 +1008,20 @@ const MerchantReviewScreen = () => {
                 </VStack>
 
                 {/* 操作按钮 */}
-                <HStack gap="$sm" mt="$md" mb="$lg">
+                <HStack gap="$sm" mt="$sm" mb="$md">
                   {manageMerchant.status === "APPROVED" ? (
                     <Pressable
                       flex={1}
                       py="$sm"
-                      rounded="$sm"
+                      rounded={4}
                       bg="#FFEBEE"
                       alignItems="center"
                       onPress={() => handleUpdateMerchantStatus("SUSPENDED")}
                       disabled={isSubmitting}
                     >
                       <HStack alignItems="center" gap="$xs">
-                        <Ionicons name="pause-circle-outline" size={18} color="#F44336" />
-                        <Text fontSize="$md" fontWeight="$semibold" color="#F44336">
+                        <Ionicons name="pause-circle-outline" size={16} color="#F44336" />
+                        <Text fontSize={13} lineHeight={18} fontWeight="$semibold" color="#F44336">
                           {t("merchant.suspendMerchant")}
                         </Text>
                       </HStack>
@@ -1030,15 +1030,15 @@ const MerchantReviewScreen = () => {
                     <Pressable
                       flex={1}
                       py="$sm"
-                      rounded="$sm"
+                      rounded={4}
                       bg="#E8F5E9"
                       alignItems="center"
                       onPress={() => handleUpdateMerchantStatus("APPROVED")}
                       disabled={isSubmitting}
                     >
                       <HStack alignItems="center" gap="$xs">
-                        <Ionicons name="play-circle-outline" size={18} color="#4CAF50" />
-                        <Text fontSize="$md" fontWeight="$semibold" color="#4CAF50">
+                        <Ionicons name="play-circle-outline" size={16} color="#4CAF50" />
+                        <Text fontSize={13} lineHeight={18} fontWeight="$semibold" color="#4CAF50">
                           {t("merchant.resumeMerchant")}
                         </Text>
                       </HStack>
@@ -1060,7 +1060,7 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
     backgroundColor: t.colors.background,
   },
   listContent: {
-    padding: t.spacing.md,
+    padding: 10,
     paddingBottom: t.spacing.xl,
   },
   modalOverlay: {
@@ -1073,38 +1073,38 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   },
   modalContent: {
     backgroundColor: t.colors.card,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: t.spacing.lg,
+    borderTopLeftRadius: 4,
+    borderTopRightRadius: 4,
+    padding: t.spacing.md,
     paddingTop: t.spacing.sm,
     paddingBottom: 34,
     maxHeight: "85%",
   },
   modalHandle: {
-    width: 40,
+    width: 32,
     height: 4,
     backgroundColor: t.colors.gray200,
-    borderRadius: 2,
+    borderRadius: 4,
     alignSelf: "center",
-    marginBottom: t.spacing.md,
+    marginBottom: t.spacing.sm,
   },
   rejectModalContent: {
     backgroundColor: t.colors.card,
-    borderRadius: 16,
-    padding: t.spacing.lg,
+    borderRadius: 4,
+    padding: t.spacing.md,
   },
   rejectInput: {
     backgroundColor: t.colors.gray100,
     borderRadius: t.borderRadius.md,
-    padding: t.spacing.md,
-    fontSize: 15,
+    padding: t.spacing.sm,
+    fontSize: 13,
     color: t.colors.text,
-    minHeight: 100,
+    minHeight: 80,
     textAlignVertical: "top",
   },
   licenseImage: {
     width: "100%",
-    height: 200,
+    height: 160,
     borderRadius: t.borderRadius.md,
     backgroundColor: t.colors.gray100,
   },
@@ -1119,7 +1119,7 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: t.spacing.md,
+    paddingVertical: 9,
     borderBottomWidth: 2,
     borderBottomColor: "transparent",
   },
@@ -1127,7 +1127,7 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
     borderBottomColor: t.colors.text,
   },
   tabText: {
-    fontSize: 14,
+    fontSize: 13,
     color: t.colors.gray300,
   },
   tabTextActive: {
@@ -1136,24 +1136,24 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   },
   tabBadge: {
     backgroundColor: t.colors.error,
-    borderRadius: 10,
-    minWidth: 20,
-    height: 20,
+    borderRadius: 4,
+    minWidth: 16,
+    height: 16,
     alignItems: "center",
     justifyContent: "center",
     marginLeft: 6,
-    paddingHorizontal: 6,
+    paddingHorizontal: 5,
   },
   tabBadgeText: {
     color: "#FFFFFF",
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "600",
   },
   permissionItem: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: t.spacing.sm,
+    paddingVertical: 9,
     borderBottomWidth: 1,
     borderBottomColor: t.colors.border,
   },

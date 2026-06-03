@@ -90,10 +90,10 @@ const PostsManagementTab = () => {
             onPress={() => setSubTab(tab.key)}
           >
             <Ionicons
-              name={tab.icon}
-              size={16}
+              name={tab.icon as keyof typeof Ionicons.glyphMap}
+              size={14}
               color={
-                subTab === tab.key ? theme.colors.white : theme.colors.gray400
+                subTab === tab.key ? theme.colors.textInverted : theme.colors.gray400
               }
             />
             <Text
@@ -374,7 +374,7 @@ const AllPostsSubTab = () => {
       <HStack style={sharedStyles.userInfo}>
         <Ionicons
           name="person-circle-outline"
-          size={20}
+          size={18}
           color={theme.colors.gray400}
         />
         <Text style={sharedStyles.username}>{post.username}</Text>
@@ -460,17 +460,17 @@ const AllPostsSubTab = () => {
 
       <HStack style={styles.statsRow}>
         <HStack style={styles.statItem}>
-          <Ionicons name="heart" size={14} color={theme.colors.gray300} />
+          <Ionicons name="heart" size={12} color={theme.colors.gray300} />
           <Text style={styles.statText}>{post.likeCount}</Text>
         </HStack>
         <HStack style={styles.statItem}>
-          <Ionicons name="bookmark" size={14} color={theme.colors.gray300} />
+          <Ionicons name="bookmark" size={12} color={theme.colors.gray300} />
           <Text style={styles.statText}>{post.favoriteCount}</Text>
         </HStack>
         <HStack style={styles.statItem}>
           <Ionicons
             name="chatbubble"
-            size={14}
+            size={12}
             color={theme.colors.gray300}
           />
           <Text style={styles.statText}>{post.commentCount}</Text>
@@ -533,33 +533,17 @@ const AllPostsSubTab = () => {
           onPress={() =>
             (navigation as any).navigate("PostDetail", { postId: post.id })
           }
-          leftIcon={
-            <Ionicons
-              name="eye-outline"
-              size={16}
-              color={theme.colors.white}
-            />
-          }
+          leftIcon={<Ionicons name="eye-outline" size={16} />}
         >
-          <ButtonText style={{ color: theme.colors.white, fontSize: 12 }}>
-            {t("admin.view")}
-          </ButtonText>
+          <ButtonText style={{ fontSize: 12 }}>{t("admin.view")}</ButtonText>
         </Button>
         <Button
           size="sm"
           variant="outline"
           onPress={() => handleChat(post.userId, post.username)}
-          leftIcon={
-            <Ionicons
-              name="chatbubble-ellipses-outline"
-              size={16}
-              color={theme.colors.white}
-            />
-          }
+          leftIcon={<Ionicons name="chatbubble-ellipses-outline" size={16} />}
         >
-          <ButtonText style={{ color: theme.colors.white, fontSize: 12 }}>
-            {t("admin.chat")}
-          </ButtonText>
+          <ButtonText style={{ fontSize: 12 }}>{t("admin.chat")}</ButtonText>
         </Button>
       </HStack>
     </Box>
@@ -660,7 +644,7 @@ const AllPostsSubTab = () => {
         <Box style={sharedStyles.emptyContainer}>
           <Ionicons
             name="documents-outline"
-            size={48}
+            size={40}
             color={theme.colors.gray300}
           />
           <Text style={sharedStyles.emptyText}>{t("admin.noPosts")}</Text>
@@ -719,7 +703,7 @@ const AllPostsSubTab = () => {
               >
                 <Ionicons
                   name="chevron-back"
-                  size={24}
+                  size={20}
                   color={theme.colors.black}
                 />
               </Pressable>
@@ -733,7 +717,7 @@ const AllPostsSubTab = () => {
               >
                 <Ionicons
                   name="chevron-forward"
-                  size={24}
+                  size={20}
                   color={theme.colors.black}
                 />
               </Pressable>
@@ -949,19 +933,9 @@ const ReportedPostsSubTab = () => {
                     variant="outline"
                     onPress={() => handleDismissReport(report.id)}
                     disabled={actionLoading}
-                    leftIcon={
-                      <Ionicons
-                        name="close-circle-outline"
-                        size={16}
-                        color={theme.colors.gray400}
-                      />
-                    }
+                    leftIcon={<Ionicons name="close-circle-outline" size={16} />}
                   >
-                    <ButtonText
-                      style={{ color: theme.colors.gray400, fontSize: 12 }}
-                    >
-                      {t("admin.dismiss")}
-                    </ButtonText>
+                    <ButtonText style={{ fontSize: 12 }}>{t("admin.dismiss")}</ButtonText>
                   </Button>
                 </>
               )}
@@ -988,19 +962,9 @@ const ReportedPostsSubTab = () => {
                     postId: post.id,
                   })
                 }
-                leftIcon={
-                  <Ionicons
-                    name="eye-outline"
-                    size={16}
-                    color={theme.colors.white}
-                  />
-                }
+                leftIcon={<Ionicons name="eye-outline" size={16} />}
               >
-                <ButtonText
-                  style={{ color: theme.colors.white, fontSize: 12 }}
-                >
-                  {t("admin.view")}
-                </ButtonText>
+                <ButtonText style={{ fontSize: 12 }}>{t("admin.view")}</ButtonText>
               </Button>
             </HStack>
           </Box>
@@ -1037,7 +1001,7 @@ const ReportedPostsSubTab = () => {
         <Box style={sharedStyles.emptyContainer}>
           <Ionicons
             name="flag-outline"
-            size={48}
+            size={40}
             color={theme.colors.gray300}
           />
           <Text style={sharedStyles.emptyText}>{t("admin.noReportedPosts")}</Text>
@@ -1056,7 +1020,7 @@ const ReportedPostsSubTab = () => {
               >
                 <Ionicons
                   name="chevron-back"
-                  size={24}
+                  size={20}
                   color={theme.colors.black}
                 />
               </Pressable>
@@ -1070,7 +1034,7 @@ const ReportedPostsSubTab = () => {
               >
                 <Ionicons
                   name="chevron-forward"
-                  size={24}
+                  size={20}
                   color={theme.colors.black}
                 />
               </Pressable>
@@ -1090,9 +1054,9 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
     flex: 1,
   },
   subTabBar: {
-    paddingHorizontal: t.spacing.md,
-    paddingVertical: t.spacing.sm,
-    gap: t.spacing.sm,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    gap: 6,
     borderBottomWidth: 1,
     borderBottomColor: t.colors.border,
     backgroundColor: t.colors.background,
@@ -1100,9 +1064,9 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   subTabItem: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: t.spacing.md,
-    paddingVertical: t.spacing.sm,
-    borderRadius: t.borderRadius.md,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 4,
     backgroundColor: t.colors.gray100,
     gap: 4,
   },
@@ -1111,6 +1075,8 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   },
   subTabText: {
     ...t.typography.caption,
+    fontSize: 11,
+    lineHeight: 14,
     color: t.colors.gray400,
     fontWeight: "500",
   },
@@ -1118,29 +1084,33 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
     color: t.colors.textInverted,
   },
   searchRow: {
-    gap: t.spacing.sm,
-    marginBottom: t.spacing.md,
+    gap: 6,
+    marginBottom: t.spacing.sm,
     alignItems: "center",
   },
   searchInput: {
     flex: 1,
     borderWidth: 1,
     borderColor: t.colors.gray200,
-    borderRadius: t.borderRadius.md,
-    paddingHorizontal: t.spacing.md,
-    paddingVertical: t.spacing.sm,
+    borderRadius: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
     ...t.typography.body,
+    fontSize: 13,
+    lineHeight: 18,
     color: t.colors.text,
   },
   filterSection: {
-    marginBottom: t.spacing.md,
+    marginBottom: t.spacing.sm,
   },
   filterLabel: {
     ...t.typography.caption,
+    fontSize: 11,
+    lineHeight: 14,
     color: t.colors.gray400,
     fontWeight: "600",
-    marginBottom: 6,
-    marginTop: 4,
+    marginBottom: 4,
+    marginTop: 2,
   },
   filterScroll: {
     marginBottom: t.spacing.xs,
@@ -1148,7 +1118,7 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   batchRow: {
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: t.spacing.md,
+    marginBottom: t.spacing.sm,
     flexWrap: "wrap",
     gap: 6,
   },
@@ -1156,9 +1126,9 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 3,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
     backgroundColor: "#7C3AED",
   },
   batchBtnAll: {
@@ -1175,11 +1145,13 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   },
   totalText: {
     ...t.typography.bodySmall,
+    fontSize: 12,
+    lineHeight: 16,
     color: t.colors.gray400,
   },
   auditBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
     borderRadius: 4,
   },
   auditBadgeText: {
@@ -1190,13 +1162,13 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   },
   gradeRow: {
     alignItems: "center",
-    gap: t.spacing.sm,
-    marginBottom: t.spacing.sm,
+    gap: 6,
+    marginBottom: 6,
     flexWrap: "wrap",
   },
   gradeBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
     borderRadius: 4,
   },
   gradeBadgeText: {
@@ -1232,7 +1204,7 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   },
   statsRow: {
     gap: t.spacing.md,
-    marginBottom: t.spacing.sm,
+    marginBottom: 6,
     alignItems: "center",
   },
   statItem: {
@@ -1241,60 +1213,68 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   },
   statText: {
     ...t.typography.caption,
+    fontSize: 11,
+    lineHeight: 14,
     color: t.colors.gray300,
   },
   imageScroll: {
-    marginBottom: t.spacing.sm,
+    marginBottom: 6,
   },
   postImage: {
-    width: 70,
-    height: 70,
-    borderRadius: t.borderRadius.md,
-    marginRight: t.spacing.sm,
+    width: 56,
+    height: 56,
+    borderRadius: 4,
+    marginRight: 6,
     backgroundColor: t.colors.gray100,
   },
   moreImages: {
-    width: 70,
-    height: 70,
-    borderRadius: t.borderRadius.md,
+    width: 56,
+    height: 56,
+    borderRadius: 4,
     backgroundColor: t.colors.gray100,
     alignItems: "center",
     justifyContent: "center",
   },
   moreImagesText: {
     ...t.typography.body,
+    fontSize: 13,
+    lineHeight: 18,
     color: t.colors.gray400,
     fontWeight: "600",
   },
   pagination: {
-    paddingVertical: t.spacing.lg,
+    paddingVertical: t.spacing.md,
   },
   paginationText: {
     ...t.typography.body,
+    fontSize: 13,
+    lineHeight: 18,
     color: t.colors.gray400,
   },
   // Report card
   reportCard: {
     backgroundColor: t.colors.card,
-    borderRadius: t.borderRadius.lg,
-    marginBottom: t.spacing.md,
+    borderRadius: 4,
+    marginBottom: t.spacing.sm,
     ...t.shadows.sm,
     overflow: "hidden",
   },
   reportHeader: {
-    padding: t.spacing.md,
+    padding: 10,
     backgroundColor: "#FFF8E1",
     borderBottomWidth: 1,
     borderBottomColor: "#FFE082",
   },
   reportReasonText: {
     ...t.typography.bodySmall,
+    fontSize: 12,
+    lineHeight: 16,
     color: "#E65100",
     fontWeight: "600",
   },
   reportStatusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
     borderRadius: 4,
   },
   reportStatusText: {
@@ -1305,26 +1285,32 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   },
   reportMeta: {
     ...t.typography.caption,
+    fontSize: 11,
+    lineHeight: 14,
     color: t.colors.gray400,
     marginTop: 4,
   },
   reportDescription: {
     ...t.typography.bodySmall,
+    fontSize: 12,
+    lineHeight: 16,
     color: t.colors.gray400,
     marginTop: 4,
     fontStyle: "italic",
   },
   reportPostContent: {
-    padding: t.spacing.md,
+    padding: 10,
   },
   deletedPostBanner: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    padding: t.spacing.md,
+    padding: 10,
   },
   deletedPostText: {
     ...t.typography.bodySmall,
+    fontSize: 12,
+    lineHeight: 16,
     color: t.colors.gray300,
   },
 });

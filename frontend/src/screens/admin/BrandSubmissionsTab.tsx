@@ -106,7 +106,7 @@ const BrandSubmissionsTab = () => {
           </Box>
         ) : submissions.length === 0 ? (
           <Box style={sharedStyles.emptyContainer}>
-            <Ionicons name="checkmark-done-outline" size={48} color={theme.colors.gray200} />
+            <Ionicons name="checkmark-done-outline" size={40} color={theme.colors.gray200} />
             <Text style={sharedStyles.emptyText}>{t("admin.noPendingBrandSubmissions")}</Text>
           </Box>
         ) : (
@@ -119,7 +119,7 @@ const BrandSubmissionsTab = () => {
                 </Text>
               </HStack>
 
-              <Text style={[sharedStyles.postTitle, { marginBottom: 8 }]}>{submission.name}</Text>
+              <Text style={[sharedStyles.postTitle, { marginBottom: 4 }]}>{submission.name}</Text>
 
               {submission.coverImage && (
                 <OptimizedImage
@@ -149,7 +149,7 @@ const BrandSubmissionsTab = () => {
                   colorScheme="success"
                   onPress={() => handleApprove(submission.id)}
                   disabled={actionLoading}
-                  leftIcon={<Ionicons name="checkmark-circle-outline" size={16} color={theme.colors.white} />}
+                  leftIcon={<Ionicons name="checkmark-circle-outline" size={14} color={theme.colors.white} />}
                 >
                   <ButtonText style={{ fontSize: 12 }}>{t("admin.approve")}</ButtonText>
                 </Button>
@@ -158,7 +158,7 @@ const BrandSubmissionsTab = () => {
                   colorScheme="error"
                   onPress={() => handleReject(submission.id)}
                   disabled={actionLoading}
-                  leftIcon={<Ionicons name="close-circle" size={16} color={theme.colors.white} />}
+                  leftIcon={<Ionicons name="close-circle" size={14} color={theme.colors.white} />}
                 >
                   <ButtonText style={{ fontSize: 12 }}>{t("admin.reject")}</ButtonText>
                 </Button>
@@ -206,13 +206,13 @@ const BrandSubmissionsTab = () => {
 const styles = StyleSheet.create({
   coverImage: {
     width: "100%",
-    height: 160,
-    borderRadius: 8,
-    marginBottom: 10,
+    height: 130,
+    borderRadius: 4,
+    marginBottom: 8,
   },
   metaList: {
     gap: 4,
-    marginBottom: 12,
+    marginBottom: 8,
   },
 });
 

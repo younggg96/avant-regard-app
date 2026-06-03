@@ -185,7 +185,7 @@ const CustomerServiceTab = () => {
         <View style={styles.settingsHeaderLeft}>
           <Ionicons
             name="chatbubble-ellipses-outline"
-            size={18}
+            size={16}
             color={theme.colors.black}
           />
           <Text style={styles.settingsTitle}>{t("admin.csAutoReplySettings")}</Text>
@@ -202,7 +202,7 @@ const CustomerServiceTab = () => {
           </Text>
           <Ionicons
             name={expanded ? "chevron-up" : "chevron-down"}
-            size={18}
+            size={16}
             color={theme.colors.gray300}
           />
         </View>
@@ -214,7 +214,7 @@ const CustomerServiceTab = () => {
             <ActivityIndicator
               size="small"
               color={theme.colors.gray300}
-              style={{ paddingVertical: 20 }}
+              style={{ paddingVertical: 16 }}
             />
           ) : (
             <>
@@ -287,7 +287,7 @@ const CustomerServiceTab = () => {
         onLongPress={() => handleDelete(item)}
       >
         <View style={styles.avatarWrap}>
-          <UserAvatar uri={other?.avatarUrl} name={other?.username} size={48} />
+          <UserAvatar uri={other?.avatarUrl} name={other?.username} size={38} />
           {hasUnread && (
             <NotificationBadge count={item.unreadCount} size="md" showBorder />
           )}
@@ -314,7 +314,7 @@ const CustomerServiceTab = () => {
   if (loading) {
     return (
       <View style={sharedStyles.loadingContainer}>
-        <Ionicons name="chatbubbles-outline" size={40} color={theme.colors.gray200} />
+        <Ionicons name="chatbubbles-outline" size={36} color={theme.colors.gray200} />
         <Text style={sharedStyles.loadingText}>{t("common.loading")}</Text>
       </View>
     );
@@ -351,7 +351,7 @@ const CustomerServiceTab = () => {
           <View style={sharedStyles.emptyContainer}>
             <Ionicons
               name="chatbubbles-outline"
-              size={48}
+              size={40}
               color={theme.colors.gray200}
             />
             <Text style={sharedStyles.emptyText}>{t("admin.csNoConversations")}</Text>
@@ -372,10 +372,10 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   },
   // ---------- Auto-reply settings ----------
   settingsCard: {
-    margin: t.spacing.md,
+    margin: 10,
     marginBottom: t.spacing.sm,
     backgroundColor: t.colors.card,
-    borderRadius: t.borderRadius.lg,
+    borderRadius: 4,
     borderWidth: 1,
     borderColor: t.colors.border,
     overflow: "hidden",
@@ -384,16 +384,18 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: t.spacing.md,
-    paddingVertical: 14,
+    paddingHorizontal: 10,
+    paddingVertical: 9,
   },
   settingsHeaderLeft: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 6,
   },
   settingsTitle: {
     ...t.typography.bodySmall,
+    fontSize: 14,
+    lineHeight: 18,
     fontWeight: "600",
     color: t.colors.text,
   },
@@ -409,58 +411,68 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   },
   statusLabel: {
     ...t.typography.caption,
+    fontSize: 11,
+    lineHeight: 14,
     color: t.colors.gray300,
   },
   settingsBody: {
-    paddingHorizontal: t.spacing.md,
-    paddingBottom: t.spacing.md,
+    paddingHorizontal: 10,
+    paddingBottom: 10,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: t.colors.border,
-    paddingTop: t.spacing.md,
+    paddingTop: 10,
   },
   toggleRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: t.spacing.md,
+    marginBottom: 10,
   },
   fieldLabel: {
     ...t.typography.caption,
+    fontSize: 11,
+    lineHeight: 14,
     fontWeight: "600",
     color: t.colors.gray400,
-    marginBottom: 6,
+    marginBottom: 4,
   },
   emailInput: {
     borderWidth: 1,
     borderColor: t.colors.border,
-    borderRadius: t.borderRadius.md,
-    paddingHorizontal: t.spacing.md,
-    paddingVertical: 10,
+    borderRadius: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
     ...t.typography.bodySmall,
+    fontSize: 12,
+    lineHeight: 16,
     color: t.colors.text,
-    marginBottom: t.spacing.md,
+    marginBottom: t.spacing.sm,
   },
   messageInput: {
     borderWidth: 1,
     borderColor: t.colors.border,
-    borderRadius: t.borderRadius.md,
-    paddingHorizontal: t.spacing.md,
-    paddingVertical: 10,
+    borderRadius: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
     ...t.typography.bodySmall,
+    fontSize: 12,
+    lineHeight: 16,
     color: t.colors.text,
-    minHeight: 120,
+    minHeight: 90,
     textAlignVertical: "top",
   },
   fieldHint: {
     ...t.typography.caption,
+    fontSize: 11,
+    lineHeight: 14,
     color: t.colors.gray200,
     marginTop: 4,
-    marginBottom: t.spacing.md,
+    marginBottom: t.spacing.sm,
   },
   saveButton: {
     backgroundColor: t.colors.text,
-    borderRadius: t.borderRadius.md,
-    paddingVertical: 12,
+    borderRadius: 4,
+    paddingVertical: 8,
     alignItems: "center",
   },
   saveButtonDisabled: {
@@ -468,31 +480,35 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   },
   saveButtonText: {
     ...t.typography.bodySmall,
+    fontSize: 12,
+    lineHeight: 16,
     color: t.colors.textInverted,
     fontWeight: "600",
   },
   // ---------- Conversation list ----------
   statsBar: {
-    paddingHorizontal: t.spacing.md,
-    paddingVertical: t.spacing.sm,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: t.colors.border,
   },
   statsText: {
     ...t.typography.caption,
+    fontSize: 11,
+    lineHeight: 14,
     color: t.colors.gray300,
   },
   row: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: t.spacing.md,
-    paddingVertical: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: t.colors.border,
   },
   avatarWrap: {
     position: "relative",
-    marginRight: t.spacing.md,
+    marginRight: 10,
   },
   info: {
     flex: 1,
@@ -501,10 +517,12 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 3,
+    marginBottom: 2,
   },
   username: {
     ...t.typography.bodySmall,
+    fontSize: 13,
+    lineHeight: 17,
     fontWeight: "600",
     color: t.colors.text,
     flex: 1,
@@ -512,10 +530,14 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   },
   time: {
     ...t.typography.caption,
+    fontSize: 11,
+    lineHeight: 14,
     color: t.colors.gray200,
   },
   message: {
     ...t.typography.bodySmall,
+    fontSize: 12,
+    lineHeight: 16,
     color: t.colors.gray300,
   },
   messageUnread: {

@@ -8,7 +8,7 @@ from typing import Optional, List
 from app.core.response import success, error
 from app.services.buyer_store_service import buyer_store_service
 from app.services.buyer_store_community_service import buyer_store_community_service
-from app.db.supabase import get_supabase
+from app.db.supabase import get_supabase_admin
 from app.schemas.buyer_store import (
     BuyerStoreCreate,
     BuyerStoreUpdate,
@@ -681,7 +681,7 @@ async def get_store_detail(
 
     # 查找贡献者（从 user_submitted_stores 反查）
     try:
-        db = get_supabase()
+        db = get_supabase_admin()
         sub_result = (
             db.table("user_submitted_stores")
             .select("user_id")

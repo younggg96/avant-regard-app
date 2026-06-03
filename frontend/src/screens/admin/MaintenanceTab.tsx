@@ -126,7 +126,7 @@ const MaintenanceTab = () => {
       keyboardShouldPersistTaps="handled"
     >
       <VStack style={styles.header}>
-        <Ionicons name="construct-outline" size={32} color={theme.colors.black} />
+        <Ionicons name="construct-outline" size={24} color={theme.colors.black} />
         <Text style={styles.headerTitle}>{t("admin.maintenanceTitle")}</Text>
         <Text style={styles.headerSubtitle}>
           {t("admin.maintenanceSubtitle")}
@@ -138,7 +138,7 @@ const MaintenanceTab = () => {
         <HStack style={styles.sectionHeader}>
           <Ionicons
             name={config.enabled ? "power" : "power-outline"}
-            size={20}
+            size={18}
             color={config.enabled ? theme.colors.error : theme.colors.black}
           />
           <Text style={styles.sectionTitle}>{t("admin.maintenanceToggle")}</Text>
@@ -164,7 +164,7 @@ const MaintenanceTab = () => {
       {/* ===== Message ===== */}
       <Box style={styles.section}>
         <HStack style={styles.sectionHeader}>
-          <Ionicons name="chatbubble-outline" size={20} color={theme.colors.black} />
+          <Ionicons name="chatbubble-outline" size={18} color={theme.colors.black} />
           <Text style={styles.sectionTitle}>{t("admin.maintenanceMessage")}</Text>
         </HStack>
         <Text style={styles.sectionDesc}>
@@ -203,7 +203,7 @@ const MaintenanceTab = () => {
           <ActivityIndicator color={theme.colors.white} />
         ) : (
           <>
-            <Ionicons name="save-outline" size={20} color={theme.colors.white} />
+            <Ionicons name="save-outline" size={18} color={theme.colors.white} />
             <Text style={styles.saveButtonText}>
               {dirty ? t("admin.saveConfig") : t("admin.noChanges")}
             </Text>
@@ -230,59 +230,69 @@ const MaintenanceTab = () => {
 const makeStyles = (t: AppTheme) => StyleSheet.create({
   content: {
     flex: 1,
-    padding: t.spacing.md,
+    padding: 10,
   },
   centered: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingTop: 100,
+    paddingTop: 60,
   },
   loadingText: {
     ...t.typography.body,
+    fontSize: 13,
+    lineHeight: 18,
     color: t.colors.gray400,
-    marginTop: t.spacing.md,
+    marginTop: t.spacing.sm,
   },
   header: {
     alignItems: "center",
-    marginBottom: t.spacing.xl,
-    paddingVertical: t.spacing.lg,
+    marginBottom: t.spacing.md,
+    paddingVertical: t.spacing.sm,
     backgroundColor: t.colors.gray50,
     borderRadius: t.borderRadius.lg,
   },
   headerTitle: {
     ...t.typography.h3,
+    fontSize: 16,
+    lineHeight: 20,
     color: t.colors.text,
-    marginTop: t.spacing.md,
+    marginTop: t.spacing.xs,
   },
   headerSubtitle: {
     ...t.typography.bodySmall,
+    fontSize: 12,
+    lineHeight: 16,
     color: t.colors.gray400,
-    marginTop: t.spacing.xs,
+    marginTop: 2,
     textAlign: "center",
     paddingHorizontal: t.spacing.md,
   },
   section: {
     backgroundColor: t.colors.card,
     borderRadius: t.borderRadius.lg,
-    padding: t.spacing.lg,
-    marginBottom: t.spacing.md,
+    padding: 10,
+    marginBottom: t.spacing.sm,
     ...t.shadows.sm,
   },
   sectionHeader: {
     alignItems: "center",
-    gap: t.spacing.sm,
+    gap: 6,
     marginBottom: t.spacing.xs,
   },
   sectionTitle: {
     ...t.typography.body,
+    fontSize: 14,
+    lineHeight: 18,
     color: t.colors.text,
     fontWeight: "700",
   },
   sectionDesc: {
     ...t.typography.caption,
+    fontSize: 11,
+    lineHeight: 14,
     color: t.colors.gray400,
-    marginBottom: t.spacing.md,
+    marginBottom: t.spacing.sm,
   },
   toggleRow: {
     alignItems: "center",
@@ -291,21 +301,27 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   },
   toggleLabel: {
     ...t.typography.body,
+    fontSize: 13,
+    lineHeight: 17,
     color: t.colors.text,
     fontWeight: "600",
   },
   toggleDesc: {
     ...t.typography.caption,
+    fontSize: 11,
+    lineHeight: 14,
     color: t.colors.gray300,
     marginTop: 2,
   },
   messageInput: {
-    minHeight: 96,
+    minHeight: 72,
     borderWidth: 1,
     borderColor: t.colors.gray200,
     borderRadius: t.borderRadius.md,
     padding: t.spacing.sm,
     ...t.typography.body,
+    fontSize: 13,
+    lineHeight: 18,
     color: t.colors.text,
     backgroundColor: t.colors.gray50,
   },
@@ -316,6 +332,8 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   },
   counter: {
     ...t.typography.caption,
+    fontSize: 11,
+    lineHeight: 14,
     color: t.colors.gray300,
   },
   resetButton: {
@@ -327,6 +345,8 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   },
   resetText: {
     ...t.typography.caption,
+    fontSize: 11,
+    lineHeight: 14,
     color: t.colors.gray400,
   },
   saveButton: {
@@ -334,16 +354,18 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: t.colors.text,
-    paddingVertical: t.spacing.md,
+    paddingVertical: t.spacing.sm,
     borderRadius: t.borderRadius.md,
     gap: t.spacing.sm,
-    marginTop: t.spacing.md,
+    marginTop: t.spacing.sm,
   },
   saveButtonDisabled: {
     backgroundColor: t.colors.gray300,
   },
   saveButtonText: {
     ...t.typography.body,
+    fontSize: 13,
+    lineHeight: 17,
     color: t.colors.textInverted,
     fontWeight: "600",
   },
@@ -351,15 +373,16 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
     alignItems: "flex-start",
     gap: t.spacing.sm,
     backgroundColor: t.colors.gray50,
-    padding: t.spacing.md,
+    padding: t.spacing.sm,
     borderRadius: t.borderRadius.md,
-    marginTop: t.spacing.lg,
+    marginTop: t.spacing.md,
   },
   tipsText: {
     ...t.typography.caption,
+    fontSize: 11,
+    lineHeight: 15,
     color: t.colors.gray400,
     flex: 1,
-    lineHeight: 18,
   },
 });
 

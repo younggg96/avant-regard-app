@@ -242,7 +242,7 @@ const ChatMonitorTab: React.FC = () => {
               idx === 1 && styles.avatarSlotOverlap,
             ]}
           >
-            <UserAvatar uri={p.avatarUrl} name={p.username} size={36} />
+            <UserAvatar uri={p.avatarUrl} name={p.username} size={30} />
           </View>
         ))}
       </View>
@@ -284,7 +284,7 @@ const ChatMonitorTab: React.FC = () => {
       activeOpacity={0.7}
       onPress={() => openDetail(item.conversationId)}
     >
-      <UserAvatar uri={item.senderAvatar} name={item.senderName} size={36} />
+      <UserAvatar uri={item.senderAvatar} name={item.senderName} size={30} />
       <View style={styles.rowMain}>
         <View style={styles.rowHeader}>
           <Text style={styles.rowTitle} numberOfLines={1}>
@@ -332,7 +332,7 @@ const ChatMonitorTab: React.FC = () => {
           <View style={sharedStyles.emptyContainer}>
             <Ionicons
               name="search-outline"
-              size={48}
+              size={40}
               color={theme.colors.gray300}
             />
             <Text style={sharedStyles.emptyText}>
@@ -345,7 +345,7 @@ const ChatMonitorTab: React.FC = () => {
         <View style={sharedStyles.emptyContainer}>
           <Ionicons
             name="chatbubbles-outline"
-            size={48}
+            size={40}
             color={theme.colors.gray300}
           />
           <Text style={sharedStyles.emptyText}>
@@ -394,9 +394,9 @@ const ChatMonitorTab: React.FC = () => {
         <View style={styles.searchRow}>
           <Ionicons
             name="search"
-            size={18}
+            size={16}
             color={theme.colors.gray300}
-            style={{ marginRight: 8 }}
+            style={{ marginRight: 6 }}
           />
           <TextInput
             value={keyword}
@@ -423,7 +423,7 @@ const ChatMonitorTab: React.FC = () => {
             >
               <Ionicons
                 name="close-circle"
-                size={18}
+                size={16}
                 color={theme.colors.gray300}
               />
             </Pressable>
@@ -506,7 +506,7 @@ const DetailModal: React.FC<DetailModalProps> = ({
         <UserAvatar
           uri={item.senderAvatar}
           name={item.senderName}
-          size={28}
+          size={24}
         />
         <View style={styles.msgBody}>
           <View style={styles.msgHeader}>
@@ -577,7 +577,7 @@ const DetailModal: React.FC<DetailModalProps> = ({
             keyExtractor={(m) => `m-${m.id}`}
             renderItem={renderMessage}
             contentContainerStyle={styles.modalListContent}
-            ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
+            ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
             ListHeaderComponent={
               <View style={styles.modalParticipantsBox}>
                 {detail.conversation.participants.map((p) => (
@@ -585,9 +585,9 @@ const DetailModal: React.FC<DetailModalProps> = ({
                     <UserAvatar
                       uri={p.avatarUrl}
                       name={p.username}
-                      size={32}
+                      size={28}
                     />
-                    <View style={{ marginLeft: 10, flex: 1 }}>
+                    <View style={{ marginLeft: 8, flex: 1 }}>
                       <Text style={styles.participantName}>
                         {p.username || `#${p.id}`}
                       </Text>
@@ -622,22 +622,22 @@ const makeStyles = (t: AppTheme) =>
       backgroundColor: t.colors.background,
     },
     searchBox: {
-      paddingHorizontal: t.spacing.md,
-      paddingTop: t.spacing.sm,
-      paddingBottom: t.spacing.sm,
+      paddingHorizontal: 10,
+      paddingTop: 6,
+      paddingBottom: 6,
       backgroundColor: t.colors.card,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: t.colors.border,
     },
     modeRow: {
       flexDirection: "row",
-      gap: 8,
-      marginBottom: t.spacing.sm,
+      gap: 6,
+      marginBottom: 6,
     },
     modeChip: {
-      paddingHorizontal: t.spacing.md,
-      paddingVertical: 6,
-      borderRadius: 20,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 4,
       backgroundColor: t.colors.surface,
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: t.colors.border,
@@ -648,6 +648,8 @@ const makeStyles = (t: AppTheme) =>
     },
     modeChipText: {
       ...t.typography.caption,
+      fontSize: 11,
+      lineHeight: 14,
       color: t.colors.gray400,
       fontWeight: "500",
     },
@@ -659,41 +661,45 @@ const makeStyles = (t: AppTheme) =>
       flexDirection: "row",
       alignItems: "center",
       backgroundColor: t.colors.surface,
-      borderRadius: t.borderRadius.md,
+      borderRadius: 4,
       paddingHorizontal: t.spacing.sm,
-      height: 40,
+      height: 34,
     },
     searchInput: {
       flex: 1,
       ...t.typography.body,
+      fontSize: 13,
+      lineHeight: 17,
       color: t.colors.text,
       padding: 0,
     },
     totalRow: {
-      marginTop: 6,
+      marginTop: 4,
     },
     totalText: {
       ...t.typography.caption,
+      fontSize: 11,
+      lineHeight: 14,
       color: t.colors.gray300,
     },
     listContent: {
-      paddingHorizontal: t.spacing.md,
-      paddingVertical: t.spacing.sm,
+      paddingHorizontal: 10,
+      paddingVertical: 6,
     },
     separator: {
       height: StyleSheet.hairlineWidth,
       backgroundColor: t.colors.border,
-      marginVertical: 4,
+      marginVertical: 2,
     },
     row: {
       flexDirection: "row",
-      paddingVertical: t.spacing.sm,
+      paddingVertical: 7,
       gap: t.spacing.sm,
       alignItems: "flex-start",
     },
     avatarStack: {
-      width: 50,
-      height: 40,
+      width: 44,
+      height: 34,
     },
     avatarSlot: {
       position: "absolute",
@@ -701,7 +707,7 @@ const makeStyles = (t: AppTheme) =>
       left: 0,
     },
     avatarSlotOverlap: {
-      left: 16,
+      left: 14,
       top: 4,
     },
     rowMain: {
@@ -714,6 +720,8 @@ const makeStyles = (t: AppTheme) =>
     },
     rowTitle: {
       ...t.typography.body,
+      fontSize: 13,
+      lineHeight: 17,
       color: t.colors.text,
       fontWeight: "600",
       flex: 1,
@@ -721,26 +729,32 @@ const makeStyles = (t: AppTheme) =>
     },
     rowTime: {
       ...t.typography.caption,
+      fontSize: 11,
+      lineHeight: 14,
       color: t.colors.gray300,
     },
     rowPreview: {
       ...t.typography.bodySmall,
+      fontSize: 12,
+      lineHeight: 16,
       color: t.colors.gray400,
       marginTop: 2,
     },
     rowMetaRow: {
       flexDirection: "row",
       justifyContent: "space-between",
-      marginTop: 4,
-      gap: 8,
+      marginTop: 3,
+      gap: 6,
     },
     rowMeta: {
       ...t.typography.caption,
+      fontSize: 11,
+      lineHeight: 14,
       color: t.colors.gray300,
       flexShrink: 1,
     },
     footer: {
-      paddingVertical: t.spacing.md,
+      paddingVertical: 10,
       alignItems: "center",
     },
     // ===== Detail Modal =====
@@ -752,7 +766,7 @@ const makeStyles = (t: AppTheme) =>
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
-      paddingHorizontal: t.spacing.md,
+      paddingHorizontal: 10,
       paddingVertical: t.spacing.sm,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: t.colors.border,
@@ -760,20 +774,22 @@ const makeStyles = (t: AppTheme) =>
     },
     modalTitle: {
       ...t.typography.h4,
+      fontSize: 15,
+      lineHeight: 20,
       color: t.colors.text,
       flex: 1,
       textAlign: "center",
       marginHorizontal: t.spacing.sm,
     },
     modalListContent: {
-      padding: t.spacing.md,
+      padding: 10,
     },
     modalParticipantsBox: {
       backgroundColor: t.colors.card,
-      borderRadius: t.borderRadius.lg,
-      padding: t.spacing.md,
-      marginBottom: t.spacing.md,
-      gap: 10,
+      borderRadius: 4,
+      padding: 10,
+      marginBottom: 10,
+      gap: 8,
     },
     participantRow: {
       flexDirection: "row",
@@ -781,17 +797,21 @@ const makeStyles = (t: AppTheme) =>
     },
     participantName: {
       ...t.typography.body,
+      fontSize: 13,
+      lineHeight: 17,
       color: t.colors.text,
       fontWeight: "600",
     },
     participantMeta: {
       ...t.typography.caption,
+      fontSize: 11,
+      lineHeight: 14,
       color: t.colors.gray300,
       marginTop: 2,
     },
     msgRow: {
       flexDirection: "row",
-      gap: 8,
+      gap: 6,
       alignItems: "flex-start",
     },
     msgBody: {
@@ -800,10 +820,12 @@ const makeStyles = (t: AppTheme) =>
     msgHeader: {
       flexDirection: "row",
       justifyContent: "space-between",
-      marginBottom: 4,
+      marginBottom: 3,
     },
     msgSender: {
       ...t.typography.caption,
+      fontSize: 11,
+      lineHeight: 14,
       color: t.colors.text,
       fontWeight: "600",
       flex: 1,
@@ -811,12 +833,14 @@ const makeStyles = (t: AppTheme) =>
     },
     msgTime: {
       ...t.typography.caption,
+      fontSize: 11,
+      lineHeight: 14,
       color: t.colors.gray300,
     },
     msgBubble: {
       backgroundColor: t.colors.card,
-      borderRadius: t.borderRadius.md,
-      padding: t.spacing.sm,
+      borderRadius: 4,
+      padding: 7,
     },
     msgBubbleDeleted: {
       backgroundColor: t.colors.surface,
@@ -826,15 +850,21 @@ const makeStyles = (t: AppTheme) =>
     },
     msgContent: {
       ...t.typography.bodySmall,
+      fontSize: 12,
+      lineHeight: 16,
       color: t.colors.text,
     },
     msgDeleted: {
       ...t.typography.bodySmall,
+      fontSize: 12,
+      lineHeight: 16,
       color: t.colors.gray300,
       fontStyle: "italic",
     },
     msgRaw: {
       ...t.typography.caption,
+      fontSize: 11,
+      lineHeight: 14,
       color: t.colors.gray300,
       marginTop: 4,
     },

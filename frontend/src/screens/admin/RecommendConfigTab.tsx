@@ -19,7 +19,7 @@ import { Box, HStack, VStack, Text, Pressable, ScrollView } from "../../componen
 
 /** iOS Switch 默认偏大，与 admin 其他页一致 */
 const COMPACT_SWITCH_PROPS = Platform.select({
-  ios: { style: { transform: [{ scaleX: 0.82 }, { scaleY: 0.82 }] } as const },
+  ios: { style: { transform: [{ scaleX: 0.82 }, { scaleY: 0.82 }] } },
   default: {},
 });
 
@@ -194,7 +194,7 @@ const RecommendConfigTab = () => {
       keyboardShouldPersistTaps="handled"
     >
       <VStack style={styles.header}>
-        <Ionicons name="analytics" size={28} color={theme.colors.text} />
+        <Ionicons name="analytics" size={22} color={theme.colors.text} />
         <Text style={styles.headerTitle}>{t("admin.recommendTitle")}</Text>
         <Text style={styles.headerSubtitle}>
           {t("admin.recommendSubtitle")}
@@ -204,7 +204,7 @@ const RecommendConfigTab = () => {
       {/* ===== Pool Ratios ===== */}
       <Box style={styles.section}>
         <HStack style={styles.sectionHeader}>
-          <Ionicons name="pie-chart-outline" size={20} color={theme.colors.text} />
+          <Ionicons name="pie-chart-outline" size={18} color={theme.colors.text} />
           <Text style={styles.sectionTitle}>{t("admin.recommendPoolRatios")}</Text>
         </HStack>
         <Text style={styles.sectionDesc}>
@@ -255,7 +255,7 @@ const RecommendConfigTab = () => {
       {/* ===== Core Pool Grades ===== */}
       <Box style={styles.section}>
         <HStack style={styles.sectionHeader}>
-          <Ionicons name="star-outline" size={20} color={theme.colors.text} />
+          <Ionicons name="star-outline" size={18} color={theme.colors.text} />
           <Text style={styles.sectionTitle}>{t("admin.recommendCoreGrades")}</Text>
         </HStack>
         <Text style={styles.sectionDesc}>
@@ -288,7 +288,7 @@ const RecommendConfigTab = () => {
       {/* ===== Discovery Pool Toggle ===== */}
       <Box style={styles.section}>
         <HStack style={styles.sectionHeader}>
-          <Ionicons name="compass-outline" size={20} color={theme.colors.text} />
+          <Ionicons name="compass-outline" size={18} color={theme.colors.text} />
           <Text style={styles.sectionTitle}>{t("admin.recommendDiscoveryPool")}</Text>
         </HStack>
         <HStack style={styles.toggleRow}>
@@ -311,7 +311,7 @@ const RecommendConfigTab = () => {
       {/* ===== Random Pool Grades ===== */}
       <Box style={styles.section}>
         <HStack style={styles.sectionHeader}>
-          <Ionicons name="shuffle-outline" size={20} color={theme.colors.text} />
+          <Ionicons name="shuffle-outline" size={18} color={theme.colors.text} />
           <Text style={styles.sectionTitle}>{t("admin.recommendRandomGrades")}</Text>
         </HStack>
         <Text style={styles.sectionDesc}>
@@ -344,7 +344,7 @@ const RecommendConfigTab = () => {
       {/* ===== Cold Start ===== */}
       <Box style={styles.section}>
         <HStack style={styles.sectionHeader}>
-          <Ionicons name="snow-outline" size={20} color={theme.colors.text} />
+          <Ionicons name="snow-outline" size={18} color={theme.colors.text} />
           <Text style={styles.sectionTitle}>{t("admin.recommendColdStart")}</Text>
         </HStack>
         <Text style={styles.sectionDesc}>
@@ -407,7 +407,7 @@ const RecommendConfigTab = () => {
           <ActivityIndicator color={theme.colors.textInverted} />
         ) : (
           <>
-            <Ionicons name="save-outline" size={20} color={theme.colors.textInverted} />
+            <Ionicons name="save-outline" size={18} color={theme.colors.textInverted} />
             <Text style={styles.saveButtonText}>
               {dirty ? t("admin.saveConfig") : t("admin.noChanges")}
             </Text>
@@ -434,66 +434,76 @@ const RecommendConfigTab = () => {
 const makeStyles = (t: AppTheme) => StyleSheet.create({
   content: {
     flex: 1,
-    padding: t.spacing.md,
+    padding: 10,
   },
   centered: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingTop: 100,
+    paddingTop: 60,
   },
   loadingText: {
     ...t.typography.body,
+    fontSize: 13,
+    lineHeight: 18,
     color: t.colors.gray400,
-    marginTop: t.spacing.md,
+    marginTop: t.spacing.sm,
   },
   header: {
     alignItems: "center",
-    marginBottom: t.spacing.xl,
-    paddingVertical: t.spacing.lg,
+    marginBottom: t.spacing.md,
+    paddingVertical: t.spacing.sm,
     backgroundColor: t.colors.surface,
     borderRadius: t.borderRadius.lg,
   },
   headerTitle: {
     ...t.typography.h3,
+    fontSize: 16,
+    lineHeight: 20,
     color: t.colors.text,
-    marginTop: t.spacing.md,
+    marginTop: t.spacing.xs,
   },
   headerSubtitle: {
     ...t.typography.bodySmall,
+    fontSize: 12,
+    lineHeight: 16,
     color: t.colors.gray400,
-    marginTop: t.spacing.xs,
+    marginTop: 2,
     textAlign: "center",
   },
   section: {
     backgroundColor: t.colors.card,
     borderRadius: t.borderRadius.lg,
-    padding: t.spacing.lg,
-    marginBottom: t.spacing.md,
+    padding: 10,
+    marginBottom: t.spacing.sm,
     ...t.shadows.sm,
   },
   sectionHeader: {
     alignItems: "center",
-    gap: t.spacing.sm,
+    gap: 6,
     marginBottom: t.spacing.xs,
   },
   sectionTitle: {
     ...t.typography.body,
+    fontSize: 14,
+    lineHeight: 18,
     color: t.colors.text,
     fontWeight: "700",
   },
   sectionDesc: {
     ...t.typography.caption,
+    fontSize: 11,
+    lineHeight: 14,
     color: t.colors.gray400,
-    marginBottom: t.spacing.md,
+    marginBottom: t.spacing.sm,
   },
   ratioRow: {
-    gap: t.spacing.sm,
+    gap: 6,
   },
   ratioItem: {
     alignItems: "center",
     justifyContent: "space-between",
-    paddingVertical: t.spacing.sm,
+    paddingVertical: 6,
     borderBottomWidth: 1,
     borderBottomColor: t.colors.border,
   },
@@ -502,11 +512,15 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   },
   ratioLabel: {
     ...t.typography.body,
+    fontSize: 13,
+    lineHeight: 17,
     color: t.colors.text,
     fontWeight: "600",
   },
   ratioDesc: {
     ...t.typography.caption,
+    fontSize: 11,
+    lineHeight: 14,
     color: t.colors.gray300,
   },
   ratioInputGroup: {
@@ -514,26 +528,28 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
     gap: 4,
   },
   ratioInput: {
-    width: 56,
-    height: 40,
+    width: 48,
+    height: 34,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: t.colors.border,
     borderRadius: t.borderRadius.md,
     textAlign: "center",
-    fontSize: 15,
+    fontSize: 13,
     color: t.colors.text,
     fontWeight: "600",
     backgroundColor: t.colors.surface,
   },
   ratioPercent: {
     ...t.typography.body,
+    fontSize: 13,
+    lineHeight: 17,
     color: t.colors.gray400,
   },
   sumRow: {
     alignItems: "center",
     justifyContent: "center",
     gap: t.spacing.xs,
-    marginTop: t.spacing.md,
+    marginTop: t.spacing.sm,
     paddingVertical: t.spacing.sm,
     borderRadius: t.borderRadius.md,
     backgroundColor: t.colors.surface,
@@ -544,6 +560,8 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   },
   sumText: {
     ...t.typography.body,
+    fontSize: 13,
+    lineHeight: 17,
     color: t.colors.success,
     fontWeight: "600",
   },
@@ -553,20 +571,20 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   gradeRow: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: t.spacing.sm,
+    gap: 6,
   },
   gradeChip: {
     flexGrow: 1,
     flexBasis: "22%",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: t.spacing.sm,
+    paddingVertical: 6,
     paddingHorizontal: t.spacing.xs,
     borderRadius: t.borderRadius.md,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: t.colors.border,
     backgroundColor: t.colors.surface,
-    minHeight: 56,
+    minHeight: 46,
   },
   gradeChipActive: {
     backgroundColor: t.colors.cardElevated,
@@ -574,7 +592,7 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
     borderWidth: 1,
   },
   gradeChipText: {
-    fontSize: 15,
+    fontSize: 13,
     color: t.colors.text,
     fontWeight: "700",
   },
@@ -597,26 +615,34 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   },
   toggleLabel: {
     ...t.typography.body,
+    fontSize: 13,
+    lineHeight: 17,
     color: t.colors.text,
     fontWeight: "600",
   },
   toggleDesc: {
     ...t.typography.caption,
+    fontSize: 11,
+    lineHeight: 14,
     color: t.colors.gray300,
     marginTop: 2,
   },
   coldStartDaysRow: {
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: t.spacing.md,
+    marginBottom: t.spacing.sm,
   },
   coldStartDaysLabel: {
     ...t.typography.body,
+    fontSize: 13,
+    lineHeight: 17,
     color: t.colors.text,
     fontWeight: "600",
   },
   gradeSelectLabel: {
     ...t.typography.bodySmall,
+    fontSize: 12,
+    lineHeight: 16,
     color: t.colors.text,
     fontWeight: "600",
     marginBottom: t.spacing.sm,
@@ -626,10 +652,10 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: t.colors.text,
-    paddingVertical: t.spacing.md,
+    paddingVertical: t.spacing.sm,
     borderRadius: t.borderRadius.md,
     gap: t.spacing.sm,
-    marginTop: t.spacing.md,
+    marginTop: t.spacing.sm,
   },
   saveButtonDisabled: {
     backgroundColor: t.colors.gray200,
@@ -637,6 +663,8 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   },
   saveButtonText: {
     ...t.typography.body,
+    fontSize: 13,
+    lineHeight: 17,
     color: t.colors.textInverted,
     fontWeight: "600",
   },
@@ -644,15 +672,16 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
     alignItems: "flex-start",
     gap: t.spacing.sm,
     backgroundColor: t.colors.surface,
-    padding: t.spacing.md,
+    padding: t.spacing.sm,
     borderRadius: t.borderRadius.md,
-    marginTop: t.spacing.lg,
+    marginTop: t.spacing.md,
   },
   tipsText: {
     ...t.typography.caption,
+    fontSize: 11,
+    lineHeight: 15,
     color: t.colors.gray400,
     flex: 1,
-    lineHeight: 18,
   },
 });
 

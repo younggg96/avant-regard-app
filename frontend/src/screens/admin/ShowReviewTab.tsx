@@ -107,7 +107,7 @@ const ShowReviewTab = () => {
           </Box>
         ) : shows.length === 0 ? (
           <Box style={sharedStyles.emptyContainer}>
-            <Ionicons name="checkmark-done-outline" size={48} color={theme.colors.gray200} />
+            <Ionicons name="checkmark-done-outline" size={40} color={theme.colors.gray200} />
             <Text style={sharedStyles.emptyText}>{t("admin.noPendingShows")}</Text>
           </Box>
         ) : (
@@ -167,7 +167,7 @@ const ShowReviewTab = () => {
                   colorScheme="success"
                   onPress={() => handleApprove(String(show.id))}
                   disabled={actionLoading}
-                  leftIcon={<Ionicons name="checkmark-circle-outline" size={16} color={theme.colors.white} />}
+                  leftIcon={<Ionicons name="checkmark-circle-outline" size={14} color={theme.colors.white} />}
                 >
                   <ButtonText style={{ fontSize: 12 }}>{t("admin.approve")}</ButtonText>
                 </Button>
@@ -176,7 +176,7 @@ const ShowReviewTab = () => {
                   colorScheme="error"
                   onPress={() => handleOpenRejectModal(String(show.id))}
                   disabled={actionLoading}
-                  leftIcon={<Ionicons name="close-circle-outline" size={16} color={theme.colors.white} />}
+                  leftIcon={<Ionicons name="close-circle-outline" size={14} color={theme.colors.white} />}
                 >
                   <ButtonText style={{ fontSize: 12 }}>{t("admin.reject")}</ButtonText>
                 </Button>
@@ -224,37 +224,39 @@ const ShowReviewTab = () => {
 const makeStyles = (t: AppTheme) => StyleSheet.create({
   coverImage: {
     width: "100%",
-    height: 160,
-    borderRadius: 8,
-    marginBottom: 12,
+    height: 130,
+    borderRadius: 4,
+    marginBottom: 8,
     backgroundColor: t.colors.gray100,
   },
   metaSection: {
-    gap: 6,
-    marginBottom: 10,
+    gap: 4,
+    marginBottom: 8,
   },
   metaRow: {
     flexDirection: "row",
     alignItems: "center",
   },
   metaLabel: {
-    fontSize: 13,
+    fontSize: 12,
+    lineHeight: 16,
     color: t.colors.gray300,
-    width: 52,
+    width: 48,
   },
   metaValue: {
-    fontSize: 13,
+    fontSize: 12,
+    lineHeight: 16,
     color: t.colors.text,
     flex: 1,
   },
   description: {
-    fontSize: 13,
+    fontSize: 12,
     color: t.colors.gray400,
-    lineHeight: 20,
+    lineHeight: 16,
     marginBottom: 8,
     backgroundColor: t.colors.gray50,
-    padding: 10,
-    borderRadius: 8,
+    padding: 8,
+    borderRadius: 4,
   },
 });
 

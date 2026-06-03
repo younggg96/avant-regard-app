@@ -27,7 +27,7 @@ import {
 } from "../../services/storeProductService";
 import { useFormatPrice } from "../../utils/currency";
 import { useSharedStyles } from "./adminStyles";
-import { pickAndUploadImage } from "./adminUtils";
+import { pickAndUploadImage, formatAdminDate } from "./adminUtils";
 import {
   AnimatedChip,
   Box,
@@ -400,7 +400,7 @@ const ProductManagementTab = () => {
             contentFit="cover"
           />
           <Pressable style={styles.imageDeleteBtn} onPress={() => onDelete(idx)}>
-            <Ionicons name="close-circle" size={20} color={theme.colors.error} />
+            <Ionicons name="close-circle" size={18} color={theme.colors.error} />
           </Pressable>
         </Box>
       ))}
@@ -412,7 +412,7 @@ const ProductManagementTab = () => {
         {imageUploading ? (
           <ActivityIndicator size="small" color={theme.colors.gray300} />
         ) : (
-          <Ionicons name="add" size={28} color={theme.colors.gray300} />
+          <Ionicons name="add" size={24} color={theme.colors.gray300} />
         )}
       </Pressable>
     </HStack>
@@ -643,14 +643,14 @@ const ProductManagementTab = () => {
             size="sm"
           />
           <Pressable style={styles.searchButton} onPress={handleSearch}>
-            <Ionicons name="search" size={18} color={theme.colors.white} />
+            <Ionicons name="search" size={16} color={theme.colors.white} />
           </Pressable>
           <Button
             size="sm"
             onPress={handleOpenCreate}
             style={styles.createButton}
           >
-            <Ionicons name="add" size={18} color={theme.colors.white} />
+            <Ionicons name="add" size={16} color={theme.colors.white} />
             <ButtonText style={styles.createButtonText}>
               {t("admin.productMgmt.create")}
             </ButtonText>
@@ -689,7 +689,7 @@ const ProductManagementTab = () => {
           <VStack style={sharedStyles.emptyContainer}>
             <Ionicons
               name="cube-outline"
-              size={48}
+              size={40}
               color={theme.colors.gray200}
             />
             <Text style={sharedStyles.emptyText}>
@@ -819,7 +819,7 @@ const ProductManagementTab = () => {
               <Text style={styles.productId}>
                 ID: {product.id}
                 {product.createdAt
-                  ? ` · ${new Date(product.createdAt).toLocaleDateString()}`
+                  ? ` · ${formatAdminDate(product.createdAt)}`
                   : ""}
               </Text>
 
@@ -863,17 +863,11 @@ const ProductManagementTab = () => {
                   variant="outline"
                   onPress={() => handleOpenEdit(product)}
                   leftIcon={
-                    <Ionicons
-                      name="create-outline"
-                      size={16}
-                      color={theme.colors.white}
-                    />
+                    <Ionicons name="create-outline" size={16} />
                   }
                   style={styles.editButton}
                 >
-                  <ButtonText
-                    style={{ color: theme.colors.white, fontSize: 12 }}
-                  >
+                  <ButtonText style={{ fontSize: 12 }}>
                     {t("admin.productMgmt.edit")}
                   </ButtonText>
                 </Button>
@@ -913,7 +907,7 @@ const ProductManagementTab = () => {
             >
               <Ionicons
                 name="chevron-back"
-                size={24}
+                size={20}
                 color={theme.colors.text}
               />
             </Pressable>
@@ -927,7 +921,7 @@ const ProductManagementTab = () => {
             >
               <Ionicons
                 name="chevron-forward"
-                size={24}
+                size={20}
                 color={theme.colors.text}
               />
             </Pressable>
@@ -969,39 +963,39 @@ const makeStyles = (t: AppTheme) =>
     },
     searchInput: {
       flex: 1,
-      height: 40,
+      height: 34,
     },
     searchButton: {
       backgroundColor: t.colors.text,
-      borderRadius: 8,
-      paddingHorizontal: 16,
-      height: 40,
+      borderRadius: 4,
+      paddingHorizontal: 12,
+      height: 34,
       justifyContent: "center",
       alignItems: "center",
     },
     createButton: {
-      height: 40,
-      borderRadius: 8,
-      paddingHorizontal: 14,
+      height: 34,
+      borderRadius: 4,
+      paddingHorizontal: 10,
       gap: 4,
     },
     createButtonText: {
-      fontSize: 14,
+      fontSize: 13,
       fontWeight: "600",
     },
     filterRow: {
       flexGrow: 0,
       flexShrink: 0,
-      marginBottom: 8,
+      marginBottom: 6,
     },
     totalText: {
-      paddingBottom: 8,
+      paddingBottom: 6,
       fontSize: 12,
       color: t.colors.gray400,
     },
     statusBadge: {
-      paddingHorizontal: 8,
-      paddingVertical: 2,
+      paddingHorizontal: 6,
+      paddingVertical: 1,
       borderRadius: 4,
     },
     statusBadgeText: {
@@ -1020,20 +1014,20 @@ const makeStyles = (t: AppTheme) =>
     },
     metaRow: {
       flexWrap: "wrap",
-      gap: 6,
-      marginTop: 6,
+      gap: 4,
+      marginTop: 4,
     },
     metaChip: {
       fontSize: 11,
       color: t.colors.gray400,
       backgroundColor: t.colors.gray100,
-      paddingHorizontal: 8,
-      paddingVertical: 2,
+      paddingHorizontal: 6,
+      paddingVertical: 1,
       borderRadius: 4,
       overflow: "hidden",
     },
     priceText: {
-      fontSize: 15,
+      fontSize: 14,
       fontWeight: "600",
       color: t.colors.text,
       marginTop: 4,
@@ -1052,26 +1046,26 @@ const makeStyles = (t: AppTheme) =>
       gap: 4,
     },
     pagination: {
-      paddingVertical: 16,
+      paddingVertical: 10,
     },
     paginationText: {
-      fontSize: 14,
+      fontSize: 13,
       color: t.colors.gray500,
     },
     formModalContent: {
       height: "85%",
       width: "92%",
-      padding: t.spacing.lg,
+      padding: t.spacing.md,
     },
     imagesGrid: {
       flexWrap: "wrap",
       gap: 8,
-      marginBottom: 12,
+      marginBottom: 8,
     },
     imageItem: {
-      width: 80,
-      height: 80,
-      borderRadius: 8,
+      width: 64,
+      height: 64,
+      borderRadius: 4,
       overflow: "hidden",
       borderWidth: 1,
       borderColor: t.colors.gray200,
@@ -1086,12 +1080,12 @@ const makeStyles = (t: AppTheme) =>
       top: 2,
       right: 2,
       backgroundColor: "rgba(255,255,255,0.9)",
-      borderRadius: 10,
+      borderRadius: 4,
     },
     imageAddBtn: {
-      width: 80,
-      height: 80,
-      borderRadius: 8,
+      width: 64,
+      height: 64,
+      borderRadius: 4,
       borderWidth: 1,
       borderColor: t.colors.gray200,
       borderStyle: "dashed",
@@ -1101,20 +1095,20 @@ const makeStyles = (t: AppTheme) =>
     },
     listImagesRow: {
       flexDirection: "row",
-      marginBottom: 8,
+      marginBottom: 6,
       flexGrow: 0,
     },
     listImageThumb: {
-      width: 60,
-      height: 60,
-      borderRadius: 6,
+      width: 50,
+      height: 50,
+      borderRadius: 4,
       marginRight: 6,
       backgroundColor: t.colors.gray100,
     },
     listImageMore: {
-      width: 60,
-      height: 60,
-      borderRadius: 6,
+      width: 50,
+      height: 50,
+      borderRadius: 4,
       backgroundColor: t.colors.gray100,
       alignItems: "center",
       justifyContent: "center",

@@ -123,9 +123,12 @@ def grade_post_async(post_id: int):
 def _grade_and_persist(post_id: int):
     """读取帖子、计算评级、写回 grade 字段；F 级自动驳回，其余自动通过。"""
     try:
-        from app.db.supabase import get_supabase
+        # Use the service-role client: posts has RLS enabled and the anon role
+        # has no UPDATE policy, so writing the grade via get_supabase() is
+        # silently blocked by row-level security. Admin writes bypass RLS.
+        from app.db.supabase import get_supabase_admin
 
-        db = get_supabase()
+        db = get_supabase_admin()
         result = db.table("posts").select("*").eq("id", post_id).execute()
         if not result.data:
             return
@@ -176,9 +179,10 @@ def batch_grade_posts(
     - post_ids: 指定帖子 ID 列表；为空则选取所有已发布帖子
     - ungraded_only: 仅评级尚无 grade 的帖子
     """
-    from app.db.supabase import get_supabase
+    # Service-role client required to bypass RLS when writing grade/audit_status.
+    from app.db.supabase import get_supabase_admin
 
-    db = get_supabase()
+    db = get_supabase_admin()
 
     if post_ids:
         query = db.table("posts").select("*").in_("id", post_ids)

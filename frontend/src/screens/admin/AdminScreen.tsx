@@ -221,7 +221,7 @@ const AdminScreen = () => {
                   <View style={styles.menuItemLeft}>
                     <Ionicons
                       name={item.icon}
-                      size={20}
+                      size={17}
                       color={styles.menuItemIcon.color}
                       style={styles.menuItemIcon}
                     />
@@ -229,7 +229,7 @@ const AdminScreen = () => {
                   </View>
                   <Ionicons
                     name="chevron-forward"
-                    size={18}
+                    size={15}
                     color={styles.menuItemChevron.color}
                   />
                 </TouchableOpacity>
@@ -253,32 +253,32 @@ const makeStyles = (t: AppTheme) =>
       flex: 1,
     },
     menuContent: {
-      paddingHorizontal: t.spacing.md,
-      paddingTop: t.spacing.sm,
+      paddingHorizontal: 10,
+      paddingTop: t.spacing.xs,
     },
     section: {
-      marginBottom: t.spacing.lg,
+      marginBottom: t.spacing.md,
     },
     sectionTitle: {
-      fontSize: 13,
+      fontSize: 11,
       fontWeight: "600",
       color: t.colors.gray300,
       textTransform: "uppercase",
       letterSpacing: 0.5,
-      marginBottom: t.spacing.sm,
+      marginBottom: t.spacing.xs,
       paddingHorizontal: 4,
     },
     sectionCard: {
       backgroundColor: t.colors.card,
-      borderRadius: t.borderRadius.lg,
+      borderRadius: 4,
       overflow: "hidden",
     },
     menuItem: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
-      paddingVertical: 14,
-      paddingHorizontal: t.spacing.md,
+      paddingVertical: 9,
+      paddingHorizontal: 10,
     },
     menuItemBorder: {
       borderBottomWidth: StyleSheet.hairlineWidth,
@@ -291,12 +291,12 @@ const makeStyles = (t: AppTheme) =>
     },
     menuItemIcon: {
       color: t.colors.text,
-      marginRight: 12,
+      marginRight: 10,
     },
     menuItemLabel: {
-      ...t.typography.body,
+      ...t.typography.bodySmall,
       color: t.colors.text,
-      fontSize: 15,
+      fontSize: 13,
     },
     menuItemChevron: {
       color: t.colors.gray300,

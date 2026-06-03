@@ -259,7 +259,7 @@ const ShowManagementTab = () => {
         />
       ) : (
         <Box style={[styles.coverPreview, styles.coverPlaceholder]}>
-          <Ionicons name="image-outline" size={32} color={theme.colors.gray300} />
+          <Ionicons name="image-outline" size={28} color={theme.colors.gray300} />
         </Box>
       )}
       <Pressable
@@ -271,7 +271,7 @@ const ShowManagementTab = () => {
           <ActivityIndicator color={theme.colors.white} size="small" />
         ) : (
           <>
-            <Ionicons name="cloud-upload-outline" size={20} color={theme.colors.white} />
+            <Ionicons name="cloud-upload-outline" size={18} color={theme.colors.white} />
             <Text style={sharedStyles.uploadImageButtonText}>
               {form.coverImage ? t("admin.changeCover") : t("admin.uploadCover")}
             </Text>
@@ -440,7 +440,7 @@ const ShowManagementTab = () => {
             size="sm"
           />
           <Pressable style={styles.searchButton} onPress={handleSearch}>
-            <Ionicons name="search" size={18} color={theme.colors.white} />
+            <Ionicons name="search" size={16} color={theme.colors.white} />
           </Pressable>
         </HStack>
 
@@ -463,7 +463,7 @@ const ShowManagementTab = () => {
             </View>
           </RNScrollView>
           <Pressable style={styles.createButton} onPress={handleOpenCreate}>
-            <Ionicons name="add" size={20} color={theme.colors.white} />
+            <Ionicons name="add" size={18} color={theme.colors.white} />
           </Pressable>
         </HStack>
 
@@ -478,7 +478,7 @@ const ShowManagementTab = () => {
           <Box style={sharedStyles.emptyContainer}>
             <Ionicons
               name="film-outline"
-              size={48}
+              size={40}
               color={theme.colors.gray200}
             />
             <Text style={sharedStyles.emptyText}>{t("admin.noShows")}</Text>
@@ -574,17 +574,17 @@ const ShowManagementTab = () => {
                   size="sm"
                   variant="outline"
                   onPress={() => handleOpenEdit(show)}
-                  leftIcon={<Ionicons name="create-outline" size={16} color={theme.colors.white} />}
+                  leftIcon={<Ionicons name="create-outline" size={14} />}
                   style={{ borderColor: theme.colors.gray200, gap: 4 }}
                 >
-                  <ButtonText style={{ color: theme.colors.white, fontSize: 12 }}>{t("common.edit")}</ButtonText>
+                  <ButtonText style={{ fontSize: 12 }}>{t("common.edit")}</ButtonText>
                 </Button>
                 <Button
                   size="sm"
                   colorScheme="error"
                   onPress={() => handleDelete(show)}
                   disabled={actionLoading}
-                  leftIcon={<Ionicons name="trash-outline" size={16} color={theme.colors.white} />}
+                  leftIcon={<Ionicons name="trash-outline" size={14} color={theme.colors.white} />}
                 >
                   <ButtonText style={{ fontSize: 12 }}>{t("common.delete")}</ButtonText>
                 </Button>
@@ -603,7 +603,7 @@ const ShowManagementTab = () => {
             >
               <Ionicons
                 name="chevron-back"
-                size={24}
+                size={20}
                 color={theme.colors.black}
               />
             </Pressable>
@@ -617,7 +617,7 @@ const ShowManagementTab = () => {
             >
               <Ionicons
                 name="chevron-forward"
-                size={24}
+                size={20}
                 color={theme.colors.black}
               />
             </Pressable>
@@ -706,13 +706,13 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   },
   searchInput: {
     flex: 1,
-    height: 40,
+    height: 36,
   },
   searchButton: {
     backgroundColor: t.colors.text,
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    height: 40,
+    borderRadius: 4,
+    paddingHorizontal: 12,
+    height: 36,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -728,69 +728,72 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   },
   createButton: {
     backgroundColor: t.colors.text,
-    borderRadius: 20,
-    width: 36,
-    height: 36,
+    borderRadius: 4,
+    width: 32,
+    height: 32,
     alignItems: "center",
     justifyContent: "center",
   },
   totalText: {
-    paddingBottom: 8,
-    fontSize: 12,
+    paddingBottom: 6,
+    fontSize: 11,
     color: t.colors.gray400,
   },
   coverImage: {
     width: "100%",
-    height: 160,
-    borderRadius: 8,
-    marginBottom: 12,
+    height: 130,
+    borderRadius: 4,
+    marginBottom: 8,
     backgroundColor: t.colors.gray100,
   },
   metaSection: {
-    gap: 6,
-    marginBottom: 10,
+    gap: 4,
+    marginBottom: 8,
   },
   metaRow: {
     flexDirection: "row",
     alignItems: "center",
   },
   metaLabel: {
-    fontSize: 13,
+    fontSize: 12,
+    lineHeight: 16,
     color: t.colors.gray300,
-    width: 52,
+    width: 48,
   },
   metaValue: {
-    fontSize: 13,
+    fontSize: 12,
+    lineHeight: 16,
     color: t.colors.text,
     flex: 1,
   },
   description: {
-    fontSize: 13,
+    fontSize: 12,
     color: t.colors.gray400,
-    lineHeight: 20,
+    lineHeight: 16,
     marginBottom: 8,
     backgroundColor: t.colors.gray50,
-    padding: 10,
-    borderRadius: 8,
+    padding: 8,
+    borderRadius: 4,
   },
   statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
   },
   statusBadgeText: {
     fontSize: 11,
+    lineHeight: 14,
     fontWeight: "600",
   },
   pagination: {
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
-    paddingVertical: 16,
+    paddingVertical: 10,
     gap: 16,
   },
   paginationText: {
-    fontSize: 14,
+    fontSize: 13,
     color: t.colors.gray500,
   },
   editModalContent: {
@@ -800,8 +803,8 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   },
   coverPreview: {
     width: "100%",
-    height: 160,
-    borderRadius: 8,
+    height: 130,
+    borderRadius: 4,
     backgroundColor: t.colors.gray100,
     marginBottom: t.spacing.sm,
   },
@@ -815,15 +818,16 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
     marginTop: 4,
   },
   statusChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 16,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 4,
     borderWidth: 1,
     borderColor: t.colors.gray200,
     backgroundColor: t.colors.gray100,
   },
   statusChipText: {
-    fontSize: 12,
+    fontSize: 11,
+    lineHeight: 14,
     color: t.colors.gray400,
     fontWeight: "500",
   },

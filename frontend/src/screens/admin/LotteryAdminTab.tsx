@@ -496,12 +496,7 @@ const LotteryAdminTab: React.FC = () => {
                       onPress={() => openEditor(r)}
                       disabled={actionLoading}
                     >
-                      <ButtonText
-                        style={{
-                          fontSize: 12,
-                          color: theme.colors.black,
-                        }}
-                      >
+                      <ButtonText style={{ fontSize: 12 }}>
                         {t("admin.lotteryEditPrizes")}
                       </ButtonText>
                     </Button>
@@ -513,12 +508,7 @@ const LotteryAdminTab: React.FC = () => {
                       onPress={() => handleSyncEntries(r)}
                       disabled={actionLoading}
                     >
-                      <ButtonText
-                        style={{
-                          fontSize: 12,
-                          color: theme.colors.black,
-                        }}
-                      >
+                      <ButtonText style={{ fontSize: 12 }}>
                         {t("admin.lotterySyncEntries")}
                       </ButtonText>
                     </Button>
@@ -633,7 +623,7 @@ const LotteryAdminTab: React.FC = () => {
                     >
                       <Ionicons
                         name="remove-circle-outline"
-                        size={22}
+                        size={20}
                         color={theme.colors.error}
                       />
                     </Pressable>
@@ -645,7 +635,7 @@ const LotteryAdminTab: React.FC = () => {
             <Pressable onPress={addPrizeRow} style={styles.addRowBtn}>
               <Ionicons
                 name="add-circle-outline"
-                size={18}
+                size={16}
                 color={theme.colors.black}
                 style={{ marginRight: 6 }}
               />
@@ -683,8 +673,8 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   flagCard: {
     borderWidth: 1,
     borderColor: t.colors.border,
-    padding: t.spacing.md,
-    marginBottom: t.spacing.md,
+    padding: 10,
+    marginBottom: t.spacing.sm,
     backgroundColor: t.colors.card,
     borderRadius: t.borderRadius.md,
   },
@@ -694,39 +684,48 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   },
   flagTitle: {
     ...t.typography.body,
+    fontSize: 14,
+    lineHeight: 18,
     color: t.colors.text,
     fontWeight: "600",
   },
   flagDesc: {
     ...t.typography.caption,
+    fontSize: 11,
+    lineHeight: 15,
     color: t.colors.gray400,
-    marginTop: 4,
-    lineHeight: 18,
+    marginTop: 2,
   },
   flagWarning: {
     ...t.typography.caption,
+    fontSize: 11,
+    lineHeight: 15,
     color: t.colors.error,
     marginTop: t.spacing.sm,
-    lineHeight: 18,
   },
   sectionTitle: {
     ...t.typography.h4,
+    fontSize: 14,
+    lineHeight: 18,
     color: t.colors.text,
   },
   sectionHint: {
     ...t.typography.caption,
+    fontSize: 11,
+    lineHeight: 14,
     color: t.colors.gray300,
     marginTop: 2,
-    marginBottom: t.spacing.md,
-    lineHeight: 18,
+    marginBottom: t.spacing.sm,
   },
   statusBadge: {
-    paddingHorizontal: 10,
+    paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 4,
   },
   statusBadgeText: {
     ...t.typography.caption,
+    fontSize: 11,
+    lineHeight: 14,
     color: t.colors.textInverted,
     letterSpacing: 1,
   },
@@ -744,11 +743,15 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   },
   statLabel: {
     ...t.typography.caption,
+    fontSize: 11,
+    lineHeight: 14,
     color: t.colors.gray300,
     marginBottom: 2,
   },
   statValue: {
     ...t.typography.h4,
+    fontSize: 14,
+    lineHeight: 18,
     color: t.colors.text,
   },
   prizeList: {
@@ -762,20 +765,28 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   },
   prizeId: {
     ...t.typography.caption,
+    fontSize: 11,
+    lineHeight: 14,
     color: t.colors.gray300,
     minWidth: 40,
   },
   prizeName: {
     ...t.typography.bodySmall,
+    fontSize: 12,
+    lineHeight: 16,
     color: t.colors.text,
     flex: 1,
   },
   prizeQuota: {
     ...t.typography.caption,
+    fontSize: 11,
+    lineHeight: 14,
     color: t.colors.gray400,
   },
   emptyPrizeText: {
     ...t.typography.caption,
+    fontSize: 11,
+    lineHeight: 14,
     color: t.colors.gray300,
     fontStyle: "italic",
     marginTop: t.spacing.sm,
@@ -786,13 +797,13 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   removeBtn: {
     justifyContent: "center",
     alignItems: "center",
-    width: 32,
+    width: 30,
   },
   addRowBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 10,
+    paddingVertical: 8,
     borderWidth: 1,
     borderColor: t.colors.gray200,
     borderRadius: t.borderRadius.md,
@@ -801,6 +812,8 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   },
   addRowText: {
     ...t.typography.bodySmall,
+    fontSize: 12,
+    lineHeight: 16,
     color: t.colors.text,
   },
 });

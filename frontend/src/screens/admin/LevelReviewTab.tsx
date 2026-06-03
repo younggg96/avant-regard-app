@@ -265,7 +265,7 @@ const LevelReviewTab: React.FC = () => {
           <Box style={sharedStyles.emptyContainer}>
             <Ionicons
               name="checkmark-done-outline"
-              size={40}
+              size={36}
               color={theme.colors.gray200}
             />
             <Text style={sharedStyles.emptyText}>{t("admin.noLevelRequests")}</Text>
@@ -328,11 +328,11 @@ const LevelReviewTab: React.FC = () => {
         )}
 
         {/* ====== 模块 2: 手动赋等级 ====== */}
-        <Box style={[sharedStyles.postCard, { marginTop: theme.spacing.lg }]}>
+        <Box style={[sharedStyles.postCard, { marginTop: theme.spacing.md }]}>
           <HStack style={{ alignItems: "center", marginBottom: 6 }}>
             <Ionicons
               name="star-outline"
-              size={18}
+              size={16}
               color={theme.colors.black}
               style={{ marginRight: 6 }}
             />
@@ -404,11 +404,11 @@ const LevelReviewTab: React.FC = () => {
         </Box>
 
         {/* ====== 模块 3: 存量用户等级回填 ====== */}
-        <Box style={[sharedStyles.postCard, { marginTop: theme.spacing.lg }]}>
+        <Box style={[sharedStyles.postCard, { marginTop: theme.spacing.md }]}>
           <HStack style={{ alignItems: "center", marginBottom: 6 }}>
             <Ionicons
               name="sync-outline"
-              size={18}
+              size={16}
               color={theme.colors.black}
               style={{ marginRight: 6 }}
             />
@@ -567,11 +567,13 @@ const LevelReviewTab: React.FC = () => {
 const makeStyles = (t: AppTheme) => StyleSheet.create({
   blockTitle: {
     fontSize: 14,
+    lineHeight: 18,
     fontWeight: "600",
     color: t.colors.text,
   },
   sectionTitle: {
     fontSize: 14,
+    lineHeight: 18,
     fontWeight: "600",
     color: t.colors.text,
   },
@@ -580,26 +582,31 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
     color: t.colors.gray300,
     marginTop: 2,
     marginBottom: t.spacing.sm,
-    lineHeight: 15,
+    lineHeight: 14,
   },
   targetRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: t.spacing.sm,
+    marginBottom: 6,
   },
   targetBadge: {
     backgroundColor: t.colors.text,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    marginRight: t.spacing.md,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    marginRight: t.spacing.sm,
+    borderRadius: 4,
   },
   targetBadgeText: {
     ...t.typography.caption,
+    fontSize: 11,
+    lineHeight: 14,
     color: t.colors.textInverted,
     letterSpacing: 1,
   },
   userIdText: {
     ...t.typography.caption,
+    fontSize: 11,
+    lineHeight: 14,
     color: t.colors.gray300,
   },
   levelRow: {
@@ -609,8 +616,8 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
     marginTop: 4,
   },
   levelChip: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
     borderWidth: 1,
     borderColor: t.colors.gray200,
     borderRadius: t.borderRadius.md,
@@ -621,6 +628,7 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   },
   levelChipText: {
     fontSize: 11,
+    lineHeight: 14,
     color: t.colors.gray400,
   },
   levelChipTextActive: {
@@ -629,6 +637,7 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   },
   lv5Hint: {
     fontSize: 11,
+    lineHeight: 14,
     color: t.colors.gray300,
     marginTop: 4,
     marginBottom: 2,
@@ -636,11 +645,11 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   compactPrimaryBtn: {
     alignSelf: "flex-start",
     marginTop: t.spacing.sm,
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
   },
   backfillResultBox: {
-    marginTop: t.spacing.md,
-    padding: t.spacing.md,
+    marginTop: t.spacing.sm,
+    padding: t.spacing.sm,
     borderWidth: 1,
     borderColor: t.colors.gray200,
     backgroundColor: t.colors.gray100,
@@ -648,10 +657,14 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   },
   backfillResultLine: {
     ...t.typography.body,
+    fontSize: 12,
+    lineHeight: 16,
     color: t.colors.text,
   },
   backfillResultCaption: {
     ...t.typography.caption,
+    fontSize: 11,
+    lineHeight: 14,
     color: t.colors.gray400,
     marginTop: 2,
   },

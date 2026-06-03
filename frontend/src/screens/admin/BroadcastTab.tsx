@@ -183,7 +183,7 @@ const BroadcastTab = () => {
       <Box style={styles.formCard}>
         <HStack style={styles.headerRow}>
           <Box style={styles.headerIconWrap}>
-            <Ionicons name="megaphone-outline" size={20} color={theme.colors.text} />
+            <Ionicons name="megaphone-outline" size={18} color={theme.colors.text} />
           </Box>
           <Text style={styles.headerTitle}>{t("admin.broadcastTitle")}</Text>
         </HStack>
@@ -339,7 +339,7 @@ const BroadcastTab = () => {
               <Box style={styles.previewIcon}>
                 <Ionicons
                   name="notifications-outline"
-                  size={18}
+                  size={16}
                   color={theme.colors.textInverted}
                 />
               </Box>
@@ -414,7 +414,7 @@ const BroadcastTab = () => {
       <HStack style={styles.tipsRow}>
         <Ionicons
           name="information-circle-outline"
-          size={16}
+          size={14}
           color={theme.colors.gray400}
         />
         <Text style={styles.tipsText}>{t("admin.broadcastTips")}</Text>
@@ -430,37 +430,38 @@ const makeStyles = (t: AppTheme) =>
     formCard: {
       backgroundColor: t.colors.card,
       borderRadius: t.borderRadius.lg,
-      paddingHorizontal: 14,
-      paddingTop: 14,
-      paddingBottom: 16,
+      paddingHorizontal: 10,
+      paddingTop: 10,
+      paddingBottom: 10,
       marginBottom: t.spacing.sm,
       ...t.shadows.sm,
     },
     headerRow: {
       alignItems: "center",
-      gap: 10,
-      marginBottom: 8,
+      gap: 8,
+      marginBottom: 6,
     },
     headerIconWrap: {
-      width: 36,
-      height: 36,
-      borderRadius: 18,
+      width: 30,
+      height: 30,
+      borderRadius: 4,
       backgroundColor: t.colors.surface,
       alignItems: "center",
       justifyContent: "center",
     },
     headerTitle: {
       flex: 1,
-      fontSize: 15,
+      fontSize: 14,
+      lineHeight: 18,
       fontWeight: "600",
       color: t.colors.text,
     },
     introHint: {
       fontSize: 12,
-      lineHeight: 17,
+      lineHeight: 16,
       color: t.colors.gray300,
-      marginBottom: 14,
-      paddingBottom: 14,
+      marginBottom: 10,
+      paddingBottom: 10,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: t.colors.border,
     },
@@ -468,8 +469,8 @@ const makeStyles = (t: AppTheme) =>
       fontSize: 12,
       fontWeight: "600",
       color: t.colors.text,
-      marginTop: 10,
-      marginBottom: 6,
+      marginTop: 8,
+      marginBottom: 4,
     },
     charCount: {
       fontSize: 11,
@@ -479,12 +480,12 @@ const makeStyles = (t: AppTheme) =>
       marginBottom: 2,
     },
     textarea: {
-      minHeight: 96,
+      minHeight: 80,
       textAlignVertical: "top",
     },
     linkTypeRow: {
-      gap: 8,
-      marginBottom: 8,
+      gap: 6,
+      marginBottom: 6,
     },
     linkTypeBtn: {
       flex: 1,
@@ -492,7 +493,7 @@ const makeStyles = (t: AppTheme) =>
       alignItems: "center",
       justifyContent: "center",
       gap: 4,
-      paddingVertical: 8,
+      paddingVertical: 6,
       paddingHorizontal: 6,
       borderRadius: t.borderRadius.md,
       borderWidth: StyleSheet.hairlineWidth,
@@ -516,8 +517,8 @@ const makeStyles = (t: AppTheme) =>
       backgroundColor: t.colors.surface,
       borderRadius: t.borderRadius.md,
       paddingHorizontal: 10,
-      paddingVertical: 10,
-      marginBottom: 8,
+      paddingVertical: 8,
+      marginBottom: 6,
     },
     linkSubLabel: {
       fontSize: 11,
@@ -526,8 +527,8 @@ const makeStyles = (t: AppTheme) =>
       marginBottom: t.spacing.xs,
     },
     previewBox: {
-      marginTop: 8,
-      marginBottom: 10,
+      marginTop: 6,
+      marginBottom: 8,
     },
     previewLabel: {
       fontSize: 11,
@@ -546,16 +547,17 @@ const makeStyles = (t: AppTheme) =>
       borderLeftColor: t.colors.text,
     },
     previewIcon: {
-      width: 32,
-      height: 32,
-      borderRadius: 16,
+      width: 28,
+      height: 28,
+      borderRadius: 4,
       backgroundColor: t.colors.text,
       alignItems: "center",
       justifyContent: "center",
       marginRight: t.spacing.sm,
     },
     previewTitle: {
-      fontSize: 14,
+      fontSize: 13,
+      lineHeight: 17,
       color: t.colors.text,
       fontWeight: "600",
     },
@@ -563,7 +565,7 @@ const makeStyles = (t: AppTheme) =>
       fontSize: 12,
       color: t.colors.gray400,
       marginTop: 2,
-      lineHeight: 17,
+      lineHeight: 16,
     },
     previewLinkRow: {
       alignItems: "center",
@@ -582,8 +584,8 @@ const makeStyles = (t: AppTheme) =>
     resultCard: {
       backgroundColor: t.colors.card,
       borderRadius: t.borderRadius.lg,
-      paddingHorizontal: 14,
-      paddingVertical: 14,
+      paddingHorizontal: 10,
+      paddingVertical: 10,
       marginBottom: t.spacing.sm,
       ...t.shadows.sm,
     },
@@ -602,7 +604,7 @@ const makeStyles = (t: AppTheme) =>
       alignItems: "center",
     },
     resultNumber: {
-      fontSize: 22,
+      fontSize: 18,
       fontWeight: "700",
       color: t.colors.text,
     },
@@ -613,10 +615,10 @@ const makeStyles = (t: AppTheme) =>
     },
     tipsRow: {
       alignItems: "flex-start",
-      gap: 8,
+      gap: 6,
       backgroundColor: t.colors.surface,
-      paddingHorizontal: 12,
-      paddingVertical: 10,
+      paddingHorizontal: 10,
+      paddingVertical: 8,
       borderRadius: t.borderRadius.md,
       marginTop: 4,
     },

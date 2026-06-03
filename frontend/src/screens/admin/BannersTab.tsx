@@ -262,13 +262,13 @@ const BannersTab = () => {
       </Box>
       <HStack style={styles.bannerActions}>
         <Pressable style={[styles.bannerActionBtn, styles.bannerEditBtn]} onPress={() => handleOpenEditModal(banner)} disabled={actionLoading}>
-          <Ionicons name="create-outline" size={18} color={theme.colors.white} />
+          <Ionicons name="create-outline" size={16} color={theme.colors.white} />
         </Pressable>
         <Pressable style={[styles.bannerActionBtn, banner.isActive ? styles.bannerDisableBtn : styles.bannerEnableBtn]} onPress={() => handleToggleStatus(banner)} disabled={actionLoading}>
-          <Ionicons name={banner.isActive ? "eye-off-outline" : "eye-outline"} size={18} color={theme.colors.white} />
+          <Ionicons name={banner.isActive ? "eye-off-outline" : "eye-outline"} size={16} color={theme.colors.white} />
         </Pressable>
         <Pressable style={[styles.bannerActionBtn, styles.bannerDeleteBtn]} onPress={() => handleDelete(banner.id)} disabled={actionLoading}>
-          <Ionicons name="trash-outline" size={18} color={theme.colors.white} />
+          <Ionicons name="trash-outline" size={16} color={theme.colors.white} />
         </Pressable>
       </HStack>
     </Box>
@@ -281,7 +281,7 @@ const BannersTab = () => {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
         <Pressable style={styles.addBannerButton} onPress={handleOpenCreateModal}>
-          <Ionicons name="add-circle-outline" size={24} color={theme.colors.white} />
+          <Ionicons name="add-circle-outline" size={20} color={theme.colors.white} />
           <Text style={styles.addBannerButtonText}>{t("admin.addBanner")}</Text>
         </Pressable>
 
@@ -342,7 +342,7 @@ const BannersTab = () => {
                   <ActivityIndicator color={theme.colors.white} size="small" />
                 ) : (
                   <>
-                    <Ionicons name="cloud-upload-outline" size={20} color={theme.colors.white} />
+                    <Ionicons name="cloud-upload-outline" size={18} color={theme.colors.white} />
                     <Text style={sharedStyles.uploadImageButtonText}>
                       {form.image_url ? t("admin.changeImage") : t("admin.uploadImage")}
                     </Text>
@@ -399,7 +399,7 @@ const BannersTab = () => {
                   {(form.link_type === "POST" || form.link_type === "SHOW") && (
                     <Box style={styles.searchSection}>
                       <HStack style={styles.searchInputRow}>
-                        <Ionicons name="search-outline" size={18} color={theme.colors.gray300} style={styles.searchIcon} />
+                        <Ionicons name="search-outline" size={16} color={theme.colors.gray300} style={styles.searchIcon} />
                         <Input
                           style={styles.searchInput}
                           placeholder={form.link_type === "POST" ? t("admin.bannerSearchPost") : t("admin.bannerSearchShow")}
@@ -414,7 +414,7 @@ const BannersTab = () => {
                         {searchLoading && <ActivityIndicator size="small" color={theme.colors.gray400} />}
                         {searchKeyword.length > 0 && !searchLoading && (
                           <Pressable onPress={() => { setSearchKeyword(""); setSearchResults([]); }}>
-                            <Ionicons name="close-circle" size={18} color={theme.colors.gray300} />
+                            <Ionicons name="close-circle" size={16} color={theme.colors.gray300} />
                           </Pressable>
                         )}
                       </HStack>
@@ -449,7 +449,7 @@ const BannersTab = () => {
                                   </Text>
                                 </Box>
                                 {String(item.id) === form.link_value && (
-                                  <Ionicons name="checkmark-circle" size={20} color={theme.colors.success} />
+                                  <Ionicons name="checkmark-circle" size={18} color={theme.colors.success} />
                                 )}
                               </Pressable>
                             );
@@ -501,7 +501,7 @@ const BannersTab = () => {
 
               <Box style={sharedStyles.modalButtons}>
                 <Button variant="outline" size="sm" onPress={() => setModalVisible(false)}>
-                  <ButtonText style={{ color: theme.colors.white }}>{t("common.cancel")}</ButtonText>
+                  <ButtonText>{t("common.cancel")}</ButtonText>
                 </Button>
                 <Button
                   size="sm"
@@ -534,39 +534,43 @@ const BannersTab = () => {
 const makeStyles = (t: AppTheme) => StyleSheet.create({
   bannersList: {
     flex: 1,
-    padding: t.spacing.md,
+    padding: 10,
   },
   addBannerButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: t.colors.text,
-    paddingVertical: t.spacing.md,
+    paddingVertical: 8,
     borderRadius: t.borderRadius.md,
-    marginBottom: t.spacing.md,
+    marginBottom: 8,
     gap: t.spacing.sm,
   },
   addBannerButtonText: {
     ...t.typography.button,
+    fontSize: 13,
+    lineHeight: 18,
     color: t.colors.textInverted,
   },
   bannersHeader: {
-    marginBottom: t.spacing.md,
+    marginBottom: 8,
   },
   bannersHeaderText: {
     ...t.typography.bodySmall,
+    fontSize: 12,
+    lineHeight: 16,
     color: t.colors.gray400,
   },
   bannerCard: {
     backgroundColor: t.colors.card,
     borderRadius: t.borderRadius.lg,
     overflow: "hidden",
-    marginBottom: t.spacing.md,
+    marginBottom: 8,
     ...t.shadows.sm,
   },
   bannerPreviewImage: {
     width: "100%",
-    height: 120,
+    height: 96,
     backgroundColor: t.colors.gray100,
   },
   bannerStatusBadge: {
@@ -585,27 +589,33 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   },
   bannerStatusText: {
     ...t.typography.caption,
+    fontSize: 11,
     color: t.colors.textInverted,
     fontWeight: "600",
   },
   bannerInfo: {
-    padding: t.spacing.md,
+    padding: 10,
   },
   bannerTitle: {
     ...t.typography.h4,
+    fontSize: 14,
+    lineHeight: 18,
     color: t.colors.text,
-    marginBottom: 4,
+    marginBottom: 2,
   },
   bannerSubtitle: {
     ...t.typography.bodySmall,
+    fontSize: 12,
+    lineHeight: 16,
     color: t.colors.gray400,
-    marginBottom: t.spacing.sm,
+    marginBottom: 4,
   },
   bannerMeta: {
     justifyContent: "space-between",
   },
   bannerMetaText: {
     ...t.typography.caption,
+    fontSize: 11,
     color: t.colors.gray300,
   },
   bannerActions: {
@@ -616,7 +626,7 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: t.spacing.md,
+    paddingVertical: 8,
   },
   bannerEditBtn: {
     backgroundColor: t.colors.text,
@@ -633,28 +643,30 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   bannerModalContent: {
     height: "85%",
     width: "92%",
-    padding: t.spacing.lg,
+    padding: 14,
   },
   bannerFormPreview: {
     width: "100%",
-    height: 160,
+    height: 120,
     borderRadius: t.borderRadius.md,
-    marginBottom: t.spacing.md,
+    marginBottom: 8,
     backgroundColor: t.colors.gray100,
   },
   bannerFormPlaceholder: {
     width: "100%",
-    height: 160,
+    height: 120,
     borderRadius: t.borderRadius.md,
     backgroundColor: t.colors.gray100,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: t.spacing.md,
+    marginBottom: 8,
   },
   bannerFormPlaceholderText: {
     ...t.typography.bodySmall,
+    fontSize: 12,
+    lineHeight: 16,
     color: t.colors.gray300,
-    marginTop: t.spacing.sm,
+    marginTop: 6,
   },
   searchSection: {
     marginBottom: t.spacing.sm,
@@ -665,7 +677,7 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
     borderColor: t.colors.gray200,
     borderRadius: t.borderRadius.md,
     paddingHorizontal: t.spacing.sm,
-    minHeight: 44,
+    minHeight: 38,
     backgroundColor: t.colors.gray100,
   },
   searchIcon: {
@@ -674,22 +686,24 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   searchInput: {
     flex: 1,
     ...t.typography.bodySmall,
+    fontSize: 12,
+    lineHeight: 16,
     color: t.colors.text,
-    paddingVertical: t.spacing.sm,
+    paddingVertical: 6,
   },
   searchResultsList: {
     marginTop: t.spacing.xs,
     borderWidth: 1,
     borderColor: t.colors.gray200,
     borderRadius: t.borderRadius.md,
-    maxHeight: 200,
+    maxHeight: 180,
     overflow: "hidden",
   },
   searchResultItem: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: t.spacing.md,
-    paddingVertical: t.spacing.sm,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
     borderBottomWidth: 1,
     borderBottomColor: t.colors.border,
   },
@@ -698,19 +712,23 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   },
   searchResultTitle: {
     ...t.typography.bodySmall,
+    fontSize: 12,
+    lineHeight: 16,
     color: t.colors.text,
     fontWeight: "500",
   },
   searchResultMeta: {
     ...t.typography.caption,
+    fontSize: 11,
     color: t.colors.gray300,
     marginTop: 2,
   },
   searchNoResult: {
     ...t.typography.caption,
+    fontSize: 11,
     color: t.colors.gray300,
     textAlign: "center",
-    paddingVertical: t.spacing.md,
+    paddingVertical: 10,
   },
 });
 

@@ -301,7 +301,7 @@ const UsersSubTab = () => {
             />
           ) : (
             <Box style={[styles.avatar, styles.avatarPlaceholder]}>
-              <Ionicons name="person" size={20} color={theme.colors.gray300} />
+              <Ionicons name="person" size={18} color={theme.colors.gray300} />
             </Box>
           )}
           <Box style={{ marginLeft: theme.spacing.sm, flex: 1 }}>
@@ -477,7 +477,7 @@ const UsersSubTab = () => {
           />
         ) : (
           <Box style={[styles.compactAvatar, styles.avatarPlaceholder]}>
-            <Ionicons name="person" size={16} color={theme.colors.gray300} />
+            <Ionicons name="person" size={14} color={theme.colors.gray300} />
           </Box>
         )}
 
@@ -509,7 +509,7 @@ const UsersSubTab = () => {
           </Text>
         </Box>
 
-        <Ionicons name="chevron-forward" size={18} color={theme.colors.gray300} />
+        <Ionicons name="chevron-forward" size={16} color={theme.colors.gray300} />
       </HStack>
     </Pressable>
   );
@@ -529,7 +529,7 @@ const UsersSubTab = () => {
           size="sm"
         />
         <Pressable style={styles.searchBtn} onPress={handleSearch}>
-          <Ionicons name="search" size={18} color={theme.colors.white} />
+          <Ionicons name="search" size={16} color={theme.colors.white} />
         </Pressable>
       </HStack>
 
@@ -556,7 +556,7 @@ const UsersSubTab = () => {
             <Box style={sharedStyles.emptyContainer}>
               <Ionicons
                 name="people-outline"
-                size={48}
+                size={40}
                 color={theme.colors.gray300}
               />
               <Text style={sharedStyles.emptyText}>{t("admin.noUsers")}</Text>
@@ -572,7 +572,7 @@ const UsersSubTab = () => {
                     onPress={() => page > 1 && loadUsers(page - 1)}
                     style={{ opacity: page <= 1 ? 0.3 : 1 }}
                   >
-                    <Ionicons name="chevron-back" size={24} color={theme.colors.black} />
+                    <Ionicons name="chevron-back" size={20} color={theme.colors.black} />
                   </Pressable>
                   <Text style={styles.paginationText}>
                     {t("admin.pagination", { page, total: totalPages })}
@@ -582,7 +582,7 @@ const UsersSubTab = () => {
                     onPress={() => page < totalPages && loadUsers(page + 1)}
                     style={{ opacity: page >= totalPages ? 0.3 : 1 }}
                   >
-                    <Ionicons name="chevron-forward" size={24} color={theme.colors.black} />
+                    <Ionicons name="chevron-forward" size={20} color={theme.colors.black} />
                   </Pressable>
                 </HStack>
               )}
@@ -607,7 +607,7 @@ const UsersSubTab = () => {
                 style={styles.userDetailCloseBtn}
                 onPress={() => setDetailModalVisible(false)}
               >
-                <Ionicons name="close" size={22} color={theme.colors.text} />
+                <Ionicons name="close" size={20} color={theme.colors.text} />
               </Pressable>
             </HStack>
             {detailUser ? (
@@ -633,7 +633,7 @@ const UsersSubTab = () => {
             <HStack style={sharedStyles.modalTitleRow}>
               <Ionicons
                 name="warning"
-                size={24}
+                size={22}
                 color={theme.colors.error}
               />
               <Text
@@ -687,14 +687,14 @@ const UsersSubTab = () => {
         <Box style={sharedStyles.modalOverlay}>
           <Box style={[sharedStyles.modalContent, { maxHeight: "70%" }]}>
             <HStack style={sharedStyles.modalTitleRow}>
-              <Ionicons name="ribbon" size={24} color={theme.colors.black} />
+              <Ionicons name="ribbon" size={22} color={theme.colors.black} />
               <Text style={[sharedStyles.modalTitle, { marginLeft: 8 }]}>
                 {t("admin.manageTitles")} - {titleTarget?.username}
               </Text>
             </HStack>
 
             {titleLoading ? (
-              <Box style={{ alignItems: "center", paddingVertical: 20 }}>
+              <Box style={{ alignItems: "center", paddingVertical: 16 }}>
                 <ActivityIndicator color={theme.colors.black} />
               </Box>
             ) : (
@@ -729,7 +729,7 @@ const UsersSubTab = () => {
                         )}
                       </HStack>
                       <Pressable onPress={() => handleRemoveTitle(titleItem.id)}>
-                        <Ionicons name="close-circle" size={20} color={theme.colors.error} />
+                        <Ionicons name="close-circle" size={18} color={theme.colors.error} />
                       </Pressable>
                     </HStack>
                   ))
@@ -739,7 +739,7 @@ const UsersSubTab = () => {
 
             <HStack style={{ gap: 8, marginTop: 4 }}>
               <Input
-                style={{ flex: 1, height: 36 }}
+                style={{ flex: 1, height: 32 }}
                 placeholder={t("admin.titlePlaceholder")}
                 placeholderTextColor={theme.colors.gray300}
                 value={newTitleText}
@@ -769,7 +769,7 @@ const UsersSubTab = () => {
                   setTitleList([]);
                 }}
               >
-                <ButtonText style={{ color: theme.colors.white }}>{t("common.close")}</ButtonText>
+                <ButtonText>{t("common.close")}</ButtonText>
               </Button>
             </HStack>
           </Box>
@@ -969,9 +969,9 @@ const ReportsSubTab = () => {
               variant="outline"
               onPress={() => handleUpdateStatus(item.id, "DISMISSED")}
               disabled={actionLoading === item.id}
-              leftIcon={<Ionicons name="close-circle-outline" size={14} color={theme.colors.white} />}
+              leftIcon={<Ionicons name="close-circle-outline" size={14} />}
             >
-              <ButtonText style={{ color: theme.colors.white, fontSize: 12 }}>{t("admin.dismiss")}</ButtonText>
+              <ButtonText style={{ fontSize: 12 }}>{t("admin.dismiss")}</ButtonText>
             </Button>
           </HStack>
         )}
@@ -1026,7 +1026,7 @@ const ReportsSubTab = () => {
             <Box style={sharedStyles.emptyContainer}>
               <Ionicons
                 name="flag-outline"
-                size={48}
+                size={40}
                 color={theme.colors.gray300}
               />
               <Text style={sharedStyles.emptyText}>{t("admin.noReports")}</Text>
@@ -1042,7 +1042,7 @@ const ReportsSubTab = () => {
                     onPress={() => page > 1 && loadReports(page - 1)}
                     style={{ opacity: page <= 1 ? 0.3 : 1 }}
                   >
-                    <Ionicons name="chevron-back" size={24} color={theme.colors.black} />
+                    <Ionicons name="chevron-back" size={20} color={theme.colors.black} />
                   </Pressable>
                   <Text style={styles.paginationText}>
                     {t("admin.pagination", { page, total: totalPages })}
@@ -1052,7 +1052,7 @@ const ReportsSubTab = () => {
                     onPress={() => page < totalPages && loadReports(page + 1)}
                     style={{ opacity: page >= totalPages ? 0.3 : 1 }}
                   >
-                    <Ionicons name="chevron-forward" size={24} color={theme.colors.black} />
+                    <Ionicons name="chevron-forward" size={20} color={theme.colors.black} />
                   </Pressable>
                 </HStack>
               )}
@@ -1108,7 +1108,7 @@ const BlocksSubTab = () => {
         </Box>
         <Ionicons
           name="arrow-forward"
-          size={18}
+          size={16}
           color={theme.colors.error}
         />
         <Box style={styles.blockUser}>
@@ -1147,7 +1147,7 @@ const BlocksSubTab = () => {
             <Box style={sharedStyles.emptyContainer}>
               <Ionicons
                 name="ban-outline"
-                size={48}
+                size={40}
                 color={theme.colors.gray300}
               />
               <Text style={sharedStyles.emptyText}>{t("admin.noBlocks")}</Text>
@@ -1163,7 +1163,7 @@ const BlocksSubTab = () => {
                     onPress={() => page > 1 && loadBlocks(page - 1)}
                     style={{ opacity: page <= 1 ? 0.3 : 1 }}
                   >
-                    <Ionicons name="chevron-back" size={24} color={theme.colors.black} />
+                    <Ionicons name="chevron-back" size={20} color={theme.colors.black} />
                   </Pressable>
                   <Text style={styles.paginationText}>
                     {t("admin.pagination", { page, total: totalPages })}
@@ -1173,7 +1173,7 @@ const BlocksSubTab = () => {
                     onPress={() => page < totalPages && loadBlocks(page + 1)}
                     style={{ opacity: page >= totalPages ? 0.3 : 1 }}
                   >
-                    <Ionicons name="chevron-forward" size={24} color={theme.colors.black} />
+                    <Ionicons name="chevron-forward" size={20} color={theme.colors.black} />
                   </Pressable>
                 </HStack>
               )}
@@ -1193,9 +1193,9 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   // Sub-tab bar
   subTabBar: {
     flexDirection: "row",
-    paddingHorizontal: t.spacing.md,
-    paddingVertical: t.spacing.sm,
-    gap: t.spacing.sm,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    gap: 6,
     backgroundColor: t.colors.background,
     borderBottomWidth: 1,
     borderBottomColor: t.colors.border,
@@ -1203,9 +1203,9 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   subTabItem: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: t.spacing.md,
-    paddingVertical: t.spacing.sm,
-    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 4,
     backgroundColor: t.colors.gray100,
     gap: 4,
   },
@@ -1214,6 +1214,8 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   },
   subTabText: {
     ...t.typography.caption,
+    fontSize: 11,
+    lineHeight: 14,
     color: t.colors.gray400,
     fontWeight: "500",
   },
@@ -1223,58 +1225,60 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   // Search
   searchBar: {
     flexDirection: "row",
-    padding: t.spacing.md,
+    padding: 10,
     gap: t.spacing.sm,
     alignItems: "center",
   },
   searchInput: {
     flex: 1,
-    height: 40,
+    height: 34,
   },
   searchBtn: {
-    width: 40,
-    height: 40,
+    width: 34,
+    height: 34,
     backgroundColor: t.colors.text,
-    borderRadius: t.borderRadius.md,
+    borderRadius: 4,
     alignItems: "center",
     justifyContent: "center",
   },
   // List
   listContainer: {
     flex: 1,
-    padding: t.spacing.md,
+    padding: 10,
   },
   listHeader: {
-    marginBottom: t.spacing.md,
+    marginBottom: t.spacing.sm,
   },
   totalText: {
     ...t.typography.bodySmall,
+    fontSize: 12,
+    lineHeight: 16,
     color: t.colors.gray400,
   },
   // Card
   card: {
     backgroundColor: t.colors.card,
-    borderRadius: t.borderRadius.lg,
-    padding: t.spacing.md,
-    marginBottom: t.spacing.md,
+    borderRadius: 4,
+    padding: 10,
+    marginBottom: t.spacing.sm,
     ...t.shadows.sm,
   },
   compactCard: {
     backgroundColor: t.colors.card,
-    borderRadius: t.borderRadius.lg,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    marginBottom: 8,
+    borderRadius: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    marginBottom: 6,
     ...t.shadows.sm,
   },
   compactCardRow: {
     alignItems: "center",
-    gap: 10,
+    gap: 8,
   },
   compactAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 32,
+    height: 32,
+    borderRadius: 4,
     backgroundColor: t.colors.gray100,
   },
   compactMain: {
@@ -1287,18 +1291,20 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
     flexWrap: "wrap",
   },
   compactName: {
-    fontSize: 15,
+    fontSize: 13,
+    lineHeight: 17,
     fontWeight: "600",
     color: t.colors.text,
     flexShrink: 1,
   },
   compactMeta: {
     fontSize: 11,
+    lineHeight: 14,
     color: t.colors.gray300,
     marginTop: 2,
   },
   compactStatusBadge: {
-    paddingHorizontal: 8,
+    paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
   },
@@ -1308,21 +1314,23 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   },
   userDetailModalContent: {
     backgroundColor: t.colors.card,
-    borderRadius: t.borderRadius.lg,
+    borderRadius: 4,
     height: "88%",
     width: "92%",
-    padding: t.spacing.md,
+    padding: 10,
   },
   userDetailHeader: {
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: t.spacing.sm,
-    paddingBottom: t.spacing.sm,
+    marginBottom: 6,
+    paddingBottom: 6,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: t.colors.border,
   },
   userDetailTitle: {
     ...t.typography.h4,
+    fontSize: 15,
+    lineHeight: 20,
     color: t.colors.text,
     flex: 1,
     marginRight: t.spacing.sm,
@@ -1339,23 +1347,23 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
     justifyContent: "space-between",
   },
   cardBody: {
-    marginTop: t.spacing.sm,
-    paddingTop: t.spacing.sm,
+    marginTop: 6,
+    paddingTop: 6,
     borderTopWidth: 1,
     borderTopColor: t.colors.border,
   },
   cardActions: {
     gap: t.spacing.sm,
-    marginTop: t.spacing.sm,
-    paddingTop: t.spacing.sm,
+    marginTop: 6,
+    paddingTop: 6,
     borderTopWidth: 1,
     borderTopColor: t.colors.border,
   },
   // User card
   avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 34,
+    height: 34,
+    borderRadius: 4,
   },
   avatarPlaceholder: {
     backgroundColor: t.colors.gray100,
@@ -1364,23 +1372,29 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   },
   userName: {
     ...t.typography.body,
+    fontSize: 14,
+    lineHeight: 18,
     fontWeight: "600",
     color: t.colors.text,
   },
   userMeta: {
     ...t.typography.caption,
+    fontSize: 11,
+    lineHeight: 14,
     color: t.colors.gray300,
     marginTop: 2,
   },
   detailText: {
     ...t.typography.caption,
+    fontSize: 11,
+    lineHeight: 14,
     color: t.colors.gray400,
     marginBottom: 2,
   },
   statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 12,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
   },
   statusActive: {
     backgroundColor: t.colors.success + "15",
@@ -1392,6 +1406,7 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
     ...t.typography.caption,
     fontWeight: "600",
     fontSize: 11,
+    lineHeight: 14,
   },
   statusTextActive: {
     color: t.colors.success,
@@ -1403,7 +1418,7 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   kindChipSolid: {
     paddingHorizontal: 6,
     paddingVertical: 1,
-    borderRadius: 8,
+    borderRadius: 4,
     backgroundColor: t.colors.text,
   },
   kindChipSolidText: {
@@ -1415,7 +1430,7 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   kindChipOutline: {
     paddingHorizontal: 6,
     paddingVertical: 1,
-    borderRadius: 8,
+    borderRadius: 4,
     borderWidth: 1,
     borderColor: t.colors.text,
     backgroundColor: "transparent",
@@ -1428,7 +1443,7 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   kindChipMuted: {
     paddingHorizontal: 6,
     paddingVertical: 1,
-    borderRadius: 8,
+    borderRadius: 4,
     backgroundColor: t.colors.gray100,
   },
   kindChipMutedText: {
@@ -1442,7 +1457,7 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 6,
     paddingVertical: 1,
-    borderRadius: 8,
+    borderRadius: 4,
     backgroundColor: t.colors.text,
   },
   levelChipText: {
@@ -1460,7 +1475,7 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   levelChipMuted: {
     paddingHorizontal: 6,
     paddingVertical: 1,
-    borderRadius: 8,
+    borderRadius: 4,
     backgroundColor: t.colors.gray100,
   },
   levelChipMutedText: {
@@ -1472,8 +1487,8 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    marginTop: t.spacing.sm,
-    paddingVertical: t.spacing.sm,
+    marginTop: 6,
+    paddingVertical: 6,
     borderTopWidth: 1,
     borderTopColor: t.colors.border,
     borderBottomWidth: 1,
@@ -1484,7 +1499,7 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
     alignItems: "center",
   },
   statValue: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: "700",
     color: t.colors.text,
   },
@@ -1495,11 +1510,13 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   },
   statDivider: {
     width: 1,
-    height: 24,
+    height: 20,
     backgroundColor: t.colors.border,
   },
   bioText: {
     ...t.typography.caption,
+    fontSize: 11,
+    lineHeight: 14,
     color: t.colors.gray400,
     fontStyle: "italic",
     marginBottom: 6,
@@ -1507,7 +1524,7 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   infoGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8,
+    gap: 6,
     rowGap: 4,
   },
   infoItem: {
@@ -1519,13 +1536,13 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 6,
-    marginTop: t.spacing.sm,
-    paddingTop: t.spacing.sm,
+    marginTop: 6,
+    paddingTop: 6,
   },
   titleChip: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
     backgroundColor: t.colors.gray100,
   },
   titleChipPrimary: {
@@ -1543,31 +1560,40 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   // Report card
   reportTarget: {
     ...t.typography.body,
+    fontSize: 13,
+    lineHeight: 17,
     fontWeight: "600",
     color: t.colors.text,
   },
   reportStatusBadge: {
-    paddingHorizontal: 8,
+    paddingHorizontal: 6,
     paddingVertical: 2,
-    borderRadius: 10,
+    borderRadius: 4,
   },
   reportStatusText: {
     ...t.typography.caption,
     fontWeight: "600",
     fontSize: 11,
+    lineHeight: 14,
   },
   reportReason: {
     ...t.typography.bodySmall,
+    fontSize: 12,
+    lineHeight: 16,
     color: t.colors.error,
     fontWeight: "500",
   },
   reportDesc: {
     ...t.typography.bodySmall,
+    fontSize: 12,
+    lineHeight: 16,
     color: t.colors.gray400,
     marginTop: 4,
   },
   reportDate: {
     ...t.typography.caption,
+    fontSize: 11,
+    lineHeight: 14,
     color: t.colors.gray300,
     marginTop: 6,
   },
@@ -1575,14 +1601,14 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   filterBar: {
     flexGrow: 0,
     flexShrink: 0,
-    paddingVertical: t.spacing.sm,
+    paddingVertical: 6,
   },
   // Block card
   blockRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    gap: t.spacing.md,
+    gap: 10,
   },
   blockUser: {
     flex: 1,
@@ -1590,29 +1616,37 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   },
   blockUserName: {
     ...t.typography.body,
+    fontSize: 13,
+    lineHeight: 17,
     fontWeight: "600",
     color: t.colors.text,
   },
   blockUserId: {
     ...t.typography.caption,
+    fontSize: 11,
+    lineHeight: 14,
     color: t.colors.gray300,
     marginTop: 2,
   },
   blockDate: {
     ...t.typography.caption,
+    fontSize: 11,
+    lineHeight: 14,
     color: t.colors.gray300,
     textAlign: "center",
-    marginTop: t.spacing.sm,
-    paddingTop: t.spacing.sm,
+    marginTop: 6,
+    paddingTop: 6,
     borderTopWidth: 1,
     borderTopColor: t.colors.border,
   },
   // Pagination
   pagination: {
-    paddingVertical: t.spacing.lg,
+    paddingVertical: t.spacing.md,
   },
   paginationText: {
     ...t.typography.body,
+    fontSize: 13,
+    lineHeight: 17,
     color: t.colors.gray400,
   },
 });

@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useMemo } from 'react';
 import { styled } from '@gluestack-style/react';
-import { Pressable, Text as RNText, ActivityIndicator } from 'react-native';
+import { Pressable, Text as RNText, ActivityIndicator, StyleSheet } from 'react-native';
 import { useAppTheme } from '../../theme';
 
 /**
@@ -73,6 +73,41 @@ type ButtonVariant = 'solid' | 'outline' | 'ghost';
 type ButtonColorScheme = 'primary' | 'secondary' | 'error' | 'success';
 
 const ButtonTextColorContext = createContext<string | undefined>(undefined);
+
+const LEGACY_WRONG_ICON_COLORS = new Set([
+  '#fff',
+  '#ffffff',
+  'white',
+  '#000',
+  '#000000',
+  'black',
+]);
+
+/** Outline/ghost 上误用 white/black 时自动对齐 Button 前景色；保留 accent 等语义色 */
+function tintButtonIcon(
+  icon: React.ReactNode,
+  textColor: string,
+  variant: ButtonVariant,
+): React.ReactNode {
+  if (!React.isValidElement(icon)) return icon;
+
+  const props = icon.props as { color?: string };
+  if (variant !== 'outline' && variant !== 'ghost') {
+    if (props.color) return icon;
+    return React.cloneElement(icon as React.ReactElement<{ color?: string }>, {
+      color: textColor,
+    });
+  }
+
+  const raw = props.color?.toLowerCase?.() ?? '';
+  if (props.color && !LEGACY_WRONG_ICON_COLORS.has(raw)) {
+    return icon;
+  }
+
+  return React.cloneElement(icon as React.ReactElement<{ color?: string }>, {
+    color: textColor,
+  });
+}
 
 function resolveButtonColors(
   t: ReturnType<typeof useAppTheme>,
@@ -195,13 +230,13 @@ export const Button: React.FC<ButtonProps> = ({
           <ActivityIndicator size="small" color={themeSx.spinnerColor} />
         ) : (
           <>
-            {leftIcon}
+            {tintButtonIcon(leftIcon, themeSx.textColor, variant)}
             {typeof children === 'string' ? (
               <StyledText sx={{ color: themeSx.textColor }}>{children}</StyledText>
             ) : (
               children
             )}
-            {rightIcon}
+            {tintButtonIcon(rightIcon, themeSx.textColor, variant)}
           </>
         )}
       </StyledPressable>
@@ -222,8 +257,17 @@ export const ButtonText: React.FC<ButtonTextProps> = ({ children, style, sx, ...
   const t = useAppTheme();
   const color = inheritedColor ?? t.colors.text;
 
+  const flatStyle = StyleSheet.flatten(style) as { color?: string } | undefined;
+  const styleColor = flatStyle?.color?.toLowerCase?.() ?? '';
+  const resolvedStyle =
+    inheritedColor &&
+    flatStyle?.color &&
+    LEGACY_WRONG_ICON_COLORS.has(styleColor)
+      ? { ...flatStyle, color: inheritedColor }
+      : style;
+
   return (
-    <StyledText sx={{ color, ...(sx as object) }} style={style} {...props}>
+    <StyledText sx={{ color, ...(sx as object) }} style={resolvedStyle} {...props}>
       {children}
     </StyledText>
   );

@@ -80,20 +80,20 @@ const CommentsTab = () => {
     <Box key={comment.id} style={styles.commentCard}>
       <HStack style={styles.commentHeader}>
         <HStack style={styles.commentMeta}>
-          <Ionicons name="chatbubble-outline" size={16} color={theme.colors.gray400} />
+          <Ionicons name="chatbubble-outline" size={14} color={theme.colors.gray400} />
           <Text style={styles.commentId}>ID: {comment.id}</Text>
         </HStack>
         <Text style={styles.commentDate}>{formatDate(comment.createdAt)}</Text>
       </HStack>
 
       <HStack style={styles.commentUserInfo}>
-        <Ionicons name="person-circle-outline" size={18} color={theme.colors.gray400} />
+        <Ionicons name="person-circle-outline" size={16} color={theme.colors.gray400} />
         <Text style={styles.commentUsername}>{comment.username}</Text>
         <Text style={styles.commentUserId}>(ID: {comment.userId})</Text>
       </HStack>
 
       <HStack style={styles.commentPostInfo}>
-        <Ionicons name="document-text-outline" size={16} color={theme.colors.gray300} />
+        <Ionicons name="document-text-outline" size={14} color={theme.colors.gray300} />
         <Text style={styles.commentPostTitle} numberOfLines={1}>
           {t("admin.post")} {comment.postTitle || `#${comment.postId}`}
         </Text>
@@ -114,17 +114,17 @@ const CommentsTab = () => {
           colorScheme="error"
           onPress={() => handleDeleteComment(comment.id)}
           disabled={actionLoading}
-          leftIcon={<Ionicons name="trash-outline" size={16} color={theme.colors.white} />}
+          leftIcon={<Ionicons name="trash-outline" size={14} color={theme.colors.white} />}
         >
-          <ButtonText style={{ fontSize: 12 }}>{t("common.delete")}</ButtonText>
+          <ButtonText style={{ fontSize: 11 }}>{t("common.delete")}</ButtonText>
         </Button>
         <Button
           size="sm"
           variant="outline"
           onPress={() => (navigation as any).navigate("PostDetail", { postId: comment.postId })}
-          leftIcon={<Ionicons name="eye-outline" size={16} color={theme.colors.white} />}
+          leftIcon={<Ionicons name="eye-outline" size={14} />}
         >
-          <ButtonText style={{ color: theme.colors.white, fontSize: 12 }}>{t("admin.viewPost")}</ButtonText>
+          <ButtonText style={{ fontSize: 11 }}>{t("admin.viewPost")}</ButtonText>
         </Button>
       </HStack>
     </Box>
@@ -159,7 +159,7 @@ const CommentsTab = () => {
                 onPress={() => page > 1 && fetchComments(page - 1)}
                 style={{ opacity: page <= 1 ? 0.3 : 1 }}
               >
-                <Ionicons name="chevron-back" size={24} color={theme.colors.black} />
+                <Ionicons name="chevron-back" size={20} color={theme.colors.black} />
               </Pressable>
               <Text style={styles.paginationText}>{t("admin.pagination", { page, total: totalPages })}</Text>
               <Pressable
@@ -167,7 +167,7 @@ const CommentsTab = () => {
                 onPress={() => page < totalPages && fetchComments(page + 1)}
                 style={{ opacity: page >= totalPages ? 0.3 : 1 }}
               >
-                <Ionicons name="chevron-forward" size={24} color={theme.colors.black} />
+                <Ionicons name="chevron-forward" size={20} color={theme.colors.black} />
               </Pressable>
             </HStack>
           )}
@@ -180,26 +180,28 @@ const CommentsTab = () => {
 const makeStyles = (t: AppTheme) => StyleSheet.create({
   commentsList: {
     flex: 1,
-    padding: t.spacing.md,
+    padding: 10,
   },
   commentsHeader: {
-    marginBottom: t.spacing.md,
+    marginBottom: 8,
   },
   commentsHeaderText: {
     ...t.typography.bodySmall,
+    fontSize: 12,
+    lineHeight: 16,
     color: t.colors.gray400,
   },
   commentCard: {
     backgroundColor: t.colors.card,
     borderRadius: t.borderRadius.lg,
-    padding: t.spacing.md,
-    marginBottom: t.spacing.md,
+    padding: 10,
+    marginBottom: 8,
     ...t.shadows.sm,
   },
   commentHeader: {
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: t.spacing.sm,
+    marginBottom: 6,
   },
   commentMeta: {
     alignItems: "center",
@@ -207,30 +209,34 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   },
   commentId: {
     ...t.typography.caption,
+    fontSize: 11,
     color: t.colors.gray400,
   },
   commentDate: {
     ...t.typography.caption,
+    fontSize: 11,
     color: t.colors.gray300,
   },
   commentUserInfo: {
     alignItems: "center",
     gap: t.spacing.xs,
-    marginBottom: t.spacing.sm,
+    marginBottom: 6,
   },
   commentUsername: {
     ...t.typography.bodySmall,
+    fontSize: 12,
     color: t.colors.text,
     fontWeight: "600",
   },
   commentUserId: {
     ...t.typography.caption,
+    fontSize: 11,
     color: t.colors.gray300,
   },
   commentPostInfo: {
     alignItems: "center",
     gap: t.spacing.xs,
-    marginBottom: t.spacing.sm,
+    marginBottom: 6,
     paddingHorizontal: t.spacing.xs,
     paddingVertical: 4,
     backgroundColor: t.colors.gray50,
@@ -238,32 +244,37 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   },
   commentPostTitle: {
     ...t.typography.caption,
+    fontSize: 11,
     color: t.colors.gray400,
     flex: 1,
   },
   commentContent: {
     ...t.typography.body,
+    fontSize: 13,
     color: t.colors.text,
-    marginBottom: t.spacing.sm,
-    lineHeight: 22,
+    marginBottom: 6,
+    lineHeight: 18,
   },
   commentStats: {
     alignItems: "center",
     gap: 4,
-    marginBottom: t.spacing.md,
+    marginBottom: 8,
   },
   commentLikes: {
     ...t.typography.caption,
+    fontSize: 11,
     color: t.colors.gray300,
   },
   commentActions: {
-    gap: t.spacing.sm,
+    gap: 6,
   },
   pagination: {
-    paddingVertical: t.spacing.lg,
+    paddingVertical: t.spacing.md,
   },
   paginationText: {
     ...t.typography.body,
+    fontSize: 13,
+    lineHeight: 18,
     color: t.colors.gray400,
   },
 });

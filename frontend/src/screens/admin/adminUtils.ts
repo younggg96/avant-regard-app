@@ -8,6 +8,12 @@ export const formatDate = (dateString: string) => {
   return `${date.getMonth() + 1}/${date.getDate()} ${date.getHours()}:${String(date.getMinutes()).padStart(2, "0")}`;
 };
 
+export const formatAdminDate = (dateString: string) => {
+  const date = new Date(dateString);
+  const locale = i18n.language?.startsWith("zh") ? "zh-CN" : "en-US";
+  return date.toLocaleDateString(locale);
+};
+
 export const getPostTypeName = (type: string) => {
   const key = `admin.postType_${type}`;
   const translated = i18n.t(key);

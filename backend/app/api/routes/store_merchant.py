@@ -119,8 +119,11 @@ async def review_merchant(
 
         if data.status.value == "APPROVED" and merchant.userId and merchant.storeId:
             try:
-                from app.db.supabase import get_supabase
-                db = get_supabase()
+                # user_titles is RLS-protected; the anon client's INSERT is
+                # rejected (42501) and silently swallowed by the except below,
+                # so the merchant title was never granted. Use service-role.
+                from app.db.supabase import get_supabase_admin
+                db = get_supabase_admin()
                 store_result = (
                     db.table("buyer_stores")
                     .select("name")

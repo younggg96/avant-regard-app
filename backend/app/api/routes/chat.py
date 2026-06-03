@@ -145,7 +145,7 @@ async def websocket_endpoint(websocket: WebSocket, token: str = Query(...)):
 
                 try:
                     participants = (
-                        get_supabase()
+                        get_supabase_admin()
                         .table("conversation_participants")
                         .select("user_id")
                         .eq("conversation_id", conv_id)
@@ -293,7 +293,7 @@ async def send_message_rest(
 
     try:
         participants = (
-            get_supabase()
+            get_supabase_admin()
             .table("conversation_participants")
             .select("user_id")
             .eq("conversation_id", conversation_id)

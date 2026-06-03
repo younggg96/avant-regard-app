@@ -18,7 +18,7 @@ from app.services.user_service import user_service
 from app.services.file_service import file_service
 from app.api.deps import get_current_user_id
 from app.core.response import success
-from app.db.supabase import get_supabase
+from app.db.supabase import get_supabase_admin
 
 router = APIRouter(prefix="/user-info", tags=["用户信息"])
 
@@ -292,7 +292,9 @@ async def delete_account(
 @router.get("/{user_id}/titles")
 async def get_user_titles(user_id: int):
     """获取用户的所有头衔（公开接口）"""
-    db = get_supabase()
+    # user_titles is RLS-protected; the anon client cannot read/write it
+    # reliably (writes are rejected with 42501). Use the service-role client.
+    db = get_supabase_admin()
     result = (
         db.table("user_titles")
         .select("*")
@@ -324,7 +326,7 @@ async def set_primary_title(
     if user_id != current_user_id:
         raise HTTPException(status_code=403, detail="无权修改其他用户头衔")
 
-    db = get_supabase()
+    db = get_supabase_admin()
 
     title_result = (
         db.table("user_titles")
@@ -356,7 +358,7 @@ async def clear_primary_title(
     if user_id != current_user_id:
         raise HTTPException(status_code=403, detail="无权修改其他用户头衔")
 
-    db = get_supabase()
+    db = get_supabase_admin()
     db.table("user_titles").update(
         {"is_primary": False}
     ).eq("user_id", user_id).eq("is_primary", True).execute()

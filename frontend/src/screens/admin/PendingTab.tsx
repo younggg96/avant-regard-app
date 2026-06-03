@@ -244,7 +244,7 @@ const PendingTab = () => {
               <Pressable style={styles.checkbox} onPress={() => toggleSelectPost(post.id)}>
                 <Ionicons
                   name={isSelected ? "checkbox" : "square-outline"}
-                  size={22}
+                  size={20}
                   color={isSelected ? theme.colors.black : theme.colors.gray300}
                 />
               </Pressable>
@@ -256,7 +256,7 @@ const PendingTab = () => {
         </HStack>
 
         <HStack style={sharedStyles.userInfo}>
-          <Ionicons name="person-circle-outline" size={20} color={theme.colors.gray400} />
+          <Ionicons name="person-circle-outline" size={18} color={theme.colors.gray400} />
           <Text style={sharedStyles.username}>{post.username}</Text>
           <Text style={sharedStyles.userId}>(ID: {post.userId})</Text>
         </HStack>
@@ -316,35 +316,35 @@ const PendingTab = () => {
               colorScheme="success"
               onPress={() => handleApprove(post.id)}
               disabled={actionLoading}
-              leftIcon={<Ionicons name="checkmark-circle" size={18} color={theme.colors.white} />}
+              leftIcon={<Ionicons name="checkmark-circle" size={16} color={theme.colors.white} />}
             >
-              <ButtonText style={{ fontSize: 12 }}>{t("admin.approve")}</ButtonText>
+              <ButtonText style={{ fontSize: 11 }}>{t("admin.approve")}</ButtonText>
             </Button>
             <Button
               size="sm"
               colorScheme="error"
               onPress={() => handleOpenRejectModal(post.id)}
               disabled={actionLoading}
-              leftIcon={<Ionicons name="close-circle" size={18} color={theme.colors.white} />}
+              leftIcon={<Ionicons name="close-circle" size={16} color={theme.colors.white} />}
             >
-              <ButtonText style={{ fontSize: 12 }}>{t("admin.reject")}</ButtonText>
+              <ButtonText style={{ fontSize: 11 }}>{t("admin.reject")}</ButtonText>
             </Button>
             <Button
               size="sm"
               colorScheme="error"
               onPress={() => handleDeletePost(post.id)}
               disabled={actionLoading}
-              leftIcon={<Ionicons name="trash-outline" size={18} color={theme.colors.white} />}
+              leftIcon={<Ionicons name="trash-outline" size={16} color={theme.colors.white} />}
             >
-              <ButtonText style={{ fontSize: 12 }}>{t("common.delete")}</ButtonText>
+              <ButtonText style={{ fontSize: 11 }}>{t("common.delete")}</ButtonText>
             </Button>
             <Button
               size="sm"
               variant="outline"
               onPress={() => (navigation as any).navigate("PostDetail", { postId: post.id })}
-              leftIcon={<Ionicons name="eye-outline" size={18} color={theme.colors.white} />}
+              leftIcon={<Ionicons name="eye-outline" size={16} />}
             >
-              <ButtonText style={{ color: theme.colors.white, fontSize: 12 }}>{t("admin.view")}</ButtonText>
+              <ButtonText style={{ fontSize: 11 }}>{t("admin.view")}</ButtonText>
             </Button>
           </HStack>
         )}
@@ -362,7 +362,7 @@ const PendingTab = () => {
           >
             <Ionicons
               name={batchMode ? "close" : "checkbox-outline"}
-              size={18}
+              size={16}
               color={batchMode ? theme.colors.white : theme.colors.black}
             />
             <Text style={[styles.batchModeButtonText, batchMode && styles.batchModeButtonTextActive]}>
@@ -375,7 +375,7 @@ const PendingTab = () => {
               <Pressable style={styles.selectAllButton} onPress={toggleSelectAll}>
                 <Ionicons
                   name={selectedPostIds.size === pendingPosts.length ? "checkbox" : "square-outline"}
-                  size={18}
+                  size={16}
                   color={theme.colors.black}
                 />
                 <Text style={styles.selectAllText}>
@@ -393,7 +393,7 @@ const PendingTab = () => {
                     <ActivityIndicator color={theme.colors.white} size="small" />
                   ) : (
                     <>
-                      <Ionicons name="checkmark-circle" size={16} color={theme.colors.white} />
+                      <Ionicons name="checkmark-circle" size={14} color={theme.colors.white} />
                       <Text style={styles.batchActionText}>{t("admin.approve")}({selectedPostIds.size})</Text>
                     </>
                   )}
@@ -403,7 +403,7 @@ const PendingTab = () => {
                   onPress={handleOpenBatchRejectModal}
                   disabled={actionLoading || selectedPostIds.size === 0}
                 >
-                  <Ionicons name="close-circle" size={16} color={theme.colors.white} />
+                  <Ionicons name="close-circle" size={14} color={theme.colors.white} />
                   <Text style={styles.batchActionText}>{t("admin.batchReject", { count: selectedPostIds.size })}</Text>
                 </Pressable>
               </HStack>
@@ -514,36 +514,40 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
     marginRight: t.spacing.sm,
   },
   imageScroll: {
-    marginBottom: t.spacing.sm,
+    marginBottom: 6,
   },
   postImage: {
-    width: 80,
-    height: 80,
-    borderRadius: t.borderRadius.md,
-    marginRight: t.spacing.sm,
+    width: 64,
+    height: 64,
+    borderRadius: 4,
+    marginRight: 6,
     backgroundColor: t.colors.gray100,
   },
   moreImages: {
-    width: 80,
-    height: 80,
-    borderRadius: t.borderRadius.md,
+    width: 64,
+    height: 64,
+    borderRadius: 4,
     backgroundColor: t.colors.gray100,
     alignItems: "center",
     justifyContent: "center",
   },
   moreImagesText: {
     ...t.typography.body,
+    fontSize: 13,
+    lineHeight: 16,
     color: t.colors.gray400,
     fontWeight: "600",
   },
   reviewInfo: {
     backgroundColor: t.colors.gray50,
-    padding: t.spacing.sm,
-    borderRadius: t.borderRadius.md,
-    marginBottom: t.spacing.sm,
+    padding: 8,
+    borderRadius: 4,
+    marginBottom: 6,
   },
   reviewText: {
     ...t.typography.caption,
+    fontSize: 11,
+    lineHeight: 14,
     color: t.colors.gray400,
     marginBottom: 2,
   },
@@ -553,19 +557,19 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   batchToolbar: {
     alignItems: "center",
     backgroundColor: t.colors.background,
-    paddingHorizontal: t.spacing.md,
-    paddingVertical: t.spacing.sm,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
     borderBottomWidth: 1,
     borderBottomColor: t.colors.border,
     flexWrap: "wrap",
-    gap: t.spacing.sm,
+    gap: 6,
   },
   batchModeButton: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: t.spacing.md,
-    paddingVertical: t.spacing.sm,
-    borderRadius: t.borderRadius.md,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 4,
     backgroundColor: t.colors.gray100,
     gap: 4,
   },
@@ -574,6 +578,7 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   },
   batchModeButtonText: {
     ...t.typography.caption,
+    fontSize: 11,
     color: t.colors.text,
     fontWeight: "600",
   },
@@ -583,26 +588,27 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   selectAllButton: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: t.spacing.md,
-    paddingVertical: t.spacing.sm,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
     gap: 4,
   },
   selectAllText: {
     ...t.typography.caption,
+    fontSize: 11,
     color: t.colors.text,
     fontWeight: "500",
   },
   batchActions: {
     alignItems: "center",
-    gap: t.spacing.sm,
+    gap: 6,
     marginLeft: "auto",
   },
   batchActionButton: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: t.spacing.md,
-    paddingVertical: t.spacing.sm,
-    borderRadius: t.borderRadius.md,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 4,
     gap: 4,
   },
   batchApproveButton: {
@@ -616,6 +622,7 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   },
   batchActionText: {
     ...t.typography.caption,
+    fontSize: 11,
     color: t.colors.textInverted,
     fontWeight: "600",
   },

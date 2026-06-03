@@ -433,7 +433,7 @@ const BrandManagementTab = () => {
           />
         ) : (
           <Box style={[styles.compactThumb, styles.compactThumbPlaceholder]}>
-            <Ionicons name="pricetag-outline" size={18} color={theme.colors.gray300} />
+            <Ionicons name="pricetag-outline" size={16} color={theme.colors.gray300} />
           </Box>
         )}
 
@@ -448,7 +448,7 @@ const BrandManagementTab = () => {
           </Text>
         </Box>
 
-        <Ionicons name="chevron-forward" size={18} color={theme.colors.gray300} />
+        <Ionicons name="chevron-forward" size={16} color={theme.colors.gray300} />
       </HStack>
     </Pressable>
   );
@@ -473,7 +473,7 @@ const BrandManagementTab = () => {
             size="sm"
           />
           <Pressable style={styles.searchButton} onPress={handleSearch}>
-            <Ionicons name="search" size={18} color={theme.colors.white} />
+            <Ionicons name="search" size={16} color={theme.colors.white} />
           </Pressable>
         </HStack>
 
@@ -486,7 +486,7 @@ const BrandManagementTab = () => {
           </Box>
         ) : brands.length === 0 ? (
           <Box style={sharedStyles.emptyContainer}>
-            <Ionicons name="pricetag-outline" size={48} color={theme.colors.gray200} />
+            <Ionicons name="pricetag-outline" size={40} color={theme.colors.gray200} />
             <Text style={sharedStyles.emptyText}>{t("admin.noData")}</Text>
           </Box>
         ) : (
@@ -500,7 +500,7 @@ const BrandManagementTab = () => {
               onPress={() => fetchBrands(page - 1, keyword)}
               style={{ opacity: page <= 1 ? 0.3 : 1 }}
             >
-              <Ionicons name="chevron-back" size={24} color={theme.colors.text} />
+              <Ionicons name="chevron-back" size={20} color={theme.colors.text} />
             </Pressable>
             <Text style={styles.paginationText}>{t("admin.pagination", { page, total: totalPages })}</Text>
             <Pressable
@@ -508,7 +508,7 @@ const BrandManagementTab = () => {
               onPress={() => fetchBrands(page + 1, keyword)}
               style={{ opacity: page >= totalPages ? 0.3 : 1 }}
             >
-              <Ionicons name="chevron-forward" size={24} color={theme.colors.text} />
+              <Ionicons name="chevron-forward" size={20} color={theme.colors.text} />
             </Pressable>
           </HStack>
         )}
@@ -532,7 +532,7 @@ const BrandManagementTab = () => {
                 style={styles.brandDetailCloseBtn}
                 onPress={() => setDetailModalVisible(false)}
               >
-                <Ionicons name="close" size={22} color={theme.colors.text} />
+                <Ionicons name="close" size={20} color={theme.colors.text} />
               </Pressable>
             </HStack>
             {detailBrand ? (
@@ -605,7 +605,7 @@ const BrandManagementTab = () => {
                           <Box style={[styles.checkboxOverlay, img.isSelected && styles.checkboxOverlaySelected]}>
                             <Ionicons
                               name={img.isSelected ? "checkmark-circle" : "ellipse-outline"}
-                              size={22}
+                              size={20}
                               color={img.isSelected ? "#3B82F6" : "rgba(255,255,255,0.7)"}
                             />
                           </Box>
@@ -621,7 +621,7 @@ const BrandManagementTab = () => {
                     {brandImageUploading ? (
                       <ActivityIndicator size="small" color={theme.colors.gray300} />
                     ) : (
-                      <Ionicons name="add" size={28} color={theme.colors.gray300} />
+                      <Ionicons name="add" size={24} color={theme.colors.gray300} />
                     )}
                   </Pressable>
                 </Box>
@@ -726,37 +726,37 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   },
   searchInput: {
     flex: 1,
-    height: 40,
+    height: 36,
   },
   searchButton: {
     backgroundColor: t.colors.text,
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    height: 40,
+    borderRadius: 4,
+    paddingHorizontal: 12,
+    height: 36,
     justifyContent: "center",
     alignItems: "center",
   },
   totalText: {
-    paddingBottom: 8,
-    fontSize: 12,
+    paddingBottom: 6,
+    fontSize: 11,
     color: t.colors.gray400,
   },
   compactCard: {
     backgroundColor: t.colors.card,
     borderRadius: t.borderRadius.lg,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    marginBottom: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    marginBottom: 6,
     ...t.shadows.sm,
   },
   compactCardRow: {
     alignItems: "center",
-    gap: 10,
+    gap: 8,
   },
   compactThumb: {
-    width: 44,
-    height: 44,
-    borderRadius: 8,
+    width: 36,
+    height: 36,
+    borderRadius: 4,
     backgroundColor: t.colors.gray100,
   },
   compactThumbPlaceholder: {
@@ -768,14 +768,16 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
     minWidth: 0,
   },
   compactName: {
-    fontSize: 15,
+    fontSize: 14,
+    lineHeight: 18,
     fontWeight: "600",
     color: t.colors.text,
   },
   compactMeta: {
     fontSize: 11,
+    lineHeight: 14,
     color: t.colors.gray300,
-    marginTop: 2,
+    marginTop: 1,
   },
   brandDetailModalContent: {
     backgroundColor: t.colors.card,
@@ -794,6 +796,8 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   },
   brandDetailTitle: {
     ...t.typography.h4,
+    fontSize: 15,
+    lineHeight: 20,
     color: t.colors.text,
     flex: 1,
     marginRight: t.spacing.sm,
@@ -806,17 +810,17 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   },
   detailCoverImage: {
     width: "100%",
-    height: 180,
+    height: 150,
     borderRadius: t.borderRadius.md,
-    marginBottom: t.spacing.md,
+    marginBottom: t.spacing.sm,
     backgroundColor: t.colors.gray100,
   },
   detailMetaCard: {
     backgroundColor: t.colors.surface,
     borderRadius: t.borderRadius.md,
-    padding: t.spacing.md,
-    marginBottom: t.spacing.md,
-    gap: t.spacing.sm,
+    padding: t.spacing.sm,
+    marginBottom: t.spacing.sm,
+    gap: t.spacing.xs,
   },
   detailMetaRow: {
     justifyContent: "space-between",
@@ -825,37 +829,40 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   },
   detailMetaLabel: {
     fontSize: 12,
+    lineHeight: 16,
     color: t.colors.gray400,
     flex: 1,
   },
   detailMetaValue: {
     fontSize: 12,
+    lineHeight: 16,
     color: t.colors.text,
     fontWeight: "500",
     flex: 1.2,
     textAlign: "right",
   },
   detailSectionTitle: {
-    fontSize: 12,
+    fontSize: 11,
+    lineHeight: 14,
     fontWeight: "600",
     color: t.colors.gray300,
-    marginBottom: t.spacing.sm,
+    marginBottom: t.spacing.xs,
   },
   detailEmptyImages: {
     fontSize: 12,
     color: t.colors.gray300,
-    marginBottom: t.spacing.md,
+    marginBottom: t.spacing.sm,
   },
   detailImagesGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8,
-    marginBottom: t.spacing.md,
+    gap: 6,
+    marginBottom: t.spacing.sm,
   },
   detailImageItem: {
-    width: 88,
-    height: 88,
-    borderRadius: 8,
+    width: 72,
+    height: 72,
+    borderRadius: 4,
     overflow: "hidden",
     backgroundColor: t.colors.gray100,
   },
@@ -869,8 +876,8 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   },
   brandImage: {
     width: "100%",
-    height: 120,
-    borderRadius: 8,
+    height: 100,
+    borderRadius: 4,
     marginBottom: 8,
   },
   brandMeta: {
@@ -881,11 +888,11 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
-    paddingVertical: 16,
+    paddingVertical: 10,
     gap: 16,
   },
   paginationText: {
-    fontSize: 14,
+    fontSize: 13,
     color: t.colors.gray500,
   },
   editModalContent: {
@@ -895,24 +902,25 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
   },
   fieldRow: {
     flexDirection: "row",
-    gap: 12,
+    gap: 8,
     marginTop: t.spacing.sm,
   },
   imageHint: {
-    fontSize: 12,
+    fontSize: 11,
+    lineHeight: 14,
     color: t.colors.gray300,
-    marginBottom: 8,
+    marginBottom: 6,
   },
   brandImagesGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8,
-    marginBottom: 12,
+    gap: 6,
+    marginBottom: 8,
   },
   brandImageItem: {
-    width: 80,
-    height: 80,
-    borderRadius: 8,
+    width: 64,
+    height: 64,
+    borderRadius: 4,
     overflow: "hidden",
     borderWidth: 2,
     borderColor: "transparent",
@@ -947,15 +955,15 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
     top: 3,
     right: 3,
     backgroundColor: "rgba(0,0,0,0.3)",
-    borderRadius: 11,
+    borderRadius: 4,
   },
   checkboxOverlaySelected: {
     backgroundColor: "rgba(255,255,255,0.9)",
   },
   brandImageAddBtn: {
-    width: 80,
-    height: 80,
-    borderRadius: 8,
+    width: 64,
+    height: 64,
+    borderRadius: 4,
     borderWidth: 1,
     borderColor: t.colors.gray200,
     borderStyle: "dashed",
