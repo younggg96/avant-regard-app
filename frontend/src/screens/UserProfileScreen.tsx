@@ -95,6 +95,7 @@ import {
   type StoreProduct,
 } from "../services/storeProductService";
 import { useFormatPrice } from "../utils/currency";
+import { listUserReviews, type TradeReview } from "../services/aftersalesService";
 
 /** 他人主页一级 tab */
 type UserProfileTopTab = "notes" | "selling" | "wishlist" | "archive";
@@ -179,6 +180,8 @@ const UserProfileScreen = () => {
   const [showShareToChat, setShowShareToChat] = useState(false);
   const [otherLevel, setOtherLevel] = useState<number>(0);
   const [postStats, setPostStats] = useState<UserPostStats | null>(null);
+  const [tradeReviews, setTradeReviews] = useState<TradeReview[]>([]);
+  const [tradeReviewsTotal, setTradeReviewsTotal] = useState(0);
 
   // Contribution states
   const [contribSubTab, setContribSubTab] = useState<ContribSubTab>("show");
@@ -414,6 +417,16 @@ const UserProfileScreen = () => {
     }
   };
 
+  const loadTradeReviews = async () => {
+    try {
+      const res = await listUserReviews(userId);
+      setTradeReviews(res.items ?? []);
+      setTradeReviewsTotal(res.total ?? 0);
+    } catch (error) {
+      console.error("Error loading trade reviews:", error);
+    }
+  };
+
   const checkFollowStatus = async () => {
     if (!currentUser?.userId || isCurrentUser) return;
     try {
@@ -599,6 +612,7 @@ const UserProfileScreen = () => {
     loadFollowedBrands();
     loadUserTitles();
     loadPostStats();
+    loadTradeReviews();
     setTabsData({
       posts: { ...initialTabState },
       forum: { ...initialTabState },
@@ -656,6 +670,7 @@ const UserProfileScreen = () => {
       loadFollowedBrands();
       loadUserTitles();
       loadPostStats();
+      loadTradeReviews();
       if (topTab === "archive") {
         loadContributions();
       } else if (topTab === "selling") {
@@ -678,6 +693,7 @@ const UserProfileScreen = () => {
       loadFollowedBrands(),
       loadUserTitles(),
       loadPostStats(),
+      loadTradeReviews(),
     ];
     if (topTab === "archive") {
       tasks.push(loadContributions());
@@ -1562,6 +1578,40 @@ const UserProfileScreen = () => {
           </View>
         </View>
 
+        {/* 历史评价入口 —— 与主页默认展示内容（笔记 / 在售 等）明确区分，
+            单独成卡片入口，点击进入卖家历史评价独立页。 */}
+        {tradeReviewsTotal > 0 && (
+          <Pressable
+            style={styles.ratingSection}
+            onPress={() =>
+              (navigation as any).navigate("UserReviews", {
+                userId,
+                username: userInfo?.username || username,
+              })
+            }
+          >
+            <HStack alignItems="center" justifyContent="space-between">
+              <HStack alignItems="center" space="sm">
+                <Ionicons name="star" size={16} color={theme.colors.starRated} />
+                <RNText style={styles.ratingEntryTitle}>
+                  {t("profile.reviewsEntryTitle")}
+                </RNText>
+                <RNText style={styles.ratingScore}>
+                  {(tradeReviews.reduce((sum, r) => sum + r.rating, 0) / tradeReviews.length).toFixed(1)}
+                </RNText>
+                <RNText style={styles.ratingCount}>
+                  ({tradeReviewsTotal} {t("profile.ratingsCount")})
+                </RNText>
+              </HStack>
+              <Ionicons
+                name="chevron-forward"
+                size={18}
+                color={appTheme.colors.gray400}
+              />
+            </HStack>
+          </Pressable>
+        )}
+
         {/* 关注的品牌 */}
         {followedBrands.length > 0 && (
           <View style={styles.followedBrandsSection}>
@@ -1997,6 +2047,33 @@ const makeStyles = (t: AppTheme) =>
   statLabel: {
     fontSize: 12,
     color: t.colors.gray600,
+    fontFamily: playfairFonts.regular,
+  },
+  ratingSection: {
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    marginTop: 8,
+    backgroundColor: t.colors.card,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: t.colors.border,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: t.colors.border,
+  },
+  ratingEntryTitle: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: t.colors.text,
+    fontFamily: playfairFonts.medium,
+  },
+  ratingScore: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: t.colors.text,
+    fontFamily: playfairFonts.medium,
+  },
+  ratingCount: {
+    fontSize: 12,
+    color: t.colors.gray400,
     fontFamily: playfairFonts.regular,
   },
   followedBrandsSection: {

@@ -12,6 +12,7 @@ from app.services.trade_review_service import trade_review_service
 from app.schemas.disputes import (
     DisputeCreate,
     DisputeResolve,
+    DisputeSellerRespond,
     AuthenticationOrderCreate,
     AuthenticationDecision,
     TradeReviewCreate,
@@ -62,6 +63,42 @@ async def withdraw_dispute(dispute_id: int, user_id: int = Depends(get_current_u
 @disputes_router.get("/orders/{order_id}")
 async def list_dispute_for_order(order_id: int, _user=Depends(get_current_user)):
     return success([d.dict() for d in dispute_service.list_for_order(order_id)])
+
+
+@disputes_router.get("/seller")
+async def list_seller_disputes(
+    status: Optional[str] = None,
+    page: int = 1,
+    pageSize: int = 20,
+    user_id: int = Depends(get_current_user),
+):
+    """卖家端：拉取自己名下所有订单上买家提交的售后请求列表。"""
+    items, total = dispute_service.list_for_seller(
+        user_id, status=status, page=page, page_size=pageSize
+    )
+    return success({"items": [d.dict() for d in items], "total": total})
+
+
+@disputes_router.post("/{dispute_id}/seller-respond")
+async def seller_respond_dispute(
+    dispute_id: int,
+    body: DisputeSellerRespond,
+    user_id: int = Depends(get_current_user),
+):
+    """卖家端：对买家售后请求做出响应（同意退款 / 拒绝并申诉）。"""
+    try:
+        d = dispute_service.seller_respond(
+            dispute_id,
+            user_id,
+            action=body.action.value,
+            message=body.message,
+            evidence_photos=body.evidencePhotos,
+        )
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return success(d.dict())
 
 
 @admin_disputes_router.get("/queue")
@@ -209,8 +246,13 @@ async def submit_review(body: TradeReviewCreate, user_id: int = Depends(get_curr
 async def list_user_reviews(
     user_id: int, page: int = 1, pageSize: int = 20
 ):
+    # 卖家历史评价页：只返回真实买家对该卖家（target=user_id）的评价
     items, total = trade_review_service.list_for_user(
-        user_id, only_visible=True, page=page, page_size=pageSize
+        user_id,
+        only_visible=True,
+        reviewer_role="buyer",
+        page=page,
+        page_size=pageSize,
     )
     return success({"items": [r.dict() for r in items], "total": total})
 

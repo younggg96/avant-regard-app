@@ -277,9 +277,9 @@ const TradingTabContent: React.FC<Props> = ({ isActive, onScroll }) => {
   };
 
   const handleBrandPress = (brand: PopularBrand) => {
-    reload({
-      sort: "featured",
-      brand: brand.name,
+    (navigation as any).navigate("BrandDetail", {
+      name: brand.name,
+      initialTab: "onsale",
     });
   };
 
@@ -290,12 +290,12 @@ const TradingTabContent: React.FC<Props> = ({ isActive, onScroll }) => {
     setAllBrandsSheetVisible(true);
   };
 
-  // 「全部品牌」模态框选中一个品牌：关闭 sheet → 用品牌名收敛筛选到该品牌
+  // 「全部品牌」模态框选中一个品牌：关闭 sheet → 跳转品牌 archive 在售 tab
   const handleAllBrandsSelect = (brand: PlatformBrand) => {
     setAllBrandsSheetVisible(false);
-    reload({
-      sort: "featured",
-      brand: brand.name,
+    (navigation as any).navigate("BrandDetail", {
+      name: brand.name,
+      initialTab: "onsale",
     });
   };
 

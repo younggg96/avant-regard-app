@@ -37,6 +37,7 @@ import {
   withdrawOffer,
 } from "../../services/orderService";
 import { useFormatPrice } from "../../utils/currency";
+import { useOrderAddressPromptStore } from "../../store/orderAddressPromptStore";
 import { useAppTheme, useThemedStyles, type AppTheme } from "../../theme";
 import { AnimatedChip, chipRowStyle } from "../../components/ui";
 import { UserAvatar } from "../../components/ui/UserAvatar";
@@ -59,6 +60,7 @@ export default function MyOffersScreen() {
   const styles = useThemedStyles(makeStyles);
   const { t } = useTranslation();
   const formatPrice = useFormatPrice();
+  const showAddressPrompt = useOrderAddressPromptStore((s) => s.showPrompt);
 
   const [mode, setMode] = useState<RoleMode>("outgoing");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
@@ -111,30 +113,37 @@ export default function MyOffersScreen() {
   const handleAction = async (
     action: "accept" | "reject" | "withdraw",
     offerId: number,
+    offer?: OfferWithDetail,
   ) => {
     try {
       if (action === "accept") {
         const res = await acceptOffer(offerId);
-        // 买家身份 accept 自己被 counter 的 offer → 直接进支付页
-        // 卖家身份 accept 买家 offer → 通知买家去支付
-        const target = mode === "outgoing" ? "Payment" : "OrderDetail";
-        Alert.alert(
-          t("trading.offers.acceptedTitle"),
-          mode === "outgoing"
-            ? t("trading.offers.acceptedGoPayMessage")
-            : t("trading.offers.acceptedMessage"),
-          [
-            {
-              text:
-                mode === "outgoing"
-                  ? t("trading.payment.payNow")
-                  : t("trading.offers.viewOrder"),
-              onPress: () =>
-                navigation.navigate(target, { orderId: res.order.id }),
-            },
-            { text: t("common.cancel"), style: "cancel" },
-          ],
-        );
+        if (mode === "outgoing") {
+          // 买家身份 accept 卖家的 counter → 成交。
+          // 从顶部弹出「填写收货地址」提示, 点击进入与卖家私聊并补填地址。
+          showAddressPrompt({
+            orderId: res.order.id,
+            sellerUserId: res.order.sellerUserId ?? offer?.seller?.userId ?? null,
+            sellerName: offer?.seller?.username ?? null,
+            sellerAvatar: offer?.seller?.avatarUrl ?? null,
+            productTitle: offer?.product?.title ?? null,
+            coverImage: offer?.product?.coverImage ?? null,
+          });
+        } else {
+          // 卖家身份 accept 买家 offer → 通知卖家查看订单(买家侧会收到补填提示)。
+          Alert.alert(
+            t("trading.offers.acceptedTitle"),
+            t("trading.offers.acceptedMessage"),
+            [
+              {
+                text: t("trading.offers.viewOrder"),
+                onPress: () =>
+                  navigation.navigate("OrderDetail", { orderId: res.order.id }),
+              },
+              { text: t("common.cancel"), style: "cancel" },
+            ],
+          );
+        }
       } else if (action === "reject") {
         await rejectOffer(offerId);
       } else {
@@ -290,7 +299,7 @@ export default function MyOffersScreen() {
             {canAccept ? (
               <Pressable
                 style={styles.primaryBtn}
-                onPress={() => handleAction("accept", item.id)}
+                onPress={() => handleAction("accept", item.id, item)}
               >
                 <Text style={styles.primaryBtnText}>
                   {t("trading.offers.accept")}
@@ -426,7 +435,7 @@ const makeStyles = (t: AppTheme) =>
       flex: 1,
       paddingVertical: 8,
       alignItems: "center",
-      borderRadius: 14,
+      borderRadius: 4,
       marginHorizontal: 4,
       backgroundColor: t.colors.gray100,
     },
@@ -440,12 +449,12 @@ const makeStyles = (t: AppTheme) =>
     },
     card: {
       backgroundColor: t.colors.cardElevated,
-      borderRadius: 12,
+      borderRadius: 4,
       padding: 12,
       marginBottom: 12,
     },
     productRow: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
-    thumb: { width: 60, height: 60, borderRadius: 8 },
+    thumb: { width: 60, height: 60, borderRadius: 4 },
     thumbPlaceholder: {
       backgroundColor: t.colors.skeleton,
       alignItems: "center",

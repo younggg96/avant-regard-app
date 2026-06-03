@@ -84,6 +84,18 @@ export const setNavigationRef = (ref: NavigationContainerRef<any>) => {
 };
 
 /**
+ * 全局导航(供非屏幕组件使用, 如挂在导航树外的全局横幅)。
+ * 内部复用已注册的 navigationRef, 在导航尚未就绪时静默忽略。
+ */
+export const navigate = (route: string, params?: Record<string, any>) => {
+  if (!navigationRef) {
+    console.warn("navigate: 导航引用未就绪", route);
+    return;
+  }
+  (navigationRef as any).navigate(route, params);
+};
+
+/**
  * 解析深度链接
  * @param url 链接 URL
  * @returns 解析后的路由信息
@@ -254,6 +266,7 @@ export default {
   LINKING_PREFIXES,
   LINKING_CONFIG,
   setNavigationRef,
+  navigate,
   parseDeepLink,
   handleDeepLink,
   getInitialURL,

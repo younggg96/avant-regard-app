@@ -1214,6 +1214,7 @@ class StoreProductService:
             "show":    {id, brandName, season, year, category, title} | None,
             "relatedBrands":   [{name, listingCount, imageUrl}],
             "relatedProducts": [StoreProduct.dict()],          # 同品牌其他商品
+            "sellerOtherProducts": [StoreProduct.dict()],      # 同卖家发布的其他在售单品
             "reviews":         {items: [{rating, comment, reviewerUsername,
                                           reviewerAvatar, submittedAt}], total},
           }
@@ -1227,6 +1228,9 @@ class StoreProductService:
         show = self._fetch_related_show(product.originalShowId)
         related_brands = self._fetch_seller_related_brands(product)
         related_products = self._fetch_related_products(product, exclude_id=product_id)
+        seller_other_products = self._fetch_seller_other_products(
+            product, exclude_id=product_id
+        )
         reviews = self._fetch_seller_reviews(product.sellerUserId, limit=5)
 
         return {
@@ -1235,6 +1239,7 @@ class StoreProductService:
             "show": show,
             "relatedBrands": related_brands,
             "relatedProducts": [p.model_dump() for p in related_products],
+            "sellerOtherProducts": [p.model_dump() for p in seller_other_products],
             "reviews": reviews,
         }
 
@@ -1509,6 +1514,38 @@ class StoreProductService:
                     out.append(self._format_product(r))
             except Exception:
                 pass
+        return out[:limit]
+
+    def _fetch_seller_other_products(
+        self, product: StoreProduct, *, exclude_id: int, limit: int = 6
+    ) -> List[StoreProduct]:
+        """同一卖家挂出的其他在售单品（卖家本人发布的其他商品）。
+
+        - individual 卖家：按 seller_user_id 匹配
+        - merchant 卖家：按 merchant_id 匹配
+        排除当前商品，仅取 active 状态，按上新时间倒序。
+        """
+        out: List[StoreProduct] = []
+        try:
+            q = (
+                self.db.table("store_products")
+                .select(_PRODUCT_SELECT)
+                .eq("status", "active")
+                .neq("id", exclude_id)
+            )
+            if product.sellerKind == "merchant" and product.merchantId is not None:
+                q = q.eq("merchant_id", product.merchantId)
+            elif product.sellerUserId is not None:
+                q = q.eq("seller_user_id", product.sellerUserId)
+            else:
+                return []
+            rows = (
+                q.order("created_at", desc=True).limit(limit).execute().data or []
+            )
+            for r in rows:
+                out.append(self._format_product(r))
+        except Exception:
+            pass
         return out[:limit]
 
     def _fetch_seller_reviews(

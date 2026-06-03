@@ -49,6 +49,7 @@ import {
   startPayment,
 } from "../../services/orderService";
 import { useFormatPrice } from "../../utils/currency";
+import { TradingNotFoundState } from "../../components/trading/TradingFormShared";
 import { useAppTheme, useThemedStyles, type AppTheme } from "../../theme";
 import { config as envConfig } from "../../config/env";
 
@@ -317,9 +318,12 @@ export default function PaymentScreen() {
   }
   if (!order) {
     return (
-      <SafeAreaView style={styles.safe}>
-        <Text style={styles.empty}>{t("trading.payment.orderMissing")}</Text>
-      </SafeAreaView>
+      <TradingNotFoundState
+        headerTitle={t("trading.payment.headerTitle")}
+        title={t("trading.payment.orderMissing")}
+        hint={t("trading.notFoundState.paymentHint")}
+        icon="card-outline"
+      />
     );
   }
 

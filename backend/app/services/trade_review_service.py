@@ -38,7 +38,7 @@ class TradeReviewService:
         self.db = get_supabase_admin()
 
     @staticmethod
-    def _format(row: dict) -> TradeReview:
+    def _format(row: dict, reviewer: Optional[dict] = None) -> TradeReview:
         return TradeReview(
             id=row["id"],
             orderId=row["order_id"],
@@ -52,7 +52,41 @@ class TradeReviewService:
             visible=row.get("visible", False),
             submittedAt=row.get("submitted_at"),
             autoClosedAt=row.get("auto_closed_at"),
+            reviewerUsername=(reviewer or {}).get("username"),
+            reviewerAvatarUrl=(reviewer or {}).get("avatar_url"),
         )
+
+    def _fetch_reviewers(self, user_ids: List[int]) -> Dict[int, dict]:
+        """批量取评价人的 username + avatar_url，给卖家历史评价页展示。"""
+        unique_ids = list({uid for uid in user_ids if uid is not None})
+        if not unique_ids:
+            return {}
+        out: Dict[int, dict] = {}
+        try:
+            u_res = (
+                self.db.table("users")
+                .select("id, username")
+                .in_("id", unique_ids)
+                .execute()
+            )
+            for u in u_res.data or []:
+                out[u["id"]] = {"username": u.get("username"), "avatar_url": None}
+        except Exception as e:  # noqa: BLE001
+            print(f"[trade_review] fetch reviewer users failed: {e}")
+        try:
+            info_res = (
+                self.db.table("user_info")
+                .select("user_id, avatar_url")
+                .in_("user_id", unique_ids)
+                .execute()
+            )
+            for info in info_res.data or []:
+                uid = info["user_id"]
+                if uid in out:
+                    out[uid]["avatar_url"] = info.get("avatar_url")
+        except Exception as e:  # noqa: BLE001
+            print(f"[trade_review] fetch reviewer avatars failed: {e}")
+        return out
 
     def submit(
         self,
@@ -143,6 +177,7 @@ class TradeReviewService:
         user_id: int,
         *,
         only_visible: bool = True,
+        reviewer_role: Optional[str] = None,
         page: int = 1,
         page_size: int = 20,
     ) -> Tuple[List[TradeReview], int]:
@@ -153,11 +188,19 @@ class TradeReviewService:
         )
         if only_visible:
             q = q.eq("visible", True)
+        # 卖家历史评价页：只展示真实买家（reviewer_role=buyer）对该卖家的评价
+        if reviewer_role:
+            q = q.eq("reviewer_role", reviewer_role)
         q = q.order("submitted_at", desc=True)
         offset = (page - 1) * page_size
         q = q.range(offset, offset + page_size - 1)
         res = execute_with_retry(lambda: q.execute(), label="trade_reviews.list")
-        return [self._format(r) for r in (res.data or [])], (res.count or 0)
+        rows = res.data or []
+        reviewers = self._fetch_reviewers([r["reviewer_user_id"] for r in rows])
+        return (
+            [self._format(r, reviewers.get(r["reviewer_user_id"])) for r in rows],
+            (res.count or 0),
+        )
 
     def list_for_order(self, order_id: int, *, viewer_user_id: int) -> List[TradeReview]:
         res = (

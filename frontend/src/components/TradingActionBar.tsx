@@ -28,6 +28,8 @@ interface Props {
   product: StoreProduct;
   isOwner: boolean;
   isBusy?: boolean;
+  /** 买家收到卖家报价（pending counter）时的成交价；命中则动作条展示该价并把挂牌价划线。 */
+  offerPriceCents?: number | null;
   onOffer: () => void;
   onBuyNow: () => void;
   onEdit: () => void;
@@ -38,6 +40,7 @@ const TradingActionBar: React.FC<Props> = ({
   product,
   isOwner,
   isBusy,
+  offerPriceCents,
   onOffer,
   onBuyNow,
   onEdit,
@@ -120,13 +123,25 @@ const TradingActionBar: React.FC<Props> = ({
 
   // ---------------------- active：Offer-first ----------------------
   const acceptOffer = product.acceptOffer !== false;
+  const hasReceivedOffer = offerPriceCents != null;
 
   return (
     <HStack style={styles.bar} space="sm" alignItems="center">
       <VStack flex={1} style={styles.priceCol}>
-        <Text style={styles.priceBig}>{formatPrice(product.priceCents)}</Text>
+        <HStack space="xs" alignItems="baseline">
+          <Text style={[styles.priceBig, hasReceivedOffer && styles.priceOffer]}>
+            {formatPrice(hasReceivedOffer ? offerPriceCents! : product.priceCents)}
+          </Text>
+          {hasReceivedOffer ? (
+            <Text style={styles.priceStrike} numberOfLines={1}>
+              {formatPrice(product.priceCents)}
+            </Text>
+          ) : null}
+        </HStack>
         <Text style={styles.priceMeta} numberOfLines={1}>
-          {acceptOffer
+          {hasReceivedOffer
+            ? t("trading.offerThread.receivedLabel")
+            : acceptOffer
             ? t("trading.actionBar.canOffer")
             : t("trading.actionBar.fixedPrice")}
         </Text>
@@ -182,6 +197,12 @@ const makeStyles = (t: AppTheme) =>
     },
     priceCol: { minWidth: 0 },
     priceBig: { fontSize: 20, fontWeight: "700", color: t.colors.text },
+    priceOffer: { color: t.colors.error },
+    priceStrike: {
+      fontSize: 12,
+      color: t.colors.textSecondary,
+      textDecorationLine: "line-through",
+    },
     priceMeta: { fontSize: 11, color: t.colors.gray300, marginTop: 2 },
     ghostBtn: {
       paddingHorizontal: 12,

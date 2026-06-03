@@ -42,14 +42,8 @@ import { orderStatusVisual } from "../../utils/orderStatusVisual";
 import { OptimizedImage } from "../../components/ui/OptimizedImage";
 import { ImageSize } from "../../utils/imageUtils";
 import { useAuthStore } from "../../store/authStore";
-import {
-  contactSupportForOrder,
-  contactSupportForOrderWithIssue,
-  AftersalesIssue,
-} from "../../services/aftersalesService";
 import { createConversation } from "../../services/chatService";
-import { getCustomerServiceChatParams } from "../../utils/chatNavigationUtils";
-import { ActionSheet, ActionSheetAction } from "../../components/ui/ActionSheet";
+import { TradingNotFoundState } from "../../components/trading/TradingFormShared";
 import { useAppTheme, useThemedStyles, type AppTheme } from "../../theme";
 
 type RouteParams = { OrderDetail: { orderId: number } };
@@ -98,7 +92,6 @@ export default function OrderDetailScreen() {
   const [trackingLoading, setTrackingLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [showShipModal, setShowShipModal] = useState(false);
-  const [showAftersalesSheet, setShowAftersalesSheet] = useState(false);
 
   /** shipped 及之后的状态都需要拉取物流凭证 + 轨迹时间轴. */
   const fetchShipmentIfNeeded = useCallback(async (o: Order) => {
@@ -321,91 +314,6 @@ export default function OrderDetailScreen() {
     }
   }, [contactTargetUserId, navigation, t]);
 
-  const handleAftersalesIssue = useCallback(
-    async (issue?: AftersalesIssue) => {
-      if (!order) return;
-      try {
-        setActionLoading(true);
-        const res = issue
-          ? await contactSupportForOrderWithIssue(order.id, issue)
-          : await contactSupportForOrder(order.id);
-        navigation.navigate("Chat", getCustomerServiceChatParams(
-          res.conversationId,
-          res.csUserId,
-          t,
-        ));
-      } catch (e: any) {
-        Alert.alert(
-          t("common.failed"),
-          e?.message ?? t("trading.aftersales.openFailed"),
-        );
-      } finally {
-        setActionLoading(false);
-      }
-    },
-    [order, navigation, t],
-  );
-
-  const aftersalesActions = useMemo<ActionSheetAction[]>(() => {
-    return [
-      {
-        label: t("trading.aftersales.issueNoLogistics"),
-        icon: (
-          <Ionicons
-            name="time-outline"
-            size={20}
-            color={theme.colors.text}
-          />
-        ),
-        onPress: () => handleAftersalesIssue("no_logistics_update"),
-      },
-      {
-        label: t("trading.aftersales.issueDeliveredNotReceived"),
-        icon: (
-          <Ionicons
-            name="alert-circle-outline"
-            size={20}
-            color={theme.colors.text}
-          />
-        ),
-        onPress: () => handleAftersalesIssue("delivered_not_received"),
-      },
-      {
-        label: t("trading.aftersales.issueQuality"),
-        icon: (
-          <Ionicons
-            name="cube-outline"
-            size={20}
-            color={theme.colors.text}
-          />
-        ),
-        onPress: () => handleAftersalesIssue("quality_issue"),
-      },
-      {
-        label: t("trading.aftersales.issueListingDelisted"),
-        icon: (
-          <Ionicons
-            name="storefront-outline"
-            size={20}
-            color={theme.colors.text}
-          />
-        ),
-        onPress: () => handleAftersalesIssue("listing_delisted"),
-      },
-      {
-        label: t("trading.aftersales.issueOther"),
-        icon: (
-          <Ionicons
-            name="chatbubbles-outline"
-            size={20}
-            color={theme.colors.text}
-          />
-        ),
-        onPress: () => handleAftersalesIssue(undefined),
-      },
-    ];
-  }, [t, theme, handleAftersalesIssue]);
-
   // 售后入口仅在「有真实交易上下文」的状态下可用：
   //   - pending_payment / refunded* 没有可申诉的内容
   //   - settled 已结算（>3 天），按规则也不再走 v1 退款流，但可以联系客服
@@ -425,9 +333,12 @@ export default function OrderDetailScreen() {
 
   if (!order) {
     return (
-      <SafeAreaView style={styles.safe}>
-        <Text style={styles.empty}>{t("trading.orderDetail.notFound")}</Text>
-      </SafeAreaView>
+      <TradingNotFoundState
+        headerTitle={t("trading.orderDetail.headerTitle")}
+        title={t("trading.orderDetail.notFound")}
+        hint={t("trading.notFoundState.orderHint")}
+        icon="receipt-outline"
+      />
     );
   }
 
@@ -877,10 +788,12 @@ export default function OrderDetailScreen() {
             </Text>
           </Pressable>
         ) : null}
-        {(isBuyer || isSeller) && canRequestAftersales ? (
+        {isBuyer && canRequestAftersales ? (
           <Pressable
             style={styles.secondaryBtn}
-            onPress={() => setShowAftersalesSheet(true)}
+            onPress={() =>
+              navigation.navigate("DisputeOpen", { orderId: order.id })
+            }
             disabled={actionLoading}
           >
             <Ionicons
@@ -891,6 +804,23 @@ export default function OrderDetailScreen() {
             />
             <Text style={styles.secondaryBtnText}>
               {t("trading.aftersales.entryButton")}
+            </Text>
+          </Pressable>
+        ) : null}
+        {isSeller && canRequestAftersales ? (
+          <Pressable
+            style={styles.secondaryBtn}
+            onPress={() => navigation.navigate("SellerAfterSales")}
+            disabled={actionLoading}
+          >
+            <Ionicons
+              name="clipboard-outline"
+              size={16}
+              color={theme.colors.text}
+              style={{ marginRight: 6 }}
+            />
+            <Text style={styles.secondaryBtnText}>
+              {t("trading.aftersales.sellerEntryButton")}
             </Text>
           </Pressable>
         ) : null}
@@ -920,12 +850,6 @@ export default function OrderDetailScreen() {
         }}
       />
 
-      <ActionSheet
-        visible={showAftersalesSheet}
-        onClose={() => setShowAftersalesSheet(false)}
-        title={t("trading.aftersales.sheetTitle")}
-        actions={aftersalesActions}
-      />
     </SafeAreaView>
   );
 }

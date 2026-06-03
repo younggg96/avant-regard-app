@@ -19,6 +19,21 @@ interface WantPopupProps {
   brandName?: string;
   onWant: () => void;
   onDismiss: () => void;
+  /**
+   * 弹窗位置：
+   *   - "bottom"（默认）：从底部向上弹出，悬浮在底部栏之上。
+   *   - "top"：从顶部向下弹出，悬浮在页面上方（避免遮挡底部交易按钮）。
+   */
+  placement?: "top" | "bottom";
+  /**
+   * 弹窗距底部的偏移量（px），仅在 placement="bottom" 时生效。默认 80。
+   */
+  bottomOffset?: number;
+  /**
+   * 弹窗距顶部的偏移量（px），仅在 placement="top" 时生效。默认 12，
+   * 通常传入 安全区 + 导航头部高度，使其落在标题栏下方。
+   */
+  topOffset?: number;
 }
 
 const AUTO_DISMISS_MS = 30000;
@@ -31,10 +46,15 @@ export const WantPopup: React.FC<WantPopupProps> = ({
   brandName,
   onWant,
   onDismiss,
+  placement = "bottom",
+  bottomOffset = 80,
+  topOffset = 12,
 }) => {
   const theme = useAppTheme();
   const popupStyles = useThemedStyles(makePopupStyles);
-  const translateY = useRef(new Animated.Value(120)).current;
+  // 隐藏态的偏移：底部弹窗藏在下方(+)，顶部弹窗藏在上方(-)。
+  const hiddenY = placement === "top" ? -120 : 120;
+  const translateY = useRef(new Animated.Value(hiddenY)).current;
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -50,7 +70,7 @@ export const WantPopup: React.FC<WantPopupProps> = ({
         handleDismiss();
       }, AUTO_DISMISS_MS);
     } else {
-      translateY.setValue(120);
+      translateY.setValue(hiddenY);
     }
 
     return () => {
@@ -60,7 +80,7 @@ export const WantPopup: React.FC<WantPopupProps> = ({
 
   const handleDismiss = () => {
     Animated.timing(translateY, {
-      toValue: 120,
+      toValue: hiddenY,
       duration: 250,
       useNativeDriver: true,
     }).start(() => onDismiss());
@@ -82,7 +102,13 @@ export const WantPopup: React.FC<WantPopupProps> = ({
 
   return (
     <Animated.View
-      style={[popupStyles.container, { transform: [{ translateY }] }]}
+      style={[
+        popupStyles.container,
+        placement === "top"
+          ? { top: topOffset }
+          : { bottom: bottomOffset },
+        { transform: [{ translateY }] },
+      ]}
     >
       <View style={popupStyles.content}>
         <HStack alignItems="center" gap="$sm" style={{ flex: 1 }}>
@@ -154,7 +180,6 @@ const makePopupStyles = (t: AppTheme) =>
   StyleSheet.create({
     container: {
       position: "absolute",
-      bottom: 80,
       left: 12,
       right: 12,
       zIndex: 20,

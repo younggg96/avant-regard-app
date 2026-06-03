@@ -330,7 +330,7 @@ export const TradingContent: React.FC<Props> = ({
                   order.status === "refunded" ||
                   order.status === "refunded_auto" ||
                   order.status === "resolved"
-                    ? () => goOrderDetail(order.id)
+                    ? () => navigation.navigate("SellerAfterSales")
                     : undefined
                 }
               />

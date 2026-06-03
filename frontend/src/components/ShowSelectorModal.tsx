@@ -15,6 +15,7 @@ import { OptimizedImage } from "./ui/OptimizedImage";
 import { ImageSize } from "../utils/imageUtils";
 import { theme, useThemedStyles, type AppTheme, useAppTheme } from "../theme";
 import KeyboardFriend from "./KeyboardFriend";
+import { IS_NA } from "../config/env";
 
 const { width: screenWidth } = Dimensions.get("window");
 
@@ -64,6 +65,66 @@ const ShowSelectorModal: React.FC<ShowSelectorModalProps> = ({
       onLoadMore();
     }
   };
+
+  const renderImageCard = (item: Show) => (
+    <Pressable
+      onPress={() => onSelectShow(item)}
+      style={[styles.showItem, { width: showWidth }]}
+    >
+      <OptimizedImage
+        uri={item.cover_image}
+        size={ImageSize.MEDIUM}
+        style={[styles.showImage, { height: showWidth * 1.4 }]}
+        contentFit="cover"
+        lazy={true}
+      />
+      <VStack mt="$xs" px="$xs">
+        <Text
+          fontSize="$sm"
+          style={{ color: theme.colors.black }}
+          fontWeight="$medium"
+          numberOfLines={1}
+        >
+          {item.brand}
+        </Text>
+        <Text fontSize="$xs" style={{ color: theme.colors.gray500 }} numberOfLines={1}>
+          {item.season}
+        </Text>
+        <Text fontSize={10} style={{ color: theme.colors.gray400 }} numberOfLines={1}>
+          {item.category}
+        </Text>
+      </VStack>
+    </Pressable>
+  );
+
+  const renderTextCard = (item: Show) => (
+    <Pressable
+      onPress={() => onSelectShow(item)}
+      style={styles.textCard}
+    >
+      <Text
+        fontSize="$sm"
+        style={{ color: theme.colors.black }}
+        fontWeight="$semibold"
+        numberOfLines={2}
+      >
+        {item.brand}
+      </Text>
+      <Text fontSize="$xs" style={{ color: theme.colors.gray600 }} mt="$xs" numberOfLines={1}>
+        {item.season}
+      </Text>
+      {!!item.category && (
+        <Text fontSize={11} style={{ color: theme.colors.gray400 }} mt="$xxs" numberOfLines={1}>
+          {item.category}
+        </Text>
+      )}
+      {!!item.year && (
+        <Text fontSize={11} style={{ color: theme.colors.gray400 }} mt="$xxs">
+          {item.year}
+        </Text>
+      )}
+    </Pressable>
+  );
 
   return (
     <Modal
@@ -128,44 +189,18 @@ const ShowSelectorModal: React.FC<ShowSelectorModalProps> = ({
               keyExtractor={(item, index) =>
                 `${item.brand}-${item.season}-${index}`
               }
-              numColumns={2}
+              numColumns={IS_NA ? 1 : 2}
+              key={IS_NA ? "na-list" : "cn-grid"}
               contentContainerStyle={styles.listContent}
-              columnWrapperStyle={styles.columnWrapper}
+              columnWrapperStyle={IS_NA ? undefined : styles.columnWrapper}
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
               keyboardDismissMode="on-drag"
               onEndReached={handleEndReached}
               onEndReachedThreshold={0.5}
-              renderItem={({ item }) => (
-                <Pressable
-                  onPress={() => onSelectShow(item)}
-                  style={[styles.showItem, { width: showWidth }]}
-                >
-                  <OptimizedImage
-                    uri={item.cover_image}
-                    size={ImageSize.MEDIUM}
-                    style={[styles.showImage, { height: showWidth * 1.4 }]}
-                    contentFit="cover"
-                    lazy={true}
-                  />
-                  <VStack mt="$xs" px="$xs">
-                    <Text
-                      fontSize="$sm"
-                      style={{ color: theme.colors.black }}
-                      fontWeight="$medium"
-                      numberOfLines={1}
-                    >
-                      {item.brand}
-                    </Text>
-                    <Text fontSize="$xs" style={{ color: theme.colors.gray500 }} numberOfLines={1}>
-                      {item.season}
-                    </Text>
-                    <Text fontSize={10} style={{ color: theme.colors.gray400 }} numberOfLines={1}>
-                      {item.category}
-                    </Text>
-                  </VStack>
-                </Pressable>
-              )}
+              renderItem={({ item }) =>
+                IS_NA ? renderTextCard(item) : renderImageCard(item)
+              }
               ListFooterComponent={
                 isLoading && shows.length > 0 ? (
                   <Box py="$md" alignItems="center">
@@ -243,6 +278,16 @@ const makeStyles = (t: AppTheme) =>
     showImage: {
       width: "100%",
       borderRadius: 8,
+    },
+    textCard: {
+      marginHorizontal: 6,
+      marginBottom: 10,
+      paddingVertical: 14,
+      paddingHorizontal: 16,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: t.colors.gray200,
+      backgroundColor: t.colors.white,
     },
   });
 

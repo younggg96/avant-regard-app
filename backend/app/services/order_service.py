@@ -951,6 +951,39 @@ class OrderService:
                 order = order.model_copy(update={"sellerUserId": resolved})
         return order
 
+    def set_shipping_address(
+        self,
+        order_id: int,
+        user_id: int,
+        shipping_address: Dict[str, Any],
+    ) -> Order:
+        """买家在 offer 成交后补填收货地址。
+
+        offer accept 创建的订单 ``shipping_address_json`` 为空(buy-now 才在下单
+        时带地址),这里给买家一个在支付前补完地址的入口。约束:
+          - 仅订单买家本人可写
+          - 仅 ``pending_payment`` 阶段可写(已支付/已发货后地址不可再改)
+        """
+        res = (
+            self.db.table("orders").select("*").eq("id", order_id).limit(1).execute()
+        )
+        if not res.data:
+            raise ValueError("订单不存在")
+        row = res.data[0]
+        if row.get("buyer_user_id") != user_id:
+            raise PermissionError("仅买家可填写收货地址")
+        if row.get("status") != "pending_payment":
+            raise ValueError("当前订单状态不可修改收货地址")
+
+        self.db.table("orders").update(
+            {"shipping_address_json": shipping_address}
+        ).eq("id", order_id).execute()
+
+        full = (
+            self.db.table("orders").select("*").eq("id", order_id).limit(1).execute()
+        )
+        return self._format_order(full.data[0] if full.data else {**row, "shipping_address_json": shipping_address})
+
     def _build_product_brief_map(self, product_ids: List[int]) -> Dict[int, dict]:
         """批量预取一批 product_id 的卡片摘要 (id / title / brand / cover / 标价)。
 

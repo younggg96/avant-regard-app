@@ -34,6 +34,7 @@ import {
   Pressable,
 } from "../../components/ui";
 import ScreenHeader from "../../components/ScreenHeader";
+import { TradingNotFoundState } from "../../components/trading/TradingFormShared";
 import { useAppTheme, useThemedStyles, type AppTheme } from "../../theme";
 import { Alert } from "../../utils/Alert";
 import {
@@ -162,10 +163,12 @@ const ArchiveDetailScreen: React.FC = () => {
   }
   if (!item) {
     return (
-      <SafeAreaView style={styles.container} edges={["top"]}>
-        <ScreenHeader title={t("trading.archiveDetail.headerTitle")} showBack />
-        <Text style={styles.empty}>{t("trading.archiveDetail.notFound")}</Text>
-      </SafeAreaView>
+      <TradingNotFoundState
+        headerTitle={t("trading.archiveDetail.headerTitle")}
+        title={t("trading.archiveDetail.notFound")}
+        hint={t("trading.notFoundState.archiveHint")}
+        icon="archive-outline"
+      />
     );
   }
 

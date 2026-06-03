@@ -399,6 +399,8 @@ export interface StoreProductRichDetail {
   show: ProductDetailShow | null;
   relatedBrands: ProductDetailRelatedBrand[];
   relatedProducts: StoreProduct[];
+  /** 同卖家发布的其他在售单品（详情页「TA 的其他单品」模块）。 */
+  sellerOtherProducts: StoreProduct[];
   reviews: ProductDetailReviews;
 }
 

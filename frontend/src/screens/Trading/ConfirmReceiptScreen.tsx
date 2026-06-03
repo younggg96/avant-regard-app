@@ -36,6 +36,7 @@ import {
 import { useFormatPrice } from "../../utils/currency";
 import { OptimizedImage } from "../../components/ui/OptimizedImage";
 import { ImageSize } from "../../utils/imageUtils";
+import { TradingNotFoundState } from "../../components/trading/TradingFormShared";
 import { useAppTheme, useThemedStyles, type AppTheme } from "../../theme";
 
 type RouteParams = { ConfirmReceipt: { orderId: number } };
@@ -128,9 +129,12 @@ export default function ConfirmReceiptScreen() {
 
   if (!order) {
     return (
-      <SafeAreaView style={styles.safe}>
-        <Text style={styles.empty}>{t("trading.orderDetail.notFound")}</Text>
-      </SafeAreaView>
+      <TradingNotFoundState
+        headerTitle={t("trading.confirmReceipt.headerTitle")}
+        title={t("trading.orderDetail.notFound")}
+        hint={t("trading.notFoundState.orderHint")}
+        icon="receipt-outline"
+      />
     );
   }
 

@@ -7,7 +7,7 @@
  *      觉得"定低了"而焦虑; 待历史成交样本充足后再恢复。
  *   3. 价格栏改为「¥ 数字 + 右侧 元 单位」的紧凑布局, 下方仅保留预计到手。
  */
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -45,9 +45,10 @@ import {
   PublishListingFieldRow,
   PublishListingTextArea,
 } from "./publishListingFormShared";
+import { buildListingTitle } from "./publishListingPresets";
 
 const PublishListingStep3Screen: React.FC = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigation = useNavigation<any>();
   const styles = useThemedStyles(makeStyles);
   const theme = useAppTheme();
@@ -58,6 +59,33 @@ const PublishListingStep3Screen: React.FC = () => {
     form.priceCents ? centsToPriceInput(form.priceCents) : ""
   );
   const [tagsInput, setTagsInput] = useState(form.tags.join(", "));
+
+  // 标题自动生成: 品牌 + 颜色 + 单品类型 + 尺码。
+  // 进入本步时若标题为空, 直接帮卖家填好 (而非仅做 placeholder), 卖家可自行修改;
+  // 一旦卖家手动改过 (manuallyEdited), 就不再覆盖。
+  const generatedTitle = useMemo(
+    () =>
+      buildListingTitle(
+        {
+          brand: form.brand,
+          color: form.color,
+          categoryName: form.categoryName,
+          size: form.size,
+        },
+        t,
+        i18n.language
+      ),
+    [form.brand, form.color, form.categoryName, form.size, t, i18n.language]
+  );
+  const [titleEdited, setTitleEdited] = useState(
+    () => form.title.trim().length > 0
+  );
+
+  useEffect(() => {
+    if (!titleEdited && generatedTitle && form.title !== generatedTitle) {
+      patch({ title: generatedTitle });
+    }
+  }, [titleEdited, generatedTitle, form.title, patch]);
 
   const priceCents = useMemo(
     () => parsePriceInputToCents(priceInput),
@@ -173,12 +201,16 @@ const PublishListingStep3Screen: React.FC = () => {
             <PublishListingFieldRow
               label={t("trading.publishListing.fields.titleField")}
               required
+              hint={t("trading.publishListing.fields.titleAutofillHint")}
             >
               <Input
                 value={form.title}
-                onChangeText={(v) => patch({ title: v })}
+                onChangeText={(v) => {
+                  setTitleEdited(true);
+                  patch({ title: v });
+                }}
                 placeholder={
-                  `${form.brand || ""} ${form.styleName || ""}`.trim() ||
+                  generatedTitle ||
                   t("trading.publishListing.fields.titlePlaceholder")
                 }
                 placeholderTextColor={theme.colors.gray400}

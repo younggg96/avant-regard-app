@@ -32,6 +32,7 @@ import {
   SharePayload,
 } from "./components/ShareContentPickerModal";
 import { isCustomerServiceUser } from "../../constants/customerService";
+import { ShippingAddressModal } from "../../components/trading/ShippingAddressModal";
 import { useChatStyles } from "./styles";
 
 type ReportTarget =
@@ -49,7 +50,19 @@ const ChatScreen = () => {
     otherUserName: routeOtherUserName = t("chat.title"),
     otherUserAvatar,
     otherUserId,
+    openShippingForOrderId,
+    shippingProductTitle,
+    shippingCoverImage,
   } = route.params;
+
+  const [shippingModalVisible, setShippingModalVisible] = useState(false);
+
+  // offer 成交后从顶部「填写收货地址」提示进入时, 自动弹出地址表单。
+  useEffect(() => {
+    if (openShippingForOrderId != null) {
+      setShippingModalVisible(true);
+    }
+  }, [openShippingForOrderId]);
 
   const isCsChat = isCustomerServiceUser(otherUserId);
   const otherUserName = isCsChat
@@ -405,6 +418,16 @@ const ChatScreen = () => {
           setReportTarget(null);
         }}
       />
+
+      {openShippingForOrderId != null ? (
+        <ShippingAddressModal
+          visible={shippingModalVisible}
+          orderId={openShippingForOrderId}
+          productTitle={shippingProductTitle}
+          coverImage={shippingCoverImage}
+          onClose={() => setShippingModalVisible(false)}
+        />
+      ) : null}
     </SafeAreaView>
   );
 };

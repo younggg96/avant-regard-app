@@ -52,6 +52,10 @@ class DisputeService:
             "not_received": "未收到货",
             "fake": "疑似假货",
             "other": "其他问题",
+            "no_logistics_update": "包裹长期无物流更新",
+            "delivered_not_received": "显示已签收但买家未收到",
+            "quality_issue": "商品质量 / 成色问题",
+            "listing_delisted": "卖家下架商品导致已付款订单问题",
         }.get(reason, reason)
 
     @staticmethod
@@ -238,7 +242,8 @@ class DisputeService:
             logger.warning("[dispute] notify_dispute_event failed: %s", e)
 
     @staticmethod
-    def _format(row: dict) -> Dispute:
+    def _format(row: dict, *, context: Optional[Dict[str, Any]] = None) -> Dispute:
+        ctx = context or {}
         return Dispute(
             id=row["id"],
             orderId=row["order_id"],
@@ -253,6 +258,18 @@ class DisputeService:
             resolvedAt=row.get("resolved_at"),
             createdAt=row.get("created_at"),
             updatedAt=row.get("updated_at"),
+            sellerResponse=row.get("seller_response"),
+            sellerResponseAction=row.get("seller_response_action"),
+            sellerResponseAt=row.get("seller_response_at"),
+            sellerEvidencePhotos=row.get("seller_evidence_photos") or [],
+            orderNo=ctx.get("orderNo"),
+            productId=ctx.get("productId"),
+            productTitle=ctx.get("productTitle"),
+            productImage=ctx.get("productImage"),
+            paidPriceCents=ctx.get("paidPriceCents"),
+            currency=ctx.get("currency"),
+            buyerUserId=ctx.get("buyerUserId"),
+            sellerUserId=ctx.get("sellerUserId"),
         )
 
     def open_dispute(
@@ -450,6 +467,245 @@ class DisputeService:
             .execute()
         )
         return [self._format(r) for r in (res.data or [])]
+
+    # ------------------------------------------------------------------
+    # 卖家端：买家售后列表 + 响应
+    # ------------------------------------------------------------------
+
+    def _seller_order_ids(self, seller_user_id: int) -> Dict[int, dict]:
+        """取该卖家名下所有订单（含买手店），返回 {order_id: 订单上下文}。
+
+        上下文用于卖家售后列表卡片展示（订单号 / 商品 / 金额 / 买家）。
+        """
+        ctx: Dict[int, dict] = {}
+        cols = (
+            "id, order_no, product_id, paid_price_cents, currency, "
+            "buyer_user_id, seller_user_id, seller_merchant_id"
+        )
+
+        def _ingest(rows: List[dict]) -> None:
+            for r in rows or []:
+                ctx[r["id"]] = {
+                    "orderNo": r.get("order_no"),
+                    "productId": r.get("product_id"),
+                    "paidPriceCents": r.get("paid_price_cents"),
+                    "currency": r.get("currency") or "CNY",
+                    "buyerUserId": r.get("buyer_user_id"),
+                    "sellerUserId": r.get("seller_user_id") or seller_user_id,
+                }
+
+        try:
+            res = (
+                self.db.table("orders")
+                .select(cols)
+                .eq("seller_user_id", seller_user_id)
+                .execute()
+            )
+            _ingest(res.data or [])
+        except Exception as e:  # noqa: BLE001
+            logger.warning("[dispute] seller orders query failed: %s", e)
+
+        # 买手店：seller_user_id 为空，只有 seller_merchant_id
+        try:
+            from app.services.store_merchant_service import store_merchant_service
+            merchant = store_merchant_service.get_merchant_by_user(seller_user_id)
+            merchant_id = getattr(merchant, "id", None) if merchant else None
+            if merchant_id:
+                res = (
+                    self.db.table("orders")
+                    .select(cols)
+                    .eq("seller_merchant_id", merchant_id)
+                    .execute()
+                )
+                _ingest(res.data or [])
+        except Exception as e:  # noqa: BLE001
+            logger.warning("[dispute] seller merchant orders query failed: %s", e)
+
+        return ctx
+
+    def list_for_seller(
+        self,
+        seller_user_id: int,
+        *,
+        status: Optional[str] = None,
+        page: int = 1,
+        page_size: int = 20,
+    ) -> Tuple[List[Dispute], int]:
+        order_ctx = self._seller_order_ids(seller_user_id)
+        order_ids = list(order_ctx.keys())
+        if not order_ids:
+            return [], 0
+
+        q = (
+            self.db.table("disputes")
+            .select("*", count="exact")
+            .in_("order_id", order_ids)
+        )
+        if status:
+            q = q.eq("status", status)
+        q = q.order("created_at", desc=True)
+        offset = (page - 1) * page_size
+        q = q.range(offset, offset + page_size - 1)
+        res = execute_with_retry(lambda: q.execute(), label="disputes.list_seller")
+        rows = res.data or []
+
+        # 批量补商品摘要（标题 + 封面）
+        product_ids = [
+            order_ctx.get(r["order_id"], {}).get("productId")
+            for r in rows
+        ]
+        product_ids = [pid for pid in product_ids if pid]
+        product_map: Dict[int, dict] = {}
+        if product_ids:
+            try:
+                product_map = order_service._build_product_brief_map(product_ids)
+            except Exception:
+                product_map = {}
+
+        items: List[Dispute] = []
+        for r in rows:
+            ctx = dict(order_ctx.get(r["order_id"], {}))
+            pid = ctx.get("productId")
+            if pid and pid in product_map:
+                ctx["productTitle"] = product_map[pid].get("title")
+                ctx["productImage"] = product_map[pid].get("coverImage")
+            items.append(self._format(r, context=ctx))
+        return items, (res.count or 0)
+
+    def seller_respond(
+        self,
+        dispute_id: int,
+        seller_user_id: int,
+        *,
+        action: str,   # agree_refund / reject
+        message: Optional[str] = None,
+        evidence_photos: Optional[list] = None,
+    ) -> Dispute:
+        if action not in ("agree_refund", "reject"):
+            raise ValueError("非法响应动作")
+        d = self._get_or_raise(dispute_id)
+
+        order = order_service.get_order(d["order_id"])
+        if not order:
+            raise ValueError("订单不存在")
+        if order.sellerUserId != seller_user_id:
+            raise PermissionError("仅卖家可响应该售后")
+        if d["status"] not in ("open", "investigating"):
+            raise ValueError("当前状态不可响应")
+        # 卖家不能响应自己发起的售后（卖家自己开的争议应由买家/客服处理）
+        if d.get("opener_role") == "seller":
+            raise ValueError("该售后由卖家发起，无法自行响应")
+
+        now = datetime.utcnow().isoformat()
+        photos = evidence_photos or []
+        update: Dict[str, Any] = {
+            "seller_response": message,
+            "seller_response_action": action,
+            "seller_response_at": now,
+            "seller_evidence_photos": photos,
+        }
+
+        if action == "agree_refund":
+            # 卖家同意退款：争议直接结案为 resolved_refund，订单走退款。
+            update["status"] = "resolved_refund"
+            update["resolved_at"] = now
+            update["cs_decision"] = message or "卖家同意退款"
+            self.db.table("disputes").update(update).eq("id", dispute_id).execute()
+
+            try:
+                order_service.transition_status(
+                    order.id, OrderStatus.RESOLVED,
+                    actor_user_id=seller_user_id, is_admin=True,
+                )
+            except Exception:
+                pass
+            try:
+                order_service.transition_status(
+                    order.id, OrderStatus.REFUNDED,
+                    actor_user_id=seller_user_id, is_admin=True, reason=message,
+                )
+            except Exception:
+                pass
+
+            updated_row = {**d, **update}
+            # 复用裁决通知（resolved_refund 文案）。
+            self._notify_dispute_event(
+                dispute_row=updated_row,
+                order_id=d["order_id"],
+                reason=d.get("reason", ""),
+                status="resolved_refund",
+                note=message,
+            )
+            return self._format(updated_row)
+
+        # action == "reject": 卖家拒绝并申诉 → 保留 open，转客服仲裁。
+        self.db.table("disputes").update(update).eq("id", dispute_id).execute()
+        updated_row = {**d, **update}
+        self._notify_seller_response(
+            dispute_row=updated_row,
+            order=order,
+            reason=d.get("reason", ""),
+            action="reject",
+            message=message,
+        )
+        return self._format(updated_row)
+
+    def _notify_seller_response(
+        self,
+        *,
+        dispute_row: Dict[str, Any],
+        order,
+        reason: str,
+        action: str,
+        message: Optional[str],
+    ) -> None:
+        """卖家「拒绝并申诉」时通知买家 + 客服。
+
+        agree_refund 走 `_notify_dispute_event(status=resolved_refund)`，
+        这里只处理 reject（不改 status，文案需单独给）。
+        """
+        try:
+            buyer_id = order.buyerUserId
+            seller_id = order.sellerUserId
+            push_title = "卖家已拒绝并申诉"
+            payload = {
+                "disputeId": dispute_row["id"],
+                "orderId": order.id,
+                "reason": self._dispute_reason_label(reason),
+                "rawReason": reason,
+                "status": "卖家申诉中",
+                "rawStatus": dispute_row.get("status", "open"),
+                "sellerAction": "reject",
+            }
+            if message:
+                payload["note"] = message
+
+            # 卖家 → 买家
+            if seller_id and buyer_id and seller_id != buyer_id:
+                self._send_dispute_card(
+                    sender_user_id=seller_id,
+                    recipient_user_id=buyer_id,
+                    payload=payload,
+                    order_id=order.id,
+                    push_title=push_title,
+                )
+            # 卖家 → 客服
+            cs_id = None
+            try:
+                from app.services.trading_support_service import trading_support_service
+                cs_id = trading_support_service.resolve_cs_user_id(seller_id or buyer_id or 0)
+            except Exception:
+                cs_id = None
+            if cs_id and seller_id and cs_id != seller_id:
+                self._send_dispute_card(
+                    sender_user_id=seller_id,
+                    recipient_user_id=cs_id,
+                    payload=payload,
+                    order_id=order.id,
+                    push_title=push_title,
+                )
+        except Exception as e:  # noqa: BLE001
+            logger.warning("[dispute] notify_seller_response failed: %s", e)
 
     def _get_or_raise(self, dispute_id: int) -> dict:
         res = (

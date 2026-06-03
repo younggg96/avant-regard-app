@@ -179,8 +179,8 @@ const makeStyles = (t: AppTheme) =>
     backdropPress: { flex: 1 },
     sheet: {
       backgroundColor: t.colors.card,
-      borderTopLeftRadius: 16,
-      borderTopRightRadius: 16,
+      borderTopLeftRadius: 4,
+      borderTopRightRadius: 4,
       padding: 20,
       paddingBottom: 32,
     },
@@ -188,7 +188,7 @@ const makeStyles = (t: AppTheme) =>
       alignSelf: "center",
       width: 36,
       height: 4,
-      borderRadius: 2,
+      borderRadius: 4,
       backgroundColor: t.colors.border,
       marginBottom: 12,
     },
@@ -216,7 +216,7 @@ const makeStyles = (t: AppTheme) =>
     message: {
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: t.colors.border,
-      borderRadius: 8,
+      borderRadius: 4,
       padding: 12,
       marginTop: 16,
       minHeight: 60,
@@ -232,7 +232,7 @@ const makeStyles = (t: AppTheme) =>
       backgroundColor: t.colors.accent,
       paddingVertical: 12,
       paddingHorizontal: 28,
-      borderRadius: 8,
+      borderRadius: 4,
     },
     primaryDisabled: { opacity: 0.5 },
     primaryBtnText: {

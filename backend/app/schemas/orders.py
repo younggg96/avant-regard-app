@@ -37,6 +37,10 @@ class BuyNowRequest(BaseModel):
     shippingAddress: Optional[Dict[str, Any]] = None
 
 
+class ShippingAddressUpdate(BaseModel):
+    shippingAddress: Dict[str, Any]
+
+
 class PaymentStartRequest(BaseModel):
     provider: Optional[str] = Field(
         None,

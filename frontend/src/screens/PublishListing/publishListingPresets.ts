@@ -160,3 +160,45 @@ export function getColorDisplayText(
   }
   return value;
 }
+
+/**
+ * 尺码在标题里的写法：中文追加「码」，英文追加「 size」。
+ * 例: "M" -> "M码" / "M size"; "1" -> "1码"; "44" -> "44码"。
+ */
+export function formatSizeForTitle(size: string, isEnglish: boolean): string {
+  const trimmed = size.trim();
+  if (!trimmed) return "";
+  return isEnglish ? `${trimmed} size` : `${trimmed}码`;
+}
+
+/**
+ * 自动生成商品标题：品牌 + 颜色 + 单品类型 + 尺码。
+ * 缺失的字段自动跳过，颜色走 i18n 展示文案。
+ */
+export function buildListingTitle(
+  parts: {
+    brand?: string;
+    color?: string;
+    categoryName?: string | null;
+    size?: string;
+  },
+  t: (key: string) => string,
+  language?: string
+): string {
+  const isEnglish = (language ?? "").toLowerCase().startsWith("en");
+  const segments: string[] = [];
+
+  const brand = parts.brand?.trim();
+  if (brand) segments.push(brand);
+
+  const color = parts.color?.trim();
+  if (color) segments.push(getColorDisplayText(color, t));
+
+  const category = parts.categoryName?.trim();
+  if (category) segments.push(category);
+
+  const size = formatSizeForTitle(parts.size ?? "", isEnglish);
+  if (size) segments.push(size);
+
+  return segments.join(" ").trim();
+}

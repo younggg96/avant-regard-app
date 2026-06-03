@@ -13,9 +13,12 @@ import {
   type TextInputProps,
   type ViewStyle,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 
+import ScreenHeader from "../ScreenHeader";
 import { VStack } from "../ui";
 import { useAppTheme, useThemedStyles, type AppTheme } from "../../theme";
 
@@ -88,6 +91,7 @@ export const makeTradingFormStyles = (t: AppTheme) =>
     primaryBtnText: {
       ...t.typography.button,
       fontSize: 15,
+      fontFamily: "PlayfairDisplay-Medium",
       color: t.colors.textInverted,
     },
     defaultRow: {
@@ -140,17 +144,37 @@ export const makeTradingFormStyles = (t: AppTheme) =>
       fontFamily: "PlayfairDisplay-Medium",
       color: t.colors.textInverted,
     },
+    notFoundContent: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      paddingHorizontal: 32,
+      paddingBottom: 48,
+    },
+    notFoundIconWrap: {
+      width: 88,
+      height: 88,
+      borderRadius: 44,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: t.colors.cardElevated,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: t.colors.border,
+    },
     emptyTitle: {
-      ...t.typography.bodySmall,
+      fontSize: 18,
+      lineHeight: 26,
       fontFamily: "PlayfairDisplay-Medium",
       color: t.colors.text,
-      marginTop: 12,
+      marginTop: 20,
       textAlign: "center",
     },
     emptyHint: {
-      ...t.typography.caption,
+      fontSize: 13,
+      lineHeight: 20,
+      fontFamily: "PlayfairDisplay-Regular",
       color: t.colors.gray300,
-      marginTop: 6,
+      marginTop: 8,
       textAlign: "center",
     },
     footer: {
@@ -194,6 +218,62 @@ export const makeTradingFormStyles = (t: AppTheme) =>
       marginTop: 8,
     },
   });
+
+/** Trading 模块资源不存在页 —— ScreenHeader + 空状态 + 返回 */
+export const TradingNotFoundState: React.FC<{
+  headerTitle: string;
+  title: string;
+  hint?: string;
+  icon?: keyof typeof Ionicons.glyphMap;
+  onBackPress?: () => void;
+}> = ({
+  headerTitle,
+  title,
+  hint,
+  icon = "receipt-outline",
+  onBackPress,
+}) => {
+  const { t } = useTranslation();
+  const theme = useAppTheme();
+  const styles = useThemedStyles(makeTradingFormStyles);
+  const navigation = useNavigation();
+
+  const handleBack = () => {
+    if (onBackPress) {
+      onBackPress();
+      return;
+    }
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    }
+  };
+
+  return (
+    <SafeAreaView
+      style={{ flex: 1, backgroundColor: theme.colors.background }}
+      edges={["top"]}
+    >
+      <ScreenHeader
+        title={headerTitle}
+        showBack
+        onBackPress={handleBack}
+      />
+      <View style={styles.notFoundContent}>
+        <View style={styles.notFoundIconWrap}>
+          <Ionicons name={icon} size={40} color={theme.colors.gray300} />
+        </View>
+        <RNText style={styles.emptyTitle}>{title}</RNText>
+        {hint ? <RNText style={styles.emptyHint}>{hint}</RNText> : null}
+        <Pressable
+          style={[styles.primaryBtn, { marginTop: 28, minWidth: 160 }]}
+          onPress={handleBack}
+        >
+          <RNText style={styles.primaryBtnText}>{t("common.back")}</RNText>
+        </Pressable>
+      </View>
+    </SafeAreaView>
+  );
+};
 
 export const TradingFormSection: React.FC<{
   title: string;

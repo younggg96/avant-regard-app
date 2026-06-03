@@ -10,11 +10,17 @@ from pydantic import BaseModel, Field
 
 
 class DisputeReason(str, Enum):
+    # 旧通用原因（保留向后兼容 / 后台仲裁仍可用）
     NOT_AS_DESCRIBED = "not_as_described"
     DAMAGED = "damaged"
     NOT_RECEIVED = "not_received"
     FAKE = "fake"
     OTHER = "other"
+    # 买家端售后请求原因（与前端 AftersalesIssue + 订单详情「选择售后类型」一致）
+    NO_LOGISTICS_UPDATE = "no_logistics_update"
+    DELIVERED_NOT_RECEIVED = "delivered_not_received"
+    QUALITY_ISSUE = "quality_issue"
+    LISTING_DELISTED = "listing_delisted"
 
 
 class DisputeStatus(str, Enum):
@@ -23,6 +29,16 @@ class DisputeStatus(str, Enum):
     RESOLVED_REFUND = "resolved_refund"
     RESOLVED_RELEASE = "resolved_release"
     WITHDRAWN = "withdrawn"
+
+
+class SellerResponseAction(str, Enum):
+    """卖家对买家售后请求的响应动作。
+
+    - agree_refund: 卖家同意退款 → 订单直接进入 refunded，无需客服介入。
+    - reject:       卖家拒绝并申诉 → 记录卖家说明 + 凭证，转交客服仲裁。
+    """
+    AGREE_REFUND = "agree_refund"
+    REJECT = "reject"
 
 
 class DisputeCreate(BaseModel):
@@ -35,6 +51,12 @@ class DisputeCreate(BaseModel):
 class DisputeResolve(BaseModel):
     decision: DisputeStatus  # resolved_refund / resolved_release
     note: Optional[str] = None
+
+
+class DisputeSellerRespond(BaseModel):
+    action: SellerResponseAction
+    message: Optional[str] = Field(None, max_length=2000)
+    evidencePhotos: List[str] = Field(default_factory=list)
 
 
 class Dispute(BaseModel):
@@ -51,6 +73,20 @@ class Dispute(BaseModel):
     resolvedAt: Optional[str] = None
     createdAt: Optional[str] = None
     updatedAt: Optional[str] = None
+    # 卖家响应（买家/卖家分流后新增）
+    sellerResponse: Optional[str] = None
+    sellerResponseAction: Optional[str] = None
+    sellerResponseAt: Optional[str] = None
+    sellerEvidencePhotos: List[str] = Field(default_factory=list)
+    # 列表展示用的订单 / 商品上下文（仅卖家售后列表 / 详情接口填充）
+    orderNo: Optional[str] = None
+    productId: Optional[int] = None
+    productTitle: Optional[str] = None
+    productImage: Optional[str] = None
+    paidPriceCents: Optional[int] = None
+    currency: Optional[str] = None
+    buyerUserId: Optional[int] = None
+    sellerUserId: Optional[int] = None
 
 
 # ----------------- Authentication SKU -----------------
@@ -130,3 +166,6 @@ class TradeReview(BaseModel):
     visible: bool
     submittedAt: Optional[str] = None
     autoClosedAt: Optional[str] = None
+    # 评价人信息（卖家历史评价页展示买家头像 + 脱敏用户名）
+    reviewerUsername: Optional[str] = None
+    reviewerAvatarUrl: Optional[str] = None

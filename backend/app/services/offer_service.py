@@ -557,6 +557,76 @@ class OfferService:
 
         return enriched, total
 
+    def list_for_product_buyer(
+        self, product_id: int, buyer_user_id: int
+    ) -> dict:
+        """买家在「商品详情页」查看自己与该商品的整条议价记录。
+
+        返回:
+          - items:           该买家对此商品的全部出价(含卖家 counter),按时间升序
+          - current:         当前仍 pending 的那条(最新报价);没有则 None
+          - listingPriceCents/currency: 商品挂牌价快照,前端用于「划掉的原价」
+
+        买家详情页需要把展示价更新为「收到的 offer 价」并保留原价划线,
+        所以这里把整条链都 enrich 好(initiator/responder/allowedActions),
+        前端无需再 N 次请求。单条议价链很短,不必担心 N+1。
+        """
+        res = (
+            self.db.table("offers")
+            .select("*")
+            .eq("product_id", product_id)
+            .eq("buyer_user_id", buyer_user_id)
+            .order("created_at", desc=False)
+            .execute()
+        )
+        rows = res.data or []
+
+        product = self._get_product_brief(product_id)
+        buyer = self._get_user_brief(buyer_user_id)
+        # 卖家摘要(可能是 C2C 个人卖家或买手店 owner),整条链共用同一个卖家。
+        seller_uid = None
+        for r in rows:
+            seller_uid = self._resolve_seller_user_id(r)
+            if seller_uid:
+                break
+        seller = self._get_user_brief(seller_uid) if seller_uid else None
+
+        enriched: List[dict] = []
+        current: Optional[dict] = None
+        for row in rows:
+            o = self._format(row)
+            d = o.dict()
+            d["product"] = product or None
+            d["buyer"] = buyer or None
+            d["seller"] = seller
+            try:
+                initiator = self._initiator_role(row)
+            except Exception:
+                initiator = "buyer"
+            d["initiatorRole"] = initiator
+            d["responderRole"] = "seller" if initiator == "buyer" else "buyer"
+
+            actions: List[str] = []
+            if o.status == "pending":
+                # 买家是「响应方」(卖家 counter 给买家) → 可 accept/reject/counter
+                if d["responderRole"] == "buyer":
+                    actions = ["accept", "reject", "counter"]
+                # 买家是「发起方」(自己挂出的 pending offer) → 可撤回
+                if d["initiatorRole"] == "buyer":
+                    actions = list(set(actions + ["withdraw"]))
+            d["allowedActions"] = actions
+
+            enriched.append(d)
+            if o.status == "pending":
+                current = d
+
+        return {
+            "items": enriched,
+            "current": current,
+            "listingPriceCents": (product or {}).get("priceCents"),
+            "currency": (product or {}).get("currency", "CNY"),
+        }
+
     def expire_overdue(self) -> int:
         """Cron：把过期 24h 未响应的 pending offer 标记为 expired，并给双方推送提醒。"""
         now = datetime.utcnow().isoformat()

@@ -56,6 +56,7 @@ interface RouteParams {
   name?: string;
   brandId?: string;
   brandName?: string;
+  initialTab?: "shows" | "posts" | "onsale";
 }
 
 const BrandDetailScreen = () => {
@@ -85,7 +86,7 @@ const BrandDetailScreen = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingPosts, setIsLoadingPosts] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<TabType>("posts");
+  const [activeTab, setActiveTab] = useState<TabType>(params.initialTab || "posts");
   const [createShowVisible, setCreateShowVisible] = useState(false);
   const [heroImageIndex, setHeroImageIndex] = useState(0);
   const [imagePreviewVisible, setImagePreviewVisible] = useState(false);

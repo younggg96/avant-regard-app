@@ -45,7 +45,12 @@ import {
   TouchableOpacity,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
+import {
+  useNavigation,
+  useRoute,
+  RouteProp,
+  useFocusEffect,
+} from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { Box, HStack, Image, Pressable, ScrollView, Text, VStack, UserAvatar } from "../components/ui";
 import { OptimizedImage } from "../components/ui/OptimizedImage";
@@ -84,6 +89,11 @@ import {
 } from "../components/PostDetail";
 import TradingActionBar from "../components/TradingActionBar";
 import OfferModal from "./Trading/OfferModal";
+import OfferHistorySheet from "./Trading/OfferHistorySheet";
+import {
+  listProductOffers,
+  type ProductOfferThread,
+} from "../services/orderService";
 import { SaveToCollectionSheet } from "../components/SaveToCollectionSheet";
 import { ShareToChatModal } from "../components/ShareToChatModal";
 import {
@@ -96,8 +106,8 @@ import { followService, isFollowingUser } from "../services/followService";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
-/** 详情轮播高度跟首图比例；放宽 clamp，避免竖图被收成 3:4 导致 contain 左右留边。 */
-const PRODUCT_HERO_RATIO_MIN = 0.38;
+/** 详情轮播高度跟首图比例；限制竖图最大高度，为商品信息留出展示空间。 */
+const PRODUCT_HERO_RATIO_MIN = 0.75;
 const PRODUCT_HERO_RATIO_MAX = 2.25;
 
 const PAGE_PADDING = 16;
@@ -205,6 +215,7 @@ const StoreProductDetailScreen: React.FC = () => {
     | "description"
     | "photos"
     | "seller"
+    | "sellerOther"
     | "reviews"
     | "related";
   const [activeSection, setActiveSection] = useState<SectionKey>("info");
@@ -230,6 +241,12 @@ const StoreProductDetailScreen: React.FC = () => {
   // ---------------------- Trading -----------------------------------------
   const [offerModalVisible, setOfferModalVisible] = useState(false);
   const [tradingBusy, setTradingBusy] = useState(false);
+  // 买家与该商品的整条议价记录（含卖家 counter）。详情页用来把展示价更新为
+  // 「收到的 offer 价」并展开「出价记录」。卖家看自己的商品时为空。
+  const [offerThread, setOfferThread] = useState<ProductOfferThread | null>(
+    null
+  );
+  const [offerHistoryVisible, setOfferHistoryVisible] = useState(false);
 
   const mountedRef = useRef(true);
   useEffect(() => {
@@ -300,6 +317,28 @@ const StoreProductDetailScreen: React.FC = () => {
     loadProduct();
     loadComments("initial");
   }, [loadProduct, loadComments]);
+
+  // 买家与该商品的议价记录。每次聚焦都刷新一次：买家可能通过「收到新出价」
+  // 推送回到本页，价格需要立刻更新为卖家最新报价。卖家自己看时返回空列表。
+  const loadOffers = useCallback(async () => {
+    if (!productId || !currentUser) {
+      setOfferThread(null);
+      return;
+    }
+    try {
+      const thread = await listProductOffers(productId);
+      if (!mountedRef.current) return;
+      setOfferThread(thread);
+    } catch (e) {
+      console.warn("[StoreProductDetail] load offers failed:", e);
+    }
+  }, [productId, currentUser]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadOffers();
+    }, [loadOffers])
+  );
 
   // 二次校验 like / favorite / want（冷缓存下 detail 可能漏带）
   useEffect(() => {
@@ -597,6 +636,18 @@ const StoreProductDetailScreen: React.FC = () => {
     [product]
   );
 
+  // 买家「收到的」卖家报价：当前仍 pending、且需要买家响应（卖家 counter 给买家）。
+  // 命中时详情页把展示价更新为该报价，原挂牌价划线展示。
+  const receivedOffer = useMemo(() => {
+    const cur = offerThread?.current;
+    if (cur && cur.status === "pending" && cur.responderRole === "buyer") {
+      return cur;
+    }
+    return null;
+  }, [offerThread]);
+
+  const offerCount = offerThread?.items?.length ?? 0;
+
   const productImages = useMemo(
     () => product?.images?.filter((uri): uri is string => !!uri) ?? [],
     [product?.images]
@@ -614,21 +665,9 @@ const StoreProductDetailScreen: React.FC = () => {
     }),
     [coverRatio]
   );
-  const heroMediaStyle = useMemo(
-    () => ({ width: "100%" as const, height: "100%" as const }),
-    []
-  );
   const mainImageIndex = Math.max(
     0,
     Math.min(activeImageIndex, Math.max(productImages.length, 1) - 1)
-  );
-
-  const handleCarouselScroll = useCallback(
-    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-      const idx = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
-      if (idx !== activeImageIndex) setActiveImageIndex(idx);
-    },
-    [activeImageIndex]
   );
 
   const handleOpenFullscreen = useCallback((index: number) => {
@@ -643,20 +682,22 @@ const StoreProductDetailScreen: React.FC = () => {
   /**
    * Tab bar 吸顶用的 child index。
    *
-   * tab bar 之上的固定 section（按 ScrollView 直接子节点顺序）：
-   *   0  hero
-   *   1  titleSection
-   *   2  badgesRow
-   *   3? sellerCardOuter        — 仅当 seller 存在（浮卡式 pill）
+   * tab bar 之上的 ScrollView 直接子节点顺序：
+   *   0  titleSection
+   *   1  heroSection
+   *   2? thumbGrid              — productImages.length > 3
+   *   3  badgesRow
+   *   4? sellerCardOuter        — seller 存在时
    *   →  tabBar
    *
    * 注意：必须放在所有 early-return 之前（Rules of Hooks）。
    */
   const stickyTabBarIndex = useMemo(() => {
-    let idx = 3; // hero + titleSection + badgesRow 永远有
+    let idx = 3; // titleSection + heroSection + badgesRow
+    if (productImages.length > 3) idx++;
     if (richDetail?.seller) idx++;
     return idx;
-  }, [richDetail?.seller]);
+  }, [productImages.length, richDetail?.seller]);
 
   /**
    * 当前可见的 section 列表 —— 仅渲染数据存在的 section 对应的 tab。
@@ -684,10 +725,16 @@ const StoreProductDetailScreen: React.FC = () => {
     if ((richDetail?.relatedBrands?.length ?? 0) > 0) {
       list.push({ key: "brands", label: t("store.productDetailV2.tabBrands") });
     }
+    if ((richDetail?.sellerOtherProducts?.length ?? 0) > 0) {
+      list.push({
+        key: "sellerOther",
+        label: t("store.productDetailV2.tabSellerOther"),
+      });
+    }
     list.push({
       key: "reviews",
-      label: t("store.productDetailV2.tabReviews", {
-        count: richDetail?.reviews?.total ?? 0,
+      label: t("store.productDetailV2.tabComments", {
+        count: commentsTotal,
       }),
     });
     if ((richDetail?.relatedProducts?.length ?? 0) > 0) {
@@ -827,7 +874,7 @@ const StoreProductDetailScreen: React.FC = () => {
   const show = richDetail?.show ?? null;
   const relatedBrands = richDetail?.relatedBrands ?? [];
   const relatedProducts = richDetail?.relatedProducts ?? [];
-  const reviews = richDetail?.reviews ?? { items: [], total: 0 };
+  const sellerOtherProducts = richDetail?.sellerOtherProducts ?? [];
 
   // photoAngles.extras 渲染为 4-up 细节展示
   const detailImages = (product.photoAngles?.extras ?? []).filter(Boolean);
@@ -855,73 +902,73 @@ const StoreProductDetailScreen: React.FC = () => {
           onScrollBeginDrag={handleScrollBeginDrag}
           scrollEventThrottle={16}
         >
-          {/* ============ 1. 图片轮播 + N/M 计数 =============== */}
-          <Box style={styles.heroSection}>
-            {hasProductImages ? (
-              <FlatList
-                data={productImages}
-                horizontal
-                pagingEnabled
-                showsHorizontalScrollIndicator={false}
-                onMomentumScrollEnd={handleCarouselScroll}
-                keyExtractor={(_, index) => `product-img-${index}`}
-                renderItem={({ item, index }) => (
-                  <Pressable
-                    onPress={() => handleOpenFullscreen(index)}
-                    style={[heroFrameStyle, styles.heroSlide]}
-                  >
-                    <OptimizedImage
-                      uri={item}
-                      size={ImageSize.LARGE}
-                      style={heroMediaStyle}
-                      contentFit={index === 0 ? "contain" : "cover"}
-                      placeholderColor={theme.colors.background}
-                      errorColor={theme.colors.skeleton}
-                      lazy={index > 0}
-                    />
-                  </Pressable>
-                )}
-              />
-            ) : (
-              <Box style={[heroFrameStyle, styles.heroPlaceholder]}>
-                <Ionicons name="image-outline" size={48} color={theme.colors.gray300} />
-              </Box>
-            )}
-            {productImages.length > 1 && (
-              <View style={styles.imageCounter}>
-                <Text style={styles.imageCounterText}>
-                  {t("store.productDetailV2.imageCounter", {
-                    current: mainImageIndex + 1,
-                    total: productImages.length,
-                  })}
-                </Text>
-              </View>
-            )}
-          </Box>
-
-          {/* ============ 2. 标题 / 价格 / 快速信息行 =============== */}
+          {/* ============ 1. 标题 / 价格 / 快速信息行（文字优先） =============== */}
           <View style={styles.titleSection}>
             <Text style={styles.title} numberOfLines={3}>
               {product.title}
             </Text>
 
-            <HStack alignItems="baseline" space="sm" style={{ marginTop: 8 }}>
-              <Text style={[styles.price, hasDiscount && { color: theme.colors.error }]}>
+            <HStack alignItems="baseline" space="sm" style={{ marginTop: 6 }}>
+              <Text
+                style={[
+                  styles.price,
+                  (hasDiscount || receivedOffer != null) && {
+                    color: theme.colors.error,
+                  },
+                ]}
+              >
                 {formatPrice(
-                  hasDiscount
+                  receivedOffer != null
+                    ? receivedOffer.priceCents
+                    : hasDiscount
                     ? (product.discountPriceCents as number)
                     : product.priceCents,
                   product.currency
                 )}
               </Text>
-              {hasDiscount && (
+              {(receivedOffer != null || hasDiscount) && (
                 <Text style={styles.priceStrike}>
                   {formatPrice(product.priceCents, product.currency)}
                 </Text>
               )}
             </HStack>
 
-            {/* 卖家原币种 ≠ 当前展示币种 → 展示原价 + 汇率（同币种时 hint=null 不渲染）。 */}
+            {receivedOffer != null && (
+              <HStack alignItems="center" space="xs" style={{ marginTop: 4 }}>
+                <Ionicons
+                  name="pricetag"
+                  size={12}
+                  color={theme.colors.error}
+                />
+                <Text style={styles.offerReceivedLabel}>
+                  {t("trading.offerThread.receivedLabel")}
+                </Text>
+              </HStack>
+            )}
+
+            {offerCount > 0 && (
+              <Pressable
+                onPress={() => setOfferHistoryVisible(true)}
+                style={{ marginTop: 8, alignSelf: "flex-start" }}
+              >
+                <HStack alignItems="center" space="xs">
+                  <Ionicons
+                    name="time-outline"
+                    size={13}
+                    color={theme.colors.accent}
+                  />
+                  <Text style={styles.offerHistoryLink}>
+                    {t("trading.offerThread.viewHistory", { count: offerCount })}
+                  </Text>
+                  <Ionicons
+                    name="chevron-forward"
+                    size={12}
+                    color={theme.colors.accent}
+                  />
+                </HStack>
+              </Pressable>
+            )}
+
             {sellerCurrencyHint && (
               <View style={{ marginTop: 4 }}>
                 <Text style={styles.sellerCurrencyHint}>
@@ -933,9 +980,8 @@ const StoreProductDetailScreen: React.FC = () => {
               </View>
             )}
 
-            {/* 快速信息行 —— `全新 95新 | 尺码 48 | Black` 形式 */}
             {quickInfoParts.length > 0 && (
-              <HStack alignItems="center" flexWrap="wrap" style={{ marginTop: 12 }}>
+              <HStack alignItems="center" flexWrap="wrap" style={{ marginTop: 8 }}>
                 {quickInfoParts.map((part, idx) => (
                   <React.Fragment key={`qi-${idx}`}>
                     <Text style={styles.quickInfoText}>{part}</Text>
@@ -947,6 +993,47 @@ const StoreProductDetailScreen: React.FC = () => {
               </HStack>
             )}
           </View>
+
+          {/* ============ 2. 大图（最多 3 张，全宽铺满）+ 缩略图网格 =============== */}
+          <Box style={styles.heroSection}>
+            {hasProductImages ? (
+              productImages.slice(0, 3).map((uri, idx) => (
+                <HeroImage
+                  key={`hero-${idx}`}
+                  uri={uri}
+                  index={idx}
+                  onPress={() => handleOpenFullscreen(idx)}
+                  theme={theme}
+                  lazy={idx > 0}
+                />
+              ))
+            ) : (
+              <Box style={[heroFrameStyle, styles.heroPlaceholder]}>
+                <Ionicons name="image-outline" size={48} color={theme.colors.gray300} />
+              </Box>
+            )}
+          </Box>
+
+          {/* 超过 3 张时，剩余图片以缩略图网格展示（一行三张） */}
+          {productImages.length > 3 && (
+            <View style={styles.thumbGrid}>
+              {productImages.slice(3).map((uri, idx) => (
+                <Pressable
+                  key={`thumb-${idx}`}
+                  onPress={() => handleOpenFullscreen(idx + 3)}
+                  style={styles.thumbItem}
+                >
+                  <OptimizedImage
+                    uri={uri}
+                    size={ImageSize.MEDIUM}
+                    style={styles.thumbImage}
+                    contentFit="cover"
+                    lazy
+                  />
+                </Pressable>
+              ))}
+            </View>
+          )}
 
           {/* ============ 3. 服务徽章 =============== */}
           <View style={[styles.badgesRow, { paddingHorizontal: PAGE_PADDING }]}>
@@ -1327,61 +1414,98 @@ const StoreProductDetailScreen: React.FC = () => {
             </View>
           )}
 
-          {/* ============ S7. 评论（trade_reviews 全部 + 老 product comments） =============== */}
+          {/* ============ S6.5 TA 的其他单品（同卖家其他在售） =============== */}
+          {sellerOtherProducts.length > 0 && (
+            <View
+              style={styles.section}
+              onLayout={handleSectionLayout("sellerOther")}
+            >
+              <HStack
+                alignItems="center"
+                justifyContent="space-between"
+                style={{ marginBottom: 12 }}
+              >
+                <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>
+                  {t("store.productDetailV2.sellerOtherTitle")}
+                </Text>
+                {seller?.userId != null && (
+                  <Pressable
+                    onPress={() => handleOpenSellerProfile(seller.userId)}
+                    hitSlop={8}
+                  >
+                    <HStack alignItems="center" space="xs">
+                      <Text style={styles.sectionLink}>
+                        {t("store.productDetailV2.sellerOtherViewAll")}
+                      </Text>
+                      <Ionicons
+                        name="chevron-forward"
+                        size={13}
+                        color={theme.colors.textSecondary}
+                      />
+                    </HStack>
+                  </Pressable>
+                )}
+              </HStack>
+              <HStack flexWrap="wrap" justifyContent="space-between">
+                {sellerOtherProducts.map((sp) => (
+                  <SellerProductCard
+                    key={`so-${sp.id}`}
+                    product={sp}
+                    onPress={() =>
+                      navigation.navigate("StoreProductDetail", {
+                        productId: sp.id,
+                      })
+                    }
+                    theme={theme}
+                  />
+                ))}
+              </HStack>
+            </View>
+          )}
+
+          {/* ============ S7. 评论 =============== */}
           <View
             style={styles.section}
             onLayout={handleSectionLayout("reviews")}
           >
-            <Text style={[styles.sectionTitle, { marginBottom: 12 }]}>
-              {t("store.productDetailV2.reviewsTitle")} ({reviews.total})
+            <Text style={[styles.sectionTitle, { marginBottom: 8 }]}>
+              {t("store.productDetailV2.commentsTitle", { count: commentsTotal })}
             </Text>
-            {reviews.items.length === 0 && comments.length === 0 ? (
+            {comments.length === 0 ? (
               <Box style={styles.emptyBlock}>
                 <Ionicons
-                  name="star-outline"
-                  size={28}
+                  name="chatbubble-outline"
+                  size={24}
                   color={theme.colors.gray300}
                 />
                 <Text style={styles.emptyText}>
-                  {t("store.productDetailV2.noReviewsYet")}
+                  {t("store.productDetailV2.noCommentsYet")}
                 </Text>
               </Box>
             ) : (
-              <>
-                {reviews.items.map((r) => (
-                  <ReviewRow
-                    key={`rv-${r.id}`}
-                    review={r}
-                    theme={theme}
-                    t={t}
+              <View>
+                {comments.map((c) => (
+                  <CommentItem
+                    key={c.id}
+                    comment={c}
+                    currentUserId={currentUser?.userId}
+                    onReply={() => handleStartReply(c)}
+                    onDelete={() => handleDeleteComment(c.id)}
+                    onLike={() => handleToggleCommentLike(c)}
                   />
                 ))}
-                {comments.length > 0 && (
-                  <View style={{ marginTop: 8 }}>
-                    {comments.map((c) => (
-                      <CommentItem
-                        key={c.id}
-                        comment={c}
-                        currentUserId={currentUser?.userId}
-                        onReply={() => handleStartReply(c)}
-                        onDelete={() => handleDeleteComment(c.id)}
-                        onLike={() => handleToggleCommentLike(c)}
-                      />
-                    ))}
-                    {commentsHasMore && (
-                      <Pressable
-                        onPress={handleEndReached}
-                        py="$sm"
-                        alignItems="center"
-                      >
-                        <Text style={styles.expandText}>
-                          {t("store.loadMoreComments")}
-                        </Text>
-                      </Pressable>
-                    )}
-                  </View>
+                {commentsHasMore && (
+                  <Pressable
+                    onPress={handleEndReached}
+                    py="$sm"
+                    alignItems="center"
+                  >
+                    <Text style={styles.expandText}>
+                      {t("store.loadMoreComments")}
+                    </Text>
+                  </Pressable>
                 )}
-              </>
+              </View>
             )}
           </View>
 
@@ -1424,6 +1548,8 @@ const StoreProductDetailScreen: React.FC = () => {
           brandName={product.brand ?? undefined}
           onWant={handleToggleWant}
           onDismiss={() => setShowWantPopup(false)}
+          placement="top"
+          topOffset={0}
         />
 
         {product ? (
@@ -1435,6 +1561,7 @@ const StoreProductDetailScreen: React.FC = () => {
                 currentUser.userId === (product as any).merchantOwnerUserId)
             }
             isBusy={tradingBusy}
+            offerPriceCents={receivedOffer?.priceCents ?? null}
             onOffer={() => setOfferModalVisible(true)}
             onBuyNow={() =>
               navigation.navigate("Checkout", {
@@ -1469,6 +1596,19 @@ const StoreProductDetailScreen: React.FC = () => {
             onClose={() => setOfferModalVisible(false)}
             onSuccess={() => {
               setOfferModalVisible(false);
+              navigation.navigate("MyOffers");
+            }}
+          />
+        ) : null}
+
+        {product ? (
+          <OfferHistorySheet
+            visible={offerHistoryVisible}
+            offers={offerThread?.items ?? []}
+            currency={product.currency}
+            onClose={() => setOfferHistoryVisible(false)}
+            onGoToOffers={() => {
+              setOfferHistoryVisible(false);
               navigation.navigate("MyOffers");
             }}
           />
@@ -1569,6 +1709,44 @@ const Header: React.FC<{
         <View style={styles.headerIconBtn} />
       )}
     </HStack>
+  );
+};
+
+// ============================================================================
+// HeroImage —— 全宽大图，按每张图自身比例铺满屏幕宽度（不留边、不裁剪）
+// ============================================================================
+
+const HeroImage: React.FC<{
+  uri: string;
+  index: number;
+  onPress: () => void;
+  theme: AppTheme;
+  lazy?: boolean;
+}> = ({ uri, index, onPress, theme, lazy }) => {
+  const ratio = clampAspectRatio(
+    useMediaAspectRatio(uri, 4 / 5),
+    PRODUCT_HERO_RATIO_MIN,
+    PRODUCT_HERO_RATIO_MAX
+  );
+  return (
+    <Pressable
+      onPress={onPress}
+      style={{
+        width: SCREEN_WIDTH,
+        height: SCREEN_WIDTH / ratio,
+        backgroundColor: theme.colors.background,
+      }}
+    >
+      <OptimizedImage
+        uri={uri}
+        size={ImageSize.LARGE}
+        style={{ width: "100%", height: "100%" }}
+        contentFit="cover"
+        placeholderColor={theme.colors.background}
+        errorColor={theme.colors.skeleton}
+        lazy={lazy}
+      />
+    </Pressable>
   );
 };
 
@@ -1718,6 +1896,75 @@ const RelatedProductCard: React.FC<{
       {conditionLabel && (
         <Text style={styles.relatedCondition}>
           {t(`store.productDetailV2.${conditionLabel}`)}
+        </Text>
+      )}
+    </TouchableOpacity>
+  );
+};
+
+// ============================================================================
+// SellerProductCard —— 「TA 的其他单品」2 列网格卡（设计图样式）
+// ============================================================================
+
+const SELLER_OTHER_GAP = 10;
+const SELLER_OTHER_CARD_W =
+  (SCREEN_WIDTH - PAGE_PADDING * 2 - SELLER_OTHER_GAP) / 2;
+
+const SellerProductCard: React.FC<{
+  product: StoreProduct;
+  onPress: () => void;
+  theme: AppTheme;
+}> = ({ product, onPress, theme }) => {
+  const styles = useThemedStyles(makeStyles);
+  const { t } = useTranslation();
+  const formatPrice = useFormatPrice();
+  const conditionLabel = product.condition
+    ? conditionToLabelKey(product.condition)
+    : null;
+  // 「92新 | 尺码 48」式副信息行
+  const metaParts: string[] = [];
+  if (conditionLabel) {
+    metaParts.push(t(`store.productDetailV2.${conditionLabel}`));
+  }
+  if (product.size) {
+    metaParts.push(`${t("store.productDetailV2.fieldSize")} ${product.size}`);
+  }
+  return (
+    <TouchableOpacity
+      style={[styles.sellerOtherCard, { width: SELLER_OTHER_CARD_W }]}
+      onPress={onPress}
+      activeOpacity={0.85}
+    >
+      <View
+        style={[
+          styles.sellerOtherImageWrap,
+          { backgroundColor: theme.colors.skeleton },
+        ]}
+      >
+        {product.images?.[0] ? (
+          <OptimizedImage
+            uri={product.images[0]}
+            size={ImageSize.MEDIUM}
+            style={{ width: "100%", height: "100%" }}
+            contentFit="cover"
+          />
+        ) : null}
+        <View style={styles.sellerOtherHeart}>
+          <Ionicons name="heart-outline" size={16} color="#FFFFFF" />
+        </View>
+      </View>
+      <Text style={styles.sellerOtherBrand} numberOfLines={1}>
+        {product.brand || product.title}
+      </Text>
+      <Text style={styles.sellerOtherTitle} numberOfLines={1}>
+        {product.title}
+      </Text>
+      <Text style={styles.sellerOtherPrice} numberOfLines={1}>
+        {formatPrice(product.priceCents, product.currency)}
+      </Text>
+      {metaParts.length > 0 && (
+        <Text style={styles.sellerOtherMeta} numberOfLines={1}>
+          {metaParts.join("  |  ")}
         </Text>
       )}
     </TouchableOpacity>
@@ -1956,9 +2203,6 @@ const makeStyles = (t: AppTheme) =>
       position: "relative",
       backgroundColor: t.colors.background,
     },
-    heroSlide: {
-      backgroundColor: t.colors.background,
-    },
     heroPlaceholder: {
       backgroundColor: t.colors.skeleton,
       justifyContent: "center",
@@ -1978,6 +2222,25 @@ const makeStyles = (t: AppTheme) =>
       fontSize: 12,
       fontWeight: "500",
     },
+    thumbGrid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      paddingHorizontal: PAGE_PADDING,
+      paddingTop: 8,
+      paddingBottom: 8,
+      gap: 4,
+      backgroundColor: t.colors.background,
+    },
+    thumbItem: {
+      width: (SCREEN_WIDTH - PAGE_PADDING * 2 - 4 * 2) / 3,
+      aspectRatio: 1,
+      borderRadius: 4,
+      overflow: "hidden",
+    },
+    thumbImage: {
+      width: "100%",
+      height: "100%",
+    },
 
     section: {
       paddingHorizontal: PAGE_PADDING,
@@ -1989,20 +2252,20 @@ const makeStyles = (t: AppTheme) =>
     },
     titleSection: {
       paddingHorizontal: PAGE_PADDING,
-      paddingTop: 14,
-      paddingBottom: 12,
+      paddingTop: 10,
+      paddingBottom: 10,
       backgroundColor: t.colors.background,
     },
 
     title: {
       fontFamily: "PlayfairDisplay-Regular",
-      fontSize: 20,
+      fontSize: 16,
       fontWeight: "500",
       color: t.colors.text,
-      lineHeight: 28,
+      lineHeight: 22,
     },
     price: {
-      fontSize: 24,
+      fontSize: 20,
       fontWeight: "700",
       color: t.colors.text,
     },
@@ -2015,6 +2278,16 @@ const makeStyles = (t: AppTheme) =>
       fontSize: 13,
       color: t.colors.textSecondary,
       textDecorationLine: "line-through",
+    },
+    offerReceivedLabel: {
+      fontSize: 12,
+      fontWeight: "600",
+      color: t.colors.error,
+    },
+    offerHistoryLink: {
+      fontSize: 12,
+      fontWeight: "600",
+      color: t.colors.accent,
     },
     quickInfoText: {
       fontSize: 12,
@@ -2347,6 +2620,50 @@ const makeStyles = (t: AppTheme) =>
       fontSize: 10,
       color: t.colors.textSecondary,
       marginTop: 1,
+    },
+
+    /* ---- TA 的其他单品（2 列网格） ---- */
+    sellerOtherCard: {
+      marginBottom: 16,
+    },
+    sellerOtherImageWrap: {
+      width: "100%",
+      aspectRatio: 0.82,
+      borderRadius: 8,
+      overflow: "hidden",
+    },
+    sellerOtherHeart: {
+      position: "absolute",
+      bottom: 8,
+      right: 8,
+      backgroundColor: "rgba(0,0,0,0.35)",
+      borderRadius: 14,
+      width: 28,
+      height: 28,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    sellerOtherBrand: {
+      fontSize: 13,
+      fontWeight: "700",
+      color: t.colors.text,
+      marginTop: 8,
+    },
+    sellerOtherTitle: {
+      fontSize: 12,
+      color: t.colors.textSecondary,
+      marginTop: 2,
+    },
+    sellerOtherPrice: {
+      fontSize: 14,
+      fontWeight: "700",
+      color: t.colors.text,
+      marginTop: 4,
+    },
+    sellerOtherMeta: {
+      fontSize: 11,
+      color: t.colors.textSecondary,
+      marginTop: 4,
     },
 
     emptyBlock: {

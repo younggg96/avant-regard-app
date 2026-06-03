@@ -128,11 +128,14 @@ import KycVerificationScreen from "./src/screens/Trading/KycVerificationScreen";
 import PayoutAccountsScreen from "./src/screens/Trading/PayoutAccountsScreen";
 import AddressBookScreen from "./src/screens/AddressBookScreen";
 // Aftersales (PRD Phase 5) Screens
-// DisputeOpenScreen 已不再挂载到 user-facing 导航（PRD 售后默认走 IM CS）。
-// 如需恢复管理员后台用,从 git 历史取出即可。
+// 售后买卖分流：买家通过 DisputeOpen 提交结构化售后请求，卖家通过
+// SellerAfterSales 查看并响应（同意退款 / 拒绝并申诉）。
+import DisputeOpenScreen from "./src/screens/Trading/DisputeOpenScreen";
+import SellerAfterSalesScreen from "./src/screens/Trading/SellerAfterSalesScreen";
 import AuthenticationScreen from "./src/screens/Trading/AuthenticationScreen";
 import TradeReviewScreen from "./src/screens/Trading/TradeReviewScreen";
 import OrderReviewsScreen from "./src/screens/Trading/OrderReviewsScreen";
+import UserReviewsScreen from "./src/screens/Trading/UserReviewsScreen";
 // My Archive & Plus (PRD Phase 6) Screens
 import MyArchiveScreen from "./src/screens/Trading/MyArchiveScreen";
 import ArchiveDetailScreen from "./src/screens/Trading/ArchiveDetailScreen";
@@ -181,6 +184,7 @@ import TabBarIcon from "./src/components/TabBarIcon";
 // V1 PublishTabButton 文件保留作为历史回退入口；当前 Tab 中央「+」走 V2 流程。
 import PublishTabButtonV2 from "./src/components/PublishTabButtonV2";
 import UploadProgressBanner from "./src/components/UploadProgressBanner";
+import OrderAddressPromptBanner from "./src/components/OrderAddressPromptBanner";
 import OnboardingGuideModal from "./src/components/OnboardingGuideModal";
 import CustomAlert from "./src/components/CustomAlert";
 
@@ -1048,9 +1052,17 @@ function AppNavigator({
           options={{ headerShown: false }}
         />
         {/* PRD Phase 5 · 售后 / 鉴定 / 双盲互评 */}
-        {/* DisputeOpen 屏幕已下线:用户售后统一走 IM 客服(OrderDetail 的"申请售后"
-            action sheet → contactSupportForOrderWithIssue),避免双入口造成跳转/状态不一致。
-            backend openDispute API 保留供管理员后台或未来引入正式仲裁流程时使用。 */}
+        {/* 售后买卖分流：买家 DisputeOpen 提交、卖家 SellerAfterSales 处理。 */}
+        <Stack.Screen
+          name="DisputeOpen"
+          component={DisputeOpenScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="SellerAfterSales"
+          component={SellerAfterSalesScreen}
+          options={{ headerShown: false }}
+        />
         <Stack.Screen
           name="Authentication"
           component={AuthenticationScreen}
@@ -1064,6 +1076,11 @@ function AppNavigator({
         <Stack.Screen
           name="OrderReviews"
           component={OrderReviewsScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="UserReviews"
+          component={UserReviewsScreen}
           options={{ headerShown: false }}
         />
         {/* PRD Phase 6 · My Archive & Plus */}
@@ -1251,6 +1268,9 @@ function AppNavigator({
 
       {/* 后台上传进度条 */}
       <UploadProgressBanner />
+
+      {/* offer 成交后「填写收货地址」顶部提示 */}
+      <OrderAddressPromptBanner />
 
       {/* 等级升级全屏庆祝 (黑白 2s 动画, 订阅 useLevelStore.celebrateLevel) */}
       <LevelUpgradeModal />

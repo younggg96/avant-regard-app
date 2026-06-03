@@ -137,6 +137,17 @@ export async function buyNow(
   });
 }
 
+/** 买家在 offer 成交后补填收货地址（仅 pending_payment 阶段可写）。 */
+export async function setOrderShippingAddress(
+  orderId: number,
+  shippingAddress: Record<string, unknown>,
+): Promise<Order> {
+  return request<Order>(`/api/orders/${orderId}/shipping-address`, {
+    method: "POST",
+    body: JSON.stringify({ shippingAddress }),
+  });
+}
+
 export async function payOrderMock(orderId: number): Promise<Order> {
   return request<Order>(`/api/orders/${orderId}/pay-mock`, { method: "POST" });
 }
@@ -395,6 +406,26 @@ export async function listMyOffers(params: {
   return request<{ items: OfferWithDetail[]; total: number }>(
     `/api/offers/me?${q.toString()}`,
   );
+}
+
+export interface ProductOfferThread {
+  /** 该买家对此商品的全部出价（含卖家 counter），按时间升序。 */
+  items: OfferWithDetail[];
+  /** 当前仍 pending 的最新一条出价；没有进行中的议价时为 null。 */
+  current: OfferWithDetail | null;
+  /** 商品挂牌价（划线原价用）。 */
+  listingPriceCents?: number | null;
+  currency?: string | null;
+}
+
+/**
+ * 买家在商品详情页查看与该商品的整条议价记录。
+ * 用于把展示价更新为「收到的 offer 价」并保留原价划线，以及展开「出价记录」。
+ */
+export async function listProductOffers(
+  productId: number,
+): Promise<ProductOfferThread> {
+  return request<ProductOfferThread>(`/api/offers/product/${productId}`);
 }
 
 export async function listIncomingOffers(params: {

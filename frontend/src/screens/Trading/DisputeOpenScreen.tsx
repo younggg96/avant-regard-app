@@ -1,115 +1,264 @@
 /**
- * DisputeOpenScreen —— 发起售后争议（PRD 模块 5）。
+ * DisputeOpenScreen —— 买家端「申请售后」结构化表单（PRD 模块 5 · 买卖分流）。
  *
- * 入口：OrderDetailScreen 上的「申请售后」按钮。
+ * 入口：OrderDetailScreen 上买家的「申请售后」按钮。
+ *
+ * 设计：买家在这里选择售后原因 + 填写描述 + 上传凭证图，提交后生成一条
+ * 结构化售后请求（disputes 记录）。卖家可在「买家售后」列表里看到并响应。
+ * 这与卖家端逻辑（SellerAfterSalesScreen）分流：买家=提交，卖家=处理。
  */
 import React, { useState } from "react";
 import {
   View,
-  Text,
   StyleSheet,
   TextInput,
-  Pressable,
   ActivityIndicator,
   ScrollView,
+  Image as RNImage,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
+import * as ImagePicker from "expo-image-picker";
 
-import { openDispute, DisputeReason } from "../../services/aftersalesService";
+import { Pressable, Text } from "../../components/ui";
+import ScreenHeader from "../../components/ScreenHeader";
+import {
+  openDispute,
+  contactSupportForOrder,
+  DisputeReason,
+} from "../../services/aftersalesService";
+import { getCustomerServiceChatParams } from "../../utils/chatNavigationUtils";
+import { uploadImage } from "../../services/postService";
 import { useAppTheme, useThemedStyles, type AppTheme } from "../../theme";
 
-const REASONS: { code: DisputeReason; label: string }[] = [
-  { code: "not_as_described", label: "与描述不符" },
-  { code: "damaged", label: "商品破损" },
-  { code: "not_received", label: "未收到货" },
-  { code: "fake", label: "怀疑非正品" },
-  { code: "other", label: "其他" },
+const MAX_PHOTOS = 4;
+
+/** 买家端售后原因（与订单详情「选择售后类型」一致）。 */
+const BUYER_REASONS: DisputeReason[] = [
+  "no_logistics_update",
+  "delivered_not_received",
+  "quality_issue",
+  "listing_delisted",
+  "other",
 ];
 
-type RouteParams = { DisputeOpen: { orderId: number } };
+type RouteParams = {
+  DisputeOpen: { orderId: number; initialReason?: DisputeReason };
+};
 
 export default function DisputeOpenScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<RouteProp<RouteParams, "DisputeOpen">>();
-  const { orderId } = route.params;
+  const { orderId, initialReason } = route.params;
+  const { t } = useTranslation();
   const theme = useAppTheme();
   const styles = useThemedStyles(makeStyles);
 
-  const [reason, setReason] = useState<DisputeReason>("not_as_described");
+  const [reason, setReason] = useState<DisputeReason | null>(
+    initialReason ?? null,
+  );
   const [description, setDescription] = useState("");
+  const [photoUrls, setPhotoUrls] = useState<string[]>([]);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+  const pickAndUploadPhoto = async () => {
+    if (photoUrls.length >= MAX_PHOTOS) return;
+    try {
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert(
+          t("common.error"),
+          t("trading.aftersales.request.photoPermissionDenied"),
+        );
+        return;
+      }
+      const res = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: false,
+        quality: 0.85,
+      });
+      if (res.canceled || !res.assets?.[0]) return;
+      setUploadingPhoto(true);
+      const url = await uploadImage(res.assets[0].uri);
+      setPhotoUrls((prev) => [...prev, url].slice(0, MAX_PHOTOS));
+    } catch (e: any) {
+      Alert.alert(
+        t("common.error"),
+        e?.message ?? t("trading.aftersales.request.photoUploadFailed"),
+      );
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
+  const removePhoto = (url: string) => {
+    setPhotoUrls((prev) => prev.filter((u) => u !== url));
+  };
+
   const submit = async () => {
     setErrorMsg(null);
+    if (!reason) {
+      setErrorMsg(t("trading.aftersales.request.reasonRequired"));
+      return;
+    }
     setLoading(true);
     try {
-      await openDispute({ orderId, reason, description });
+      await openDispute({
+        orderId,
+        reason,
+        description: description.trim() || undefined,
+        evidencePhotos: photoUrls.length > 0 ? photoUrls : undefined,
+      });
+      Alert.alert(
+        t("common.success"),
+        t("trading.aftersales.request.submitSuccess"),
+      );
       navigation.goBack();
     } catch (e: any) {
-      setErrorMsg(e?.message ?? "提交失败");
+      setErrorMsg(e?.message ?? t("trading.aftersales.request.submitFailed"));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const contactCs = async () => {
+    try {
+      setLoading(true);
+      const res = await contactSupportForOrder(orderId);
+      navigation.navigate(
+        "Chat",
+        getCustomerServiceChatParams(res.conversationId, res.csUserId, t),
+      );
+    } catch (e: any) {
+      Alert.alert(t("common.failed"), e?.message ?? t("trading.aftersales.openFailed"));
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <View style={styles.header}>
-        <Pressable onPress={() => navigation.goBack()}>
-          <Ionicons name="chevron-back" size={26} color={theme.colors.text} />
-        </Pressable>
-        <Text style={styles.headerTitle}>申请售后</Text>
-        <View style={{ width: 26 }} />
-      </View>
+    <SafeAreaView style={styles.safe} edges={["top"]}>
+      <ScreenHeader
+        title={t("trading.aftersales.request.title")}
+        showBack
+        onBackPress={() => navigation.goBack()}
+      />
 
-      <ScrollView contentContainerStyle={styles.scroll}>
-        <Text style={styles.label}>原因</Text>
-        {REASONS.map((r) => (
-          <Pressable
-            key={r.code}
-            style={[styles.reasonRow, reason === r.code && styles.reasonActive]}
-            onPress={() => setReason(r.code)}
-          >
-            <Text style={styles.reasonText}>{r.label}</Text>
-            {reason === r.code ? (
-              <Ionicons
-                name="checkmark-circle"
-                size={20}
-                color={theme.colors.text}
-              />
-            ) : null}
-          </Pressable>
-        ))}
-
-        <Text style={[styles.label, { marginTop: 16 }]}>详细描述</Text>
-        <TextInput
-          style={styles.textarea}
-          multiline
-          placeholder="说明问题、附上凭证..."
-          placeholderTextColor={theme.colors.placeholder}
-          value={description}
-          onChangeText={setDescription}
-        />
-
-        {errorMsg ? <Text style={styles.error}>{errorMsg}</Text> : null}
-      </ScrollView>
-
-      <View style={styles.footer}>
-        <Pressable
-          style={[styles.primaryBtn, loading && { opacity: 0.5 }]}
-          onPress={submit}
-          disabled={loading}
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
+        <ScrollView
+          contentContainerStyle={styles.scroll}
+          keyboardShouldPersistTaps="handled"
         >
-          {loading ? (
-            <ActivityIndicator color={theme.colors.textInverted} />
-          ) : (
-            <Text style={styles.primaryBtnText}>提交售后</Text>
-          )}
-        </Pressable>
-      </View>
+          <Text style={styles.label}>
+            {t("trading.aftersales.request.reasonLabel")}
+          </Text>
+          {BUYER_REASONS.map((code) => {
+            const active = reason === code;
+            return (
+              <Pressable
+                key={code}
+                style={[styles.reasonRow, active && styles.reasonActive]}
+                onPress={() => setReason(code)}
+              >
+                <Text style={styles.reasonText}>
+                  {t(`trading.aftersales.reasons.${code}`)}
+                </Text>
+                <Ionicons
+                  name={active ? "checkmark-circle" : "ellipse-outline"}
+                  size={20}
+                  color={active ? theme.colors.accent : theme.colors.gray300}
+                />
+              </Pressable>
+            );
+          })}
+
+          <Text style={[styles.label, { marginTop: 20 }]}>
+            {t("trading.aftersales.request.descriptionLabel")}
+          </Text>
+          <TextInput
+            style={styles.textarea}
+            multiline
+            placeholder={t("trading.aftersales.request.descriptionPlaceholder")}
+            placeholderTextColor={theme.colors.placeholder}
+            value={description}
+            onChangeText={setDescription}
+            maxLength={2000}
+            textAlignVertical="top"
+          />
+
+          <Text style={[styles.label, { marginTop: 20 }]}>
+            {t("trading.aftersales.request.photosLabel", {
+              count: photoUrls.length,
+              max: MAX_PHOTOS,
+            })}
+          </Text>
+          <View style={styles.photoRow}>
+            {photoUrls.map((url) => (
+              <View key={url} style={styles.photoTile}>
+                <RNImage source={{ uri: url }} style={styles.photoImage} />
+                <Pressable
+                  style={styles.photoRemoveBtn}
+                  onPress={() => removePhoto(url)}
+                >
+                  <Ionicons name="close" size={14} color="#fff" />
+                </Pressable>
+              </View>
+            ))}
+            {photoUrls.length < MAX_PHOTOS ? (
+              <Pressable
+                style={[styles.photoTile, styles.photoAddBtn]}
+                onPress={pickAndUploadPhoto}
+                disabled={uploadingPhoto}
+              >
+                {uploadingPhoto ? (
+                  <ActivityIndicator color={theme.colors.gray300} />
+                ) : (
+                  <Ionicons name="add" size={28} color={theme.colors.gray300} />
+                )}
+              </Pressable>
+            ) : null}
+          </View>
+
+          {errorMsg ? <Text style={styles.error}>{errorMsg}</Text> : null}
+
+          <Pressable style={styles.csLink} onPress={contactCs} disabled={loading}>
+            <Ionicons
+              name="chatbubbles-outline"
+              size={16}
+              color={theme.colors.gray300}
+            />
+            <Text style={styles.csLinkText}>
+              {t("trading.aftersales.request.contactCsHint")}
+            </Text>
+          </Pressable>
+        </ScrollView>
+
+        <View style={styles.footer}>
+          <Pressable
+            style={[styles.primaryBtn, loading && { opacity: 0.5 }]}
+            onPress={submit}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color={theme.colors.textInverted} />
+            ) : (
+              <Text style={styles.primaryBtnText}>
+                {t("trading.aftersales.request.submit")}
+              </Text>
+            )}
+          </Pressable>
+        </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -117,56 +266,83 @@ export default function DisputeOpenScreen() {
 const makeStyles = (t: AppTheme) =>
   StyleSheet.create({
     safe: { flex: 1, backgroundColor: t.colors.background },
-    header: {
-      height: 48,
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      paddingHorizontal: 16,
-      backgroundColor: t.colors.card,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: t.colors.border,
-    },
-    headerTitle: { fontSize: 16, fontWeight: "600", color: t.colors.text },
+    flex: { flex: 1 },
     scroll: { padding: 16, paddingBottom: 120 },
     label: {
       fontSize: 13,
       fontWeight: "600",
-      marginVertical: 8,
+      marginBottom: 10,
       color: t.colors.text,
     },
     reasonRow: {
       flexDirection: "row",
       justifyContent: "space-between",
       alignItems: "center",
-      paddingVertical: 12,
-      paddingHorizontal: 12,
+      paddingVertical: 14,
+      paddingHorizontal: 14,
       backgroundColor: t.colors.cardElevated,
-      borderRadius: 8,
+      borderRadius: 10,
       marginBottom: 8,
+      borderWidth: 1,
+      borderColor: t.colors.border,
     },
-    reasonActive: { borderWidth: 1, borderColor: t.colors.accent },
-    reasonText: { color: t.colors.text },
+    reasonActive: { borderColor: t.colors.accent },
+    reasonText: { color: t.colors.text, fontSize: 14, flex: 1, marginRight: 8 },
     textarea: {
       backgroundColor: t.colors.inputBackground,
-      borderRadius: 8,
+      borderRadius: 10,
       padding: 12,
       minHeight: 120,
-      textAlignVertical: "top",
       fontSize: 14,
       color: t.colors.text,
       borderWidth: 1,
       borderColor: t.colors.inputBorder,
     },
-    error: { color: t.colors.error, marginTop: 12 },
+    photoRow: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
+    photoTile: {
+      width: 72,
+      height: 72,
+      borderRadius: 8,
+      overflow: "hidden",
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: t.colors.border,
+      position: "relative",
+    },
+    photoImage: { width: "100%", height: "100%" },
+    photoAddBtn: {
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: t.colors.inputBackground,
+    },
+    photoRemoveBtn: {
+      position: "absolute",
+      top: 2,
+      right: 2,
+      width: 20,
+      height: 20,
+      borderRadius: 10,
+      backgroundColor: "rgba(0,0,0,0.6)",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    error: { color: t.colors.error, marginTop: 14, fontSize: 13 },
+    csLink: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 6,
+      marginTop: 24,
+      padding: 8,
+    },
+    csLinkText: { color: t.colors.gray300, fontSize: 13 },
     footer: {
       position: "absolute",
       bottom: 0,
       left: 0,
       right: 0,
       paddingHorizontal: 16,
-      paddingTop: 8,
-      paddingBottom: 24,
+      paddingTop: 10,
+      paddingBottom: 28,
       backgroundColor: t.colors.card,
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: t.colors.border,
@@ -174,7 +350,7 @@ const makeStyles = (t: AppTheme) =>
     primaryBtn: {
       backgroundColor: t.colors.accent,
       paddingVertical: 14,
-      borderRadius: 24,
+      borderRadius: 8,
       alignItems: "center",
     },
     primaryBtnText: {

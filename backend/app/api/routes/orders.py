@@ -40,6 +40,7 @@ from app.schemas.orders import (
     OfferCounter,
     PaymentStartRequest,
     ShipmentCreate,
+    ShippingAddressUpdate,
     InspectionSubmit,
     OrderStatus,
 )
@@ -91,6 +92,28 @@ async def pay_mock(order_id: int, user_id: int = Depends(get_current_user)):
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return success(updated.dict())
+
+
+@orders_router.post("/{order_id}/shipping-address")
+async def set_shipping_address(
+    order_id: int,
+    body: ShippingAddressUpdate,
+    user_id: int = Depends(get_current_user),
+):
+    """买家在 offer 成交后补填收货地址(支付前)。
+
+    offer accept 生成的订单下单时没有地址,买家点「出价已成交」提示进入
+    私聊后弹出的地址表单提交到这里。
+    """
+    try:
+        order = order_service.set_shipping_address(
+            order_id, user_id, body.shippingAddress
+        )
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return success(order.dict())
 
 
 # --------------- Payment (Stripe / Alipay / WeChat) ---------------
@@ -518,6 +541,19 @@ async def list_my_offers(
         user_id, role="buyer", status=status, page=page, page_size=pageSize
     )
     return success({"items": items, "total": total})
+
+
+@offers_router.get("/product/{product_id}")
+async def list_product_offers(
+    product_id: int, user_id: int = Depends(get_current_user)
+):
+    """买家在商品详情页查看自己与该商品的整条议价记录。
+
+    用于把展示价更新为「收到的 offer 价」(卖家 counter 后的最新报价)并保留原价划线,
+    以及展开「出价记录」列表。
+    """
+    data = offer_service.list_for_product_buyer(product_id, user_id)
+    return success(data)
 
 
 @offers_router.get("/me/incoming")

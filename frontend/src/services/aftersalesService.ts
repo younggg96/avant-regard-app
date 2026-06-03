@@ -70,7 +70,12 @@ export type DisputeReason =
   | "damaged"
   | "not_received"
   | "fake"
-  | "other";
+  | "other"
+  // 买家端售后请求原因（与订单详情「选择售后类型」一一对应）
+  | "no_logistics_update"
+  | "delivered_not_received"
+  | "quality_issue"
+  | "listing_delisted";
 
 export type DisputeStatus =
   | "open"
@@ -78,6 +83,9 @@ export type DisputeStatus =
   | "resolved_refund"
   | "resolved_release"
   | "withdrawn";
+
+/** 卖家对买家售后请求的响应动作。 */
+export type SellerResponseAction = "agree_refund" | "reject";
 
 export interface Dispute {
   id: number;
@@ -92,6 +100,21 @@ export interface Dispute {
   csDecision?: string | null;
   resolvedAt?: string | null;
   createdAt?: string | null;
+  updatedAt?: string | null;
+  // 卖家响应（买家 / 卖家分流后新增）
+  sellerResponse?: string | null;
+  sellerResponseAction?: SellerResponseAction | null;
+  sellerResponseAt?: string | null;
+  sellerEvidencePhotos?: string[] | null;
+  // 卖家售后列表 / 详情接口附带的订单 / 商品上下文
+  orderNo?: string | null;
+  productId?: number | null;
+  productTitle?: string | null;
+  productImage?: string | null;
+  paidPriceCents?: number | null;
+  currency?: string | null;
+  buyerUserId?: number | null;
+  sellerUserId?: number | null;
 }
 
 export async function openDispute(body: {
@@ -117,6 +140,48 @@ export async function withdrawDispute(id: number): Promise<Dispute> {
 
 export async function listDisputesForOrder(orderId: number): Promise<Dispute[]> {
   return request<Dispute[]>(`/api/disputes/orders/${orderId}`);
+}
+
+/**
+ * 卖家端：拉取自己名下所有订单上买家提交的售后请求列表。
+ * 可按 status 过滤（open / investigating / resolved_refund ...）。
+ */
+export async function listSellerDisputes(params?: {
+  status?: DisputeStatus;
+  page?: number;
+  pageSize?: number;
+}): Promise<{ items: Dispute[]; total: number }> {
+  const qs = new URLSearchParams();
+  if (params?.status) qs.set("status", params.status);
+  if (params?.page) qs.set("page", String(params.page));
+  if (params?.pageSize) qs.set("pageSize", String(params.pageSize));
+  const suffix = qs.toString() ? `?${qs.toString()}` : "";
+  return request<{ items: Dispute[]; total: number }>(
+    `/api/disputes/seller${suffix}`,
+  );
+}
+
+/**
+ * 卖家端：对买家售后请求做出响应。
+ * - agree_refund: 同意退款 → 订单直接退款，无需客服介入。
+ * - reject:       拒绝并申诉 → 记录说明 + 凭证，转交客服仲裁。
+ */
+export async function sellerRespondDispute(
+  id: number,
+  body: {
+    action: SellerResponseAction;
+    message?: string;
+    evidencePhotos?: string[];
+  },
+): Promise<Dispute> {
+  return request<Dispute>(`/api/disputes/${id}/seller-respond`, {
+    method: "POST",
+    body: JSON.stringify({
+      action: body.action,
+      message: body.message,
+      evidencePhotos: body.evidencePhotos ?? [],
+    }),
+  });
 }
 
 export async function adminListDisputes(): Promise<{
@@ -239,6 +304,8 @@ export interface TradeReview {
   visible: boolean;
   submittedAt?: string | null;
   autoClosedAt?: string | null;
+  reviewerUsername?: string | null;
+  reviewerAvatarUrl?: string | null;
 }
 
 export async function submitTradeReview(body: {
