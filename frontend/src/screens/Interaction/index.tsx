@@ -13,10 +13,12 @@ import { useMainBottomTabStore } from "../../store/mainBottomTabStore";
 import { useTranslation } from "react-i18next";
 import { CenteredTabBar } from "../../components/CenteredTabBar";
 import { useChatStore } from "../../store/chatStore";
+import { useNotificationStore } from "../../store/notificationStore";
 import BuyerMapScreen from "../BuyerMapScreen";
 import { useAppTheme } from "../../theme";
 import { SubTab, SUB_TAB_KEYS, TAB_INDEX, INDEX_TAB } from "./constants";
 import { MessagesContent } from "./components/MessagesContent";
+import { TradingContent } from "./components/TradingContent";
 import { useInteractionStyles } from "./styles";
 
 const { width: screenWidth } = Dimensions.get("window");
@@ -61,6 +63,10 @@ const InteractionScreen = () => {
   // 初始化时若用户是从其它页通过 `subTab=map` 参数直达，则直接标记为已挂载。
   const [hasMountedMap, setHasMountedMap] = useState(initialTab === "map");
   const { refreshUnreadCount } = useChatStore();
+  // 「交易」tab 角标：未读交易类通知（已带 category）的合计数量。
+  const tradingUnread = useNotificationStore((s) =>
+    s.notifications.filter((n) => n.category != null && !n.isRead).length
+  );
   const horizontalScrollRef = useRef<RNScrollView>(null);
   const hasAlignedAfterLayoutRef = useRef(false);
   // route.params.subTab 仅当与上次响应过的值不同时才驱动子 Tab 切换；
@@ -122,7 +128,7 @@ const InteractionScreen = () => {
   const tabItems = (Object.keys(SUB_TAB_KEYS) as SubTab[]).map((id) => ({
     id,
     label: t(SUB_TAB_KEYS[id]),
-    badge: 0,
+    badge: id === "trading" ? tradingUnread : 0,
   }));
 
   return (
@@ -154,6 +160,9 @@ const InteractionScreen = () => {
       >
         <View style={{ width: screenWidth }}>
           <MessagesContent />
+        </View>
+        <View style={{ width: screenWidth }}>
+          <TradingContent />
         </View>
         <View style={{ width: screenWidth }}>
           {hasMountedMap ? <BuyerMapScreen embedded /> : <MapTabPlaceholder />}

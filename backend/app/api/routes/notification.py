@@ -15,10 +15,19 @@ router = APIRouter(prefix="/notifications", tags=["通知"])
 @router.get("")
 async def get_notifications(
     unreadOnly: bool = Query(False, description="是否只获取未读通知"),
+    category: Optional[str] = Query(
+        None,
+        description=(
+            "交易分类过滤：logistics/after_sales/wishlist 单类，"
+            "trading 全部交易类，system 仅非交易系统/互动类"
+        ),
+    ),
     current_user_id: int = Depends(get_current_user_id),
 ):
     """获取用户通知列表"""
-    result = notification_service.get_notifications(current_user_id, unreadOnly)
+    result = notification_service.get_notifications(
+        current_user_id, unreadOnly, category
+    )
     return success([n.model_dump() for n in result])
 
 
@@ -29,6 +38,15 @@ async def get_unread_count(
     """获取未读通知数量"""
     count = notification_service.get_unread_count(current_user_id)
     return success({"count": count})
+
+
+@router.get("/category-counts")
+async def get_category_counts(
+    current_user_id: int = Depends(get_current_user_id),
+):
+    """获取各交易分类的未读数量（供互动页「交易」tab 角标）"""
+    counts = notification_service.get_category_counts(current_user_id)
+    return success(counts)
 
 
 @router.post("/{notification_id}/read")

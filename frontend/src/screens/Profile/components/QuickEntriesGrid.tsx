@@ -4,10 +4,10 @@
  * 把买/卖两侧最高频的 4 个入口提到主页头部，避免用户每次都要进设置或翻到
  * Settings → Shopping / Merchant Center 才能找到：
  *
- *   1. 我的订单     →  Profile (initialTopTab=buying)，订单卡内含「联系卖家」
+ *   1. 我买到的     →  Profile (initialTopTab=buying)，订单卡内含「联系卖家」
  *   2. 我的钱包     →  MyWallet（卖家收入 + 提现）
- *   3. 我的在售     →  SellerListings（卖家在售/草稿/审核中）
- *   4. MY ARCHIVE   →  MyArchive（个人交易档案）
+ *   3. 我在卖的     →  SellerListings（卖家在售/草稿/审核中）
+ *   4. offer出价    →  MyOffers（我发出的 / 收到的报价）
  *
  * 视觉与 design.md 一致：
  *   - 单卡承载，与 LevelProgressCard 同款 `profileInsetCard` 样式
@@ -32,7 +32,7 @@ import { useProfileStyles } from "../styles";
 type IoniconName = React.ComponentProps<typeof Ionicons>["name"];
 
 interface QuickEntry {
-  id: "orders" | "wallet" | "selling" | "archive";
+  id: "orders" | "wallet" | "selling" | "offers";
   icon: IoniconName;
   label: string;
   onPress: () => void;
@@ -69,10 +69,10 @@ export const QuickEntriesGrid: React.FC = () => {
       onPress: () => navigation.navigate("SellerListings"),
     },
     {
-      id: "archive",
-      icon: "albums-outline",
-      label: t("trading.archiveEntry.title"),
-      onPress: () => navigation.navigate("MyArchive"),
+      id: "offers",
+      icon: "cash-outline",
+      label: t("profile.quickEntries.offers"),
+      onPress: () => navigation.navigate("MyOffers"),
     },
   ];
 

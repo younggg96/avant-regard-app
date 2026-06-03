@@ -1,14 +1,23 @@
 /**
  * 个人主页 · 等级进度紧凑卡片（图二左栏）。
  */
-import React, { useMemo } from "react";
-import { StyleSheet, View } from "react-native";
+import React, { useMemo, useState } from "react";
+import {
+  LayoutAnimation,
+  Platform,
+  Pressable,
+  StyleSheet,
+  UIManager,
+  View,
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { useNavigation } from "@react-navigation/native";
 
 import { HStack, Text, VStack } from "../../../components/ui";
 import {
   playfairFonts,
+  useAppTheme,
   useThemedStyles,
   type AppTheme,
 } from "../../../theme";
@@ -29,13 +38,22 @@ const computeOverallProgress = (
   return Math.round((totalProgress / totalTarget) * 100);
 };
 
+if (
+  Platform.OS === "android" &&
+  UIManager.setLayoutAnimationEnabledExperimental
+) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
 export const LevelProgressCard: React.FC<{ embedded?: boolean }> = ({
   embedded = false,
 }) => {
   const { t } = useTranslation();
   const navigation = useNavigation<any>();
+  const theme = useAppTheme();
   const status = useLevelStore((s) => s.status);
   const styles = useThemedStyles(makeStyles);
+  const [expanded, setExpanded] = useState(false);
 
   const tasks = status?.nextTasks ?? [];
   const overallPct = useMemo(() => computeOverallProgress(tasks), [tasks]);
@@ -56,16 +74,29 @@ export const LevelProgressCard: React.FC<{ embedded?: boolean }> = ({
       ? t("level.pendingReview", { level: pendingLevel })
       : `Lv${displayLevel} · ${t(getLevelTitleKey(displayLevel))}`;
 
-  const visibleTasks = tasks.slice(0, 2);
-  const showTasks = !topReached && !isPendingAudit && visibleTasks.length > 0;
+  const hasTasks = !topReached && !isPendingAudit && tasks.length > 0;
   const goDetail = () => navigation.navigate("MyLevel");
+
+  const toggleExpanded = () => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setExpanded((prev) => !prev);
+  };
 
   return (
     <ProfileSectionCard
       cardTitle={t("profile.levelProgress")}
       embedded={embedded}
       embeddedFlex={embedded ? 3 : undefined}
-      onPress={goDetail}
+      onPress={hasTasks ? toggleExpanded : goDetail}
+      headerTrailing={
+        hasTasks ? (
+          <Ionicons
+            name={expanded ? "chevron-up" : "chevron-down"}
+            size={14}
+            color={theme.colors.gray300}
+          />
+        ) : undefined
+      }
       cardStyle={styles.cardFill}
     >
       <VStack space="sm" style={styles.content}>
@@ -73,17 +104,20 @@ export const LevelProgressCard: React.FC<{ embedded?: boolean }> = ({
           <Text style={styles.levelLine} numberOfLines={1}>
             {levelLine}
           </Text>
-          {showTasks ? (
+          {hasTasks ? (
             <Text style={styles.pctText}>{overallPct}%</Text>
           ) : null}
         </HStack>
 
-        {showTasks ? (
+        {hasTasks ? (
+          <View style={styles.track}>
+            <View style={[styles.fill, { width: `${overallPct}%` }]} />
+          </View>
+        ) : null}
+
+        {hasTasks && expanded ? (
           <>
-            <View style={styles.track}>
-              <View style={[styles.fill, { width: `${overallPct}%` }]} />
-            </View>
-            {visibleTasks.map((task) => {
+            {tasks.map((task) => {
               const label = t(`level.taskLabels.${task.action}`, {
                 target: task.target,
                 defaultValue: task.label,
@@ -104,6 +138,20 @@ export const LevelProgressCard: React.FC<{ embedded?: boolean }> = ({
                 </View>
               );
             })}
+            <Pressable
+              onPress={goDetail}
+              style={styles.detailRow}
+              accessibilityRole="button"
+            >
+              <Text style={styles.detailText}>
+                {t("profile.levelViewDetail")}
+              </Text>
+              <Ionicons
+                name="chevron-forward"
+                size={12}
+                color={theme.colors.gray300}
+              />
+            </Pressable>
           </>
         ) : null}
 
@@ -117,9 +165,7 @@ export const LevelProgressCard: React.FC<{ embedded?: boolean }> = ({
 
 const makeStyles = (t: AppTheme) =>
   StyleSheet.create({
-    cardFill: {
-      minHeight: 148,
-    },
+    cardFill: {},
     content: {
       alignSelf: "stretch",
     },
@@ -168,5 +214,17 @@ const makeStyles = (t: AppTheme) =>
       ...t.typography.caption,
       color: t.colors.gray300,
       fontStyle: "italic",
+    },
+    detailRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "flex-end",
+      gap: 2,
+      marginTop: t.spacing.xs,
+    },
+    detailText: {
+      ...t.typography.caption,
+      fontFamily: playfairFonts.medium,
+      color: t.colors.textSecondary,
     },
   });

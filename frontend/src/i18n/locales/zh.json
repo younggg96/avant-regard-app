@@ -166,11 +166,16 @@
     "invalidUserId": "无效的用户 ID",
     "titles": "头衔",
     "levelProgress": "等级进度",
+    "savedItemsCard": "我的收藏",
+    "levelTasksExpand": "展开任务",
+    "levelTasksCollapse": "收起任务",
+    "levelViewDetail": "查看等级详情",
     "quickEntries": {
-      "orders": "我的订单",
+      "orders": "我买到的",
       "wallet": "我的钱包",
-      "selling": "我的在售",
-      "collections": "我的收藏"
+      "selling": "我在卖的",
+      "collections": "我的收藏",
+      "offers": "offer出价"
     }
   },
   "profileContrib": {
@@ -1208,7 +1213,14 @@
     "sentMessage": "发来一条消息",
     "csLabel": "客服",
     "csDisplayName": "Avant Regard 客服",
-    "csUnavailable": "无法连接客服，请稍后再试"
+    "csUnavailable": "无法连接客服，请稍后再试",
+    "trading": "交易",
+    "tradingLogistics": "物流信息",
+    "tradingLogisticsEmpty": "暂无物流信息",
+    "tradingAfterSales": "售后信息",
+    "tradingAfterSalesEmpty": "暂无售后信息",
+    "tradingWishlist": "心动信息",
+    "tradingWishlistEmpty": "暂无心动信息"
   },
   "chat": {
     "title": "聊天",

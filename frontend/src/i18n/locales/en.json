@@ -166,11 +166,16 @@
     "invalidUserId": "Invalid user ID",
     "titles": "Titles",
     "levelProgress": "Level Progress",
+    "savedItemsCard": "Saved",
+    "levelTasksExpand": "Show tasks",
+    "levelTasksCollapse": "Hide tasks",
+    "levelViewDetail": "View level details",
     "quickEntries": {
-      "orders": "Orders",
+      "orders": "Purchases",
       "wallet": "Wallet",
-      "selling": "Listings",
-      "collections": "Saved"
+      "selling": "Selling",
+      "collections": "Saved",
+      "offers": "Offers"
     }
   },
   "profileContrib": {
@@ -1208,7 +1213,14 @@
     "sentMessage": "sent a message",
     "csLabel": "Support",
     "csDisplayName": "Avant Regard Support",
-    "csUnavailable": "Unable to reach support, please try again later"
+    "csUnavailable": "Unable to reach support, please try again later",
+    "trading": "Trading",
+    "tradingLogistics": "Logistics",
+    "tradingLogisticsEmpty": "No logistics updates yet",
+    "tradingAfterSales": "After-sales",
+    "tradingAfterSalesEmpty": "No after-sales updates yet",
+    "tradingWishlist": "Wishlist",
+    "tradingWishlistEmpty": "No wishlist alerts yet"
   },
   "chat": {
     "title": "Chat",

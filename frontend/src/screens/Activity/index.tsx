@@ -8,7 +8,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, chipRowStyle } from "../../components/ui";
 import ScreenHeader from "../../components/ScreenHeader";
 import { theme, useAppTheme } from "../../theme";
-import { Notification } from "../../services/notificationService";
+import { Notification, TradingCategory } from "../../services/notificationService";
 import { useNotificationStore } from "../../store/notificationStore";
 import { ActivityFilter, FILTER_TABS, EXCLUDED_TYPES } from "./constants";
 import { matchesFilter } from "./utils";
@@ -18,6 +18,13 @@ import { useActivityStyles } from "./styles";
 
 const isChatNotif = (n: Notification) => n.actionData?.navigateTo === "Chat";
 
+/** 交易分类 → 列表页标题 i18n key */
+const TRADING_TITLE_KEYS: Record<TradingCategory, string> = {
+  logistics: "interaction.tradingLogistics",
+  after_sales: "interaction.tradingAfterSales",
+  wishlist: "interaction.tradingWishlist",
+};
+
 const ActivityScreen = () => {
   const theme = useAppTheme();
   const { t } = useTranslation();
@@ -25,6 +32,9 @@ const ActivityScreen = () => {
   const route = useRoute<any>();
   const styles = useActivityStyles();
   const systemOnly = route.params?.filter === "system";
+  const tradingCategory = route.params?.tradingCategory as
+    | TradingCategory
+    | undefined;
   const [filter, setFilter] = useState<ActivityFilter>("all");
   const [refreshing, setRefreshing] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
@@ -45,12 +55,15 @@ const ActivityScreen = () => {
       .notifications.filter((n) => {
         if (n.isRead) return false;
         if (isChatNotif(n)) return false;
+        if (tradingCategory) return n.category === tradingCategory;
+        // 交易类通知已迁到「交易」tab，互动 / 系统列表不再处理它们。
+        if (n.category != null) return false;
         if (systemOnly) return n.type === "system" || n.type === "mention";
         return !EXCLUDED_TYPES.includes(n.type);
       })
       .map((n) => n.id);
     if (ids.length > 0) markManyRead(ids);
-  }, [systemOnly, markManyRead]);
+  }, [systemOnly, tradingCategory, markManyRead]);
 
   const loadData = useCallback(async () => {
     await loadNotifications();
@@ -117,27 +130,60 @@ const ActivityScreen = () => {
 
   const handleMarkAllRead = useCallback(async () => {
     // 只把当前列表里可见的未读标已读；避免把聊天通知（由 Chat 屏自己清）也误清。
-    const ids = (systemOnly
-      ? notifications.filter((n) => (n.type === "system" || n.type === "mention") && !isChatNotif(n))
-      : notifications.filter((n) => !EXCLUDED_TYPES.includes(n.type))
+    const ids = (tradingCategory
+      ? notifications.filter((n) => n.category === tradingCategory)
+      : systemOnly
+      ? notifications.filter(
+          (n) =>
+            (n.type === "system" || n.type === "mention") &&
+            !isChatNotif(n) &&
+            n.category == null
+        )
+      : notifications.filter(
+          (n) => !EXCLUDED_TYPES.includes(n.type) && n.category == null
+        )
     )
       .filter((n) => !n.isRead)
       .map((n) => n.id);
     await markManyRead(ids);
-  }, [notifications, systemOnly, markManyRead]);
+  }, [notifications, systemOnly, tradingCategory, markManyRead]);
 
-  const filtered = systemOnly
-    ? notifications.filter((n) => (n.type === "system" || n.type === "mention") && !isChatNotif(n))
-    : notifications.filter((n) => matchesFilter(n.type, filter));
-  const interactionNotifs = systemOnly
-    ? notifications.filter((n) => (n.type === "system" || n.type === "mention") && !isChatNotif(n))
-    : notifications.filter((n) => !EXCLUDED_TYPES.includes(n.type));
+  const filtered = tradingCategory
+    ? notifications.filter((n) => n.category === tradingCategory)
+    : systemOnly
+    ? notifications.filter(
+        (n) =>
+          (n.type === "system" || n.type === "mention") &&
+          !isChatNotif(n) &&
+          n.category == null
+      )
+    : notifications.filter(
+        (n) => matchesFilter(n.type, filter) && n.category == null
+      );
+  const interactionNotifs = tradingCategory
+    ? notifications.filter((n) => n.category === tradingCategory)
+    : systemOnly
+    ? notifications.filter(
+        (n) =>
+          (n.type === "system" || n.type === "mention") &&
+          !isChatNotif(n) &&
+          n.category == null
+      )
+    : notifications.filter(
+        (n) => !EXCLUDED_TYPES.includes(n.type) && n.category == null
+      );
   const unreadCount = interactionNotifs.filter((n) => !n.isRead).length;
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <ScreenHeader
-        title={systemOnly ? t("interaction.systemNotice") : t("activity.title")}
+        title={
+          tradingCategory
+            ? t(TRADING_TITLE_KEYS[tradingCategory])
+            : systemOnly
+            ? t("interaction.systemNotice")
+            : t("activity.title")
+        }
         showBackButton
         rightActions={
           unreadCount > 0
@@ -146,7 +192,7 @@ const ActivityScreen = () => {
         }
       />
 
-      {!systemOnly && (
+      {!systemOnly && !tradingCategory && (
         <View style={[styles.filterBar, chipRowStyle]}>
           {FILTER_TABS.map((tab) => (
             <FilterChip

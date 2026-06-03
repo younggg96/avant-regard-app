@@ -1,21 +1,18 @@
 /**
  * UploadArchiveItemScreen —— PDF p.21「独立上传 MY ARCHIVE」。
  *
- * 完全跟随项目设计系统：
- *   - ScreenHeader 顶栏 + showBack
- *   - useThemedStyles 主题化所有样式
- *   - FieldRow + 与 PublishListingStep1Screen 同款输入
- *   - 主 CTA 跟随 t.colors.accent / textInverted
+ * 复用 TradingFormShared（字段 / 输入 / 主按钮 / 图片网格），
+ * 颜色与圆角全部走 theme tokens，兼容 light / dark。
  */
 import React, { useState } from "react";
 import {
-  StyleSheet,
-  TextInput,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
   Image as RNImage,
   ActivityIndicator,
+  Text as RNText,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
@@ -23,22 +20,22 @@ import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { useTranslation } from "react-i18next";
 
-import {
-  Box,
-  HStack,
-  VStack,
-  Text,
-  Pressable,
-} from "../../components/ui";
+import { Box, HStack, Pressable } from "../../components/ui";
 import ScreenHeader from "../../components/ScreenHeader";
-import { useAppTheme, useThemedStyles, type AppTheme } from "../../theme";
+import {
+  makeTradingFormStyles,
+  TradingFormField,
+  TradingFormInput,
+  TradingFormTextArea,
+} from "../../components/trading/TradingFormShared";
+import { useAppTheme, useThemedStyles } from "../../theme";
 import { Alert } from "../../utils/Alert";
 import { uploadImageFromUri } from "../admin/adminUtils";
 import { createArchiveItem } from "../../services/archivePlusService";
 
 const UploadArchiveItemScreen: React.FC = () => {
   const theme = useAppTheme();
-  const styles = useThemedStyles(makeStyles);
+  const styles = useThemedStyles(makeTradingFormStyles);
   const navigation = useNavigation<any>();
   const { t } = useTranslation();
 
@@ -125,29 +122,33 @@ const UploadArchiveItemScreen: React.FC = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
+    <SafeAreaView
+      style={{ flex: 1, backgroundColor: theme.colors.background }}
+      edges={["top"]}
+    >
       <ScreenHeader title={t("trading.uploadArchive.headerTitle")} showBack />
 
       <KeyboardAvoidingView
-        style={styles.flex}
+        style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <ScrollView
           contentContainerStyle={styles.scroll}
           keyboardShouldPersistTaps="handled"
         >
-          <Text style={styles.muted}>
+          <RNText style={styles.mutedText}>
             {t("trading.uploadArchive.privacyHint")}
-          </Text>
+          </RNText>
 
-          {/* 图片网格 */}
-          <HStack style={styles.photoGrid} space="sm">
+          <View style={styles.photoGrid}>
             {photos.map((uri, idx) => (
-              <Box key={uri + idx} style={styles.photoWrap}>
-                <RNImage source={{ uri }} style={styles.photo} />
+              <View key={uri + idx} style={styles.photoWrap}>
+                <RNImage source={{ uri }} style={styles.photoThumb} />
                 <Pressable
-                  style={styles.photoX}
+                  style={styles.photoRemove}
                   onPress={() => removePhoto(idx)}
+                  accessibilityRole="button"
+                  accessibilityLabel={t("common.delete")}
                 >
                   <Ionicons
                     name="close"
@@ -155,7 +156,7 @@ const UploadArchiveItemScreen: React.FC = () => {
                     color={theme.colors.textInverted}
                   />
                 </Pressable>
-              </Box>
+              </View>
             ))}
             {photos.length < 9 ? (
               <Pressable style={styles.photoAdd} onPress={pickImage}>
@@ -166,212 +167,103 @@ const UploadArchiveItemScreen: React.FC = () => {
                 )}
               </Pressable>
             ) : null}
-          </HStack>
+          </View>
 
-          <FieldRow label={t("trading.uploadArchive.titleLabel")}>
-            <TextInput
-              style={styles.input}
+          <TradingFormField label={t("trading.uploadArchive.titleLabel")}>
+            <TradingFormInput
               value={title}
               onChangeText={setTitle}
               placeholder={t("trading.uploadArchive.titlePlaceholder")}
-              placeholderTextColor={theme.colors.placeholder}
             />
-          </FieldRow>
+          </TradingFormField>
 
-          <FieldRow label={t("trading.uploadArchive.brandLabel")}>
-            <TextInput
-              style={styles.input}
+          <TradingFormField label={t("trading.uploadArchive.brandLabel")}>
+            <TradingFormInput
               value={brand}
               onChangeText={setBrand}
               placeholder={t("trading.uploadArchive.brandPlaceholder")}
-              placeholderTextColor={theme.colors.placeholder}
             />
-          </FieldRow>
+          </TradingFormField>
 
           <HStack space="md">
             <Box flex={1}>
-              <FieldRow label={t("trading.uploadArchive.sizeLabel")}>
-                <TextInput
-                  style={styles.input}
+              <TradingFormField label={t("trading.uploadArchive.sizeLabel")}>
+                <TradingFormInput
                   value={size}
                   onChangeText={setSize}
                   placeholder={t("trading.uploadArchive.sizePlaceholder")}
-                  placeholderTextColor={theme.colors.placeholder}
                 />
-              </FieldRow>
+              </TradingFormField>
             </Box>
             <Box flex={1}>
-              <FieldRow label={t("trading.uploadArchive.colorLabel")}>
-                <TextInput
-                  style={styles.input}
+              <TradingFormField label={t("trading.uploadArchive.colorLabel")}>
+                <TradingFormInput
                   value={color}
                   onChangeText={setColor}
                   placeholder={t("trading.uploadArchive.colorPlaceholder")}
-                  placeholderTextColor={theme.colors.placeholder}
                 />
-              </FieldRow>
+              </TradingFormField>
             </Box>
           </HStack>
 
-          <FieldRow label={t("trading.uploadArchive.acquiredAtLabel")}>
-            <TextInput
-              style={styles.input}
+          <TradingFormField label={t("trading.uploadArchive.acquiredAtLabel")}>
+            <TradingFormInput
               value={acquiredAt}
               onChangeText={setAcquiredAt}
               placeholder={t("trading.uploadArchive.optionalPlaceholder")}
-              placeholderTextColor={theme.colors.placeholder}
               autoCorrect={false}
             />
-          </FieldRow>
+          </TradingFormField>
 
-          <FieldRow label={t("trading.uploadArchive.priceLabel")}>
-            <TextInput
-              style={styles.input}
+          <TradingFormField label={t("trading.uploadArchive.priceLabel")}>
+            <TradingFormInput
               value={priceText}
               onChangeText={setPriceText}
               placeholder={t("trading.uploadArchive.optionalPlaceholder")}
-              placeholderTextColor={theme.colors.placeholder}
               keyboardType="decimal-pad"
             />
-          </FieldRow>
+          </TradingFormField>
 
-          <FieldRow label={t("trading.uploadArchive.storageLabel")}>
-            <TextInput
-              style={styles.input}
+          <TradingFormField label={t("trading.uploadArchive.storageLabel")}>
+            <TradingFormInput
               value={storage}
               onChangeText={setStorage}
               placeholder={t("trading.uploadArchive.storagePlaceholder")}
-              placeholderTextColor={theme.colors.placeholder}
             />
-          </FieldRow>
+          </TradingFormField>
 
-          <FieldRow label={t("trading.uploadArchive.noteLabel")}>
-            <TextInput
-              style={[styles.input, styles.textarea]}
+          <TradingFormField label={t("trading.uploadArchive.noteLabel")}>
+            <TradingFormTextArea
               value={note}
               onChangeText={setNote}
               placeholder={t("trading.uploadArchive.notePlaceholder")}
-              placeholderTextColor={theme.colors.placeholder}
-              multiline
-              textAlignVertical="top"
             />
-          </FieldRow>
+          </TradingFormField>
 
           <Box style={{ height: 24 }} />
         </ScrollView>
 
-        <Box style={styles.footer}>
+        <View style={styles.stickyFooter}>
           <Pressable
-            style={[styles.primary, submitting && styles.primaryDisabled]}
+            style={[
+              styles.stickyFooterPrimary,
+              submitting && styles.stickyFooterPrimaryDisabled,
+            ]}
             onPress={submit}
             disabled={submitting}
           >
             {submitting ? (
               <ActivityIndicator color={theme.colors.textInverted} />
             ) : (
-              <Text style={styles.primaryText}>
+              <RNText style={styles.primaryBtnText}>
                 {t("trading.uploadArchive.submitBtn")}
-              </Text>
+              </RNText>
             )}
           </Pressable>
-        </Box>
+        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };
-
-const FieldRow: React.FC<{
-  label: string;
-  children: React.ReactNode;
-}> = ({ label, children }) => {
-  const styles = useThemedStyles(makeStyles);
-  return (
-    <VStack style={styles.fieldRow} space="xs">
-      <Text style={styles.fieldLabel}>{label}</Text>
-      {children}
-    </VStack>
-  );
-};
-
-const makeStyles = (t: AppTheme) =>
-  StyleSheet.create({
-    container: { flex: 1, backgroundColor: t.colors.background },
-    flex: { flex: 1 },
-    scroll: { padding: 16, paddingBottom: 32 },
-    muted: { color: t.colors.gray300, fontSize: 12, marginBottom: 16 },
-
-    photoGrid: {
-      flexWrap: "wrap",
-      marginBottom: 16,
-    },
-    photoWrap: { width: 72, height: 72, position: "relative", marginBottom: 8 },
-    photo: {
-      width: 72,
-      height: 72,
-      borderRadius: 8,
-      backgroundColor: t.colors.skeleton,
-    },
-    photoX: {
-      position: "absolute",
-      top: -6,
-      right: -6,
-      width: 20,
-      height: 20,
-      borderRadius: 10,
-      backgroundColor: t.colors.accent,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    photoAdd: {
-      width: 72,
-      height: 72,
-      borderRadius: 8,
-      borderWidth: 1,
-      borderColor: t.colors.border,
-      borderStyle: "dashed",
-      alignItems: "center",
-      justifyContent: "center",
-      backgroundColor: t.colors.card,
-      marginBottom: 8,
-    },
-
-    fieldRow: { marginBottom: 18 },
-    fieldLabel: {
-      fontSize: 13,
-      color: t.colors.gray300,
-      marginBottom: 6,
-    },
-    input: {
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: t.colors.border,
-      borderRadius: 8,
-      paddingHorizontal: 12,
-      paddingVertical: 10,
-      fontSize: 16,
-      color: t.colors.text,
-      backgroundColor: t.colors.inputBackground,
-    },
-    textarea: { minHeight: 96 },
-
-    footer: {
-      padding: 16,
-      paddingBottom: Platform.OS === "ios" ? 32 : 16,
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: t.colors.border,
-      backgroundColor: t.colors.card,
-    },
-    primary: {
-      backgroundColor: t.colors.accent,
-      paddingVertical: 14,
-      borderRadius: 8,
-      alignItems: "center",
-    },
-    primaryDisabled: { opacity: 0.5 },
-    primaryText: {
-      color: t.colors.textInverted,
-      fontSize: 16,
-      fontWeight: "600",
-    },
-  });
 
 export default UploadArchiveItemScreen;

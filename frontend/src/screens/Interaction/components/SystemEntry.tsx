@@ -17,8 +17,12 @@ export const SystemEntry = ({ notifications, onPress }: SystemEntryProps) => {
   const theme = useAppTheme();
   const { t } = useTranslation();
   const styles = useInteractionStyles();
+  // 交易类通知（category 非空）已被提取到「交易」tab，系统通知里不再展示。
   const systemNotifs = notifications.filter(
-    (n) => (n.type === "system" || n.type === "mention") && !isChatNotification(n)
+    (n) =>
+      (n.type === "system" || n.type === "mention") &&
+      !isChatNotification(n) &&
+      n.category == null
   );
   const unreadCount = systemNotifs.filter((n) => !n.isRead).length;
   const latest = systemNotifs[0];

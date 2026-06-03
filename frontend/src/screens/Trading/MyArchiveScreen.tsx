@@ -8,7 +8,6 @@ import React, { useEffect, useState, useCallback } from "react";
 import {
   StyleSheet,
   FlatList,
-  Image as RNImage,
   ActivityIndicator,
   RefreshControl,
 } from "react-native";
@@ -23,9 +22,11 @@ import {
   VStack,
   Text,
   Pressable,
+  OptimizedImage,
 } from "../../components/ui";
 import ScreenHeader from "../../components/ScreenHeader";
-import { useAppTheme, useThemedStyles, type AppTheme } from "../../theme";
+import { playfairFonts, useAppTheme, useThemedStyles, type AppTheme } from "../../theme";
+import { ImageSize } from "../../utils/imageUtils";
 import {
   listArchive,
   getArchiveAnalyticsPreview,
@@ -143,9 +144,12 @@ const MyArchiveScreen: React.FC = () => {
           >
             <HStack space="md" alignItems="flex-start">
               {item.photos?.[0] ? (
-                <RNImage
-                  source={{ uri: item.photos[0] }}
+                <OptimizedImage
+                  uri={item.photos[0]}
+                  size={ImageSize.THUMBNAIL}
                   style={styles.thumb}
+                  contentFit="cover"
+                  lazy
                 />
               ) : (
                 <Box style={[styles.thumb, styles.thumbPlaceholder]}>
@@ -205,64 +209,81 @@ const MyArchiveScreen: React.FC = () => {
 const makeStyles = (t: AppTheme) =>
   StyleSheet.create({
     container: { flex: 1, backgroundColor: t.colors.background },
-    listContent: { padding: 12, paddingBottom: 32 },
+    listContent: {
+      padding: t.spacing.md,
+      paddingBottom: t.spacing.xl,
+    },
 
     analyticsCard: {
       backgroundColor: t.colors.accent,
-      borderRadius: 12,
-      padding: 16,
-      marginBottom: 12,
+      borderRadius: t.borderRadius.sm,
+      padding: t.spacing.md,
+      marginBottom: t.spacing.sm,
     },
-    analyticsLabel: { color: t.colors.textInverted, opacity: 0.6, fontSize: 12 },
-    analyticsValue: {
+    analyticsLabel: {
+      ...t.typography.caption,
       color: t.colors.textInverted,
-      fontSize: 28,
-      fontWeight: "700",
+      opacity: 0.6,
+    },
+    analyticsValue: {
+      ...t.typography.h2,
+      fontFamily: playfairFonts.bold,
+      color: t.colors.textInverted,
     },
     unlockBtn: {
       backgroundColor: t.colors.plusGold,
-      paddingHorizontal: 14,
-      paddingVertical: 8,
-      borderRadius: 18,
+      paddingHorizontal: t.spacing.sm,
+      paddingVertical: t.spacing.xs,
+      borderRadius: t.borderRadius.sm,
     },
     unlockBtnText: {
-      color: t.mode === "dark" ? "#1A1100" : "#FFFFFF",
-      fontSize: 12,
-      fontWeight: "600",
+      ...t.typography.caption,
+      fontFamily: playfairFonts.medium,
+      color: t.colors.textInverted,
     },
     brandRow: { flexWrap: "wrap", marginTop: 6 },
     brandChip: {
       backgroundColor: t.colors.brandChipBg,
       paddingHorizontal: 10,
       paddingVertical: 4,
-      borderRadius: 12,
+      borderRadius: t.borderRadius.sm,
       marginBottom: 4,
     },
-    brandChipText: { color: t.colors.textInverted, fontSize: 12 },
+    brandChipText: {
+      ...t.typography.caption,
+      color: t.colors.textInverted,
+    },
 
     card: {
       backgroundColor: t.colors.cardElevated,
-      borderRadius: 12,
-      padding: 12,
+      borderRadius: t.borderRadius.sm,
+      padding: t.spacing.sm,
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: t.colors.border,
     },
     thumb: {
       width: 72,
       height: 72,
-      borderRadius: 8,
+      borderRadius: t.borderRadius.sm,
       backgroundColor: t.colors.skeleton,
     },
     thumbPlaceholder: { alignItems: "center", justifyContent: "center" },
-    title: { fontSize: 14, color: t.colors.text, fontWeight: "600" },
-    muted: { fontSize: 12, color: t.colors.gray300 },
+    title: {
+      ...t.typography.bodySmall,
+      fontFamily: playfairFonts.medium,
+      color: t.colors.text,
+    },
+    muted: {
+      ...t.typography.caption,
+      color: t.colors.gray300,
+    },
 
     tag: {
-      fontSize: 11,
-      fontWeight: "600",
+      ...t.typography.caption,
+      fontFamily: playfairFonts.medium,
       paddingHorizontal: 6,
       paddingVertical: 2,
-      borderRadius: 4,
+      borderRadius: t.borderRadius.sm,
       overflow: "hidden",
     },
     tagSuccess: {
@@ -279,12 +300,11 @@ const makeStyles = (t: AppTheme) =>
     },
 
     empty: {
+      ...t.typography.bodySmall,
       textAlign: "center",
       color: t.colors.gray300,
       marginTop: 48,
-      fontSize: 13,
-      paddingHorizontal: 32,
-      lineHeight: 20,
+      paddingHorizontal: t.spacing.xl,
     },
   });
 

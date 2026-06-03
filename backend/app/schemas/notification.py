@@ -41,6 +41,9 @@ class Notification(BaseModel):
     isRead: bool
     actionData: NotificationActionData
     createdAt: str
+    # 互动页「交易」tab 的二级分类：logistics(物流) / after_sales(售后) /
+    # wishlist(心动)。非交易类通知为 None，仍归入「系统通知 / 互动」。
+    category: Optional[str] = None
 
 
 class CreateNotificationRequest(BaseModel):

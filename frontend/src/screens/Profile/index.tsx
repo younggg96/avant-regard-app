@@ -47,8 +47,8 @@ import { CoverSection } from "./components/CoverSection";
 import { CollapsedHeader } from "./components/CollapsedHeader";
 import { ProfileInfo } from "./components/ProfileInfo";
 import { ProfileInfoSkeleton } from "./components/ProfileInfoSkeleton";
-import { ProfileSecondaryRow } from "./components/ProfileSecondaryRow";
-import { ProfileSecondaryRowSkeleton } from "./components/ProfileSecondaryRowSkeleton";
+import { ProfilePreviewRow } from "./components/ProfilePreviewRow";
+import { LevelProgressCard } from "./components/LevelProgressCard";
 import { QuickEntriesGrid } from "./components/QuickEntriesGrid";
 import { ProfileTabBar } from "./components/ProfileTabBar";
 import { TopTabBar } from "../../components/ui";
@@ -125,7 +125,6 @@ const ProfileScreen = () => {
     followingUsersCount,
     followersCount,
     coverImage,
-    followedBrands,
     userTitles,
     postStats,
     contribSubTab,
@@ -633,19 +632,18 @@ const ProfileScreen = () => {
           />
         )}
 
-        {/* 2026-05 改版 · 核心快捷入口
-            买家订单 / 卖家钱包 / 卖家在售 / MY ARCHIVE —— 放在 ProfileInfo
-            正下方，是整个个人主页最显眼的二级入口位。次要入口（等级 /
-            关注品牌 / 月度抽奖）继续保持二级折叠态。 */}
+        {/* 2026-06 改版 · 头部双列预览
+            左「我的收藏」/ 右「MY ARCHIVE」—— 紧贴 ProfileInfo 下方，
+            一眼可见收藏单品 + 个人交易档案的封面与数量。 */}
+        <ProfilePreviewRow />
+
+        {/* 核心快捷入口：我买到的 / 我的钱包 / 我在卖的 / offer出价 */}
         <QuickEntriesGrid />
 
         <MonthlyLotteryEntry isOwnProfile currentLevel={ownLevel} />
 
-        {headerLoading ? (
-          <ProfileSecondaryRowSkeleton />
-        ) : (
-          <ProfileSecondaryRow brands={followedBrands} userId={user?.userId} />
-        )}
+        {/* 等级进度（整行，任务列表可展开/收起） */}
+        <LevelProgressCard />
 
         {/* Inline 一级 tab bar (笔记 / 购买 / 在售)。
             sticky 版用此处的 onLayout 作为锚点 —— 滚到这里之上时,

@@ -217,6 +217,61 @@ export const makeTradingFormStyles = (t: AppTheme) =>
       color: t.colors.error,
       marginTop: 8,
     },
+    /** 上传典藏 / 鉴定等 · 多图选择网格 */
+    photoGrid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 8,
+      marginBottom: 16,
+    },
+    photoWrap: {
+      width: 72,
+      height: 72,
+      position: "relative",
+    },
+    photoThumb: {
+      width: 72,
+      height: 72,
+      borderRadius: t.borderRadius.sm,
+      backgroundColor: t.colors.skeleton,
+    },
+    photoRemove: {
+      position: "absolute",
+      top: -6,
+      right: -6,
+      width: 20,
+      height: 20,
+      borderRadius: t.borderRadius.full,
+      backgroundColor: t.colors.accent,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    photoAdd: {
+      width: 72,
+      height: 72,
+      borderRadius: t.borderRadius.sm,
+      borderWidth: 1,
+      borderColor: t.colors.border,
+      borderStyle: "dashed",
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: t.colors.card,
+    },
+    stickyFooter: {
+      padding: TRADING_FORM_PADDING,
+      paddingBottom: Platform.OS === "ios" ? 32 : 16,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: t.colors.border,
+      backgroundColor: t.colors.card,
+    },
+    stickyFooterPrimary: {
+      backgroundColor: t.colors.accent,
+      paddingVertical: 14,
+      borderRadius: t.borderRadius.sm,
+      alignItems: "center",
+      alignSelf: "stretch",
+    },
+    stickyFooterPrimaryDisabled: { opacity: 0.5 },
   });
 
 /** Trading 模块资源不存在页 —— ScreenHeader + 空状态 + 返回 */

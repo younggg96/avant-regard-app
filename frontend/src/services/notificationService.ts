@@ -25,6 +25,61 @@ export type NotificationType =
   | "system"
   | "collection";
 
+/**
+ * 交易通知二级分类（互动页「交易」tab）：
+ *   - logistics   物流信息（订单 / 发货 / 收货 / 结算进度）
+ *   - after_sales 售后信息（纠纷 / 退款 / 鉴定 / 评价）
+ *   - wishlist    心动信息（收藏单品变动 / 出价）
+ * 非交易类通知为 null。
+ */
+export type TradingCategory = "logistics" | "after_sales" | "wishlist";
+
+export const TRADING_CATEGORIES: TradingCategory[] = [
+  "logistics",
+  "after_sales",
+  "wishlist",
+];
+
+const AFTER_SALES_NAV = ["Authentication", "OrderReviews"];
+const AFTER_SALES_KEYWORDS = [
+  "售后", "申诉", "退款", "退货", "纠纷", "仲裁", "鉴定", "评价", "争议", "客服介入",
+  "after-sale", "after sale", "refund", "dispute", "authentication", "review",
+];
+const LOGISTICS_NAV = ["OrderDetail", "MyWallet"];
+const LOGISTICS_KEYWORDS = [
+  "物流", "发货", "收货", "包裹", "签收", "结算", "入账", "提现", "订单",
+  "logistics", "shipped", "shipping", "delivery", "order", "settle",
+];
+const WISHLIST_NAV = ["StoreProductDetail"];
+const WISHLIST_KEYWORDS = [
+  "降价", "心动", "收藏", "出价", "上架", "售出", "下架", "价格",
+  "price", "offer", "listing", "sold", "favorite", "wishlist",
+];
+
+/**
+ * 前端兜底：万一后端未返回 category（旧版本后端），用同样的规则本地推导，
+ * 保证「交易」tab 不依赖后端发版即可工作。规则需与后端
+ * notification_service.derive_notification_category 保持一致。
+ */
+export function deriveTradingCategory(
+  type: string,
+  title: string | undefined,
+  navigateTo: string | undefined
+): TradingCategory | null {
+  if (type?.toLowerCase() !== "system") return null;
+  const text = title || "";
+  const has = (kws: string[]) =>
+    kws.some((k) => text.toLowerCase().includes(k.toLowerCase()));
+
+  if ((navigateTo && AFTER_SALES_NAV.includes(navigateTo)) || has(AFTER_SALES_KEYWORDS))
+    return "after_sales";
+  if ((navigateTo && LOGISTICS_NAV.includes(navigateTo)) || has(LOGISTICS_KEYWORDS))
+    return "logistics";
+  if ((navigateTo && WISHLIST_NAV.includes(navigateTo)) || has(WISHLIST_KEYWORDS))
+    return "wishlist";
+  return null;
+}
+
 // 通知接口
 export interface Notification {
   id: string;
@@ -36,6 +91,8 @@ export interface Notification {
   isRead: boolean;
   avatar?: string;
   image?: string;
+  /** 交易通知分类；非交易类为 null */
+  category?: TradingCategory | null;
   actionData?: {
     userId?: string;
     postId?: string;
@@ -71,6 +128,7 @@ interface NotificationResponse {
     externalUrl?: string;
   };
   createdAt: string;
+  category?: TradingCategory | null;
 }
 
 // 通用请求方法
@@ -149,14 +207,20 @@ async function request<T>(
  * 将后端响应转换为前端通知格式
  */
 function transformNotification(data: NotificationResponse): Notification {
+  const type = data.type.toLowerCase() as NotificationType;
+  // 优先使用后端返回的 category；旧后端未返回时本地兜底推导。
+  const category =
+    data.category ??
+    deriveTradingCategory(type, data.title, data.actionData?.navigateTo);
   return {
     id: String(data.id),
-    type: data.type.toLowerCase() as NotificationType,
+    type,
     title: data.title,
     message: data.message,
     timestamp: formatTimestamp(data.createdAt),
     createdAt: data.createdAt,
     isRead: data.isRead,
+    category,
     avatar: data.actionData?.actorAvatar,
     image: data.actionData?.postImage,
     actionData: {

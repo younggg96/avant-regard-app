@@ -15,6 +15,57 @@ from app.schemas.notification import (
 )
 
 
+# ======================= 交易通知分类 =======================
+#
+# 互动页「交易」tab 把所有交易相关通知（统一走 NotificationType.SYSTEM）按业务
+# 拆成三类。由于历史通知没有专门的分类列，这里在「读取时」基于 navigateTo + 标题
+# 关键字实时推导分类（对存量数据立即生效，无需数据库迁移）。
+TRADING_CATEGORY_LOGISTICS = "logistics"      # 物流信息：订单/发货/收货/结算进度
+TRADING_CATEGORY_AFTER_SALES = "after_sales"  # 售后信息：纠纷/退款/鉴定/评价
+TRADING_CATEGORY_WISHLIST = "wishlist"        # 心动信息：收藏单品变动 / 出价
+
+TRADING_CATEGORIES = (
+    TRADING_CATEGORY_LOGISTICS,
+    TRADING_CATEGORY_AFTER_SALES,
+    TRADING_CATEGORY_WISHLIST,
+)
+
+# 售后优先级最高：纠纷类通知同样跳 OrderDetail，必须靠关键字/页面先行区分。
+_AFTER_SALES_NAV = ("Authentication", "OrderReviews")
+_AFTER_SALES_KEYWORDS = (
+    "售后", "申诉", "退款", "退货", "纠纷", "仲裁", "鉴定", "评价", "争议", "客服介入",
+)
+_LOGISTICS_NAV = ("OrderDetail", "MyWallet")
+_LOGISTICS_KEYWORDS = (
+    "物流", "发货", "收货", "包裹", "签收", "结算", "入账", "提现", "订单",
+)
+_WISHLIST_NAV = ("StoreProductDetail",)
+_WISHLIST_KEYWORDS = (
+    "降价", "心动", "收藏", "出价", "上架", "售出", "下架", "价格",
+)
+
+
+def derive_notification_category(
+    notification_type: Any,
+    action_data: Optional[Dict[str, Any]],
+    title: Optional[str],
+) -> Optional[str]:
+    """推导交易通知所属分类；非交易类通知返回 None。"""
+    if str(notification_type or "").upper() != NotificationType.SYSTEM.value:
+        return None
+    ad = action_data or {}
+    navigate_to = ad.get("navigateTo")
+    text = title or ""
+
+    if navigate_to in _AFTER_SALES_NAV or any(k in text for k in _AFTER_SALES_KEYWORDS):
+        return TRADING_CATEGORY_AFTER_SALES
+    if navigate_to in _LOGISTICS_NAV or any(k in text for k in _LOGISTICS_KEYWORDS):
+        return TRADING_CATEGORY_LOGISTICS
+    if navigate_to in _WISHLIST_NAV or any(k in text for k in _WISHLIST_KEYWORDS):
+        return TRADING_CATEGORY_WISHLIST
+    return None
+
+
 class NotificationService:
     def __init__(self):
         self.db = get_supabase_admin()
@@ -24,6 +75,9 @@ class NotificationService:
     def _format_notification(self, data: dict) -> Notification:
         """格式化通知数据"""
         action_data = data.get("action_data", {}) or {}
+        category = derive_notification_category(
+            data.get("type"), action_data, data.get("title")
+        )
         return Notification(
             id=data["id"],
             userId=data["user_id"],
@@ -45,12 +99,23 @@ class NotificationService:
                 externalUrl=action_data.get("externalUrl"),
             ),
             createdAt=data["created_at"],
+            category=category,
         )
 
     def get_notifications(
-        self, user_id: int, unread_only: bool = False
+        self,
+        user_id: int,
+        unread_only: bool = False,
+        category: Optional[str] = None,
     ) -> List[Notification]:
-        """获取用户通知列表"""
+        """获取用户通知列表。
+
+        category 取值：
+          - "logistics" / "after_sales" / "wishlist": 仅返回对应交易分类
+          - "trading": 返回全部三类交易通知
+          - "system": 仅返回非交易类的系统/互动通知（交易通知已被提取出去）
+          - None: 全部
+        """
         query = (
             self.db.table("notifications")
             .select("*")
@@ -60,7 +125,27 @@ class NotificationService:
         if unread_only:
             query = query.eq("is_read", False)
         result = query.execute()
-        return [self._format_notification(n) for n in result.data or []]
+        items = [self._format_notification(n) for n in result.data or []]
+
+        if not category:
+            return items
+        if category == "trading":
+            return [n for n in items if n.category in TRADING_CATEGORIES]
+        if category == "system":
+            return [n for n in items if n.category is None]
+        if category in TRADING_CATEGORIES:
+            return [n for n in items if n.category == category]
+        return items
+
+    def get_category_counts(self, user_id: int) -> Dict[str, int]:
+        """各交易分类的未读数量 + 交易合计。供互动页「交易」tab 角标使用。"""
+        unread = self.get_notifications(user_id, unread_only=True)
+        counts: Dict[str, int] = {c: 0 for c in TRADING_CATEGORIES}
+        for n in unread:
+            if n.category in counts:
+                counts[n.category] += 1
+        counts["trading"] = sum(counts[c] for c in TRADING_CATEGORIES)
+        return counts
 
     def get_unread_count(self, user_id: int) -> int:
         """获取未读通知数量"""
