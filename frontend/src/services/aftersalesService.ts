@@ -308,6 +308,32 @@ export interface TradeReview {
   reviewerAvatarUrl?: string | null;
 }
 
+export interface OrderReviewStatus {
+  orderId: number;
+  canReview: boolean;
+  myReviewSubmitted: boolean;
+  buyerReviewSubmitted: boolean;
+  sellerReviewSubmitted: boolean;
+  bothVisible: boolean;
+}
+
+/** 导航到 TradeReview 时的通用参数（附带商品摘要）。 */
+export function buildTradeReviewParams(order: {
+  id: number;
+  productId: number;
+  product?: {
+    title?: string | null;
+    coverImage?: string | null;
+  } | null;
+}) {
+  return {
+    orderId: order.id,
+    productId: order.productId,
+    productTitle: order.product?.title ?? undefined,
+    productCover: order.product?.coverImage ?? undefined,
+  };
+}
+
 export async function submitTradeReview(body: {
   orderId: number;
   rating: number;
@@ -318,6 +344,24 @@ export async function submitTradeReview(body: {
   return request<TradeReview>("/api/trade-reviews", {
     method: "POST",
     body: JSON.stringify(body),
+  });
+}
+
+export async function getOrderReviewStatus(
+  orderId: number,
+): Promise<OrderReviewStatus> {
+  return request<OrderReviewStatus>(
+    `/api/trade-reviews/orders/${orderId}/status`,
+  );
+}
+
+export async function batchOrderReviewStatus(
+  orderIds: number[],
+): Promise<OrderReviewStatus[]> {
+  if (orderIds.length === 0) return [];
+  return request<OrderReviewStatus[]>("/api/trade-reviews/status/batch", {
+    method: "POST",
+    body: JSON.stringify({ orderIds }),
   });
 }
 

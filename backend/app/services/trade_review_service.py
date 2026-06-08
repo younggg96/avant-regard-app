@@ -14,7 +14,7 @@ from datetime import datetime, timedelta
 from typing import Optional, List, Tuple, Dict, Any
 
 from app.db.supabase import get_supabase_admin, execute_with_retry
-from app.schemas.disputes import TradeReview
+from app.schemas.disputes import TradeReview, OrderReviewStatus
 from app.services.order_service import order_service
 
 
@@ -202,7 +202,75 @@ class TradeReviewService:
             (res.count or 0),
         )
 
+    def _resolve_order_participant(self, order_id: int, buyer: Optional[int], seller: Optional[int]) -> Tuple[Optional[int], Optional[int]]:
+        """补全 merchant 订单缺失的 seller_user_id。"""
+        if buyer and seller:
+            return buyer, seller
+        full = order_service.get_order(order_id)
+        if not full:
+            return buyer, seller
+        return full.buyerUserId, full.sellerUserId
+
+    def _participant_role(self, order, viewer_user_id: int) -> Optional[str]:
+        if order.buyerUserId == viewer_user_id:
+            return "buyer"
+        if order.sellerUserId == viewer_user_id:
+            return "seller"
+        return None
+
+    def get_order_review_status(self, order_id: int, *, viewer_user_id: int) -> OrderReviewStatus:
+        order = order_service.get_order(order_id)
+        if not order:
+            raise ValueError("订单不存在")
+        role = self._participant_role(order, viewer_user_id)
+        if not role:
+            raise PermissionError("仅订单双方可查看评价状态")
+
+        res = (
+            self.db.table("trade_reviews")
+            .select("reviewer_role, visible")
+            .eq("order_id", order_id)
+            .execute()
+        )
+        rows = res.data or []
+        buyer_submitted = any(r["reviewer_role"] == "buyer" for r in rows)
+        seller_submitted = any(r["reviewer_role"] == "seller" for r in rows)
+        my_submitted = any(r["reviewer_role"] == role for r in rows)
+        both_visible = len(rows) >= 2 and all(r.get("visible") for r in rows)
+        can_review = (
+            order.status in ("completed", "settled", "resolved")
+            and not my_submitted
+        )
+        return OrderReviewStatus(
+            orderId=order_id,
+            canReview=can_review,
+            myReviewSubmitted=my_submitted,
+            buyerReviewSubmitted=buyer_submitted,
+            sellerReviewSubmitted=seller_submitted,
+            bothVisible=both_visible,
+        )
+
+    def batch_order_review_status(
+        self, order_ids: List[int], *, viewer_user_id: int
+    ) -> List[OrderReviewStatus]:
+        unique_ids = list({oid for oid in order_ids if oid})
+        if not unique_ids:
+            return []
+        out: List[OrderReviewStatus] = []
+        for oid in unique_ids:
+            try:
+                out.append(self.get_order_review_status(oid, viewer_user_id=viewer_user_id))
+            except (PermissionError, ValueError):
+                continue
+        return out
+
     def list_for_order(self, order_id: int, *, viewer_user_id: int) -> List[TradeReview]:
+        order = order_service.get_order(order_id)
+        if not order:
+            raise ValueError("订单不存在")
+        if not self._participant_role(order, viewer_user_id):
+            raise PermissionError("仅订单双方可查看评价")
+
         res = (
             self.db.table("trade_reviews")
             .select("*")
@@ -210,12 +278,15 @@ class TradeReviewService:
             .execute()
         )
         rows = res.data or []
-        # 单方 review 仅自己可看
-        filtered = []
+        filtered_rows = []
         for r in rows:
             if r.get("visible") or r["reviewer_user_id"] == viewer_user_id:
-                filtered.append(self._format(r))
-        return filtered
+                filtered_rows.append(r)
+        reviewers = self._fetch_reviewers([r["reviewer_user_id"] for r in filtered_rows])
+        return [
+            self._format(r, reviewers.get(r["reviewer_user_id"]))
+            for r in filtered_rows
+        ]
 
     # ------------------------------------------------------------------
     # Cron · 7 天自动好评 / 15 天单方公开
@@ -250,8 +321,11 @@ class TradeReviewService:
         count = 0
         for o in rows:
             order_id = o["id"]
-            buyer = o.get("buyer_user_id")
-            seller = o.get("seller_user_id")
+            buyer, seller = self._resolve_order_participant(
+                order_id,
+                o.get("buyer_user_id"),
+                o.get("seller_user_id"),
+            )
             if not (buyer and seller):
                 continue
             # 查现有评价

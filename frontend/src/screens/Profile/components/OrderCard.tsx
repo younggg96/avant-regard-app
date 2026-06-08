@@ -50,6 +50,8 @@ interface OrderCardProps {
   onShip?: () => void;
   onReview?: () => void;
   onViewAfterSales?: () => void;
+  /** 当前用户是否已提交评价（用于区分「去评价 / 查看评价」）。 */
+  myReviewSubmitted?: boolean;
 }
 
 const isSolidPrimaryAction = (
@@ -77,6 +79,7 @@ const pickPrimaryAction = (
     | "onReview"
     | "onViewAfterSales"
   >,
+  myReviewSubmitted?: boolean,
 ): { label: string; onPress: () => void } | null => {
   const status = order.status;
   if (role === "buyer") {
@@ -95,8 +98,16 @@ const pickPrimaryAction = (
         onPress: handlers.onConfirmReceipt,
       };
     }
-    if ((status === "completed" || status === "settled") && handlers.onReview) {
-      return { label: t("trading.tradingTab.viewReview"), onPress: handlers.onReview };
+    if (
+      (status === "completed" || status === "settled" || status === "resolved") &&
+      handlers.onReview
+    ) {
+      return {
+        label: myReviewSubmitted
+          ? t("trading.tradingTab.viewReview")
+          : t("trading.tradingTab.writeReview"),
+        onPress: handlers.onReview,
+      };
     }
   } else {
     if (status === "paid" && handlers.onShip) {
@@ -109,11 +120,13 @@ const pickPrimaryAction = (
       };
     }
     if (
-      (status === "completed" || status === "settled" || status === "delivered") &&
+      (status === "completed" || status === "settled" || status === "resolved") &&
       handlers.onReview
     ) {
       return {
-        label: t("trading.tradingTab.viewReview"),
+        label: myReviewSubmitted
+          ? t("trading.tradingTab.viewReview")
+          : t("trading.tradingTab.writeReview"),
         onPress: handlers.onReview,
       };
     }
@@ -143,6 +156,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({
   onShip,
   onReview,
   onViewAfterSales,
+  myReviewSubmitted,
 }) => {
   const theme = useAppTheme();
   const styles = useThemedStyles(makeStyles);
@@ -169,7 +183,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({
     onShip,
     onReview,
     onViewAfterSales,
-  });
+  }, myReviewSubmitted);
 
   // 「联系卖家 / 联系买家」—— 与 OrderDetailScreen.handleContactCounterparty
   // 同逻辑：买家拨给 sellerUserId，卖家拨给 buyerUserId。把入口直接挂到

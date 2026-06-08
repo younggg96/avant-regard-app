@@ -245,13 +245,21 @@ class OrderService:
         左 / 右气泡时方向是可预期的:
 
           - PENDING_PAYMENT  → 卖家 → 买家   (买家被提醒去支付)
-          - PAID             → 买家 → 卖家   (卖家被提醒去发货)
+          - PAID             → 不发卡片        (见下)
           - SHIPPED          → 卖家 → 买家   (买家被提醒关注物流)
           - REFUNDED         → 卖家 → 买家   (买家被告知退款结果)
           - REFUNDED_AUTO    → 卖家 → 买家   (同上,系统触发)
           - DELIVERED        → 居中系统卡    (前端按 status 居中显示,不区分 sender)
           - COMPLETED        → 居中系统卡    (同上,交易终结的里程碑)
           - SETTLED          → 居中系统卡    (T+3 钱款释放,双方知晓即可)
+
+        为什么 PAID 不发卡片:
+          前端的 order_status 卡片会按「最新订单状态」live-override 渲染,即
+          创建订单时那张 PENDING_PAYMENT 卡(卖家 → 买家)在订单转 paid 后会
+          自动显示成「待发货」。如果 PAID 再发一张方向相反(买家 → 卖家)的卡,
+          买家就会同时在左右两侧各看到一张「待发货」卡(一收一发),这正是要
+          消除的重复。所以 PAID 只补发站内信(买家「支付成功」、卖家「请发货」),
+          聊天里复用那张会自动变成「待发货」的 PENDING_PAYMENT 卡即可。
 
         居中系统卡的 sender 选 buyer→seller 方向,理由:
           - DELIVERED/COMPLETED 通常由买家动作触发,sender=买家在底层数据上
@@ -283,10 +291,11 @@ class OrderService:
             )
             return
 
-        # 按业务事件流固定方向:
+        # 按业务事件流固定方向(全部 卖家 → 买家)。
+        # PAID 刻意不在此表里:它复用 PENDING_PAYMENT 卡的 live-override,
+        # 只补站内信,不再发会造成左右重复的反向卡片。
         direction_map = {
             OrderStatus.PENDING_PAYMENT.value: (seller_id, buyer_id),
-            OrderStatus.PAID.value:            (buyer_id, seller_id),
             OrderStatus.SHIPPED.value:         (seller_id, buyer_id),
             OrderStatus.REFUNDED.value:        (seller_id, buyer_id),
             OrderStatus.REFUNDED_AUTO.value:   (seller_id, buyer_id),
@@ -843,6 +852,47 @@ class OrderService:
             except Exception as e:
                 print(f"[orders] provenance updates failed: {e}")
 
+            # PAID 不再发 order_status 聊天卡(避免与会 live-override 成「待发货」
+            # 的 PENDING_PAYMENT 卡左右重复),改为给买卖双方各补一条站内信:
+            #   - 买家:「支付成功，等待卖家发货」付款回执;
+            #   - 卖家:「买家已付款，请尽快发货」发货提醒(原本靠 paid 卡的 push
+            #     送达,卡片取消后用通知兜底)。
+            try:
+                from app.services.notification_service import notification_service
+                from app.schemas.notification import NotificationType
+                product = self._product_brief(order["product_id"]) or {}
+                p_title = (
+                    product.get("title")
+                    or product.get("brand")
+                    or f"商品 #{order['product_id']}"
+                )
+                notification_service.create_notification(
+                    user_id=order["buyer_user_id"],
+                    notification_type=NotificationType.SYSTEM,
+                    title="支付成功",
+                    message=f"你已成功支付订单「{p_title}」，等待卖家发货",
+                    action_data={
+                        "navigateTo": "OrderDetail",
+                        "navigateParams": {"orderId": order_id},
+                    },
+                    send_push=True,
+                )
+                seller_id = self._resolve_seller_user_id(order)
+                if seller_id and seller_id != order["buyer_user_id"]:
+                    notification_service.create_notification(
+                        user_id=seller_id,
+                        notification_type=NotificationType.SYSTEM,
+                        title="买家已付款",
+                        message=f"订单「{p_title}」买家已付款，请尽快发货",
+                        action_data={
+                            "navigateTo": "OrderDetail",
+                            "navigateParams": {"orderId": order_id},
+                        },
+                        send_push=True,
+                    )
+            except Exception as e:
+                print(f"[orders] notify paid parties failed: {e}")
+
         if target == OrderStatus.COMPLETED:
             # 1) 单品自动入库 MY ARCHIVE
             try:
@@ -933,6 +983,68 @@ class OrderService:
         q = q.range(offset, offset + page_size - 1)
         res = execute_with_retry(lambda: q.execute(), label="orders.list")
         return [self._format_order(r) for r in (res.data or [])], (res.count or 0)
+
+    def list_orders_between(
+        self, user_a: int, user_b: int, *, limit: int = 50
+    ) -> List[Order]:
+        """列出两位用户之间的全部订单（任一方为买家、另一方为卖家）。
+
+        交易聊天的 header 下要展示这对买卖双方的订单（默认最新、可切换历史）。
+        覆盖两种身份方向，并兼容买手店卖家（seller_user_id 为空、仅有
+        seller_merchant_id）的情形：通过店主 user_id 反查 merchant_id 后用
+        PostgREST 的 ``or`` 过滤把「个人卖家」与「店铺卖家」两种订单一并取到。
+        结果按创建时间倒序、按 id 去重。
+        """
+        merchant_a = self._merchant_id_of(user_a)
+        merchant_b = self._merchant_id_of(user_b)
+
+        def _seller_filter(seller_user_id: int, merchant_id: Optional[int]):
+            if merchant_id:
+                return ("or", f"seller_user_id.eq.{seller_user_id},seller_merchant_id.eq.{merchant_id}")
+            return ("eq", seller_user_id)
+
+        def _query(buyer_id: int, seller_user_id: int, seller_merchant_id: Optional[int]):
+            q = (
+                self.db.table("orders")
+                .select("*")
+                .eq("buyer_user_id", buyer_id)
+            )
+            kind, value = _seller_filter(seller_user_id, seller_merchant_id)
+            if kind == "or":
+                q = q.or_(value)
+            else:
+                q = q.eq("seller_user_id", value)
+            q = q.order("created_at", desc=True).limit(limit)
+            return execute_with_retry(lambda: q.execute(), label="orders.between")
+
+        rows: Dict[int, dict] = {}
+        try:
+            # 方向 1：user_a 买、user_b 卖
+            res1 = _query(user_a, user_b, merchant_b)
+            for r in res1.data or []:
+                rows[r["id"]] = r
+            # 方向 2：user_b 买、user_a 卖
+            res2 = _query(user_b, user_a, merchant_a)
+            for r in res2.data or []:
+                rows[r["id"]] = r
+        except Exception:
+            return []
+
+        ordered = sorted(
+            rows.values(),
+            key=lambda r: r.get("created_at") or "",
+            reverse=True,
+        )
+        return [self._format_order(r) for r in ordered[:limit]]
+
+    def _merchant_id_of(self, user_id: int) -> Optional[int]:
+        """取用户名下买手店 merchant_id（无则 None）。"""
+        try:
+            from app.services.store_merchant_service import store_merchant_service
+            merchant = store_merchant_service.get_merchant_by_user(user_id)
+            return getattr(merchant, "id", None) if merchant else None
+        except Exception:
+            return None
 
     def get_order(self, order_id: int) -> Optional[Order]:
         res = (

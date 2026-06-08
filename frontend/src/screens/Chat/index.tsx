@@ -24,6 +24,7 @@ import { getUserType } from "../../services/userInfoService";
 import { ChatRouteParams } from "./types";
 import { shouldShowTimestamp } from "./utils";
 import { ChatHeader } from "./components/ChatHeader";
+import { ChatOrderSection } from "./components/ChatOrderSection";
 import { MessageBubble } from "./components/MessageBubble";
 import { ChatReportModal } from "./components/ChatReportModal";
 import { MessageInput } from "./components/MessageInput";
@@ -112,26 +113,24 @@ const ChatScreen = () => {
 
   // 把消息按时间倒序铺给 FlatList(inverted)。
   //
-  // 顺便对 ``order_status`` 卡做一次去重:相同 (orderId, status) 只保留时间
-  // 上最靠后的那一条。新后端按状态固定方向已经做到 1 张/状态,但历史会话
-  // 里仍可能有早期"双向发卡"留下的两张同状态卡片(典型现象:同一订单连续
-  // 两张"Awaiting shipment"卡)。在渲染前做一次轻量级 client-side dedupe,
-  // 让历史会话也立刻干净。
+  // 顺便对 ``order_status`` 卡按 ``orderId`` 去重:同一订单只保留时间上最靠后
+  // 的那一张卡。原因是卡片渲染会按「最新订单状态」live-override(见
+  // TradingCards 的 useLatestOrderStatus),订单推进后历史里早期的
+  // PENDING_PAYMENT / PAID / SHIPPED 等多张快照卡会全部显示成同一个当前状态
+  // (如都显示「待发货」/「已发货」),且方向不一,买家会在左右两侧各看到一张
+  // 一样的卡。既然所有卡都渲染当前状态,只保留最新一张即可——剩下的那张方向
+  // 也是预期的(卖家 → 买家)。
   const reversedMessages = useMemo(() => {
     const reversed = [...conversationMessages].reverse();
-    const seenOrderStatus = new Set<string>();
+    const seenOrderIds = new Set<number>();
     return reversed.filter((m) => {
       if (m.messageType !== "order_status") return true;
       try {
         const parsed = JSON.parse(m.content);
         const orderId = parsed?.orderId;
-        const status = parsed?.status;
-        if (typeof orderId !== "number" || typeof status !== "string") {
-          return true;
-        }
-        const key = `${orderId}:${status}`;
-        if (seenOrderStatus.has(key)) return false;
-        seenOrderStatus.add(key);
+        if (typeof orderId !== "number") return true;
+        if (seenOrderIds.has(orderId)) return false;
+        seenOrderIds.add(orderId);
         return true;
       } catch {
         return true;
@@ -325,6 +324,12 @@ const ChatScreen = () => {
         onBack={handleBack}
         onProfile={navigateToProfile}
         onBlocked={handleBlocked}
+      />
+
+      <ChatOrderSection
+        counterpartUserId={otherUserId}
+        conversationId={conversationId}
+        enabled={!isCsChat}
       />
 
       <KeyboardAvoidingView

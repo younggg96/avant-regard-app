@@ -5,11 +5,11 @@
  *   1. 综合评分
  *   2. 子维度评分
  *   3. 文字评论
- *   完成后展示 MY ARCHIVE 召唤页 (恭喜收到喜欢的单品...)。
+ *   完成后展示 MY ARCHIVE 召唤页。
  *
- * 视觉系统：ScreenHeader + useAppTheme，与 PublishListing 一致。
+ * 视觉：ScreenHeader + WizardStepper + useAppTheme；圆角统一 4。
  */
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   StyleSheet,
   TextInput,
@@ -25,6 +25,15 @@ import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { useTranslation } from "react-i18next";
+import Animated, {
+  FadeIn,
+  FadeOut,
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withSpring,
+  withTiming,
+} from "react-native-reanimated";
 
 import {
   Box,
@@ -34,10 +43,14 @@ import {
   Pressable,
 } from "../../components/ui";
 import ScreenHeader from "../../components/ScreenHeader";
+import WizardStepper from "../../components/WizardStepper";
+import { TradeReviewStars } from "../../components/trading/TradeReviewStars";
 import { useAppTheme, useThemedStyles, type AppTheme } from "../../theme";
-import { submitTradeReview } from "../../services/aftersalesService";
+import {
+  getOrderReviewStatus,
+  submitTradeReview,
+} from "../../services/aftersalesService";
 import { uploadImage } from "../../services/postService";
-
 
 const MAX_REVIEW_PHOTOS = 3;
 
@@ -65,7 +78,7 @@ const TradeReviewScreen: React.FC = () => {
       { key: "packaging", label: t("trading.review.dimPackaging") },
       { key: "shipping", label: t("trading.review.dimShipping") },
     ],
-    [t]
+    [t],
   );
 
   const RATING_HINT = useMemo(
@@ -76,7 +89,16 @@ const TradeReviewScreen: React.FC = () => {
       t("trading.review.rating4"),
       t("trading.review.rating5"),
     ],
-    [t]
+    [t],
+  );
+
+  const stepLabels = useMemo(
+    () => [
+      t("trading.review.step1Short"),
+      t("trading.review.step2Short"),
+      t("trading.review.step3Short"),
+    ],
+    [t],
   );
 
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
@@ -91,7 +113,52 @@ const TradeReviewScreen: React.FC = () => {
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [checking, setChecking] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // 庆祝页入场动画
+  const medalScale = useSharedValue(0.6);
+  const medalOpacity = useSharedValue(0);
+  const contentOpacity = useSharedValue(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const status = await getOrderReviewStatus(orderId);
+        if (!cancelled && status.myReviewSubmitted) {
+          Alert.alert(
+            t("trading.review.alreadyReviewedTitle"),
+            t("trading.review.alreadyReviewedMsg"),
+            [{ text: t("common.confirm"), onPress: () => navigation.goBack() }],
+          );
+        }
+      } catch {
+        // 权限/网络错误留给提交时再提示
+      } finally {
+        if (!cancelled) setChecking(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [orderId, navigation, t]);
+
+  useEffect(() => {
+    if (step !== 4) return;
+    medalScale.value = withSpring(1, { damping: 12, stiffness: 180 });
+    medalOpacity.value = withTiming(1, { duration: 400 });
+    contentOpacity.value = withDelay(200, withTiming(1, { duration: 500 }));
+  }, [step, medalScale, medalOpacity, contentOpacity]);
+
+  const medalAnimStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: medalScale.value }],
+    opacity: medalOpacity.value,
+  }));
+
+  const celebrateContentStyle = useAnimatedStyle(() => ({
+    opacity: contentOpacity.value,
+  }));
 
   const pickAndUploadPhoto = async () => {
     if (photoUrls.length >= MAX_REVIEW_PHOTOS) return;
@@ -143,6 +210,17 @@ const TradeReviewScreen: React.FC = () => {
     }
   };
 
+  if (checking) {
+    return (
+      <SafeAreaView style={styles.container} edges={["top"]}>
+        <ScreenHeader title={t("trading.review.headerTitle")} showBack />
+        <Box style={styles.loadingWrap}>
+          <ActivityIndicator color={theme.colors.gray400} />
+        </Box>
+      </SafeAreaView>
+    );
+  }
+
   // ---------------------- celebration ----------------------
   if (step === 4) {
     return (
@@ -150,59 +228,62 @@ const TradeReviewScreen: React.FC = () => {
         <ScreenHeader title={t("trading.review.headerDoneTitle")} />
 
         <VStack style={styles.celebrateWrap} space="md">
-          <Box style={styles.celebrateMedal}>
+          <Animated.View style={[styles.celebrateMedal, medalAnimStyle]}>
             <Ionicons
               name="ribbon"
               size={48}
               color={theme.colors.textInverted}
             />
-          </Box>
-          <Text style={styles.celebrateTitle}>
-            {t("trading.review.celebrateTitle")}
-          </Text>
-          <Text style={styles.celebrateSubtitle}>
-            {t("trading.review.celebrateSubtitle")}
-          </Text>
+          </Animated.View>
 
-          {productCover ? (
-            <RNImage
-              source={{ uri: productCover }}
-              style={styles.celebrateCover}
-            />
-          ) : null}
-          {productTitle ? (
-            <Text style={styles.celebrateProduct}>{productTitle}</Text>
-          ) : null}
-
-          <Pressable
-            style={styles.primary}
-            onPress={() =>
-              navigation.reset({
-                index: 0,
-                routes: [{ name: "MainTabs" }, { name: "MyArchive" }] as any,
-              })
-            }
-          >
-            <HStack space="xs" alignItems="center">
-              <Ionicons
-                name="albums"
-                size={18}
-                color={theme.colors.textInverted}
-              />
-              <Text style={styles.primaryText}>
-                {t("trading.review.addToArchive")}
-              </Text>
-            </HStack>
-          </Pressable>
-
-          <Pressable
-            style={styles.ghostCenter}
-            onPress={() => navigation.goBack()}
-          >
-            <Text style={styles.ghostCenterText}>
-              {t("trading.review.later")}
+          <Animated.View style={[styles.celebrateContent, celebrateContentStyle]}>
+            <Text style={styles.celebrateTitle}>
+              {t("trading.review.celebrateTitle")}
             </Text>
-          </Pressable>
+            <Text style={styles.celebrateSubtitle}>
+              {t("trading.review.celebrateSubtitle")}
+            </Text>
+
+            {productCover ? (
+              <RNImage
+                source={{ uri: productCover }}
+                style={styles.celebrateCover}
+              />
+            ) : null}
+            {productTitle ? (
+              <Text style={styles.celebrateProduct}>{productTitle}</Text>
+            ) : null}
+
+            <Pressable
+              style={styles.primary}
+              onPress={() =>
+                navigation.reset({
+                  index: 0,
+                  routes: [{ name: "MainTabs" }, { name: "MyArchive" }] as any,
+                })
+              }
+            >
+              <HStack space="xs" alignItems="center">
+                <Ionicons
+                  name="albums"
+                  size={18}
+                  color={theme.colors.textInverted}
+                />
+                <Text style={styles.primaryText}>
+                  {t("trading.review.addToArchive")}
+                </Text>
+              </HStack>
+            </Pressable>
+
+            <Pressable
+              style={styles.ghostCenter}
+              onPress={() => navigation.goBack()}
+            >
+              <Text style={styles.ghostCenterText}>
+                {t("trading.review.later")}
+              </Text>
+            </Pressable>
+          </Animated.View>
         </VStack>
       </SafeAreaView>
     );
@@ -221,38 +302,56 @@ const TradeReviewScreen: React.FC = () => {
         }
       />
 
-      {/* 进度条 */}
-      <HStack style={styles.progressRow} space="xs" justifyContent="center">
-        {[1, 2, 3].map((n) => (
-          <Box
-            key={n}
-            style={[styles.progressDot, n <= step && styles.progressDotActive]}
-          />
-        ))}
-      </HStack>
+      <WizardStepper
+        total={3}
+        current={step}
+        labels={stepLabels}
+        onJumpTo={(s) => {
+          if (s < step) setStep(s as 1 | 2 | 3);
+        }}
+      />
 
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <ScrollView
-          contentContainerStyle={styles.scroll}
+          contentContainerStyle={[
+            styles.scroll,
+            step === 1 && styles.scrollStep1,
+          ]}
           keyboardShouldPersistTaps="handled"
         >
           {step === 1 && (
-            <VStack style={styles.stepCenter} space="sm">
-              <Text style={styles.stepTitle}>
-                {t("trading.review.step1Title")}
-              </Text>
-              <Text style={styles.muted}>{t("trading.review.step1Hint")}</Text>
-              <Stars value={rating} onChange={setRating} size={48} />
+            <Animated.View
+              entering={FadeIn.duration(280)}
+              exiting={FadeOut.duration(180)}
+              style={styles.step1Center}
+            >
+              <VStack style={styles.step1TextGroup} alignItems="center">
+                <Text style={styles.stepTitle}>
+                  {t("trading.review.step1Title")}
+                </Text>
+                <Text style={styles.step1Hint}>
+                  {t("trading.review.step1Hint")}
+                </Text>
+              </VStack>
+              <TradeReviewStars
+                value={rating}
+                onChange={setRating}
+                size={48}
+              />
               <Text style={styles.ratingHint}>{RATING_HINT[rating - 1]}</Text>
-            </VStack>
+            </Animated.View>
           )}
 
           {step === 2 && (
-            <VStack space="sm">
-              <Text style={styles.stepTitle}>
+            <Animated.View
+              entering={FadeIn.duration(280)}
+              exiting={FadeOut.duration(180)}
+              style={styles.stepSection}
+            >
+              <Text style={styles.stepSectionTitle}>
                 {t("trading.review.step2Title")}
               </Text>
               {DIMENSIONS.map((d) => (
@@ -263,21 +362,26 @@ const TradeReviewScreen: React.FC = () => {
                   alignItems="center"
                 >
                   <Text style={styles.dimLabel}>{d.label}</Text>
-                  <Stars
+                  <TradeReviewStars
                     value={dimRatings[d.key] ?? 5}
                     onChange={(v) =>
                       setDimRatings((prev) => ({ ...prev, [d.key]: v }))
                     }
                     size={22}
+                    alignSelf="flex-end"
                   />
                 </HStack>
               ))}
-            </VStack>
+            </Animated.View>
           )}
 
           {step === 3 && (
-            <VStack space="sm">
-              <Text style={styles.stepTitle}>
+            <Animated.View
+              entering={FadeIn.duration(280)}
+              exiting={FadeOut.duration(180)}
+              style={styles.stepSection}
+            >
+              <Text style={styles.stepSectionTitle}>
                 {t("trading.review.step3Title")}
               </Text>
               <TextInput
@@ -291,7 +395,6 @@ const TradeReviewScreen: React.FC = () => {
                 textAlignVertical="top"
               />
 
-              {/* 图片上传 · 最多 3 张 */}
               <Text style={styles.photosLabel}>
                 {t("trading.review.photosLabel", {
                   count: photoUrls.length,
@@ -332,7 +435,7 @@ const TradeReviewScreen: React.FC = () => {
                   </Pressable>
                 ) : null}
               </HStack>
-            </VStack>
+            </Animated.View>
           )}
 
           {errorMsg ? <Text style={styles.error}>{errorMsg}</Text> : null}
@@ -363,71 +466,79 @@ const TradeReviewScreen: React.FC = () => {
   );
 };
 
-const Stars: React.FC<{
-  value: number;
-  onChange: (v: number) => void;
-  size: number;
-}> = ({ value, onChange, size }) => {
-  const theme = useAppTheme();
-  return (
-    <HStack space="xs" alignSelf="center">
-      {[1, 2, 3, 4, 5].map((n) => (
-        <Pressable key={n} onPress={() => onChange(n)} hitSlop={8}>
-          <Ionicons
-            name={n <= value ? "star" : "star-outline"}
-            size={size}
-            color={n <= value ? theme.colors.starRated : theme.colors.gray200}
-          />
-        </Pressable>
-      ))}
-    </HStack>
-  );
-};
-
 const makeStyles = (t: AppTheme) =>
   StyleSheet.create({
     container: { flex: 1, backgroundColor: t.colors.background },
     flex: { flex: 1 },
-    progressRow: {
-      paddingVertical: 12,
-      backgroundColor: t.colors.card,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: t.colors.border,
+    loadingWrap: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
     },
-    progressDot: {
-      width: 24,
-      height: 4,
-      borderRadius: 2,
-      backgroundColor: t.colors.border,
-    },
-    progressDotActive: { backgroundColor: t.colors.accent },
     scroll: { padding: 16, paddingBottom: 32 },
-    stepCenter: { alignItems: "center", marginTop: 32 },
+    scrollStep1: { flexGrow: 1 },
+    step1Center: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      paddingHorizontal: 24,
+      paddingVertical: 32,
+    },
+    step1TextGroup: {
+      alignItems: "center",
+      marginBottom: 40,
+      maxWidth: 280,
+    },
     stepTitle: {
       fontSize: 22,
       fontWeight: "700",
       color: t.colors.text,
       textAlign: "center",
+      lineHeight: 32,
+      marginBottom: 8,
     },
-    muted: {
+    stepSection: {
+      paddingTop: 8,
+    },
+    stepSectionTitle: {
+      fontSize: 22,
+      fontWeight: "700",
+      color: t.colors.text,
+      lineHeight: 32,
+      marginBottom: 20,
+    },
+    step1Hint: {
       color: t.colors.gray300,
       fontSize: 12,
       textAlign: "center",
+      lineHeight: 18,
     },
-    ratingHint: { color: t.colors.text, fontWeight: "500", marginTop: 8 },
+    ratingHint: {
+      color: t.colors.text,
+      fontSize: 15,
+      fontWeight: "500",
+      textAlign: "center",
+      lineHeight: 22,
+      marginTop: 12,
+    },
     dimRow: {
-      paddingVertical: 14,
+      paddingVertical: 16,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: t.colors.border,
     },
-    dimLabel: { fontSize: 14, color: t.colors.text },
+    dimLabel: {
+      fontSize: 15,
+      color: t.colors.text,
+      lineHeight: 22,
+    },
     input: {
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: t.colors.border,
-      borderRadius: 8,
+      borderRadius: t.borderRadius.sm,
       paddingHorizontal: 12,
-      paddingVertical: 10,
+      paddingVertical: 12,
       fontSize: 15,
+      lineHeight: 22,
       color: t.colors.text,
       backgroundColor: t.colors.inputBackground,
     },
@@ -435,13 +546,14 @@ const makeStyles = (t: AppTheme) =>
     photosLabel: {
       fontSize: 13,
       color: t.colors.gray300,
-      marginTop: 16,
+      lineHeight: 20,
+      marginTop: 20,
       marginBottom: 10,
     },
     photoTile: {
       width: 72,
       height: 72,
-      borderRadius: 8,
+      borderRadius: t.borderRadius.sm,
       overflow: "hidden",
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: t.colors.border,
@@ -464,7 +576,7 @@ const makeStyles = (t: AppTheme) =>
       alignItems: "center",
       justifyContent: "center",
     },
-    error: { color: t.colors.error, marginTop: 12 },
+    error: { color: t.colors.error, marginTop: 12, lineHeight: 20 },
 
     footer: {
       padding: 16,
@@ -476,7 +588,7 @@ const makeStyles = (t: AppTheme) =>
     primary: {
       backgroundColor: t.colors.accent,
       paddingVertical: 14,
-      borderRadius: 8,
+      borderRadius: t.borderRadius.sm,
       alignItems: "center",
     },
     primaryDisabled: { opacity: 0.5 },
@@ -484,9 +596,9 @@ const makeStyles = (t: AppTheme) =>
       color: t.colors.textInverted,
       fontSize: 16,
       fontWeight: "600",
+      lineHeight: 22,
     },
 
-    // ---------- 庆祝页 ----------
     celebrateWrap: {
       flex: 1,
       paddingHorizontal: 24,
@@ -502,11 +614,17 @@ const makeStyles = (t: AppTheme) =>
       justifyContent: "center",
       marginBottom: 8,
     },
+    celebrateContent: {
+      width: "100%",
+      alignItems: "center",
+      gap: 12,
+    },
     celebrateTitle: {
       fontSize: 22,
       fontWeight: "700",
       color: t.colors.text,
       textAlign: "center",
+      lineHeight: 32,
     },
     celebrateSubtitle: {
       fontSize: 13,
@@ -517,8 +635,8 @@ const makeStyles = (t: AppTheme) =>
     celebrateCover: {
       width: 160,
       height: 160,
-      borderRadius: 12,
-      marginTop: 24,
+      borderRadius: t.borderRadius.sm,
+      marginTop: 12,
       backgroundColor: t.colors.skeleton,
     },
     celebrateProduct: {
@@ -526,9 +644,10 @@ const makeStyles = (t: AppTheme) =>
       color: t.colors.text,
       fontWeight: "600",
       textAlign: "center",
+      lineHeight: 20,
     },
     ghostCenter: { marginTop: 12, padding: 12 },
-    ghostCenterText: { color: t.colors.gray300, fontSize: 13 },
+    ghostCenterText: { color: t.colors.gray300, fontSize: 13, lineHeight: 18 },
   });
 
 export default TradeReviewScreen;

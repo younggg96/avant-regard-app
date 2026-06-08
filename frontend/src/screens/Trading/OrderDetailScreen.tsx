@@ -44,6 +44,7 @@ import { ImageSize } from "../../utils/imageUtils";
 import { useAuthStore } from "../../store/authStore";
 import { createConversation } from "../../services/chatService";
 import { TradingNotFoundState } from "../../components/trading/TradingFormShared";
+import { getOrderReviewStatus } from "../../services/aftersalesService";
 import { useAppTheme, useThemedStyles, type AppTheme } from "../../theme";
 
 type RouteParams = { OrderDetail: { orderId: number } };
@@ -92,6 +93,7 @@ export default function OrderDetailScreen() {
   const [trackingLoading, setTrackingLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [showShipModal, setShowShipModal] = useState(false);
+  const [myReviewSubmitted, setMyReviewSubmitted] = useState(false);
 
   /** shipped 及之后的状态都需要拉取物流凭证 + 轨迹时间轴. */
   const fetchShipmentIfNeeded = useCallback(async (o: Order) => {
@@ -144,6 +146,15 @@ export default function OrderDetailScreen() {
           .catch(() => setProduct(null)),
         fetchShipmentIfNeeded(o),
       ];
+      if (["completed", "settled", "resolved"].includes(o.status)) {
+        tasks.push(
+          getOrderReviewStatus(o.id)
+            .then((st) => setMyReviewSubmitted(st.myReviewSubmitted))
+            .catch(() => setMyReviewSubmitted(false)),
+        );
+      } else {
+        setMyReviewSubmitted(false);
+      }
       await Promise.all(tasks);
     } catch {
       setOrder(null);
@@ -825,7 +836,9 @@ export default function OrderDetailScreen() {
           </Pressable>
         ) : null}
         {(isBuyer || isSeller) &&
-        (order.status === "completed" || order.status === "settled") ? (
+        (order.status === "completed" ||
+          order.status === "settled" ||
+          order.status === "resolved") ? (
           <Pressable
             style={styles.linkBtn}
             onPress={() =>
@@ -833,7 +846,9 @@ export default function OrderDetailScreen() {
             }
           >
             <Text style={styles.linkBtnText}>
-              {t("trading.tradingTab.viewReview")}
+              {myReviewSubmitted
+                ? t("trading.tradingTab.viewReview")
+                : t("trading.tradingTab.writeReview")}
             </Text>
           </Pressable>
         ) : null}

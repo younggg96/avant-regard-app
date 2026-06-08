@@ -16,6 +16,7 @@ from app.schemas.disputes import (
     AuthenticationOrderCreate,
     AuthenticationDecision,
     TradeReviewCreate,
+    TradeReviewStatusBatchRequest,
 )
 
 
@@ -257,7 +258,33 @@ async def list_user_reviews(
     return success({"items": [r.dict() for r in items], "total": total})
 
 
+@reviews_router.get("/orders/{order_id}/status")
+async def get_order_review_status(order_id: int, user_id: int = Depends(get_current_user)):
+    try:
+        status = trade_review_service.get_order_review_status(order_id, viewer_user_id=user_id)
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return success(status.dict())
+
+
+@reviews_router.post("/status/batch")
+async def batch_order_review_status(
+    body: TradeReviewStatusBatchRequest, user_id: int = Depends(get_current_user)
+):
+    items = trade_review_service.batch_order_review_status(
+        body.orderIds, viewer_user_id=user_id
+    )
+    return success([s.dict() for s in items])
+
+
 @reviews_router.get("/orders/{order_id}")
 async def list_order_reviews(order_id: int, user_id: int = Depends(get_current_user)):
-    items = trade_review_service.list_for_order(order_id, viewer_user_id=user_id)
+    try:
+        items = trade_review_service.list_for_order(order_id, viewer_user_id=user_id)
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     return success([r.dict() for r in items])

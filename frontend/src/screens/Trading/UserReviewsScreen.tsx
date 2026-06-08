@@ -19,6 +19,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 
 import ScreenHeader from "../../components/ScreenHeader";
+import { TradeReviewStars } from "../../components/trading/TradeReviewStars";
 import { HStack, Text, VStack, UserAvatar } from "../../components/ui";
 import { OptimizedImage } from "../../components/ui/OptimizedImage";
 import { ImageSize } from "../../utils/imageUtils";
@@ -47,25 +48,6 @@ function maskUsername(name?: string | null): string {
   return `${first}${stars}`;
 }
 
-const Stars: React.FC<{ value: number; size?: number }> = ({
-  value,
-  size = 12,
-}) => {
-  const theme = useAppTheme();
-  return (
-    <HStack space="xs">
-      {[1, 2, 3, 4, 5].map((n) => (
-        <Ionicons
-          key={n}
-          name={n <= value ? "star" : "star-outline"}
-          size={size}
-          color={n <= value ? theme.colors.starRated : theme.colors.gray200}
-        />
-      ))}
-    </HStack>
-  );
-};
-
 const ReviewCard: React.FC<{ review: TradeReview }> = ({ review }) => {
   const styles = useThemedStyles(makeStyles);
   const photos = (review.photos ?? []).filter(Boolean);
@@ -83,7 +65,7 @@ const ReviewCard: React.FC<{ review: TradeReview }> = ({ review }) => {
             {maskedName}
           </Text>
         </HStack>
-        <Stars value={review.rating} />
+        <TradeReviewStars value={review.rating} size={12} alignSelf="flex-end" />
       </HStack>
       {!!review.comment && (
         <Text style={styles.comment}>{review.comment}</Text>
@@ -227,7 +209,7 @@ export default function UserReviewsScreen() {
                     {averageRating.toFixed(1)}
                   </Text>
                   <VStack space="xs" style={styles.summaryRight}>
-                    <Stars value={Math.round(averageRating)} size={13} />
+                    <TradeReviewStars value={Math.round(averageRating)} size={13} />
                     <Text style={styles.summaryMeta}>
                       {t("userReviews.summary", {
                         count: total,
@@ -271,7 +253,7 @@ const makeStyles = (t: AppTheme) =>
     },
     summaryCard: {
       backgroundColor: t.colors.card,
-      borderRadius: 10,
+      borderRadius: t.borderRadius.sm,
       paddingHorizontal: 14,
       paddingVertical: 12,
       borderWidth: StyleSheet.hairlineWidth,
@@ -295,7 +277,7 @@ const makeStyles = (t: AppTheme) =>
     },
     reviewCard: {
       backgroundColor: t.colors.card,
-      borderRadius: 10,
+      borderRadius: t.borderRadius.sm,
       paddingHorizontal: 12,
       paddingVertical: 10,
       borderWidth: StyleSheet.hairlineWidth,
@@ -325,7 +307,7 @@ const makeStyles = (t: AppTheme) =>
     photo: {
       width: 56,
       height: 56,
-      borderRadius: 6,
+      borderRadius: t.borderRadius.sm,
       overflow: "hidden",
       backgroundColor: t.colors.skeleton,
     },

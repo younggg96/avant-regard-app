@@ -447,6 +447,20 @@ async def list_my_sales(
     )
 
 
+@orders_router.get("/with/{counterpart_user_id}")
+async def list_orders_with_user(
+    counterpart_user_id: int,
+    user_id: int = Depends(get_current_user),
+):
+    """列出当前用户与某位用户之间的全部订单（任一方为买卖关系）。
+
+    交易聊天 header 下的「订单信息」区块用：默认展示最新订单，可切换历史订单。
+    返回按创建时间倒序、附带商品摘要（封面 / 品牌 / 标题）的订单列表。
+    """
+    orders = order_service.list_orders_between(user_id, counterpart_user_id)
+    return success({"items": _enrich_orders_with_product(orders)})
+
+
 @orders_router.get("/{order_id}")
 async def get_order_detail(order_id: int, user_id: int = Depends(get_current_user)):
     order = order_service.get_order(order_id)

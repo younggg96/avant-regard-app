@@ -169,3 +169,16 @@ class TradeReview(BaseModel):
     # 评价人信息（卖家历史评价页展示买家头像 + 脱敏用户名）
     reviewerUsername: Optional[str] = None
     reviewerAvatarUrl: Optional[str] = None
+
+
+class OrderReviewStatus(BaseModel):
+    orderId: int
+    canReview: bool
+    myReviewSubmitted: bool
+    buyerReviewSubmitted: bool
+    sellerReviewSubmitted: bool
+    bothVisible: bool
+
+
+class TradeReviewStatusBatchRequest(BaseModel):
+    orderIds: List[int] = Field(..., max_length=50)

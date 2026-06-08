@@ -1307,7 +1307,13 @@
     "reasonSpam": "垃圾广告",
     "reasonHarassment": "辱骂骚扰",
     "reportReceived": "已收到，我们会处理",
-    "reportDuplicate": "24小时内已举报过，请勿重复提交"
+    "reportDuplicate": "24小时内已举报过，请勿重复提交",
+    "orderSection": {
+      "title": "订单信息",
+      "collapse": "收起订单信息",
+      "expand": "展开订单信息",
+      "writeReview": "去评价"
+    }
   },
   "activity": {
     "title": "互动消息",
@@ -2984,6 +2990,7 @@
       "confirmReceipt": "确认收货",
       "ship": "去发货",
       "viewReview": "查看评价",
+      "writeReview": "去评价",
       "viewAfterSales": "查看售后"
     },
     "marketplace": {
@@ -3452,8 +3459,11 @@
       "headerDoneTitle": "评价完成",
       "step1Title": "整体怎么样？",
       "step1Hint": "你的评分双方都评后才会公开",
+      "step1Short": "综合",
       "step2Title": "详细评价",
+      "step2Short": "细节",
       "step3Title": "留下你的感受",
+      "step3Short": "留言",
       "commentPlaceholder": "说说收到单品的感受…",
       "photosLabel": "添加照片 ({{count}}/{{max}}, 可选)",
       "photoPermissionDenied": "需要相册权限才能添加照片",
@@ -3480,7 +3490,10 @@
       "hiddenHint": "双方评价完成后公开",
       "yourReviewPending": "已提交，等待对方评价",
       "noReviewYet": "暂无评价",
-      "writeReview": "去评价"
+      "writeReview": "去评价",
+      "autoReviewBadge": "系统默认",
+      "alreadyReviewedTitle": "已评价",
+      "alreadyReviewedMsg": "你已提交过该订单的评价。"
     },
     "archive": {
       "headerTitle": "我的藏品",

@@ -24,6 +24,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 
 import type { ConfirmReceiptSettlement, Order } from "../../services/orderService";
+import { buildTradeReviewParams } from "../../services/aftersalesService";
 import { useFormatPrice } from "../../utils/currency";
 import { OptimizedImage } from "../../components/ui/OptimizedImage";
 import { ImageSize } from "../../utils/imageUtils";
@@ -59,10 +60,7 @@ export default function SettlementResultScreen() {
   const currency = settlement.currency || "CNY";
 
   const goReview = () => {
-    navigation.replace("TradeReview", {
-      orderId: order.id,
-      productId: order.productId,
-    });
+    navigation.replace("TradeReview", buildTradeReviewParams(order));
   };
 
   const goOrder = () => {

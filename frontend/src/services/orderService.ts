@@ -354,6 +354,18 @@ export async function getOrder(orderId: number): Promise<Order> {
   return request<Order>(`/api/orders/${orderId}`);
 }
 
+/**
+ * 列出当前用户与某位用户之间的全部订单（任一方为买卖关系），按创建时间倒序。
+ * 交易聊天 header 下的「订单信息」区块用：默认最新、可切换历史订单。
+ */
+export async function listOrdersWithUser(
+  counterpartUserId: number,
+): Promise<{ items: Order[] }> {
+  return request<{ items: Order[] }>(
+    `/api/orders/with/${counterpartUserId}`,
+  );
+}
+
 // ---------------- Offers ----------------
 
 export async function createOffer(body: {

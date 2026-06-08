@@ -1307,7 +1307,13 @@
     "reasonSpam": "Spam",
     "reasonHarassment": "Abuse/Harassment",
     "reportReceived": "Report received, we'll look into it",
-    "reportDuplicate": "Already reported within 24 hours"
+    "reportDuplicate": "Already reported within 24 hours",
+    "orderSection": {
+      "title": "Order",
+      "collapse": "Collapse order info",
+      "expand": "Expand order info",
+      "writeReview": "Rate order"
+    }
   },
   "activity": {
     "title": "Activity",
@@ -2984,6 +2990,7 @@
       "confirmReceipt": "Confirm Receipt",
       "ship": "Ship",
       "viewReview": "View Review",
+      "writeReview": "Rate Order",
       "viewAfterSales": "View After-sales"
     },
     "marketplace": {
@@ -3452,8 +3459,11 @@
       "headerDoneTitle": "Review Submitted",
       "step1Title": "How was it overall?",
       "step1Hint": "Your rating stays hidden until the other party submits too.",
+      "step1Short": "Overall",
       "step2Title": "Detailed Ratings",
+      "step2Short": "Details",
       "step3Title": "Add a few words",
+      "step3Short": "Comment",
       "commentPlaceholder": "Share your experience with this piece…",
       "photosLabel": "Add photos ({{count}}/{{max}}, optional)",
       "photoPermissionDenied": "Photo library access is required to add photos",
@@ -3480,7 +3490,10 @@
       "hiddenHint": "Revealed after both parties rate",
       "yourReviewPending": "Submitted — waiting for the other party",
       "noReviewYet": "No review yet",
-      "writeReview": "Write a review"
+      "writeReview": "Write a review",
+      "autoReviewBadge": "Auto review",
+      "alreadyReviewedTitle": "Already reviewed",
+      "alreadyReviewedMsg": "You have already submitted a review for this order."
     },
     "archive": {
       "headerTitle": "My Archive",

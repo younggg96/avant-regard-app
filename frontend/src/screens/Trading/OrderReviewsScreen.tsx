@@ -1,7 +1,5 @@
 /**
  * OrderReviewsScreen —— 查看单笔订单的双盲互评。
- *
- * 入口：Profile 订单卡「查看评价」、订单详情等。
  */
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -9,17 +7,22 @@ import {
   ScrollView,
   StyleSheet,
   View,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
-import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
+import Animated, { FadeInDown } from "react-native-reanimated";
 
 import ScreenHeader from "../../components/ScreenHeader";
+import { TradeReviewStars } from "../../components/trading/TradeReviewStars";
 import { HStack, Pressable, Text } from "../../components/ui";
 import { useAuthStore } from "../../store/authStore";
 import {
+  buildTradeReviewParams,
+  getOrderReviewStatus,
   listOrderReviews,
+  type OrderReviewStatus,
   type TradeReview,
 } from "../../services/aftersalesService";
 import { getOrder, type Order } from "../../services/orderService";
@@ -29,24 +32,25 @@ type RouteParams = {
   OrderReviews: { orderId: number };
 };
 
-const Stars: React.FC<{ value: number; size?: number }> = ({
-  value,
-  size = 18,
-}) => {
-  const theme = useAppTheme();
-  return (
-    <HStack space="xs">
-      {[1, 2, 3, 4, 5].map((n) => (
-        <Ionicons
-          key={n}
-          name={n <= value ? "star" : "star-outline"}
-          size={size}
-          color={n <= value ? theme.colors.starRated : theme.colors.gray200}
-        />
-      ))}
-    </HStack>
-  );
+const DIM_KEYS = [
+  "asDescribed",
+  "communication",
+  "packaging",
+  "shipping",
+] as const;
+
+const DIM_LABELS: Record<(typeof DIM_KEYS)[number], string> = {
+  asDescribed: "trading.review.dimAsDescribed",
+  communication: "trading.review.dimCommunication",
+  packaging: "trading.review.dimPackaging",
+  shipping: "trading.review.dimShipping",
 };
+
+function isAutoReview(review: TradeReview): boolean {
+  if (review.autoClosedAt) return true;
+  const payload = review.payload as Record<string, unknown> | null | undefined;
+  return payload?.autoClosed === true;
+}
 
 export default function OrderReviewsScreen() {
   const navigation = useNavigation<any>();
@@ -59,20 +63,24 @@ export default function OrderReviewsScreen() {
 
   const [order, setOrder] = useState<Order | null>(null);
   const [reviews, setReviews] = useState<TradeReview[]>([]);
+  const [status, setStatus] = useState<OrderReviewStatus | null>(null);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [o, items] = await Promise.all([
+      const [o, items, st] = await Promise.all([
         getOrder(orderId),
         listOrderReviews(orderId),
+        getOrderReviewStatus(orderId),
       ]);
       setOrder(o);
       setReviews(items);
+      setStatus(st);
     } catch {
       setOrder(null);
       setReviews([]);
+      setStatus(null);
     } finally {
       setLoading(false);
     }
@@ -90,9 +98,33 @@ export default function OrderReviewsScreen() {
   const buyerReview = reviews.find((r) => r.reviewerRole === "buyer");
   const sellerReview = reviews.find((r) => r.reviewerRole === "seller");
 
+  const renderDimensions = (review: TradeReview) => {
+    const payload = review.payload as Record<string, number> | null | undefined;
+    if (!payload) return null;
+    const rows = DIM_KEYS.filter((k) => typeof payload[k] === "number");
+    if (rows.length === 0) return null;
+
+    return (
+      <View style={styles.dimBlock}>
+        {rows.map((key) => (
+          <HStack
+            key={key}
+            style={styles.dimItem}
+            justifyContent="between"
+            alignItems="center"
+          >
+            <Text style={styles.dimLabel}>{t(DIM_LABELS[key])}</Text>
+            <TradeReviewStars value={payload[key]} size={14} alignSelf="flex-end" />
+          </HStack>
+        ))}
+      </View>
+    );
+  };
+
   const renderReviewCard = (
     role: "buyer" | "seller",
     review: TradeReview | undefined,
+    index: number,
   ) => {
     const title =
       role === "buyer"
@@ -101,40 +133,70 @@ export default function OrderReviewsScreen() {
 
     if (!review) {
       return (
-        <View style={styles.reviewCard}>
+        <Animated.View
+          entering={FadeInDown.delay(index * 80).duration(320)}
+          style={styles.reviewCard}
+        >
           <Text style={styles.reviewRole}>{title}</Text>
           <Text style={styles.emptyText}>{t("trading.review.noReviewYet")}</Text>
-        </View>
+        </Animated.View>
       );
     }
 
     const isMine = review.reviewerUserId === me?.userId;
     const hidden = !review.visible;
+    const auto = isAutoReview(review);
 
     return (
-      <View style={styles.reviewCard}>
+      <Animated.View
+        entering={FadeInDown.delay(index * 80).duration(320)}
+        style={styles.reviewCard}
+      >
         <HStack justifyContent="between" alignItems="center">
           <Text style={styles.reviewRole}>{title}</Text>
-          {hidden ? (
-            <Text style={styles.hiddenBadge}>
-              {isMine
-                ? t("trading.review.yourReviewPending")
-                : t("trading.review.hiddenHint")}
-            </Text>
-          ) : null}
+          <HStack space="xs" alignItems="center">
+            {auto ? (
+              <Text style={styles.autoBadge}>
+                {t("trading.review.autoReviewBadge")}
+              </Text>
+            ) : null}
+            {hidden ? (
+              <Text style={styles.hiddenBadge}>
+                {isMine
+                  ? t("trading.review.yourReviewPending")
+                  : t("trading.review.hiddenHint")}
+              </Text>
+            ) : null}
+          </HStack>
         </HStack>
-        <Stars value={review.rating} />
+
+        <TradeReviewStars value={review.rating} size={20} alignSelf="flex-start" />
+        {renderDimensions(review)}
+
         {!!review.comment && (
           <Text style={styles.comment}>{review.comment}</Text>
         )}
+
+        {!!review.photos?.length && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <HStack space="sm">
+              {review.photos.map((url) => (
+                <Image key={url} source={{ uri: url }} style={styles.photo} />
+              ))}
+            </HStack>
+          </ScrollView>
+        )}
+
         {!!review.submittedAt && (
           <Text style={styles.time}>
             {review.submittedAt.replace("T", " ").slice(0, 16)}
           </Text>
         )}
-      </View>
+      </Animated.View>
     );
   };
+
+  const canWrite = status?.canReview && !myReview && order;
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
@@ -150,23 +212,22 @@ export default function OrderReviewsScreen() {
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.scroll}>
-          {renderReviewCard("buyer", buyerReview)}
-          {renderReviewCard("seller", sellerReview)}
+          {renderReviewCard("buyer", buyerReview, 0)}
+          {renderReviewCard("seller", sellerReview, 1)}
 
-          {!myReview && order ? (
-            <Pressable
-              style={styles.primaryBtn}
-              onPress={() =>
-                navigation.navigate("TradeReview", {
-                  orderId: order.id,
-                  productId: order.productId,
-                })
-              }
-            >
-              <Text style={styles.primaryBtnText}>
-                {t("trading.review.writeReview")}
-              </Text>
-            </Pressable>
+          {canWrite ? (
+            <Animated.View entering={FadeInDown.delay(180).duration(320)}>
+              <Pressable
+                style={styles.primaryBtn}
+                onPress={() =>
+                  navigation.navigate("TradeReview", buildTradeReviewParams(order))
+                }
+              >
+                <Text style={styles.primaryBtnText}>
+                  {t("trading.review.writeReview")}
+                </Text>
+              </Pressable>
+            </Animated.View>
           ) : null}
         </ScrollView>
       )}
@@ -189,7 +250,7 @@ const makeStyles = (t: AppTheme) =>
     },
     reviewCard: {
       backgroundColor: t.colors.card,
-      borderRadius: 12,
+      borderRadius: t.borderRadius.sm,
       padding: 16,
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: t.colors.border,
@@ -199,6 +260,7 @@ const makeStyles = (t: AppTheme) =>
       fontSize: 15,
       fontWeight: "600",
       color: t.colors.text,
+      lineHeight: 22,
     },
     hiddenBadge: {
       fontSize: 11,
@@ -206,30 +268,62 @@ const makeStyles = (t: AppTheme) =>
       flexShrink: 1,
       textAlign: "right",
       marginLeft: 12,
+      lineHeight: 16,
+    },
+    autoBadge: {
+      fontSize: 10,
+      color: t.colors.gray400,
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: t.borderRadius.sm,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: t.colors.border,
+      lineHeight: 14,
+    },
+    dimBlock: {
+      gap: 6,
+      marginTop: 4,
+    },
+    dimItem: {
+      paddingVertical: 2,
+    },
+    dimLabel: {
+      fontSize: 12,
+      color: t.colors.gray300,
+      lineHeight: 18,
     },
     comment: {
       fontSize: 14,
       color: t.colors.text,
       lineHeight: 20,
     },
+    photo: {
+      width: 64,
+      height: 64,
+      borderRadius: t.borderRadius.sm,
+      backgroundColor: t.colors.skeleton,
+    },
     time: {
       fontSize: 11,
       color: t.colors.gray400,
+      lineHeight: 16,
     },
     emptyText: {
       fontSize: 13,
       color: t.colors.gray400,
+      lineHeight: 18,
     },
     primaryBtn: {
       marginTop: 8,
-      backgroundColor: t.colors.text,
-      borderRadius: 8,
-      paddingVertical: 12,
+      backgroundColor: t.colors.accent,
+      borderRadius: t.borderRadius.sm,
+      paddingVertical: 14,
       alignItems: "center",
     },
     primaryBtnText: {
       color: t.colors.textInverted,
-      fontSize: 14,
+      fontSize: 15,
       fontWeight: "600",
+      lineHeight: 22,
     },
   });

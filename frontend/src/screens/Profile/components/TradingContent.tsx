@@ -56,6 +56,10 @@ import {
 } from "../types";
 import { OrderCard } from "./OrderCard";
 import { TradingContentSkeleton } from "./TradingContentSkeleton";
+import {
+  batchOrderReviewStatus,
+  type OrderReviewStatus,
+} from "../../../services/aftersalesService";
 import { AnimatedChip, chipRowStyle } from "../../../components/ui";
 
 type Mode = "buying" | "selling";
@@ -132,6 +136,9 @@ export const TradingContent: React.FC<Props> = ({
 
   const [buyOrders, setBuyOrders] = useState<Order[]>([]);
   const [sellOrders, setSellOrders] = useState<Order[]>([]);
+  const [reviewStatusMap, setReviewStatusMap] = useState<
+    Record<number, OrderReviewStatus>
+  >({});
   const [loadingBuy, setLoadingBuy] = useState(false);
   const [loadingSell, setLoadingSell] = useState(false);
   const listProgress = useSharedValue(1);
@@ -160,31 +167,55 @@ export const TradingContent: React.FC<Props> = ({
     ],
   }));
 
+  const syncReviewStatuses = useCallback(async (orders: Order[]) => {
+    const ids = orders
+      .filter((o) =>
+        ["completed", "settled", "resolved"].includes(o.status),
+      )
+      .map((o) => o.id);
+    if (ids.length === 0) {
+      setReviewStatusMap({});
+      return;
+    }
+    try {
+      const items = await batchOrderReviewStatus(ids);
+      setReviewStatusMap(
+        Object.fromEntries(items.map((s) => [s.orderId, s])),
+      );
+    } catch {
+      setReviewStatusMap({});
+    }
+  }, []);
+
   const loadBuying = useCallback(async () => {
     setLoadingBuy(true);
     try {
       const res = await listMyOrders({ page: 1, pageSize: 50 });
       setBuyOrders(res.items);
+      await syncReviewStatuses(res.items);
     } catch (e) {
       console.warn("[TradingContent] load buy orders failed", e);
       setBuyOrders([]);
+      setReviewStatusMap({});
     } finally {
       setLoadingBuy(false);
     }
-  }, []);
+  }, [syncReviewStatuses]);
 
   const loadSelling = useCallback(async () => {
     setLoadingSell(true);
     try {
       const res = await listMySales({ page: 1, pageSize: 50 });
       setSellOrders(res.items);
+      await syncReviewStatuses(res.items);
     } catch (e) {
       console.warn("[TradingContent] load sell orders failed", e);
       setSellOrders([]);
+      setReviewStatusMap({});
     } finally {
       setLoadingSell(false);
     }
-  }, []);
+  }, [syncReviewStatuses]);
 
   useEffect(() => {
     if (mode === "buying") loadBuying();
@@ -291,9 +322,14 @@ export const TradingContent: React.FC<Props> = ({
                       : undefined
                   }
                   onReview={
-                    order.status === "completed" || order.status === "settled"
+                    order.status === "completed" ||
+                    order.status === "settled" ||
+                    order.status === "resolved"
                       ? () => goOrderReviews(order.id)
                       : undefined
+                  }
+                  myReviewSubmitted={
+                    reviewStatusMap[order.id]?.myReviewSubmitted
                   }
                 />
               ));
@@ -321,9 +357,12 @@ export const TradingContent: React.FC<Props> = ({
                 onReview={
                   order.status === "completed" ||
                   order.status === "settled" ||
-                  order.status === "delivered"
+                  order.status === "resolved"
                     ? () => goOrderReviews(order.id)
                     : undefined
+                }
+                myReviewSubmitted={
+                  reviewStatusMap[order.id]?.myReviewSubmitted
                 }
                 onViewAfterSales={
                   order.status === "disputed" ||

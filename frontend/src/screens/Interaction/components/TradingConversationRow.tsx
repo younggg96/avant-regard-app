@@ -1,13 +1,10 @@
 import React from "react";
-import { StyleSheet } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useAppTheme } from "../../../theme";
 import { Box, Text, Pressable, HStack, VStack } from "../../../components/ui";
 import { UserAvatar } from "../../../components/ui/UserAvatar";
 import { CustomerServiceAvatar } from "../../../components/ui/CustomerServiceAvatar";
 import { NotificationBadge } from "../../../components/ui/NotificationBadge";
-import { OptimizedImage } from "../../../components/ui/OptimizedImage";
-import { ImageSize } from "../../../utils/imageUtils";
 import { Conversation } from "../../../services/chatService";
 import { isCustomerServiceUser } from "../../../constants/customerService";
 import { formatTime, formatLastMessage } from "../utils";
@@ -21,8 +18,9 @@ interface TradingConversationRowProps {
 
 /**
  * 互动页「交易」tab 下的交易相关会话行。
- * 与 ConversationRow 同构，但左侧用商品封面图替代头像，并在用户名旁展示
- * 「买家」/ 订单状态标识——让用户在点开会话前即可识别对端角色与进度。
+ * 与 ConversationRow 同构：左侧保持对端用户的圆形头像（而非商品封面图），
+ * 并在用户名旁展示「买家」/ 订单状态标识——让用户在点开会话前即可识别
+ * 对端角色与进度。
  */
 export const TradingConversationRow = ({
   item,
@@ -41,7 +39,6 @@ export const TradingConversationRow = ({
     : other?.username || t("interaction.unknownUser");
 
   const trade = item.tradeContext;
-  const cover = trade?.coverImage;
   const role = trade?.counterpartRole;
 
   // 角色 / 状态标识：对端是买家 → 强调「买家」；我是买家 → 展示订单实时状态。
@@ -68,15 +65,7 @@ export const TradingConversationRow = ({
     >
       <HStack alignItems="center" flex={1}>
         <Box position="relative" mr="$md">
-          {cover ? (
-            <OptimizedImage
-              uri={cover}
-              size={ImageSize.THUMBNAIL}
-              style={[localStyles.cover, { backgroundColor: theme.colors.gray100 }]}
-              contentFit="cover"
-              lazy
-            />
-          ) : isCs ? (
+          {isCs ? (
             <CustomerServiceAvatar size={48} />
           ) : (
             <UserAvatar uri={other?.avatarUrl} name={other?.username} size={48} />
@@ -143,11 +132,3 @@ export const TradingConversationRow = ({
     </Pressable>
   );
 };
-
-const localStyles = StyleSheet.create({
-  cover: {
-    width: 48,
-    height: 48,
-    borderRadius: 4,
-  },
-});
