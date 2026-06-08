@@ -1,9 +1,12 @@
 import React from "react";
+import { StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { useAppTheme } from "../../../theme";
 import { Box, Text, Pressable, HStack, VStack } from "../../../components/ui";
 import { NotificationBadge } from "../../../components/ui/NotificationBadge";
+import { OptimizedImage } from "../../../components/ui/OptimizedImage";
+import { ImageSize } from "../../../utils/imageUtils";
 import { Notification } from "../../../services/notificationService";
 import { formatTime } from "../utils";
 import { useInteractionStyles } from "../styles";
@@ -35,6 +38,8 @@ export const TradingCategoryEntry = ({
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
   const latest = notifications[0];
+  // 最近一条交易通知的封面图（心动 / 物流 / 售后等会带商品封面）。
+  const cover = notifications.find((n) => !!n.image)?.image;
 
   return (
     <Pressable
@@ -43,16 +48,25 @@ export const TradingCategoryEntry = ({
     >
       <HStack alignItems="center" flex={1}>
         <Box position="relative" mr="$md">
-          <Box
-            w={48}
-            h={48}
-            rounded="$full"
-            justifyContent="center"
-            alignItems="center"
-            style={{ backgroundColor: color }}
-          >
-            <Ionicons name={icon as any} size={22} color={theme.colors.white} />
-          </Box>
+          {cover ? (
+            <OptimizedImage
+              uri={cover}
+              size={ImageSize.THUMBNAIL}
+              style={[localStyles.cover, { backgroundColor: theme.colors.gray100 }]}
+              contentFit="cover"
+              lazy
+            />
+          ) : (
+            <Box
+              w={48}
+              h={48}
+              justifyContent="center"
+              alignItems="center"
+              style={[localStyles.cover, { backgroundColor: theme.colors.gray100 }]}
+            >
+              <Ionicons name={icon as any} size={22} color={color} />
+            </Box>
+          )}
           {unreadCount > 0 && (
             <NotificationBadge count={unreadCount} size="md" showBorder />
           )}
@@ -93,3 +107,11 @@ export const TradingCategoryEntry = ({
     </Pressable>
   );
 };
+
+const localStyles = StyleSheet.create({
+  cover: {
+    width: 48,
+    height: 48,
+    borderRadius: 4,
+  },
+});

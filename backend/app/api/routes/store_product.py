@@ -491,6 +491,61 @@ async def list_my_favorited_products(
 
 
 # ==========================================================================
+# 商品「浏览记录」(Browsing History)
+# ==========================================================================
+#
+#   POST   /products/{id}/view-history   —— 记录一次浏览 (UPSERT 置顶)
+#   GET    /user/browsing-history        —— 当前用户的浏览记录分页
+#   DELETE /products/{id}/view-history    —— 从浏览记录移除单个商品
+#   DELETE /user/browsing-history        —— 清空全部浏览记录
+
+
+@router.post("/products/{product_id}/view-history")
+async def record_browsing_history(
+    product_id: int,
+    current_user_id: int = Depends(get_current_user),
+):
+    store_product_service.record_browsing_history(product_id, current_user_id)
+    return success({"recorded": True})
+
+
+@router.get("/user/browsing-history")
+async def list_my_browsing_history(
+    page: int = Query(1, ge=1),
+    pageSize: int = Query(20, ge=1, le=100),
+    current_user_id: int = Depends(get_current_user),
+):
+    products, total = store_product_service.list_user_browsing_history(
+        current_user_id,
+        page=page,
+        page_size=pageSize,
+    )
+    return success({
+        "products": [p.model_dump() for p in products],
+        "total": total,
+        "page": page,
+        "pageSize": pageSize,
+    })
+
+
+@router.delete("/products/{product_id}/view-history")
+async def remove_browsing_history_item(
+    product_id: int,
+    current_user_id: int = Depends(get_current_user),
+):
+    store_product_service.remove_browsing_history_item(product_id, current_user_id)
+    return success({"removed": True}, message="已从浏览记录移除")
+
+
+@router.delete("/user/browsing-history")
+async def clear_my_browsing_history(
+    current_user_id: int = Depends(get_current_user),
+):
+    deleted = store_product_service.clear_browsing_history(current_user_id)
+    return success({"deleted": deleted}, message="已清空浏览记录")
+
+
+# ==========================================================================
 # 商品「想要」(愿望单)
 # ==========================================================================
 #

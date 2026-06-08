@@ -4,7 +4,7 @@ Chat service - handles conversation and message business logic
 
 import json
 import logging
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Tuple
 from datetime import datetime
 from app.db.supabase import get_supabase, get_supabase_admin
 from app.services.moderation_service import moderation_service
@@ -12,9 +12,24 @@ from app.schemas.chat import (
     MessageResponse,
     ConversationResponse,
     ConversationParticipant,
+    TradeContext,
 )
 
 logger = logging.getLogger(__name__)
+
+# 触发「交易」归类的富媒体卡片类型：订单 / 出价 / 售后 / 商品 / 各类分享卡片。
+# 出现其中任意一种消息，会话即被视为「交易 / 帖子 / 活动相关」，
+# 在互动页归入「交易」tab（而非「私信」）。与前端 chatService 保持一致。
+_TRADE_CARD_TYPES = (
+    "order_status",
+    "offer",
+    "dispute",
+    "product_listing",
+    "post_card",
+    "store_card",
+    "brand_card",
+    "show_card",
+)
 
 
 class BlockedUserError(Exception):
@@ -270,6 +285,8 @@ class ChatService:
             )
             my_message_count = my_msg_result.count or 0
 
+            trade_context = self._derive_trade_context(conv_id, user_id)
+
             results.append(ConversationResponse(
                 id=conv_id,
                 participants=participants,
@@ -279,9 +296,177 @@ class ChatService:
                 myMessageCount=my_message_count,
                 otherUser=other_user,
                 updatedAt=conv.get("updated_at", conv.get("created_at", "")),
+                tradeContext=trade_context,
             ))
 
         return results
+
+    def _derive_trade_context(
+        self, conversation_id: int, user_id: int
+    ) -> Optional[TradeContext]:
+        """根据会话内最近一张交易 / 分享卡片，推导会话的交易上下文。
+
+        用途：互动页据此把会话归入「交易」tab，并在列表行直接展示商品封面图、
+        对端角色（买家 / 卖家）与订单状态——无需用户点开会话。
+
+        实现说明：
+          - 仅查最近一条「卡片类」消息（1 次查询），避免拉全量历史；
+          - 封面图直接取卡片 payload 里的 ``product.coverImage``，零额外查询；
+          - 角色 / 订单状态需要区分买卖双方，故对 order_status / offer 卡片
+            分别查 ``orders`` / ``offers`` 表（仅交易会话才会触发，成本可控）；
+          - 任意环节异常都吞掉并返回 None，会话退化为普通私信，绝不阻断列表。
+        """
+        try:
+            res = (
+                self.db.table("messages")
+                .select("content, message_type")
+                .eq("conversation_id", conversation_id)
+                .eq("is_deleted", False)
+                .in_("message_type", list(_TRADE_CARD_TYPES))
+                .order("created_at", desc=True)
+                .limit(1)
+                .execute()
+            )
+        except Exception:
+            return None
+
+        if not res.data:
+            return None
+
+        row = res.data[0]
+        kind = row.get("message_type")
+        payload = self._safe_json(row.get("content"))
+
+        cover = None
+        if isinstance(payload, dict):
+            product = payload.get("product")
+            if isinstance(product, dict):
+                cover = product.get("coverImage") or product.get("image")
+
+        counterpart_role: Optional[str] = None
+        order_status: Optional[str] = None
+
+        try:
+            if kind in ("order_status", "dispute") and isinstance(payload, dict):
+                counterpart_role, order_status = self._order_role_and_status(
+                    payload.get("orderId"), user_id
+                )
+            elif kind == "offer" and isinstance(payload, dict):
+                counterpart_role = self._offer_counterpart_role(
+                    payload.get("offerId"), payload.get("productId"), user_id
+                )
+            elif isinstance(payload, dict) and payload.get("productId"):
+                counterpart_role = self._product_owner_role(
+                    payload.get("productId"), user_id
+                )
+        except Exception:
+            counterpart_role = None
+            order_status = None
+
+        return TradeContext(
+            isTrade=True,
+            coverImage=cover,
+            counterpartRole=counterpart_role,
+            orderStatus=order_status,
+            kind=kind,
+        )
+
+    @staticmethod
+    def _safe_json(content: Optional[str]) -> Any:
+        if not content:
+            return None
+        try:
+            return json.loads(content)
+        except (ValueError, TypeError):
+            return None
+
+    def _order_role_and_status(
+        self, order_id: Any, user_id: int
+    ) -> Tuple[Optional[str], Optional[str]]:
+        """根据订单买卖双方判定对端角色 + 返回订单实时状态。
+
+        返回 (counterpart_role, order_status)：
+          - 我是卖家 → 对端是买家 ("buyer")；订单状态对买家行不展示，置 None
+          - 我是买家 → 对端是卖家 ("seller")；附带订单实时 status 供列表展示
+        """
+        if not order_id:
+            return None, None
+        res = (
+            self.db.table("orders")
+            .select("buyer_user_id, seller_user_id, seller_merchant_id, status")
+            .eq("id", order_id)
+            .maybe_single()
+            .execute()
+        )
+        order = res.data or {}
+        if not order:
+            return None, None
+        buyer_id = order.get("buyer_user_id")
+        seller_id = order.get("seller_user_id") or self._merchant_user_id(
+            order.get("seller_merchant_id")
+        )
+        if user_id == seller_id:
+            return "buyer", None
+        if user_id == buyer_id:
+            return "seller", order.get("status")
+        return None, None
+
+    def _offer_counterpart_role(
+        self, offer_id: Any, product_id: Any, user_id: int
+    ) -> Optional[str]:
+        """出价卡片：优先用 offers 表的买卖 user_id 判角色，兜底用商品归属。"""
+        if offer_id:
+            res = (
+                self.db.table("offers")
+                .select("buyer_user_id, seller_user_id")
+                .eq("id", offer_id)
+                .maybe_single()
+                .execute()
+            )
+            offer = res.data or {}
+            if offer:
+                if user_id == offer.get("seller_user_id"):
+                    return "buyer"
+                if user_id == offer.get("buyer_user_id"):
+                    return "seller"
+        return self._product_owner_role(product_id, user_id)
+
+    def _product_owner_role(self, product_id: Any, user_id: int) -> Optional[str]:
+        """商品 / 分享卡片：商品归属者即卖家。我是卖家→对端买家；否则对端卖家。"""
+        if not product_id:
+            return None
+        try:
+            res = (
+                self.db.table("store_products")
+                .select("seller_user_id, merchant_id")
+                .eq("id", product_id)
+                .maybe_single()
+                .execute()
+            )
+        except Exception:
+            return None
+        product = res.data or {}
+        if not product:
+            return None
+        owner_id = product.get("seller_user_id") or self._merchant_user_id(
+            product.get("merchant_id")
+        )
+        if owner_id is None:
+            return None
+        return "buyer" if user_id == owner_id else "seller"
+
+    def _merchant_user_id(self, merchant_id: Any) -> Optional[int]:
+        """买手店卖家 → 取 merchant.user_id（与 order_service 口径一致）。"""
+        if not merchant_id:
+            return None
+        try:
+            from app.services.store_merchant_service import store_merchant_service
+            merchant = store_merchant_service.get_merchant_by_id(merchant_id)
+            if merchant:
+                return getattr(merchant, "userId", None)
+        except Exception:
+            return None
+        return None
 
     def get_messages(
         self,

@@ -65,10 +65,16 @@ const InteractionScreen = () => {
   const { refreshUnreadCount } = useChatStore();
   // 底部地图图标点击信号：每次 nonce 变化都把子 Tab 切回「买手店地图」。
   const mapJumpNonce = useMainBottomTabStore((s) => s.mapJumpNonce);
-  // 「交易」tab 角标：未读交易类通知（已带 category）的合计数量。
-  const tradingUnread = useNotificationStore((s) =>
+  // 「交易」tab 角标：未读交易类通知（已带 category）+ 未读交易会话的合计数量。
+  const tradingNotifUnread = useNotificationStore((s) =>
     s.notifications.filter((n) => n.category != null && !n.isRead).length
   );
+  const tradingConvUnread = useChatStore((s) =>
+    s.conversations
+      .filter((c) => c.tradeContext?.isTrade)
+      .reduce((sum, c) => sum + (c.unreadCount > 0 ? c.unreadCount : 0), 0)
+  );
+  const tradingUnread = tradingNotifUnread + tradingConvUnread;
   const horizontalScrollRef = useRef<RNScrollView>(null);
   const hasAlignedAfterLayoutRef = useRef(false);
   // route.params.subTab 仅当与上次响应过的值不同时才驱动子 Tab 切换；

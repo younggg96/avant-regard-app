@@ -9,7 +9,7 @@ import { Box, Text, ActionSheet } from "../../../components/ui";
 import type { ActionSheetAction } from "../../../components/ui";
 import { useChatStore } from "../../../store/chatStore";
 import { useNotificationStore } from "../../../store/notificationStore";
-import { Conversation } from "../../../services/chatService";
+import { Conversation, isTradeConversation } from "../../../services/chatService";
 import { ConversationRow } from "./ConversationRow";
 import { ActivityEntry } from "./ActivityEntry";
 import { SystemEntry } from "./SystemEntry";
@@ -135,8 +135,10 @@ export const MessagesContent = () => {
     return tb - ta;
   });
 
-  const strangerConversations = sortedConversations.filter(isStrangerConversation);
-  const regularConversations = sortedConversations.filter((c) => !isStrangerConversation(c));
+  // 交易 / 帖子 / 活动相关会话归入「交易」tab，私信只保留纯人际私聊。
+  const dmConversations = sortedConversations.filter((c) => !isTradeConversation(c));
+  const strangerConversations = dmConversations.filter(isStrangerConversation);
+  const regularConversations = dmConversations.filter((c) => !isStrangerConversation(c));
 
   return (
     <>

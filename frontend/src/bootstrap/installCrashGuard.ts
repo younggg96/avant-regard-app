@@ -1,4 +1,4 @@
-import { persistCrash, toCrashInfo } from "./crashStorage";
+import { reportCrash, toCrashInfo } from "./crashStorage";
 
 type GlobalErrorUtils = {
   getGlobalHandler?: () => (error: unknown, isFatal?: boolean) => void;
@@ -33,7 +33,10 @@ export function installCrashGuard(): void {
       `[CrashGuard][${info.origin}] ${info.name}: ${info.message}\n${info.stack}`,
     );
 
-    persistCrash(info);
+    // Persist for next-launch display AND push to any live on-screen overlay,
+    // so the error is visible on-device the moment it happens (even in release,
+    // where we otherwise swallow it to keep the process alive).
+    reportCrash(info);
 
     // Only forward to the default (fatal) handler in __DEV__ so we still get
     // the red-box dev overlay. In release, swallow to keep the process alive

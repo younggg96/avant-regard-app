@@ -112,6 +112,7 @@ import SellerListingsScreen from "./src/screens/SellerListingsScreen";
 import MarketplaceScreen from "./src/screens/Marketplace/MarketplaceScreen";
 import MyCollectionsScreen from "./src/screens/MyCollectionsScreen";
 import UserCollectionDetailScreen from "./src/screens/UserCollectionDetailScreen";
+import BrowsingHistoryScreen from "./src/screens/BrowsingHistoryScreen";
 // Trading System (PRD Phase 4) Screens
 import CheckoutScreen from "./src/screens/Trading/CheckoutScreen";
 import PaymentScreen from "./src/screens/Trading/PaymentScreen";
@@ -990,6 +991,12 @@ function AppNavigator({
         <Stack.Screen
           name="UserCollectionDetail"
           component={UserCollectionDetailScreen}
+          options={{ headerShown: false }}
+        />
+        {/* 浏览记录 */}
+        <Stack.Screen
+          name="BrowsingHistory"
+          component={BrowsingHistoryScreen}
           options={{ headerShown: false }}
         />
         {/* PRD Phase 4 · 交易引擎 */}

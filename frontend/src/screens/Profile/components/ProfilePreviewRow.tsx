@@ -13,7 +13,10 @@ import { useNavigation } from "@react-navigation/native";
 
 import { useThemedStyles, type AppTheme } from "../../../theme";
 import { useAuthStore } from "../../../store/authStore";
-import { listMyFavoritedStoreProducts } from "../../../services/storeProductService";
+import {
+  listMyBrowsingHistory,
+  listMyFavoritedStoreProducts,
+} from "../../../services/storeProductService";
 import { listArchive } from "../../../services/archivePlusService";
 import { ProfilePreviewCard } from "./ProfilePreviewCard";
 
@@ -32,12 +35,14 @@ export const ProfilePreviewRow: React.FC = () => {
 
   const [collections, setCollections] = useState<PreviewState>(EMPTY);
   const [archive, setArchive] = useState<PreviewState>(EMPTY);
+  const [history, setHistory] = useState<PreviewState>(EMPTY);
 
   useEffect(() => {
     let cancelled = false;
     if (!userId) {
       setCollections(EMPTY);
       setArchive(EMPTY);
+      setHistory(EMPTY);
       return;
     }
 
@@ -73,27 +78,55 @@ export const ProfilePreviewRow: React.FC = () => {
       }
     })();
 
+    (async () => {
+      try {
+        const res = await listMyBrowsingHistory(1, 3);
+        if (cancelled) return;
+        setHistory({
+          covers: (res.products ?? [])
+            .map((p) => p.images?.[0] ?? "")
+            .filter(Boolean),
+          count: res.total ?? 0,
+        });
+      } catch (err) {
+        console.error("Error loading browsing history preview:", err);
+      }
+    })();
+
     return () => {
       cancelled = true;
     };
   }, [userId]);
 
   return (
-    <View style={styles.row}>
-      <ProfilePreviewCard
-        title={t("profile.savedItemsCard")}
-        count={collections.count}
-        covers={collections.covers}
-        fallbackIcon="bookmark-outline"
-        onPress={() => navigation.navigate("MyCollections")}
-      />
-      <ProfilePreviewCard
-        title={t("trading.archiveEntry.title")}
-        count={archive.count}
-        covers={archive.covers}
-        fallbackIcon="albums-outline"
-        onPress={() => navigation.navigate("MyArchive")}
-      />
+    <View style={styles.wrap}>
+      <View style={styles.row}>
+        <ProfilePreviewCard
+          title={t("profile.savedItemsCard")}
+          count={collections.count}
+          covers={collections.covers}
+          fallbackIcon="bookmark-outline"
+          onPress={() => navigation.navigate("MyCollections")}
+        />
+        <ProfilePreviewCard
+          title={t("trading.archiveEntry.title")}
+          count={archive.count}
+          covers={archive.covers}
+          fallbackIcon="albums-outline"
+          onPress={() => navigation.navigate("MyArchive")}
+        />
+      </View>
+      {/* 「浏览记录」紧贴「我的收藏」下方，与之同宽对齐（右侧留空保持两列栅格）。 */}
+      <View style={styles.row}>
+        <ProfilePreviewCard
+          title={t("browsingHistory.title")}
+          count={history.count}
+          covers={history.covers}
+          fallbackIcon="time-outline"
+          onPress={() => navigation.navigate("BrowsingHistory")}
+        />
+        <View style={styles.spacer} />
+      </View>
     </View>
   );
 };
@@ -101,13 +134,19 @@ ProfilePreviewRow.displayName = "ProfilePreviewRow";
 
 const makeStyles = (t: AppTheme) =>
   StyleSheet.create({
+    wrap: {
+      paddingTop: t.spacing.sm,
+      paddingBottom: t.spacing.xs,
+    },
     row: {
       flexDirection: "row",
       alignItems: "stretch",
       gap: t.spacing.sm,
       paddingHorizontal: t.spacing.md,
-      paddingTop: t.spacing.sm,
-      paddingBottom: t.spacing.xs,
+      paddingBottom: t.spacing.sm,
+    },
+    spacer: {
+      flex: 1,
     },
   });
 

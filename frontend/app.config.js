@@ -45,7 +45,7 @@ const config = {
     bundleIdentifier: IS_NA
       ? "com.yanggg96.avant-regard.na"
       : "com.yanggg96.avant-regard",
-    buildNumber: "27",
+    buildNumber: "31",
     associatedDomains: ["applinks:app.avantregard.com"],
   },
   android: {

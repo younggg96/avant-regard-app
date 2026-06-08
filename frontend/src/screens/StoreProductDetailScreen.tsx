@@ -69,6 +69,7 @@ import {
   getStoreProductRichDetail,
   likeStoreProduct,
   likeStoreProductComment,
+  recordStoreProductView,
   StoreProduct,
   StoreProductComment,
   StoreProductRichDetail,
@@ -119,6 +120,7 @@ interface RouteParams {
 
 type NavigationProp = {
   navigate: (screen: string, params?: any) => void;
+  push: (screen: string, params?: any) => void;
   goBack: () => void;
 };
 
@@ -352,6 +354,12 @@ const StoreProductDetailScreen: React.FC = () => {
     checkStoreProductWanted(productId)
       .then((v) => mountedRef.current && setIsWanted(v))
       .catch(() => {});
+  }, [productId, currentUser]);
+
+  // 浏览记录：登录用户进入详情页自动落库 (fire-and-forget，失败静默)。
+  useEffect(() => {
+    if (!productId || !currentUser) return;
+    recordStoreProductView(productId).catch(() => {});
   }, [productId, currentUser]);
 
   // 卖家关注态 —— 登录用户查看他人商品时拉一次 is-following。
@@ -1452,7 +1460,7 @@ const StoreProductDetailScreen: React.FC = () => {
                     key={`so-${sp.id}`}
                     product={sp}
                     onPress={() =>
-                      navigation.navigate("StoreProductDetail", {
+                      navigation.push("StoreProductDetail", {
                         productId: sp.id,
                       })
                     }
@@ -1524,7 +1532,7 @@ const StoreProductDetailScreen: React.FC = () => {
                     key={`rp-${rp.id}`}
                     product={rp}
                     onPress={() =>
-                      navigation.navigate("StoreProductDetail", {
+                      navigation.push("StoreProductDetail", {
                         productId: rp.id,
                       })
                     }
@@ -1880,9 +1888,6 @@ const RelatedProductCard: React.FC<{
             contentFit="cover"
           />
         ) : null}
-        <View style={styles.relatedHeart}>
-          <Ionicons name="heart-outline" size={14} color="#FFFFFF" />
-        </View>
       </View>
       <Text style={styles.relatedTitle} numberOfLines={1}>
         {product.brand || product.title}
@@ -1949,9 +1954,6 @@ const SellerProductCard: React.FC<{
             contentFit="cover"
           />
         ) : null}
-        <View style={styles.sellerOtherHeart}>
-          <Ionicons name="heart-outline" size={16} color="#FFFFFF" />
-        </View>
       </View>
       <Text style={styles.sellerOtherBrand} numberOfLines={1}>
         {product.brand || product.title}
@@ -2585,19 +2587,8 @@ const makeStyles = (t: AppTheme) =>
     relatedImageWrap: {
       width: "100%",
       aspectRatio: 0.78,
-      borderRadius: 6,
+      borderRadius: 4,
       overflow: "hidden",
-    },
-    relatedHeart: {
-      position: "absolute",
-      top: 6,
-      right: 6,
-      backgroundColor: "rgba(0,0,0,0.35)",
-      borderRadius: 12,
-      width: 22,
-      height: 22,
-      alignItems: "center",
-      justifyContent: "center",
     },
     relatedTitle: {
       fontSize: 11,
@@ -2629,19 +2620,8 @@ const makeStyles = (t: AppTheme) =>
     sellerOtherImageWrap: {
       width: "100%",
       aspectRatio: 0.82,
-      borderRadius: 8,
+      borderRadius: 4,
       overflow: "hidden",
-    },
-    sellerOtherHeart: {
-      position: "absolute",
-      bottom: 8,
-      right: 8,
-      backgroundColor: "rgba(0,0,0,0.35)",
-      borderRadius: 14,
-      width: 28,
-      height: 28,
-      alignItems: "center",
-      justifyContent: "center",
     },
     sellerOtherBrand: {
       fontSize: 13,

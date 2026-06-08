@@ -18,6 +18,10 @@ export const NotificationRow = ({ item, onPress }: NotificationRowProps) => {
   const icon = getNotifIcon(item.type);
   const styles = useActivityStyles();
 
+  // 交易类通知（物流 / 售后 / 心动）用商品封面图替代彩色「铃铛」图标；
+  // 此时封面已在左侧展示，右侧不再重复渲染同一张图。
+  const useCoverAsLeading = !!item.category && !!item.image;
+
   return (
     <Pressable
       onPress={onPress}
@@ -25,7 +29,15 @@ export const NotificationRow = ({ item, onPress }: NotificationRowProps) => {
     >
       <HStack alignItems="center" flex={1}>
         <Box position="relative" mr="$md">
-          {item.avatar ? (
+          {useCoverAsLeading ? (
+            <OptimizedImage
+              uri={item.image as string}
+              size={ImageSize.THUMBNAIL}
+              style={[styles.avatar, { borderRadius: 4, backgroundColor: theme.colors.gray100 }]}
+              contentFit="cover"
+              lazy
+            />
+          ) : item.avatar ? (
             <Box position="relative">
               <OptimizedImage
                 uri={item.avatar}
@@ -61,7 +73,7 @@ export const NotificationRow = ({ item, onPress }: NotificationRowProps) => {
           </Text>
         </VStack>
 
-        {item.image && (
+        {item.image && !useCoverAsLeading && (
           <OptimizedImage
             uri={item.image}
             size={ImageSize.MEDIUM}

@@ -23,6 +23,26 @@ export interface ConversationParticipant {
   primaryTitle?: string | null;
 }
 
+/** 对端相对当前用户的角色（由后端按订单 / 出价 / 商品归属推导）。 */
+export type CounterpartRole = "buyer" | "seller";
+
+/**
+ * 会话的交易上下文（后端推导）。用于把「交易 / 帖子 / 活动相关」会话归入
+ * 互动页「交易」tab，并在列表行直接展示商品封面图 + 买家 / 订单状态标识。
+ */
+export interface TradeContext {
+  /** 会话内是否出现过交易 / 分享类卡片 */
+  isTrade: boolean;
+  /** 关联商品 / 内容封面图 */
+  coverImage?: string | null;
+  /** 对端角色：buyer = 对方是买家（我是卖家）；seller = 对方是卖家（我是买家） */
+  counterpartRole?: CounterpartRole | null;
+  /** 我作为买家时关联订单的实时状态（如 paid / shipped） */
+  orderStatus?: string | null;
+  /** 触发归类的卡片类型 */
+  kind?: string | null;
+}
+
 export interface Conversation {
   id: number;
   participants: ConversationParticipant[];
@@ -33,6 +53,13 @@ export interface Conversation {
   updatedAt: string;
   /** Number of messages the current user has sent; 0 = stranger conversation. */
   myMessageCount?: number;
+  /** 交易上下文；非交易会话为 null/undefined */
+  tradeContext?: TradeContext | null;
+}
+
+/** 会话是否属于「交易 / 帖子 / 活动相关」（归入互动页「交易」tab）。 */
+export function isTradeConversation(c: Conversation): boolean {
+  return !!c.tradeContext?.isTrade;
 }
 
 export interface Message {

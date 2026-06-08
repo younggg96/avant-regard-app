@@ -655,6 +655,52 @@ export const listMyFavoritedStoreProducts = async (
 };
 
 // ============================================================================
+// 商品「浏览记录」(Browsing History)
+// ============================================================================
+//
+// 与收藏不同：进入商品详情页时自动记录 (fire-and-forget)，每个商品只保留一条，
+// 重复浏览刷新时间戳置顶；profile「浏览记录」走 listMyBrowsingHistory。
+
+/** POST /api/store-merchants/products/{productId}/view-history */
+export const recordStoreProductView = async (
+  productId: number
+): Promise<void> => {
+  await request<{ recorded: boolean }>(
+    `/api/store-merchants/products/${productId}/view-history`,
+    { method: "POST" }
+  );
+};
+
+/** GET /api/store-merchants/user/browsing-history */
+export const listMyBrowsingHistory = async (
+  page: number = 1,
+  pageSize: number = 20
+): Promise<StoreProductListResponse> => {
+  return request<StoreProductListResponse>(
+    `/api/store-merchants/user/browsing-history?page=${page}&pageSize=${pageSize}`,
+    { method: "GET" }
+  );
+};
+
+/** DELETE /api/store-merchants/products/{productId}/view-history */
+export const removeStoreProductFromHistory = async (
+  productId: number
+): Promise<void> => {
+  await request<{ removed: boolean }>(
+    `/api/store-merchants/products/${productId}/view-history`,
+    { method: "DELETE" }
+  );
+};
+
+/** DELETE /api/store-merchants/user/browsing-history */
+export const clearMyBrowsingHistory = async (): Promise<void> => {
+  await request<{ deleted: number }>(
+    `/api/store-merchants/user/browsing-history`,
+    { method: "DELETE" }
+  );
+};
+
+// ============================================================================
 // 商品「想要」(愿望单)
 // ============================================================================
 //

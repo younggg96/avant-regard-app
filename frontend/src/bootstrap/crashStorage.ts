@@ -34,6 +34,48 @@ export function persistCrash(info: CrashInfo): void {
   });
 }
 
+// ---------------------------------------------------------------------------
+// Live crash channel
+//
+// In release builds installCrashGuard() swallows fatal JS errors to keep the
+// process alive, which means the user never sees them until the *next* launch
+// (and only if Bootstrap routes to <CrashScreen>). For on-device debugging we
+// also want the error drawn on screen the instant it happens. This tiny
+// pub/sub lets the non-React crash handler push the error to a React component
+// (Bootstrap) so it can overlay <CrashScreen> immediately.
+type CrashListener = (info: CrashInfo) => void;
+
+let liveCrash: CrashInfo | null = null;
+const crashListeners = new Set<CrashListener>();
+
+/** Persist the crash AND notify any live subscriber so it can render on screen. */
+export function reportCrash(info: CrashInfo): void {
+  liveCrash = info;
+  persistCrash(info);
+  crashListeners.forEach((listener) => {
+    try {
+      listener(info);
+    } catch {
+      // A listener throwing must never re-enter the crash path.
+    }
+  });
+}
+
+export function getLiveCrash(): CrashInfo | null {
+  return liveCrash;
+}
+
+export function clearLiveCrash(): void {
+  liveCrash = null;
+}
+
+export function subscribeToCrash(listener: CrashListener): () => void {
+  crashListeners.add(listener);
+  return () => {
+    crashListeners.delete(listener);
+  };
+}
+
 export async function readPersistedCrash(): Promise<CrashInfo | null> {
   try {
     const raw = await AsyncStorage.getItem(CRASH_STORAGE_KEY);

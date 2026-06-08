@@ -1220,7 +1220,20 @@
     "tradingAfterSales": "After-sales",
     "tradingAfterSalesEmpty": "No after-sales updates yet",
     "tradingWishlist": "Wishlist",
-    "tradingWishlistEmpty": "No wishlist alerts yet"
+    "tradingWishlistEmpty": "No wishlist alerts yet",
+    "tradeConversations": "Trade chats",
+    "buyerBadge": "Buyer",
+    "tradeStatusDefault": "In progress",
+    "tradeStatus": {
+      "pending_payment": "Awaiting payment",
+      "paid": "To ship",
+      "shipped": "Shipped",
+      "delivered": "Delivered",
+      "completed": "Completed",
+      "settled": "Settled",
+      "refunded": "Refunded",
+      "refunded_auto": "Refunded"
+    }
   },
   "chat": {
     "title": "Chat",
@@ -2363,6 +2376,16 @@
     "visibilityPrivate": "Private",
     "setPublic": "Make public",
     "confirm": "Done"
+  },
+  "browsingHistory": {
+    "title": "Browsing History",
+    "empty": "No browsing history yet. Go discover items you love.",
+    "removeItem": "Remove from history",
+    "removeFailed": "Operation failed",
+    "clearAll": "Clear All",
+    "cleared": "Browsing history cleared",
+    "clearConfirmTitle": "Clear Browsing History",
+    "clearConfirmMessage": "This cannot be undone. Clear all browsing history?"
   },
   "share": {
     "title": "Share",

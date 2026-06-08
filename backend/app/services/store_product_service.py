@@ -2924,6 +2924,98 @@ class StoreProductService:
         return products, total
 
     # ========================================================================
+    # 浏览记录 (Browsing History)
+    # ========================================================================
+    #
+    # 与收藏不同：进入商品详情页自动落库，且每个 (product, user) 只保留一行，
+    # 重复浏览时 UPSERT 刷新 viewed_at 置顶。不维护任何商品计数。
+
+    def record_browsing_history(self, product_id: int, user_id: int) -> bool:
+        """记录一次浏览；已存在则刷新 viewed_at 使其置顶。幂等、永不抛错。"""
+        try:
+            self.db_admin.table("store_product_browsing_history").upsert(
+                {
+                    "product_id": product_id,
+                    "user_id": user_id,
+                    "viewed_at": datetime.utcnow().isoformat(),
+                },
+                on_conflict="product_id,user_id",
+            ).execute()
+            return True
+        except Exception as e:
+            print(
+                f"[store_products] record browsing history failed "
+                f"pid={product_id} uid={user_id}: {e}"
+            )
+            return False
+
+    def list_user_browsing_history(
+        self,
+        user_id: int,
+        *,
+        page: int = 1,
+        page_size: int = 20,
+    ) -> Tuple[List[StoreProduct], int]:
+        """用户浏览过的商品分页列表，按最近浏览倒序。"""
+        q = (
+            self.db.table("store_product_browsing_history")
+            .select("product_id, viewed_at", count="exact")
+            .eq("user_id", user_id)
+            .order("viewed_at", desc=True)
+        )
+        offset = (page - 1) * page_size
+        q = q.range(offset, offset + page_size - 1)
+        res = q.execute()
+
+        product_ids = [r["product_id"] for r in (res.data or [])]
+        total = res.count or 0
+        if not product_ids:
+            return [], total
+
+        products_res = (
+            self.db.table("store_products")
+            .select(_PRODUCT_SELECT)
+            .in_("id", product_ids)
+            .execute()
+        )
+        rows = products_res.data or []
+        by_id = {row["id"]: row for row in rows}
+        # 保持浏览顺序（viewed_at desc），过滤已删除的商品。
+        ordered = [by_id[pid] for pid in product_ids if pid in by_id]
+        # 标注当前用户对这些商品的收藏态，方便列表里直接显示收藏图标。
+        favorited_map = self._check_products_favorited_bulk(
+            [row["id"] for row in ordered], user_id
+        )
+        products = [
+            self._format_product(
+                row, favorited_by_me=favorited_map.get(row["id"], False)
+            )
+            for row in ordered
+        ]
+        return products, total
+
+    def remove_browsing_history_item(self, product_id: int, user_id: int) -> bool:
+        """从浏览记录中移除单个商品。"""
+        result = (
+            self.db_admin.table("store_product_browsing_history")
+            .delete()
+            .eq("product_id", product_id)
+            .eq("user_id", user_id)
+            .execute()
+        )
+        return bool(result.data)
+
+    def clear_browsing_history(self, user_id: int) -> int:
+        """清空用户的全部浏览记录，返回删除的行数。"""
+        result = (
+            self.db_admin.table("store_product_browsing_history")
+            .delete()
+            .eq("user_id", user_id)
+            .execute()
+        )
+        return len(result.data or [])
+
+    # ========================================================================
     # 想要 (愿望单)
     # ========================================================================
     #

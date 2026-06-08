@@ -1220,7 +1220,20 @@
     "tradingAfterSales": "售后信息",
     "tradingAfterSalesEmpty": "暂无售后信息",
     "tradingWishlist": "心动信息",
-    "tradingWishlistEmpty": "暂无心动信息"
+    "tradingWishlistEmpty": "暂无心动信息",
+    "tradeConversations": "交易会话",
+    "buyerBadge": "买家",
+    "tradeStatusDefault": "交易中",
+    "tradeStatus": {
+      "pending_payment": "待付款",
+      "paid": "待发货",
+      "shipped": "待收货",
+      "delivered": "已签收",
+      "completed": "已完成",
+      "settled": "已结算",
+      "refunded": "已退款",
+      "refunded_auto": "已退款"
+    }
   },
   "chat": {
     "title": "聊天",
@@ -2363,6 +2376,16 @@
     "visibilityPrivate": "私密",
     "setPublic": "设为公开",
     "confirm": "完成"
+  },
+  "browsingHistory": {
+    "title": "浏览记录",
+    "empty": "暂无浏览记录，去发现喜欢的单品吧",
+    "removeItem": "从浏览记录移除",
+    "removeFailed": "操作失败",
+    "clearAll": "清空记录",
+    "cleared": "已清空浏览记录",
+    "clearConfirmTitle": "清空浏览记录",
+    "clearConfirmMessage": "清空后将无法恢复，确定清空全部浏览记录？"
   },
   "share": {
     "title": "分享",

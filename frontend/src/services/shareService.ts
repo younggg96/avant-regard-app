@@ -8,7 +8,7 @@
 import { Share, Platform, Linking } from "react-native";
 import * as Clipboard from "expo-clipboard";
 import { Post } from "../components/PostCard";
-import { config } from "../config/env";
+import { config, IS_NA } from "../config/env";
 import { Alert } from "../utils/Alert";
 
 /**
@@ -30,6 +30,22 @@ let wechatSdkLoadError: unknown = null;
 
 const loadWechatSdk = (): WechatSdk | null => {
   if (wechatSdk || wechatSdkLoadError) return wechatSdk;
+
+  // North America build excludes the WeChat native module from autolinking
+  // (see scripts/eas-exclude-wechat-na.js), but the JS package is still bundled.
+  // So `require("expo-native-wechat")` resolves at the Metro level and then the
+  // module's top-level `requireNativeModule('ExpoNativeWechat')` throws
+  // "Cannot find native module 'ExpoNativeWechat'". In release/Hermes that throw
+  // escaped the try/catch below and became a fatal startup crash (the app got
+  // stuck on the splash on relaunch). Never even attempt the require on NA —
+  // there is no WeChat there by design — and degrade to the system share sheet.
+  if (IS_NA) {
+    wechatSdkLoadError = new Error(
+      "WeChat is disabled on the North America build",
+    );
+    return null;
+  }
+
   try {
     // 用 require 确保错误可以被 try/catch 捕获，避免静态 import 在 bundle 启动时就炸
     // eslint-disable-next-line @typescript-eslint/no-var-requires
