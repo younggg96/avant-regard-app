@@ -155,6 +155,28 @@ export function useCurrencySymbol(): string {
   return getCurrencySymbol(currency);
 }
 
+/**
+ * 钱包 / 结算 / 提现专用格式化器：**永远按金额自身的 currency 原样展示**，
+ * 绝不走用户展示偏好（preferred_currency）的汇率换算。
+ *
+ * 为什么单独开一个 hook 而不复用 `useFormatPrice`：
+ *   钱包余额、待结算、累计入账、提现金额、流水，都是「真实的、可提现的钱」，
+ *   它们的币种由后端账户决定（通常 CNY）。如果走 `useFormatPrice`，
+ *   当用户把展示偏好切成 USD 时，¥1,000 会被换算显示成 ~$138，
+ *   与实际可提现金额不符，造成「余额显示错误」。这里强制
+ *   displayCurrency = 金额自身 currency，从根上禁用换算。
+ */
+export function useFormatWalletAmount(): (
+  amountCents: number | null | undefined,
+  currency?: string | null | undefined,
+  options?: FormatOptions
+) => string {
+  return useCallback((amountCents, currency, options) => {
+    const native = normalizeCurrency(currency);
+    return formatPriceDisplay(amountCents, native, native, options);
+  }, []);
+}
+
 // ============================================================================
 // 卖家原币种提示
 // ============================================================================

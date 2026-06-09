@@ -216,6 +216,15 @@ SplashScreen.preventAutoHideAsync().catch(() => { });
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
+// 发布 / 创作类入口统一从底部滑入，呈现「弹出式」的轻量创建语境，
+// 与普通的横向页面推入做出区分，符合用户对「新建内容」的心智模型。
+const MODAL_SCREEN_OPTIONS = {
+  headerShown: false,
+  animation: "slide_from_bottom" as const,
+  animationDuration: 320,
+  gestureEnabled: true,
+};
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -291,6 +300,8 @@ function AuthNavigator() {
     <Stack.Navigator
       screenOptions={{
         headerShown: false,
+        animation: "fade",
+        animationDuration: 220,
       }}
     >
       <Stack.Screen name="Auth" component={AuthScreen} />
@@ -767,6 +778,16 @@ function AppNavigator({
             fontSize: 20,
           },
           headerBackTitle: "",
+          // 统一所有页面的推入/弹出转场：横向滑入 + 边缘手势返回，
+          // 让整个 App 的页面切换更顺滑、更接近原生 iOS 体验。
+          // 注意：只开启「边缘」返回手势（gestureEnabled），不开 fullScreen，
+          // 否则会和页面内的横向 ScrollView / PagerView / 图片轮播抢手势。
+          animation: "slide_from_right",
+          animationDuration: 280,
+          gestureEnabled: true,
+          contentStyle: {
+            backgroundColor: appTheme.colors.background,
+          },
         }}
       >
         <Stack.Screen
@@ -898,48 +919,38 @@ function AppNavigator({
         <Stack.Screen
           name="PublishType"
           component={PublishTypeScreen}
-          options={{
-            headerShown: false,
-          }}
+          options={MODAL_SCREEN_OPTIONS}
         />
         <Stack.Screen
           name="PublishLookbook"
           component={PublishLookbookScreen}
-          options={{
-            headerShown: false,
-          }}
+          options={MODAL_SCREEN_OPTIONS}
         />
         <Stack.Screen
           name="PublishOutfit"
           component={PublishOutfitScreen}
-          options={{
-            headerShown: false,
-          }}
+          options={MODAL_SCREEN_OPTIONS}
         />
         <Stack.Screen
           name="PublishReview"
           component={PublishReviewScreen}
-          options={{
-            headerShown: false,
-          }}
+          options={MODAL_SCREEN_OPTIONS}
         />
         <Stack.Screen
           name="PublishForumPost"
           component={PublishForumPostScreen}
-          options={{
-            headerShown: false,
-          }}
+          options={MODAL_SCREEN_OPTIONS}
         />
         {/* V2 发布流程：底部「+」按钮根据 Discover 子 Tab 走不同入口 */}
         <Stack.Screen
           name="PublishV2Composer"
           component={PublishV2ComposerScreen}
-          options={{ headerShown: false }}
+          options={MODAL_SCREEN_OPTIONS}
         />
         <Stack.Screen
           name="PublishV2ForumMode"
           component={PublishV2ForumModeScreen}
-          options={{ headerShown: false }}
+          options={MODAL_SCREEN_OPTIONS}
         />
         <Stack.Screen
           name="PublishV2ForumSelect"
@@ -1123,7 +1134,7 @@ function AppNavigator({
         <Stack.Screen
           name="AIPostEntry"
           component={AIPostEntryScreen}
-          options={{ headerShown: false }}
+          options={MODAL_SCREEN_OPTIONS}
         />
         <Stack.Screen
           name="AIPostQAStep"

@@ -45,6 +45,8 @@ import { useTranslation } from "react-i18next";
 
 import { Box, HStack, Pressable, Text, VStack, AnimatedChip, chipRowStyle } from "../../../components/ui";
 import { OptimizedImage } from "../../../components/ui/OptimizedImage";
+import { UserAvatar } from "../../../components/ui/UserAvatar";
+import { resolveAvatarUrl } from "../../../utils/avatarUtils";
 import {
   useAppTheme,
   useThemedStyles,
@@ -526,10 +528,10 @@ const TradingTabContent: React.FC<Props> = ({ isActive, onScroll }) => {
         </View>
         <VStack style={styles.featuredMeta} space="xs">
           <Text style={styles.featuredBrand} numberOfLines={1}>
-            {item.brand ?? "—"}
+            {item.title}
           </Text>
           <Text style={styles.featuredTitle} numberOfLines={1}>
-            {item.title}
+            {buildCardSubtitle(item, t)}
           </Text>
           <HStack alignItems="center">
             <Text style={styles.featuredPrice}>
@@ -543,6 +545,22 @@ const TradingTabContent: React.FC<Props> = ({ isActive, onScroll }) => {
               </HStack>
             ) : null}
           </HStack>
+          {item.sellerName ? (
+            <HStack
+              alignItems="center"
+              space="xs"
+              style={styles.featuredSellerRow}
+            >
+              <UserAvatar
+                uri={resolveAvatarUrl(item.sellerAvatarUrl)}
+                name={item.sellerName}
+                size={18}
+              />
+              <Text style={styles.featuredSeller} numberOfLines={1}>
+                {item.sellerName}
+              </Text>
+            </HStack>
+          ) : null}
         </VStack>
       </Pressable>
     );
@@ -649,6 +667,25 @@ const TradingTabContent: React.FC<Props> = ({ isActive, onScroll }) => {
     </View>
   );
 };
+
+// ---------------------------------------------------------------------------
+// 辅助：精选卡片副标题 —— 尺码 · 颜色 · N 人想要
+// ---------------------------------------------------------------------------
+// 主标题改为单品名后，副标题汇总该单品的关键属性。任一字段缺失时跳过，
+// 全部缺失时回退到品牌名，避免出现空行。
+function buildCardSubtitle(
+  item: StoreProduct,
+  t: (key: string, opts?: any) => string,
+): string {
+  const parts: string[] = [];
+  if (item.size) parts.push(item.size);
+  if (item.color) parts.push(item.color);
+  if (item.wantCount > 0) {
+    parts.push(t("trading.marketplace.wantCountLabel", { count: item.wantCount }));
+  }
+  if (parts.length === 0) return item.brand ?? "—";
+  return parts.join(" · ");
+}
 
 // ---------------------------------------------------------------------------
 // 辅助：相对时间格式化
@@ -824,6 +861,17 @@ const makeStyles = (t: AppTheme) =>
       color: t.colors.text,
     },
     featuredFav: { fontSize: 11, color: t.colors.gray300 },
+    featuredSellerRow: {
+      marginTop: 8,
+      paddingTop: 8,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: t.colors.border,
+    },
+    featuredSeller: {
+      flex: 1,
+      fontSize: 11,
+      color: t.colors.textSecondary,
+    },
 
     center: {
       paddingTop: 48,

@@ -627,9 +627,10 @@
       "conditionNew95": "Almost New",
       "conditionUsed8": "Lightly Used",
       "conditionFlaw": "Obviously Used",
-      "badgePlatformAuth": "Authenticated",
+      "badgePlatformAuth": "Fund Protection",
       "badgeNoReturns": "No Returns",
       "badgeFreeShipping": "Free Shipping",
+      "badgeShippingCod": "Buyer Pays Shipping",
       "positiveRate": "{{rate}}% positive",
       "noReviewsYet": "No reviews yet",
       "follow": "Follow",
@@ -3018,7 +3019,8 @@
       "timeAgoHour": "{{count}}h ago",
       "timeAgoMinute": "{{count}}m ago",
       "timeAgoDay": "{{count}}d ago",
-      "timeJustNow": "just now"
+      "timeJustNow": "just now",
+      "wantCountLabel": "{{count}} want this"
     },
     "filter": {
       "title": "Filter",

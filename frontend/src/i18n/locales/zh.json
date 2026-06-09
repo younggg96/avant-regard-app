@@ -627,9 +627,10 @@
       "conditionNew95": "几乎全新",
       "conditionUsed8": "轻微使用",
       "conditionFlaw": "明显使用",
-      "badgePlatformAuth": "平台鉴定",
+      "badgePlatformAuth": "资金保障",
       "badgeNoReturns": "不支持退换",
       "badgeFreeShipping": "包邮",
+      "badgeShippingCod": "到付",
       "positiveRate": "{{rate}}% 好评率",
       "noReviewsYet": "暂无评价",
       "follow": "关注",
@@ -3018,7 +3019,8 @@
       "timeAgoHour": "{{count}} 小时前",
       "timeAgoMinute": "{{count}} 分钟前",
       "timeAgoDay": "{{count}} 天前",
-      "timeJustNow": "刚刚"
+      "timeJustNow": "刚刚",
+      "wantCountLabel": "{{count}} 人想要"
     },
     "filter": {
       "title": "筛选",

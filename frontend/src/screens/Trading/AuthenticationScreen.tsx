@@ -302,16 +302,16 @@ const makeStyles = (t: AppTheme) =>
       marginTop: 12,
       color: t.colors.text,
     },
-    pkgList: { flexDirection: "row", gap: 8 },
+    pkgList: { flexDirection: "row", gap: 8, alignItems: "stretch" },
     pkgCard: {
       flex: 1,
       backgroundColor: t.colors.cardElevated,
       padding: 12,
       borderRadius: 12,
-      borderWidth: 1,
+      borderWidth: 2,
       borderColor: t.colors.border,
     },
-    pkgCardActive: { borderColor: t.colors.accent, borderWidth: 2 },
+    pkgCardActive: { borderColor: t.colors.accent },
     pkgName: {
       fontSize: 14,
       fontWeight: "700",
@@ -325,7 +325,12 @@ const makeStyles = (t: AppTheme) =>
       marginBottom: 4,
     },
     pkgSla: { fontSize: 12, color: t.colors.gray300, marginBottom: 8 },
-    pkgDesc: { fontSize: 12, color: t.colors.gray400 },
+    pkgDesc: {
+      fontSize: 12,
+      lineHeight: 17,
+      minHeight: 51,
+      color: t.colors.gray400,
+    },
     input: {
       backgroundColor: t.colors.inputBackground,
       borderRadius: 8,

@@ -32,7 +32,11 @@ import {
   listPayoutAccounts,
   PayoutAccount,
 } from "../../services/kycService";
-import { useFormatPrice } from "../../utils/currency";
+import {
+  getCurrencySymbol,
+  normalizeCurrency,
+  useFormatWalletAmount,
+} from "../../utils/currency";
 import { useAppTheme, useThemedStyles, type AppTheme } from "../../theme";
 
 export default function WithdrawRequestScreen() {
@@ -40,7 +44,7 @@ export default function WithdrawRequestScreen() {
   const theme = useAppTheme();
   const styles = useThemedStyles(makeStyles);
   const { t } = useTranslation();
-  const formatPrice = useFormatPrice();
+  const formatPrice = useFormatWalletAmount();
 
   const [balance, setBalance] = useState<SellerBalance | null>(null);
   const [accounts, setAccounts] = useState<PayoutAccount[]>([]);
@@ -75,6 +79,9 @@ export default function WithdrawRequestScreen() {
   }, [load]);
 
   const currency = balance?.currency || "CNY";
+  // 输入框前缀的符号要跟随钱包真实币种，而不是用户的展示偏好，
+  // 否则会出现「前缀是 ¥、可提现提示却是 $」的不一致。
+  const currencySymbol = getCurrencySymbol(normalizeCurrency(currency));
   const available = balance?.availableCents ?? 0;
 
   const setMax = () => {
@@ -179,7 +186,7 @@ export default function WithdrawRequestScreen() {
             </Pressable>
           </View>
           <View style={styles.amountInputBox}>
-            <Text style={styles.amountPrefix}>¥</Text>
+            <Text style={styles.amountPrefix}>{currencySymbol}</Text>
             <TextInput
               value={amount}
               onChangeText={setAmount}

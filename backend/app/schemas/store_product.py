@@ -340,6 +340,9 @@ class StoreProduct(BaseModel):
     merchantId: Optional[int] = None
     sellerKind: str = "merchant"
     sellerUserId: Optional[int] = None
+    # 列表卡片展示用：卖家头像 + 名称（marketplace 列表批量补充，详情走 rich-detail）
+    sellerName: Optional[str] = None
+    sellerAvatarUrl: Optional[str] = None
     categoryId: Optional[int] = None
     categoryName: Optional[str] = None
     title: str

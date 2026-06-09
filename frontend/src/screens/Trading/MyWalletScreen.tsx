@@ -32,7 +32,7 @@ import {
   PendingPayoutItem,
   WalletSummary,
 } from "../../services/walletService";
-import { useFormatPrice } from "../../utils/currency";
+import { useFormatWalletAmount } from "../../utils/currency";
 import { useAppTheme, useThemedStyles, type AppTheme } from "../../theme";
 
 const ACTION_ITEMS = [
@@ -52,7 +52,7 @@ export default function MyWalletScreen() {
   const theme = useAppTheme();
   const styles = useThemedStyles(makeStyles);
   const { t } = useTranslation();
-  const formatPrice = useFormatPrice();
+  const formatPrice = useFormatWalletAmount();
 
   const [summary, setSummary] = useState<WalletSummary | null>(null);
   const [pending, setPending] = useState<PendingPayoutItem[]>([]);

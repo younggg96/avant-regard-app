@@ -25,7 +25,7 @@ import { useTranslation } from "react-i18next";
 
 import type { ConfirmReceiptSettlement, Order } from "../../services/orderService";
 import { buildTradeReviewParams } from "../../services/aftersalesService";
-import { useFormatPrice } from "../../utils/currency";
+import { useFormatWalletAmount } from "../../utils/currency";
 import { OptimizedImage } from "../../components/ui/OptimizedImage";
 import { ImageSize } from "../../utils/imageUtils";
 import { useAppTheme, useThemedStyles, type AppTheme } from "../../theme";
@@ -55,7 +55,9 @@ export default function SettlementResultScreen() {
   const theme = useAppTheme();
   const styles = useThemedStyles(makeStyles);
   const { t } = useTranslation();
-  const formatPrice = useFormatPrice();
+  // 结算回执是「卖家实际入账 / 抽成」的真实金额，按订单原始币种展示，
+  // 不能跟随用户展示偏好做汇率换算，否则会与钱包余额、提现金额对不上。
+  const formatPrice = useFormatWalletAmount();
 
   const currency = settlement.currency || "CNY";
 

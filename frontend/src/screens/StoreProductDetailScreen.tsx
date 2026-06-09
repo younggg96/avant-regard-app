@@ -8,7 +8,7 @@
  *   2. 标题
  *   3. 价格
  *   4. 快速信息行：成色 | 尺码 | 颜色（| 年份 | 渠道）
- *   5. 服务徽章：平台鉴定 / 不支持退换 / 包邮
+ *   5. 服务徽章：资金保障 / 不支持退换 / 包邮或到付
  *   6. 卖家卡片：头像 + 用户名 + Lv + 好评率 + 关注按钮
  *   7. 关联的品牌（同卖家其他在售品牌，圆形头像）
  *   8. 关联的秀场（season + look）
@@ -1057,7 +1057,11 @@ const StoreProductDetailScreen: React.FC = () => {
             />
             <ServiceBadge
               icon="cube-outline"
-              label={t("store.productDetailV2.badgeFreeShipping")}
+              label={
+                product?.shippingFeeMode === "free"
+                  ? t("store.productDetailV2.badgeFreeShipping")
+                  : t("store.productDetailV2.badgeShippingCod")
+              }
               theme={theme}
             />
           </View>
@@ -1767,7 +1771,7 @@ const ServiceBadge: React.FC<{
   label: string;
   theme: AppTheme;
 }> = ({ icon, label, theme }) => (
-  <HStack alignItems="center" space="xs" style={{ flex: 1 }}>
+  <HStack alignItems="center" space="xs">
     <Ionicons name={icon} size={16} color={theme.colors.textSecondary} />
     <Text
       style={{
@@ -2303,6 +2307,8 @@ const makeStyles = (t: AppTheme) =>
     badgesRow: {
       flexDirection: "row",
       alignItems: "center",
+      justifyContent: "space-between",
+      width: "100%",
       paddingTop: 10,
       paddingBottom: 6,
       backgroundColor: t.colors.background,

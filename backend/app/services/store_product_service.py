@@ -1245,6 +1245,102 @@ class StoreProductService:
 
     # ---- 内部聚合 helpers --------------------------------------------------
 
+    def _attach_seller_display_bulk(self, products: List[StoreProduct]) -> None:
+        """批量为 marketplace 列表卡片补充卖家展示信息（头像 + 名称）。
+
+        与 ``_fetch_seller_card`` 不同：这里只取「头像 + 展示名」两项最轻量字段，
+        并把同一批 listing 的查询合并成几条 IN 查询，避免列表场景下的 N+1。
+        所有子查询失败都视为缺省，前端会走首字母占位兜底。
+        """
+        if not products:
+            return
+
+        # 1) merchant_id -> user_id（merchant 卖家需先反查 store_merchants）
+        merchant_ids = {
+            p.merchantId
+            for p in products
+            if p.sellerKind == "merchant" and p.merchantId is not None
+        }
+        merchant_user_map: dict[int, int] = {}
+        if merchant_ids:
+            try:
+                rows = (
+                    self.db.table("store_merchants")
+                    .select("id, user_id")
+                    .in_("id", list(merchant_ids))
+                    .execute()
+                    .data
+                    or []
+                )
+                for r in rows:
+                    if r.get("user_id") is not None:
+                        merchant_user_map[r["id"]] = r["user_id"]
+            except Exception:
+                pass
+
+        # 2) 解析每个 listing 对应的 user_id
+        product_user: dict[int, Optional[int]] = {}
+        for p in products:
+            uid: Optional[int] = None
+            if p.sellerKind == "individual":
+                uid = p.sellerUserId
+            elif p.sellerKind == "merchant" and p.merchantId is not None:
+                uid = merchant_user_map.get(p.merchantId)
+            product_user[p.id] = uid
+
+        user_ids = {uid for uid in product_user.values() if uid}
+        if not user_ids:
+            return
+
+        # 3) users + user_info(avatar_url)
+        username_map: dict[int, Optional[str]] = {}
+        avatar_map: dict[int, Optional[str]] = {}
+        try:
+            rows = (
+                self.db.table("users")
+                .select("id, username, user_info(avatar_url)")
+                .in_("id", list(user_ids))
+                .execute()
+                .data
+                or []
+            )
+            for r in rows:
+                uid = r.get("id")
+                if uid is None:
+                    continue
+                username_map[uid] = r.get("username")
+                ui = r.get("user_info")
+                if isinstance(ui, list) and ui:
+                    avatar_map[uid] = (ui[0] or {}).get("avatar_url")
+                elif isinstance(ui, dict):
+                    avatar_map[uid] = ui.get("avatar_url")
+        except Exception:
+            pass
+
+        # 4) seller_profiles.display_name 覆盖 username（个人卖家可自定义展示名）
+        try:
+            rows = (
+                self.db.table("seller_profiles")
+                .select("user_id, display_name")
+                .in_("user_id", list(user_ids))
+                .execute()
+                .data
+                or []
+            )
+            for r in rows:
+                uid = r.get("user_id")
+                if uid is not None and r.get("display_name"):
+                    username_map[uid] = r["display_name"]
+        except Exception:
+            pass
+
+        for p in products:
+            uid = product_user.get(p.id)
+            if not uid:
+                continue
+            p.sellerName = username_map.get(uid)
+            p.sellerAvatarUrl = avatar_map.get(uid)
+
     def _fetch_seller_card(self, product: StoreProduct) -> Optional[dict]:
         """根据卖家身份组合 seller_profiles + users + user_info + user_levels + 评价聚合。
 
@@ -2171,6 +2267,7 @@ class StoreProductService:
             )
             for row in rows
         ]
+        self._attach_seller_display_bulk(products)
         return products, total
 
     def get_popular_brands(self, limit: int = 6, *, daily_rotate: bool = True) -> List[dict]:

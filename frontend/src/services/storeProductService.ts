@@ -224,6 +224,10 @@ export interface StoreProduct {
   merchantId?: number | null;
   sellerKind?: SellerKind;
   sellerUserId?: number | null;
+  /** 列表卡片展示用：卖家名称（marketplace 列表批量补充）。 */
+  sellerName?: string | null;
+  /** 列表卡片展示用：卖家头像 URL。 */
+  sellerAvatarUrl?: string | null;
   categoryId?: number | null;
   categoryName?: string | null;
   title: string;
