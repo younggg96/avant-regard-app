@@ -20,6 +20,14 @@ from app.schemas.archive_plus import (
 
 
 class ArchiveService:
+    # 可被「手动转入 MY ARCHIVE」的订单状态：买家已实际拿到/完成的单。
+    TRANSFERABLE_ORDER_STATUSES = {
+        "delivered",
+        "completed",
+        "settled",
+        "resolved",
+    }
+
     def __init__(self) -> None:
         self.db = get_supabase_admin()
 
@@ -80,6 +88,20 @@ class ArchiveService:
             if not order_res.data:
                 return None
             order = order_res.data[0]
+
+            # 幂等：同一订单已入库则直接返回既有条目，避免重复 snapshot
+            # （自动入库与手动「转入藏品」可能先后触发同一订单）。
+            existing = (
+                self.db.table("user_archive_items")
+                .select("*")
+                .eq("order_id", order_id)
+                .eq("user_id", order["buyer_user_id"])
+                .limit(1)
+                .execute()
+            )
+            if existing.data:
+                return self._format(existing.data[0])
+
             prod_res = (
                 self.db.table("store_products")
                 .select(
@@ -113,6 +135,51 @@ class ArchiveService:
         except Exception as e:
             print(f"[archive] snapshot_from_order failed: {e}")
             return None
+
+    def get_by_order(self, order_id: int, user_id: int) -> Optional[ArchiveItem]:
+        """查询某订单是否已转入当前用户的 MY ARCHIVE。"""
+        res = (
+            self.db.table("user_archive_items")
+            .select("*")
+            .eq("order_id", order_id)
+            .eq("user_id", user_id)
+            .limit(1)
+            .execute()
+        )
+        if not res.data:
+            return None
+        return self._format(res.data[0])
+
+    def transfer_from_order(self, order_id: int, user_id: int) -> ArchiveItem:
+        """手动把买家「已购入的商品」转入 MY ARCHIVE。
+
+        - 仅订单买家本人可操作
+        - 订单需处于已收货/完成等状态
+        - 幂等：已入库则返回既有条目
+        """
+        order_res = (
+            self.db.table("orders")
+            .select("id, buyer_user_id, status")
+            .eq("id", order_id)
+            .limit(1)
+            .execute()
+        )
+        if not order_res.data:
+            raise ValueError("订单不存在")
+        order = order_res.data[0]
+        if order.get("buyer_user_id") != user_id:
+            raise PermissionError("只能将自己购入的商品转入藏品")
+        if order.get("status") not in self.TRANSFERABLE_ORDER_STATUSES:
+            raise ValueError("该订单尚未完成收货，暂时无法转入藏品")
+
+        existing = self.get_by_order(order_id, user_id)
+        if existing:
+            return existing
+
+        item = self.snapshot_from_order(order_id)
+        if not item:
+            raise ValueError("转入藏品失败，请稍后重试")
+        return item
 
     def list_for_user(
         self,

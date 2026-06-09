@@ -3781,7 +3781,12 @@
       "contactSeller": "Contact seller",
       "contactBuyer": "Contact buyer",
       "contactFailed": "Could not open chat. Please try again later.",
-      "contactUnavailable": "Seller contact info is unavailable for this order."
+      "contactUnavailable": "Seller contact info is unavailable for this order.",
+      "transferToArchive": "Add to My Archive",
+      "viewInArchive": "View in My Archive",
+      "transferSuccessTitle": "Added to My Archive",
+      "transferSuccessMessage": "This item is now in your archive.",
+      "transferFailed": "Could not add to My Archive"
     },
     "confirmReceipt": {
       "headerTitle": "Confirm Receipt",

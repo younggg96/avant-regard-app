@@ -45,7 +45,20 @@ import { useAuthStore } from "../../store/authStore";
 import { createConversation } from "../../services/chatService";
 import { TradingNotFoundState } from "../../components/trading/TradingFormShared";
 import { getOrderReviewStatus } from "../../services/aftersalesService";
+import {
+  getArchiveItemByOrder,
+  transferOrderToArchive,
+  ArchiveItem,
+} from "../../services/archivePlusService";
 import { useAppTheme, useThemedStyles, type AppTheme } from "../../theme";
+
+/** 买家已实际拿到/完成、可手动「转入我的藏品」的订单状态。 */
+const ARCHIVE_TRANSFERABLE_STATUSES: OrderStatus[] = [
+  "delivered",
+  "completed",
+  "settled",
+  "resolved",
+];
 
 type RouteParams = { OrderDetail: { orderId: number } };
 
@@ -94,6 +107,8 @@ export default function OrderDetailScreen() {
   const [actionLoading, setActionLoading] = useState(false);
   const [showShipModal, setShowShipModal] = useState(false);
   const [myReviewSubmitted, setMyReviewSubmitted] = useState(false);
+  const [archiveItem, setArchiveItem] = useState<ArchiveItem | null>(null);
+  const [transferLoading, setTransferLoading] = useState(false);
 
   /** shipped 及之后的状态都需要拉取物流凭证 + 轨迹时间轴. */
   const fetchShipmentIfNeeded = useCallback(async (o: Order) => {
@@ -155,13 +170,23 @@ export default function OrderDetailScreen() {
       } else {
         setMyReviewSubmitted(false);
       }
+      const meIsBuyer = me?.userId != null && me.userId === o.buyerUserId;
+      if (meIsBuyer && ARCHIVE_TRANSFERABLE_STATUSES.includes(o.status)) {
+        tasks.push(
+          getArchiveItemByOrder(o.id)
+            .then(setArchiveItem)
+            .catch(() => setArchiveItem(null)),
+        );
+      } else {
+        setArchiveItem(null);
+      }
       await Promise.all(tasks);
     } catch {
       setOrder(null);
     } finally {
       setLoading(false);
     }
-  }, [orderId, fetchShipmentIfNeeded]);
+  }, [orderId, fetchShipmentIfNeeded, me?.userId]);
 
   useEffect(() => {
     load();
@@ -333,6 +358,43 @@ export default function OrderDetailScreen() {
     order.status !== "pending_payment" &&
     order.status !== "refunded" &&
     order.status !== "refunded_auto";
+
+  // 「转入我的藏品」入口：买家本人、且订单已收货/完成
+  const canTransferToArchive =
+    isBuyer &&
+    !!order &&
+    ARCHIVE_TRANSFERABLE_STATUSES.includes(order.status as OrderStatus);
+
+  const handleTransferToArchive = useCallback(async () => {
+    if (!order) return;
+    if (archiveItem) {
+      navigation.navigate("MyArchive");
+      return;
+    }
+    setTransferLoading(true);
+    try {
+      const item = await transferOrderToArchive(order.id);
+      setArchiveItem(item);
+      Alert.alert(
+        t("trading.orderDetail.transferSuccessTitle"),
+        t("trading.orderDetail.transferSuccessMessage"),
+        [
+          { text: t("common.cancel"), style: "cancel" },
+          {
+            text: t("trading.settlement.viewArchiveCta"),
+            onPress: () => navigation.navigate("MyArchive"),
+          },
+        ],
+      );
+    } catch (e: any) {
+      Alert.alert(
+        t("common.failed"),
+        e?.message ?? t("trading.orderDetail.transferFailed"),
+      );
+    } finally {
+      setTransferLoading(false);
+    }
+  }, [order, archiveItem, navigation, t]);
 
   if (loading) {
     return (
@@ -833,6 +895,31 @@ export default function OrderDetailScreen() {
             <Text style={styles.secondaryBtnText}>
               {t("trading.aftersales.sellerEntryButton")}
             </Text>
+          </Pressable>
+        ) : null}
+        {canTransferToArchive ? (
+          <Pressable
+            style={styles.secondaryBtn}
+            onPress={handleTransferToArchive}
+            disabled={transferLoading || actionLoading}
+          >
+            {transferLoading ? (
+              <ActivityIndicator color={theme.colors.text} />
+            ) : (
+              <>
+                <Ionicons
+                  name={archiveItem ? "albums-outline" : "add-circle-outline"}
+                  size={16}
+                  color={theme.colors.text}
+                  style={{ marginRight: 6 }}
+                />
+                <Text style={styles.secondaryBtnText}>
+                  {archiveItem
+                    ? t("trading.orderDetail.viewInArchive")
+                    : t("trading.orderDetail.transferToArchive")}
+                </Text>
+              </>
+            )}
           </Pressable>
         ) : null}
         {(isBuyer || isSeller) &&

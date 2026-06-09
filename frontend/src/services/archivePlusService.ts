@@ -101,6 +101,24 @@ export async function createArchiveItem(
   });
 }
 
+// 将已购入订单转入 MY ARCHIVE
+export async function getArchiveItemByOrder(
+  orderId: number,
+): Promise<ArchiveItem | null> {
+  const res = await request<{ item: ArchiveItem | null }>(
+    `/api/archive/from-order/${orderId}`,
+  );
+  return res.item ?? null;
+}
+
+export async function transferOrderToArchive(
+  orderId: number,
+): Promise<ArchiveItem> {
+  return request<ArchiveItem>(`/api/archive/from-order/${orderId}`, {
+    method: "POST",
+  });
+}
+
 // PDF p.22 · 持有记录
 export async function listArchiveHoldings(
   archiveId: number,

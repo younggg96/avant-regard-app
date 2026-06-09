@@ -67,6 +67,30 @@ async def create_archive_item(
     return success(item.dict())
 
 
+# ----- 将已购入订单转入 MY ARCHIVE -----
+@archive_router.get("/from-order/{order_id}")
+async def archive_from_order_status(
+    order_id: int, user_id: int = Depends(get_current_user)
+):
+    """查询某订单是否已转入当前用户的藏品，供前端决定入口按钮文案。"""
+    item = archive_service.get_by_order(order_id, user_id)
+    return success({"item": item.dict() if item else None})
+
+
+@archive_router.post("/from-order/{order_id}")
+async def archive_transfer_from_order(
+    order_id: int, user_id: int = Depends(get_current_user)
+):
+    """把买家已购入的商品转入 MY ARCHIVE（幂等）。"""
+    try:
+        item = archive_service.transfer_from_order(order_id, user_id)
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return success(item.dict())
+
+
 # ----- PDF p.22 · 持有记录 -----
 @archive_router.get("/items/{archive_id}/holdings")
 async def list_holdings(archive_id: int, user_id: int = Depends(get_current_user)):

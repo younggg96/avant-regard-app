@@ -3781,7 +3781,12 @@
       "contactSeller": "联系卖家",
       "contactBuyer": "联系买家",
       "contactFailed": "无法打开聊天，请稍后重试",
-      "contactUnavailable": "该订单暂时无法联系卖家"
+      "contactUnavailable": "该订单暂时无法联系卖家",
+      "transferToArchive": "转入我的藏品",
+      "viewInArchive": "在我的藏品中查看",
+      "transferSuccessTitle": "已转入我的藏品",
+      "transferSuccessMessage": "该单品已加入你的藏品库。",
+      "transferFailed": "转入我的藏品失败"
     },
     "confirmReceipt": {
       "headerTitle": "确认收货",
