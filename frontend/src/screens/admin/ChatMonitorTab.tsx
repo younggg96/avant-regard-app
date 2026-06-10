@@ -46,7 +46,8 @@ import {
 type SearchMode = "users" | "messages";
 
 // 把卡片类消息显示成简短标签, 与 chat_service 中后端 preview 逻辑一致.
-const CARD_LABELS: Record<string, string> = {
+// (export 给 UserDataModal 等其他 admin 面板复用)
+export const CARD_LABELS: Record<string, string> = {
   post_card: "[帖子分享]",
   store_card: "[店铺分享]",
   brand_card: "[品牌分享]",
@@ -59,7 +60,7 @@ const CARD_LABELS: Record<string, string> = {
   image: "[图片]",
 };
 
-function previewContent(msg: { content: string; messageType: string }): string {
+export function previewContent(msg: { content: string; messageType: string }): string {
   const label = CARD_LABELS[msg.messageType];
   if (label) {
     try {
@@ -94,7 +95,7 @@ function previewContent(msg: { content: string; messageType: string }): string {
   return msg.content || "";
 }
 
-function participantsLabel(p: AdminChatParticipant[]): string {
+export function participantsLabel(p: AdminChatParticipant[]): string {
   if (!p || p.length === 0) return "—";
   return p
     .map((u) => (u.username ? u.username : `#${u.id}`))

@@ -118,6 +118,7 @@ async def get_all_posts(
     status: Optional[str] = Query(None),
     auditStatus: Optional[str] = Query(None),
     postType: Optional[str] = Query(None),
+    userId: Optional[int] = Query(None, description="只看该用户发布的帖子"),
     current_user_id: int = Depends(get_current_admin_user),
 ):
     """获取所有帖子（支持搜索、筛选、分页）"""
@@ -128,6 +129,7 @@ async def get_all_posts(
         status=status,
         audit_status=auditStatus,
         post_type=postType,
+        user_id=userId,
     )
     return success(result)
 
@@ -639,6 +641,61 @@ async def get_users(
     """获取用户列表（支持搜索、分页）"""
     result = admin_service.get_users(
         keyword=keyword, page=page, page_size=pageSize
+    )
+    return success(result)
+
+
+# ==================== 用户全量数据查询（用户管理 → 用户详情） ====================
+#
+# 配合前端 admin 用户详情聚合页：
+#   GET /api/admin/users/{id}/overview        档案 + 各业务域数据量
+#   GET /api/admin/users/{id}/trade-reviews   交易互评（含未公开）
+#   GET /api/admin/users/{id}/disputes        售后仲裁（发起的 + 被动卷入的）
+# 聊天 / 订单 / 帖子 / 评论明细分别复用：
+#   GET /api/admin/chat/conversations?userId=
+#   GET /api/admin/orders?userId=
+#   GET /api/admin/posts/all?userId=
+#   GET /api/admin/comments/user/{id}
+
+@router.get("/users/{user_id}/overview")
+async def get_user_overview(
+    user_id: int,
+    current_user_id: int = Depends(get_current_admin_user),
+):
+    """管理员: 用户全量数据总览（档案 + 聊天/交易/内容/风控数据量）"""
+    result = admin_service.get_user_overview(user_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="用户不存在")
+    return success(result)
+
+
+@router.get("/users/{user_id}/trade-reviews")
+async def get_user_trade_reviews(
+    user_id: int,
+    role: str = Query("all", description="all / written / received"),
+    page: int = Query(1, ge=1),
+    pageSize: int = Query(20, ge=1, le=100),
+    current_user_id: int = Depends(get_current_admin_user),
+):
+    """管理员: 该用户相关的交易互评（含 visible=false 的未公开评价）"""
+    if role not in ("all", "written", "received"):
+        raise HTTPException(status_code=400, detail="无效的 role 参数")
+    result = admin_service.get_user_trade_reviews(
+        user_id, role=role, page=page, page_size=pageSize
+    )
+    return success(result)
+
+
+@router.get("/users/{user_id}/disputes")
+async def get_user_disputes(
+    user_id: int,
+    page: int = Query(1, ge=1),
+    pageSize: int = Query(20, ge=1, le=100),
+    current_user_id: int = Depends(get_current_admin_user),
+):
+    """管理员: 该用户相关的售后仲裁单"""
+    result = admin_service.get_user_disputes(
+        user_id, page=page, page_size=pageSize
     )
     return success(result)
 

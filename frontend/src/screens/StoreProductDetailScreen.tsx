@@ -21,7 +21,7 @@
  *
  * 数据源：`getStoreProductRichDetail()`（一次性聚合，避免 N+1）。
  *
- * 兼容保留：底部 TradingActionBar / CommentInputBar / WantPopup / OfferModal / FullscreenImageViewer。
+ * 兼容保留：底部 TradingActionBar / CommentInputBar / OfferModal / FullscreenImageViewer。
  */
 import React, {
   useCallback,
@@ -62,7 +62,6 @@ import { useFormatPrice, useSellerCurrencyHint } from "../utils/currency";
 import {
   checkStoreProductFavorited,
   checkStoreProductLiked,
-  checkStoreProductWanted,
   createStoreProductComment,
   deleteStoreProductComment,
   getStoreProductComments,
@@ -76,17 +75,15 @@ import {
   ProductCondition,
   unlikeStoreProduct,
   unlikeStoreProductComment,
-  unwantStoreProduct,
-  wantStoreProduct,
   transitionListing,
 } from "../services/storeProductService";
+import { createConversation } from "../services/chatService";
 import { useAuthStore } from "../store/authStore";
 import { formatTimestamp } from "../components/PostDetail/types";
 import {
   CommentInputBar,
   CommentInputBarRef,
   FullscreenImageViewer,
-  WantPopup,
 } from "../components/PostDetail";
 import TradingActionBar from "../components/TradingActionBar";
 import OfferModal from "./Trading/OfferModal";
@@ -172,11 +169,6 @@ const StoreProductDetailScreen: React.FC = () => {
 
   const [isFavorited, setIsFavorited] = useState(false);
   const [favoriteCount, setFavoriteCount] = useState(0);
-
-  const [isWanted, setIsWanted] = useState(false);
-  const [wantCount, setWantCount] = useState(0);
-  const [wantPending, setWantPending] = useState(false);
-  const [showWantPopup, setShowWantPopup] = useState(false);
 
   // 卖家关注态 —— 顶部卖家卡片「关注」按钮直接触发 follow API，不跳转主页。
   const [isFollowingSeller, setIsFollowingSeller] = useState(false);
@@ -272,8 +264,6 @@ const StoreProductDetailScreen: React.FC = () => {
       setIsLiked(!!p.likedByMe);
       setFavoriteCount(p.favoriteCount ?? 0);
       setIsFavorited(!!p.favoritedByMe);
-      setWantCount(p.wantCount ?? 0);
-      setIsWanted(!!p.wantedByMe);
     } catch (e) {
       console.error("[StoreProductDetail] load product failed:", e);
       if (!mountedRef.current) return;
@@ -342,7 +332,7 @@ const StoreProductDetailScreen: React.FC = () => {
     }, [loadOffers])
   );
 
-  // 二次校验 like / favorite / want（冷缓存下 detail 可能漏带）
+  // 二次校验 like / favorite（冷缓存下 detail 可能漏带）
   useEffect(() => {
     if (!productId || !currentUser) return;
     checkStoreProductLiked(productId)
@@ -350,9 +340,6 @@ const StoreProductDetailScreen: React.FC = () => {
       .catch(() => {});
     checkStoreProductFavorited(productId)
       .then((v) => mountedRef.current && setIsFavorited(v))
-      .catch(() => {});
-    checkStoreProductWanted(productId)
-      .then((v) => mountedRef.current && setIsWanted(v))
       .catch(() => {});
   }, [productId, currentUser]);
 
@@ -377,17 +364,6 @@ const StoreProductDetailScreen: React.FC = () => {
       .then((v) => mountedRef.current && setIsFollowingSeller(v))
       .catch(() => {});
   }, [currentUser?.userId, richDetail?.seller?.userId]);
-
-  // 0.8s 自动 WantPopup（已加愿望单跳过）
-  useEffect(() => {
-    if (!product) return;
-    if (isWanted) return;
-    const timer = setTimeout(() => {
-      if (mountedRef.current) setShowWantPopup(true);
-    }, 800);
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [product?.id]);
 
   // ---------------------- 交互 --------------------------------------------
   const handleShare = useCallback(() => {
@@ -486,27 +462,38 @@ const StoreProductDetailScreen: React.FC = () => {
     setCollectionSheetVisible(true);
   }, [currentUser, t]);
 
-  const handleToggleWant = useCallback(async () => {
-    if (wantPending) return;
+  // 「聊一聊」—— 买家直接与卖家建立会话并跳转聊天页。
+  const chatPendingRef = useRef(false);
+  const handleChatWithSeller = useCallback(async () => {
     if (!currentUser) {
       Alert.show(t("engagement.pleaseLogin"));
       return;
     }
-    const nextWanted = !isWanted;
-    setIsWanted(nextWanted);
-    setWantCount((n) => Math.max(0, n + (nextWanted ? 1 : -1)));
-    setWantPending(true);
+    const sellerUserId =
+      richDetail?.seller?.userId ?? product?.sellerUserId ?? null;
+    if (!sellerUserId || sellerUserId === currentUser.userId) return;
+    if (chatPendingRef.current) return;
+    chatPendingRef.current = true;
     try {
-      if (nextWanted) await wantStoreProduct(productId);
-      else await unwantStoreProduct(productId);
+      const { conversationId } = await createConversation(sellerUserId);
+      navigation.navigate("Chat", {
+        conversationId,
+        otherUserId: sellerUserId,
+        otherUserName: richDetail?.seller?.username,
+        otherUserAvatar: richDetail?.seller?.avatarUrl ?? undefined,
+      });
     } catch (e) {
-      setIsWanted(!nextWanted);
-      setWantCount((n) => Math.max(0, n + (nextWanted ? -1 : 1)));
       Alert.show(e instanceof Error ? e.message : t("store.operationFailed"));
     } finally {
-      if (mountedRef.current) setWantPending(false);
+      chatPendingRef.current = false;
     }
-  }, [isWanted, wantPending, currentUser, productId, t]);
+  }, [
+    currentUser,
+    richDetail?.seller,
+    product?.sellerUserId,
+    navigation,
+    t,
+  ]);
 
   const handleStartReply = useCallback((c: StoreProductComment) => {
     if (c.userId == null || !c.username) return;
@@ -1556,18 +1543,6 @@ const StoreProductDetailScreen: React.FC = () => {
           <Pressable onPress={handleOverlayPress} style={styles.contentOverlay} />
         )}
 
-        <WantPopup
-          visible={showWantPopup}
-          isWanted={isWanted}
-          productImage={productImages[0]}
-          productName={product.title}
-          brandName={product.brand ?? undefined}
-          onWant={handleToggleWant}
-          onDismiss={() => setShowWantPopup(false)}
-          placement="top"
-          topOffset={0}
-        />
-
         {product ? (
           <TradingActionBar
             product={product}
@@ -1640,8 +1615,6 @@ const StoreProductDetailScreen: React.FC = () => {
           displayComments={commentsTotal}
           displayIsLiked={isLiked}
           displayIsSaved={isFavorited}
-          displayWants={wantCount}
-          displayIsWanted={isWanted}
           isItemReview
           replyTarget={
             replyTarget
@@ -1658,7 +1631,13 @@ const StoreProductDetailScreen: React.FC = () => {
           onSubmit={handleSubmitComment}
           onLike={handleToggleLike}
           onSave={handleToggleFavorite}
-          onWant={handleToggleWant}
+          onChat={
+            !currentUser ||
+            (richDetail?.seller?.userId ?? product?.sellerUserId) !==
+              currentUser.userId
+              ? handleChatWithSeller
+              : undefined
+          }
           onOverlayPress={handleOverlayPress}
           onCancelReply={handleCancelReply}
         />

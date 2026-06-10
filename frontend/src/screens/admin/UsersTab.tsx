@@ -24,6 +24,7 @@ import {
   sendMessageREST,
 } from "../../services/chatService";
 import { useSharedStyles } from "./adminStyles";
+import UserDataModal from "./UserDataModal";
 import { AnimatedChip, Box, chipRowStyle, HStack, Text, Input, Button, ButtonText, Pressable, ScrollView, VStack } from "../../components/ui";
 import { Modal } from "../../components/ui/modal";
 import { OptimizedImage } from "../../components/ui/OptimizedImage";
@@ -171,6 +172,9 @@ const UsersSubTab = () => {
 
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [detailUser, setDetailUser] = useState<AdminUser | null>(null);
+
+  const [dataModalVisible, setDataModalVisible] = useState(false);
+  const [dataUser, setDataUser] = useState<AdminUser | null>(null);
 
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<AdminUser | null>(null);
@@ -439,6 +443,20 @@ const UsersSubTab = () => {
           size="sm"
           onPress={() => {
             setDetailModalVisible(false);
+            setDataUser(item);
+            setDataModalVisible(true);
+          }}
+          leftIcon={
+            <Ionicons name="analytics-outline" size={14} color={theme.colors.white} />
+          }
+          style={{ flex: 1 }}
+        >
+          <ButtonText style={{ fontSize: 12 }}>{t("admin.userData.entry")}</ButtonText>
+        </Button>
+        <Button
+          size="sm"
+          onPress={() => {
+            setDetailModalVisible(false);
             openTitleModal(item);
           }}
           leftIcon={
@@ -621,6 +639,15 @@ const UsersSubTab = () => {
           </Box>
         </Box>
       </Modal>
+
+      <UserDataModal
+        visible={dataModalVisible}
+        onClose={() => {
+          setDataModalVisible(false);
+          setDataUser(null);
+        }}
+        user={dataUser}
+      />
 
       <Modal
         visible={deleteModalVisible}

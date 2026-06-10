@@ -59,11 +59,16 @@ const ReviewCard: React.FC<{ review: TradeReview }> = ({ review }) => {
           <UserAvatar
             uri={resolveAvatarUrl(review.reviewerAvatarUrl)}
             name={maskedName}
-            size={28}
+            size={34}
           />
-          <Text style={styles.reviewRole} numberOfLines={1}>
-            {maskedName}
-          </Text>
+          <VStack style={styles.reviewerMeta}>
+            <Text style={styles.reviewerName} numberOfLines={1}>
+              {maskedName}
+            </Text>
+            {!!review.submittedAt && (
+              <Text style={styles.time}>{review.submittedAt.slice(0, 10)}</Text>
+            )}
+          </VStack>
         </HStack>
         <TradeReviewStars value={review.rating} size={12} alignSelf="flex-end" />
       </HStack>
@@ -84,10 +89,43 @@ const ReviewCard: React.FC<{ review: TradeReview }> = ({ review }) => {
           ))}
         </HStack>
       )}
-      {!!review.submittedAt && (
-        <Text style={styles.time}>{review.submittedAt.slice(0, 10)}</Text>
-      )}
     </View>
+  );
+};
+
+/**
+ * 星级分布条 —— 摘要区右侧的 5★→1★ 占比可视化。
+ * 极细 bar（3pt）走编辑风，左侧数字标星级，右侧不再标计数（保持克制）。
+ */
+const RatingBars: React.FC<{ reviews: TradeReview[] }> = ({ reviews }) => {
+  const styles = useThemedStyles(makeStyles);
+  const theme = useAppTheme();
+  const total = reviews.length || 1;
+  return (
+    <VStack space="xs" style={styles.barsWrap}>
+      {[5, 4, 3, 2, 1].map((star) => {
+        const count = reviews.filter((r) => r.rating === star).length;
+        const ratio = count / total;
+        return (
+          <HStack key={star} alignItems="center" space="xs">
+            <Text style={styles.barLabel}>{star}</Text>
+            <Ionicons
+              name="star"
+              size={8}
+              color={theme.colors.gray300}
+            />
+            <View style={styles.barTrack}>
+              <View
+                style={[
+                  styles.barFill,
+                  { width: `${Math.round(ratio * 100)}%` },
+                ]}
+              />
+            </View>
+          </HStack>
+        );
+      })}
+    </VStack>
   );
 };
 
@@ -203,13 +241,20 @@ export default function UserReviewsScreen() {
           renderItem={({ item }) => <ReviewCard review={item} />}
           ListHeaderComponent={
             total > 0 ? (
-              <View style={styles.summaryCard}>
-                <HStack alignItems="center" space="md">
-                  <Text style={styles.summaryScore}>
-                    {averageRating.toFixed(1)}
-                  </Text>
-                  <VStack space="xs" style={styles.summaryRight}>
-                    <TradeReviewStars value={Math.round(averageRating)} size={13} />
+              <View style={styles.summaryBlock}>
+                <HStack alignItems="center">
+                  <VStack space="xs" style={styles.summaryLeft}>
+                    <HStack alignItems="end" space="xs">
+                      <Text style={styles.summaryScore}>
+                        {averageRating.toFixed(1)}
+                      </Text>
+                      <Text style={styles.summaryScoreMax}>/ 5</Text>
+                    </HStack>
+                    <TradeReviewStars
+                      value={Math.round(averageRating)}
+                      size={14}
+                      alignSelf="flex-start"
+                    />
                     <Text style={styles.summaryMeta}>
                       {t("userReviews.summary", {
                         count: total,
@@ -217,7 +262,9 @@ export default function UserReviewsScreen() {
                       })}
                     </Text>
                   </VStack>
+                  <RatingBars reviews={reviews} />
                 </HStack>
+                <View style={styles.summaryDivider} />
               </View>
             ) : null
           }
@@ -247,27 +294,30 @@ const makeStyles = (t: AppTheme) =>
     },
     scroll: {
       paddingHorizontal: 16,
-      paddingTop: 12,
+      paddingTop: 8,
       paddingBottom: 32,
-      gap: 8,
+      gap: 10,
     },
-    summaryCard: {
-      backgroundColor: t.colors.card,
-      borderRadius: t.borderRadius.sm,
-      paddingHorizontal: 14,
-      paddingVertical: 12,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: t.colors.border,
+    // ====== 摘要区：无卡片框，编辑风大数字 + 星级分布条，底部细分割线 ======
+    summaryBlock: {
+      paddingTop: 16,
+      paddingBottom: 4,
+    },
+    summaryLeft: {
+      flex: 1,
     },
     summaryScore: {
-      fontSize: 24,
+      fontSize: 44,
       fontWeight: "700",
       color: t.colors.text,
-      lineHeight: 28,
+      lineHeight: 48,
       fontFamily: playfairFonts.bold,
     },
-    summaryRight: {
-      flex: 1,
+    summaryScoreMax: {
+      fontSize: 14,
+      color: t.colors.gray400,
+      fontFamily: playfairFonts.regular,
+      paddingBottom: 7,
     },
     summaryMeta: {
       fontSize: 12,
@@ -275,38 +325,71 @@ const makeStyles = (t: AppTheme) =>
       lineHeight: 16,
       fontFamily: playfairFonts.regular,
     },
+    summaryDivider: {
+      marginTop: 20,
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: t.colors.border,
+    },
+    // ====== 星级分布条 ======
+    barsWrap: {
+      width: 132,
+      marginLeft: 16,
+    },
+    barLabel: {
+      fontSize: 10,
+      color: t.colors.gray400,
+      width: 8,
+      textAlign: "center",
+      fontFamily: playfairFonts.regular,
+    },
+    barTrack: {
+      flex: 1,
+      height: 3,
+      borderRadius: 1.5,
+      backgroundColor: t.colors.surface,
+      overflow: "hidden",
+    },
+    barFill: {
+      height: "100%",
+      borderRadius: 1.5,
+      backgroundColor: t.colors.starRated,
+    },
+    // ====== 评价卡片 ======
     reviewCard: {
       backgroundColor: t.colors.card,
       borderRadius: t.borderRadius.sm,
-      paddingHorizontal: 12,
-      paddingVertical: 10,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: t.colors.border,
-      gap: 6,
+      gap: 10,
     },
     reviewerInfo: {
       flex: 1,
       marginRight: 8,
     },
-    reviewRole: {
+    reviewerMeta: {
+      flex: 1,
+      gap: 2,
+    },
+    reviewerName: {
       fontSize: 13,
       fontWeight: "600",
       color: t.colors.text,
       fontFamily: playfairFonts.medium,
-      flexShrink: 1,
     },
     comment: {
-      fontSize: 13,
+      fontSize: 14,
       color: t.colors.text,
-      lineHeight: 18,
+      lineHeight: 21,
       fontFamily: playfairFonts.regular,
     },
     photoRow: {
-      marginTop: 2,
+      marginTop: 0,
     },
     photo: {
-      width: 56,
-      height: 56,
+      width: 64,
+      height: 64,
       borderRadius: t.borderRadius.sm,
       overflow: "hidden",
       backgroundColor: t.colors.skeleton,
@@ -314,7 +397,6 @@ const makeStyles = (t: AppTheme) =>
     time: {
       fontSize: 11,
       color: t.colors.gray400,
-      marginTop: 2,
       fontFamily: playfairFonts.regular,
     },
     emptyBlock: {

@@ -78,10 +78,13 @@ class AdminService:
         status: str = None,
         audit_status: str = None,
         post_type: str = None,
+        user_id: int = None,
     ) -> dict:
         """获取所有帖子（分页、搜索、筛选）"""
         query = self.db.table("posts").select("*", count="exact")
 
+        if user_id is not None:
+            query = query.eq("user_id", user_id)
         if status:
             query = query.eq("status", status)
         if audit_status:
@@ -2070,6 +2073,310 @@ class AdminService:
             "gmv": _to_list(gmv_by_currency),
             "commission": _to_list(commission_by_currency),
             "sellerPayout": _to_list(payout_by_currency),
+        }
+
+    # ==================== 用户全量数据查询（admin 用户详情） ====================
+    #
+    # 给「用户管理 → 用户详情」聚合页用：一个 overview 接口拉出该用户在各业务域
+    # 的数据量（聊天 / 交易 / 内容 / 互动 / 风控），明细则复用各域已有的
+    # userId 过滤接口（chat conversations / orders / posts / comments），
+    # 评价与仲裁在下面补两个按用户过滤的明细方法。
+
+    def _count_user_rows(self, table: str, build_filter) -> int:
+        """通用计数：build_filter(query) -> query。任何异常按 0 处理，
+        避免某张表缺失（如环境差异）拖垮整个 overview。"""
+        try:
+            query = self.db.table(table).select("id", count="exact")
+            query = build_filter(query)
+            res = query.limit(1).execute()
+            return res.count or 0
+        except Exception:
+            return 0
+
+    def _get_user_order_ids(self, user_id: int, limit: int = 1000) -> List[int]:
+        """该用户作为买家或卖家的订单 id 集合（仲裁关联用）。"""
+        try:
+            res = (
+                self.db.table("orders")
+                .select("id")
+                .or_(f"buyer_user_id.eq.{user_id},seller_user_id.eq.{user_id}")
+                .order("id", desc=True)
+                .limit(limit)
+                .execute()
+            )
+            return [r["id"] for r in res.data or []]
+        except Exception:
+            return []
+
+    def get_user_overview(self, user_id: int) -> Optional[dict]:
+        """用户全量数据总览：基础档案 + 各业务域数据量。"""
+        u_res = (
+            self.db.table("users").select("*").eq("id", user_id).limit(1).execute()
+        )
+        if not u_res.data:
+            return None
+        u = u_res.data[0]
+
+        info: dict = {}
+        try:
+            info_res = (
+                self.db.table("user_info")
+                .select("*")
+                .eq("user_id", user_id)
+                .limit(1)
+                .execute()
+            )
+            if info_res.data:
+                info = info_res.data[0]
+        except Exception:
+            pass
+
+        level = 0
+        try:
+            lv_res = (
+                self.db.table("user_levels")
+                .select("current_level")
+                .eq("user_id", user_id)
+                .limit(1)
+                .execute()
+            )
+            if lv_res.data:
+                level = int(lv_res.data[0].get("current_level") or 0)
+        except Exception:
+            pass
+
+        order_ids = self._get_user_order_ids(user_id)
+
+        def _disputes_involved(q):
+            if order_ids:
+                ids_csv = ",".join(str(i) for i in order_ids)
+                return q.or_(
+                    f"opener_user_id.eq.{user_id},order_id.in.({ids_csv})"
+                )
+            return q.eq("opener_user_id", user_id)
+
+        stats = {
+            # 内容
+            "posts": self._count_user_rows("posts", lambda q: q.eq("user_id", user_id)),
+            "comments": self._count_user_rows("post_comments", lambda q: q.eq("user_id", user_id)),
+            "likesGiven": self._count_user_rows("post_likes", lambda q: q.eq("user_id", user_id)),
+            "favorites": self._count_user_rows("post_favorites", lambda q: q.eq("user_id", user_id)),
+            # 社交
+            "followers": self._count_user_rows("user_follows", lambda q: q.eq("following_id", user_id)),
+            "following": self._count_user_rows("user_follows", lambda q: q.eq("follower_id", user_id)),
+            # 聊天
+            "conversations": self._count_user_rows(
+                "conversation_participants", lambda q: q.eq("user_id", user_id)
+            ),
+            "messagesSent": self._count_user_rows("messages", lambda q: q.eq("sender_id", user_id)),
+            # 交易
+            "ordersAsBuyer": self._count_user_rows("orders", lambda q: q.eq("buyer_user_id", user_id)),
+            "ordersAsSeller": self._count_user_rows("orders", lambda q: q.eq("seller_user_id", user_id)),
+            "offersAsBuyer": self._count_user_rows("offers", lambda q: q.eq("buyer_user_id", user_id)),
+            "offersAsSeller": self._count_user_rows("offers", lambda q: q.eq("seller_user_id", user_id)),
+            "authenticationOrders": self._count_user_rows(
+                "authentication_orders", lambda q: q.eq("user_id", user_id)
+            ),
+            # 售后 / 评价
+            "disputesOpened": self._count_user_rows(
+                "disputes", lambda q: q.eq("opener_user_id", user_id)
+            ),
+            "disputesInvolved": self._count_user_rows("disputes", _disputes_involved),
+            "reviewsWritten": self._count_user_rows(
+                "trade_reviews", lambda q: q.eq("reviewer_user_id", user_id)
+            ),
+            "reviewsReceived": self._count_user_rows(
+                "trade_reviews", lambda q: q.eq("target_user_id", user_id)
+            ),
+            # 风控
+            "reportsFiled": self._count_user_rows(
+                "content_reports", lambda q: q.eq("reporter_id", user_id)
+            ),
+            "blocksInitiated": self._count_user_rows(
+                "user_blocks", lambda q: q.eq("blocker_id", user_id)
+            ),
+            "blockedByOthers": self._count_user_rows(
+                "user_blocks", lambda q: q.eq("blocked_id", user_id)
+            ),
+            # 浏览历史
+            "browsingHistory": self._count_user_rows(
+                "store_product_browsing_history", lambda q: q.eq("user_id", user_id)
+            ),
+        }
+
+        return {
+            "user": {
+                "id": u["id"],
+                "username": u.get("username", ""),
+                "email": u.get("email", ""),
+                "phone": u.get("phone", ""),
+                "status": u.get("status", "ACTIVE"),
+                "userType": u.get("user_type", "USER"),
+                "isAdmin": u.get("is_admin", False),
+                "avatarUrl": info.get("avatar_url", ""),
+                "bio": info.get("bio", ""),
+                "location": info.get("location", ""),
+                "gender": info.get("gender", "OTHER"),
+                "age": info.get("age", 0),
+                "currentLevel": level,
+                "createdAt": u.get("created_at"),
+            },
+            "stats": stats,
+        }
+
+    def get_user_trade_reviews(
+        self,
+        user_id: int,
+        *,
+        role: str = "all",
+        page: int = 1,
+        page_size: int = 20,
+    ) -> dict:
+        """该用户相关的交易互评（admin 视角：含未公开 visible=false 的）。
+
+        - ``role``: "written" 只看其写的 / "received" 只看其收到的 / "all" 两者。
+        """
+        page = max(1, page)
+        page_size = max(1, min(100, page_size))
+        offset = (page - 1) * page_size
+
+        query = self.db.table("trade_reviews").select("*", count="exact")
+        if role == "written":
+            query = query.eq("reviewer_user_id", user_id)
+        elif role == "received":
+            query = query.eq("target_user_id", user_id)
+        else:
+            query = query.or_(
+                f"reviewer_user_id.eq.{user_id},target_user_id.eq.{user_id}"
+            )
+
+        result = (
+            query.order("submitted_at", desc=True)
+            .range(offset, offset + page_size - 1)
+            .execute()
+        )
+        total = result.count or 0
+        rows = result.data or []
+
+        uids: List[int] = []
+        for r in rows:
+            uids.extend([r.get("reviewer_user_id"), r.get("target_user_id")])
+        user_brief = self._build_chat_user_brief_map(uids)
+
+        order_no_map: Dict[int, str] = {}
+        order_ids = list({r["order_id"] for r in rows if r.get("order_id")})
+        if order_ids:
+            try:
+                o_res = (
+                    self.db.table("orders")
+                    .select("id, order_no")
+                    .in_("id", order_ids)
+                    .execute()
+                )
+                order_no_map = {o["id"]: o.get("order_no", "") for o in o_res.data or []}
+            except Exception:
+                pass
+
+        reviews = []
+        for r in rows:
+            reviewer = user_brief.get(r.get("reviewer_user_id"), {})
+            target = user_brief.get(r.get("target_user_id"), {})
+            reviews.append({
+                "id": r["id"],
+                "orderId": r.get("order_id"),
+                "orderNo": order_no_map.get(r.get("order_id"), ""),
+                "reviewerUserId": r.get("reviewer_user_id"),
+                "reviewerName": reviewer.get("username", ""),
+                "reviewerAvatar": reviewer.get("avatarUrl", ""),
+                "reviewerRole": r.get("reviewer_role"),
+                "targetUserId": r.get("target_user_id"),
+                "targetName": target.get("username", ""),
+                "rating": r.get("rating"),
+                "comment": r.get("comment", ""),
+                "payload": r.get("payload_json") or {},
+                "visible": bool(r.get("visible")),
+                "submittedAt": r.get("submitted_at"),
+            })
+
+        return {
+            "reviews": reviews,
+            "total": total,
+            "page": page,
+            "pageSize": page_size,
+        }
+
+    def get_user_disputes(
+        self,
+        user_id: int,
+        *,
+        page: int = 1,
+        page_size: int = 20,
+    ) -> dict:
+        """该用户相关的售后仲裁单（其发起的 + 其订单被对方发起的）。"""
+        page = max(1, page)
+        page_size = max(1, min(100, page_size))
+        offset = (page - 1) * page_size
+
+        order_ids = self._get_user_order_ids(user_id)
+
+        query = self.db.table("disputes").select("*", count="exact")
+        if order_ids:
+            ids_csv = ",".join(str(i) for i in order_ids)
+            query = query.or_(
+                f"opener_user_id.eq.{user_id},order_id.in.({ids_csv})"
+            )
+        else:
+            query = query.eq("opener_user_id", user_id)
+
+        result = (
+            query.order("created_at", desc=True)
+            .range(offset, offset + page_size - 1)
+            .execute()
+        )
+        total = result.count or 0
+        rows = result.data or []
+
+        opener_ids = [r.get("opener_user_id") for r in rows]
+        user_brief = self._build_chat_user_brief_map(opener_ids)
+
+        order_no_map: Dict[int, str] = {}
+        page_order_ids = list({r["order_id"] for r in rows if r.get("order_id")})
+        if page_order_ids:
+            try:
+                o_res = (
+                    self.db.table("orders")
+                    .select("id, order_no")
+                    .in_("id", page_order_ids)
+                    .execute()
+                )
+                order_no_map = {o["id"]: o.get("order_no", "") for o in o_res.data or []}
+            except Exception:
+                pass
+
+        disputes = []
+        for r in rows:
+            opener = user_brief.get(r.get("opener_user_id"), {})
+            disputes.append({
+                "id": r["id"],
+                "orderId": r.get("order_id"),
+                "orderNo": order_no_map.get(r.get("order_id"), ""),
+                "openerUserId": r.get("opener_user_id"),
+                "openerName": opener.get("username", ""),
+                "openerRole": r.get("opener_role"),
+                "reason": r.get("reason"),
+                "description": r.get("description", ""),
+                "evidencePhotos": r.get("evidence_photos") or [],
+                "status": r.get("status"),
+                "csDecision": r.get("cs_decision"),
+                "resolvedAt": r.get("resolved_at"),
+                "createdAt": r.get("created_at"),
+            })
+
+        return {
+            "disputes": disputes,
+            "total": total,
+            "page": page,
+            "pageSize": page_size,
         }
 
     # ==================== Styles 风格字典 (V3 #25) ====================

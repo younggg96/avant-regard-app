@@ -37,6 +37,8 @@ interface CommentInputBarProps {
   onLike: () => void;
   onSave: () => void;
   onWant?: () => void;
+  /** 商品详情页：「聊一聊」按钮，点击直接与卖家建立会话。传入后替代想要按钮。 */
+  onChat?: () => void;
   onOverlayPress: () => void;
   onCancelReply?: () => void;
 }
@@ -71,6 +73,7 @@ export const CommentInputBar = forwardRef<
       onLike,
       onSave,
       onWant,
+      onChat,
       onOverlayPress,
       onCancelReply,
     },
@@ -228,7 +231,24 @@ export const CommentInputBar = forwardRef<
                 </VStack>
               </Pressable>
 
-              {isItemReview && onWant && (
+              {onChat ? (
+                <Pressable onPress={onChat} style={styles.engagementButton}>
+                  <VStack alignItems="center" space="xs">
+                    <Ionicons
+                      name="chatbubble-ellipses-outline"
+                      size={20}
+                      color={theme.colors.gray600}
+                    />
+                    <Text
+                      fontSize="$xs"
+                      style={{ color: theme.colors.gray600 }}
+                      fontWeight="$medium"
+                    >
+                      {t("store.chatWithSeller")}
+                    </Text>
+                  </VStack>
+                </Pressable>
+              ) : isItemReview && onWant ? (
                 <Pressable onPress={onWant} style={styles.engagementButton}>
                   <VStack alignItems="center" space="xs">
                     <Ionicons
@@ -246,7 +266,7 @@ export const CommentInputBar = forwardRef<
                     </Text>
                   </VStack>
                 </Pressable>
-              )}
+              ) : null}
             </View>
           )}
 

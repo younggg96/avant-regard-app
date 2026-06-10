@@ -198,6 +198,8 @@ export interface AllPostsParams {
   status?: string;
   auditStatus?: string;
   postType?: string;
+  /** 只看该用户发布的帖子（admin 用户详情用） */
+  userId?: number;
 }
 
 export interface AllPostsResponse {
@@ -239,6 +241,7 @@ export async function getAllPosts(
   if (params.status) qs.append("status", params.status);
   if (params.auditStatus) qs.append("auditStatus", params.auditStatus);
   if (params.postType) qs.append("postType", params.postType);
+  if (params.userId !== undefined) qs.append("userId", String(params.userId));
   return request<AllPostsResponse>(`/api/admin/posts/all?${qs.toString()}`, {
     method: "GET",
   });
@@ -1160,6 +1163,236 @@ export async function searchAdminChatMessages(
   );
 }
 
+// ==================== 用户全量数据查询（用户管理 → 用户详情） ====================
+//
+// 与后端 /api/admin/users/{id}/* 系列对齐:
+//   - overview:       档案 + 各业务域数据量（聊天/交易/内容/风控）
+//   - trade-reviews:  交易互评（admin 视角, 含 visible=false 未公开的）
+//   - disputes:       售后仲裁（发起的 + 被动卷入的）
+// 聊天会话 / 订单 / 帖子 / 评论明细分别复用:
+//   getAdminChatConversations({ userId }) / getAdminOrders({ userId })
+//   getAllPosts({ userId }) / getCommentsByUser(userId)
+
+export interface AdminUserOverviewStats {
+  posts: number;
+  comments: number;
+  likesGiven: number;
+  favorites: number;
+  followers: number;
+  following: number;
+  conversations: number;
+  messagesSent: number;
+  ordersAsBuyer: number;
+  ordersAsSeller: number;
+  offersAsBuyer: number;
+  offersAsSeller: number;
+  authenticationOrders: number;
+  disputesOpened: number;
+  disputesInvolved: number;
+  reviewsWritten: number;
+  reviewsReceived: number;
+  reportsFiled: number;
+  blocksInitiated: number;
+  blockedByOthers: number;
+  browsingHistory: number;
+}
+
+export interface AdminUserOverview {
+  user: {
+    id: number;
+    username: string;
+    email: string;
+    phone: string;
+    status: string;
+    userType: string;
+    isAdmin: boolean;
+    avatarUrl: string;
+    bio: string;
+    location: string;
+    gender: string;
+    age: number;
+    currentLevel: number;
+    createdAt: string | null;
+  };
+  stats: AdminUserOverviewStats;
+}
+
+/**
+ * GET /api/admin/users/{id}/overview
+ */
+export async function getAdminUserOverview(
+  userId: number
+): Promise<AdminUserOverview> {
+  return request<AdminUserOverview>(`/api/admin/users/${userId}/overview`, {
+    method: "GET",
+  });
+}
+
+// ---------- 订单（admin 全局视角, 支持 userId 过滤） ----------
+
+export interface AdminOrderUserBrief {
+  id: number;
+  username: string;
+  phone: string;
+  email: string;
+  avatarUrl?: string | null;
+}
+
+export interface AdminOrderProductBrief {
+  id: number;
+  title: string | null;
+  brand: string | null;
+  priceCents: number | null;
+  currency: string;
+  coverImage: string | null;
+}
+
+export interface AdminOrder {
+  id: number;
+  orderNo: string | null;
+  productId: number | null;
+  buyerUserId: number | null;
+  sellerUserId: number | null;
+  sellerMerchantId: number | null;
+  offerId: number | null;
+  listingPriceCents: number;
+  paidPriceCents: number;
+  commissionCents: number;
+  sellerPayoutCents: number;
+  currency: string;
+  status: string;
+  paidAt: string | null;
+  shippedAt: string | null;
+  deliveredAt: string | null;
+  completedAt: string | null;
+  settledAt: string | null;
+  refundedAt: string | null;
+  cancelReason: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+  buyer: AdminOrderUserBrief | null;
+  seller: AdminOrderUserBrief | null;
+  product: AdminOrderProductBrief | null;
+}
+
+export interface AdminOrderListResponse {
+  items: AdminOrder[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+/**
+ * GET /api/admin/orders
+ * 全局订单列表, 支持 userId（买家或卖家）/ status / keyword 过滤。
+ */
+export async function getAdminOrders(opts: {
+  userId?: number;
+  status?: string;
+  keyword?: string;
+  page?: number;
+  pageSize?: number;
+}): Promise<AdminOrderListResponse> {
+  const params = new URLSearchParams();
+  if (opts.userId !== undefined) params.append("userId", String(opts.userId));
+  if (opts.status) params.append("status", opts.status);
+  if (opts.keyword) params.append("keyword", opts.keyword);
+  params.append("page", String(opts.page ?? 1));
+  params.append("pageSize", String(opts.pageSize ?? 20));
+  return request<AdminOrderListResponse>(
+    `/api/admin/orders?${params.toString()}`,
+    { method: "GET" }
+  );
+}
+
+// ---------- 交易互评 ----------
+
+export interface AdminTradeReview {
+  id: number;
+  orderId: number;
+  orderNo: string;
+  reviewerUserId: number;
+  reviewerName: string;
+  reviewerAvatar: string;
+  reviewerRole: "buyer" | "seller";
+  targetUserId: number;
+  targetName: string;
+  rating: number;
+  comment: string;
+  payload: Record<string, unknown>;
+  visible: boolean;
+  submittedAt: string | null;
+}
+
+export interface AdminTradeReviewListResponse {
+  reviews: AdminTradeReview[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+/**
+ * GET /api/admin/users/{id}/trade-reviews
+ */
+export async function getAdminUserTradeReviews(
+  userId: number,
+  opts: {
+    role?: "all" | "written" | "received";
+    page?: number;
+    pageSize?: number;
+  } = {}
+): Promise<AdminTradeReviewListResponse> {
+  const params = new URLSearchParams();
+  params.append("role", opts.role ?? "all");
+  params.append("page", String(opts.page ?? 1));
+  params.append("pageSize", String(opts.pageSize ?? 20));
+  return request<AdminTradeReviewListResponse>(
+    `/api/admin/users/${userId}/trade-reviews?${params.toString()}`,
+    { method: "GET" }
+  );
+}
+
+// ---------- 售后仲裁 ----------
+
+export interface AdminUserDispute {
+  id: number;
+  orderId: number;
+  orderNo: string;
+  openerUserId: number;
+  openerName: string;
+  openerRole: "buyer" | "seller";
+  reason: string;
+  description: string;
+  evidencePhotos: string[];
+  status: string;
+  csDecision: string | null;
+  resolvedAt: string | null;
+  createdAt: string | null;
+}
+
+export interface AdminUserDisputeListResponse {
+  disputes: AdminUserDispute[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+/**
+ * GET /api/admin/users/{id}/disputes
+ */
+export async function getAdminUserDisputes(
+  userId: number,
+  opts: { page?: number; pageSize?: number } = {}
+): Promise<AdminUserDisputeListResponse> {
+  const params = new URLSearchParams();
+  params.append("page", String(opts.page ?? 1));
+  params.append("pageSize", String(opts.pageSize ?? 20));
+  return request<AdminUserDisputeListResponse>(
+    `/api/admin/users/${userId}/disputes?${params.toString()}`,
+    { method: "GET" }
+  );
+}
+
 // 导出 adminService 对象
 export const adminService = {
   // 帖子管理
@@ -1232,6 +1465,11 @@ export const adminService = {
   getAdminChatConversations,
   getAdminChatConversationDetail,
   searchAdminChatMessages,
+  // 用户全量数据查询
+  getAdminUserOverview,
+  getAdminOrders,
+  getAdminUserTradeReviews,
+  getAdminUserDisputes,
 };
 
 export default adminService;
