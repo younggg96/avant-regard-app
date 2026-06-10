@@ -8,6 +8,9 @@
  *     `GET /api/marketplace/popular-brands`，每天 UTC 日期为种子在前 30 名候选池
  *     里洗牌，每天首屏顺序不同；按「全部品牌」展开 `MarketplaceAllBrandsSheet`，
  *     展示平台所有已录入的品牌。
+ *     交互（2026-06）：单击头像 → 选中圆环 + 按品牌过滤下方交易单品（再次单击
+ *     取消）；双击头像 → 进入该品牌 BrandDetail archive。品牌过滤激活时品牌行
+ *     保持可见，chip 栏出现「重置」chip 一键清空全部筛选。
  *   - 大家都在看 (`popularPicksTitle`)：管理员后台手动策展的精选单品 4-up 横滑
  *     小卡片（来自 `GET /api/marketplace/curated`），点击进商品详情。
  *   - 精选推荐 (`featuredTitle`)：双列 4:5 瀑布流，按 sort=featured 拉取，
@@ -86,6 +89,8 @@ const LATEST_CARD_W =
 const LATEST_CARD_IMG_H = LATEST_CARD_W;
 const BRAND_AVATAR_SIZE = 48;
 const BRAND_AVATAR_RADIUS = BRAND_AVATAR_SIZE / 2;
+// 选中圆环：头像外 2pt 空隙 + 2pt 描边
+const BRAND_RING_SIZE = BRAND_AVATAR_SIZE + 8;
 const CARD_RADIUS = 4;
 
 // ====== Chip 配置 ======
@@ -135,8 +140,8 @@ const TradingTabContent: React.FC<Props> = ({ isActive, onScroll }) => {
   const hasLoadedRef = useRef(false);
 
   // ====== 计算 ======
-  const activeFilterCount = useMemo(() => {
-    let count = 0;
+  // 各 chip 维度的已选数量 —— 既用于总数 badge，也用于每个 chip 自己的小数字 badge
+  const chipCounts = useMemo(() => {
     const brands = filter.brands?.length || (filter.brand ? 1 : 0);
     const cats =
       (filter.categoryKinds?.length ?? 0) +
@@ -145,16 +150,35 @@ const TradingTabContent: React.FC<Props> = ({ isActive, onScroll }) => {
     const sizes = filter.sizes?.length || (filter.size ? 1 : 0);
     const colors = filter.colors?.length || (filter.color ? 1 : 0);
     const conds = filter.conditions?.length || (filter.condition ? 1 : 0);
-    if (brands) count += brands;
-    if (cats) count += cats;
-    if (sizes) count += sizes;
-    if (colors) count += colors;
-    if (conds) count += conds;
-    if (filter.sellerKind) count++;
-    if (filter.priceMinCents != null || filter.priceMaxCents != null) count++;
-    return count;
+    const price =
+      filter.priceMinCents != null || filter.priceMaxCents != null ? 1 : 0;
+    const seller = filter.sellerKind ? 1 : 0;
+    return { brands, cats, sizes, colors, conds, price, seller };
   }, [filter]);
+
+  const activeFilterCount = useMemo(
+    () =>
+      chipCounts.brands +
+      chipCounts.cats +
+      chipCounts.sizes +
+      chipCounts.colors +
+      chipCounts.conds +
+      chipCounts.price +
+      chipCounts.seller,
+    [chipCounts],
+  );
   const hasActiveFilter = activeFilterCount > 0;
+
+  // 某个热门品牌是否处于品牌筛选中（点头像单击选中 / sheet 里勾选都算）
+  const isBrandFiltered = useCallback(
+    (name: string) =>
+      (filter.brands?.includes(name) ?? false) || filter.brand === name,
+    [filter.brands, filter.brand],
+  );
+  const anyPopularBrandActive = useMemo(
+    () => popularBrands.some((b) => isBrandFiltered(b.name)),
+    [popularBrands, isBrandFiltered],
+  );
 
   const chips: QuickChip[] = useMemo(
     () => [
@@ -278,11 +302,58 @@ const TradingTabContent: React.FC<Props> = ({ isActive, onScroll }) => {
     }
   };
 
+  // 单击品牌头像：圆环高亮 + 按该品牌过滤交易列表；再次单击取消过滤。
+  const toggleBrandFilter = useCallback(
+    (name: string) => {
+      const next: MarketplaceFilter = { ...filter };
+      delete next.brand;
+      if (isBrandFiltered(name)) {
+        delete next.brands;
+      } else {
+        next.brands = [name];
+      }
+      reload(next);
+    },
+    [filter, isBrandFiltered, reload],
+  );
+
+  // 双击检测：300ms 内连续点同一品牌 → 进入品牌 archive；否则按单击处理（过滤）。
+  const brandTapRef = useRef<{
+    name: string;
+    timer: ReturnType<typeof setTimeout>;
+  } | null>(null);
+  useEffect(
+    () => () => {
+      if (brandTapRef.current) clearTimeout(brandTapRef.current.timer);
+    },
+    [],
+  );
+
   const handleBrandPress = (brand: PopularBrand) => {
-    (navigation as any).navigate("BrandDetail", {
+    const pending = brandTapRef.current;
+    if (pending && pending.name === brand.name) {
+      // 双击：取消待执行的单击过滤，直接进品牌 archive
+      clearTimeout(pending.timer);
+      brandTapRef.current = null;
+      (navigation as any).navigate("BrandDetail", {
+        name: brand.name,
+        initialTab: "onsale",
+      });
+      return;
+    }
+    if (pending) clearTimeout(pending.timer);
+    brandTapRef.current = {
       name: brand.name,
-      initialTab: "onsale",
-    });
+      timer: setTimeout(() => {
+        brandTapRef.current = null;
+        toggleBrandFilter(brand.name);
+      }, 300),
+    };
+  };
+
+  // 重置所有筛选项，回到默认 featured 流
+  const handleResetFilter = () => {
+    reload({ sort: "featured" });
   };
 
   const handleProductPress = (product: StoreProduct) =>
@@ -342,6 +413,26 @@ const TradingTabContent: React.FC<Props> = ({ isActive, onScroll }) => {
               return !isFilter && (filter as any)[id] != null;
             };
             const isActiveChip = chipIsActive(item.id);
+            // 每个 chip 自己的已选数量 badge（筛选 chip 显示全部维度总数）
+            const chipCount = (id: typeof item.id): number => {
+              switch (id) {
+                case "brand":
+                  return chipCounts.brands;
+                case "categoryId":
+                  return chipCounts.cats;
+                case "size":
+                  return chipCounts.sizes;
+                case "priceMinCents":
+                  return chipCounts.price;
+                case "condition":
+                  return chipCounts.conds;
+                case "filter":
+                  return activeFilterCount;
+                default:
+                  return 0;
+              }
+            };
+            const count = chipCount(item.id);
             return (
               <AnimatedChip
                 key={item.id}
@@ -350,9 +441,7 @@ const TradingTabContent: React.FC<Props> = ({ isActive, onScroll }) => {
                 borderless
                 size="md"
                 onPress={() => handleChipPress(item.id)}
-                count={
-                  isFilter && activeFilterCount > 0 ? activeFilterCount : undefined
-                }
+                count={count > 0 ? count : undefined}
                 accessory={
                   item.caret ? (
                     <Ionicons
@@ -373,6 +462,22 @@ const TradingTabContent: React.FC<Props> = ({ isActive, onScroll }) => {
               />
             );
           })}
+          {hasActiveFilter ? (
+            <AnimatedChip
+              label={t("trading.marketplace.resetFilter")}
+              isActive={false}
+              borderless
+              size="md"
+              onPress={handleResetFilter}
+              accessory={
+                <Ionicons
+                  name="refresh-outline"
+                  size={10}
+                  color={theme.colors.gray300}
+                />
+              }
+            />
+          ) : null}
         </View>
       </ScrollView>
     </View>
@@ -393,7 +498,7 @@ const TradingTabContent: React.FC<Props> = ({ isActive, onScroll }) => {
         data={popularBrands}
         keyExtractor={(b, i) => `brand_${b.name}_${i}`}
         renderItem={({ item }) => {
-          const isActiveBrand = filter.brand === item.name;
+          const isActiveBrand = isBrandFiltered(item.name);
           return (
             <Pressable
               style={styles.brandItem}
@@ -401,21 +506,23 @@ const TradingTabContent: React.FC<Props> = ({ isActive, onScroll }) => {
             >
               <View
                 style={[
-                  styles.brandAvatarWrap,
-                  isActiveBrand && styles.brandAvatarActive,
+                  styles.brandRing,
+                  isActiveBrand && styles.brandRingActive,
                 ]}
               >
-                {item.imageUrl ? (
-                  <OptimizedImage
-                    uri={item.imageUrl}
-                    style={styles.brandAvatar}
-                    contentFit="cover"
-                  />
-                ) : (
-                  <Text style={styles.brandAvatarFallback}>
-                    {item.name?.[0]?.toUpperCase() ?? "?"}
-                  </Text>
-                )}
+                <View style={styles.brandAvatarWrap}>
+                  {item.imageUrl ? (
+                    <OptimizedImage
+                      uri={item.imageUrl}
+                      style={styles.brandAvatar}
+                      contentFit="cover"
+                    />
+                  ) : (
+                    <Text style={styles.brandAvatarFallback}>
+                      {item.name?.[0]?.toUpperCase() ?? "?"}
+                    </Text>
+                  )}
+                </View>
               </View>
               <Text
                 style={[
@@ -434,12 +541,14 @@ const TradingTabContent: React.FC<Props> = ({ isActive, onScroll }) => {
             style={styles.brandItem}
             onPress={handleBrandMorePress}
           >
-            <View style={[styles.brandAvatarWrap, styles.brandAvatarMore]}>
-              <Ionicons
-                name="chevron-down"
-                size={20}
-                color={theme.colors.text}
-              />
+            <View style={styles.brandRing}>
+              <View style={[styles.brandAvatarWrap, styles.brandAvatarMore]}>
+                <Ionicons
+                  name="chevron-down"
+                  size={20}
+                  color={theme.colors.text}
+                />
+              </View>
             </View>
             <Text style={styles.brandName} numberOfLines={1}>
               {t("trading.marketplace.allBrandsTitle")}
@@ -576,6 +685,10 @@ const TradingTabContent: React.FC<Props> = ({ isActive, onScroll }) => {
   // ====== ListHeader：当无 filter 时显示 brands + 大家都在看 + featured 标题 ======
   const ListHeader = () => {
     if (hasActiveFilter) {
+      // 通过单击头像选中了热门品牌：保留品牌行，让选中圆环可见、可随时切换/取消
+      if (anyPopularBrandActive && popularBrands.length > 0) {
+        return <VStack>{renderPopularBrands()}</VStack>;
+      }
       return null;
     }
     return (
@@ -749,23 +862,32 @@ const makeStyles = (t: AppTheme) =>
     brandsRow: { paddingRight: PAGE_PADDING, gap: 8 },
     brandItem: {
       alignItems: "center",
-      width: BRAND_AVATAR_SIZE + 8,
+      width: BRAND_RING_SIZE,
       flexShrink: 0,
+    },
+    // 外层圆环：默认透明边框占位，选中时显示 accent 圆环（与头像之间留 2pt 空隙）
+    brandRing: {
+      width: BRAND_RING_SIZE,
+      height: BRAND_RING_SIZE,
+      borderRadius: BRAND_RING_SIZE / 2,
+      borderWidth: 2,
+      borderColor: "transparent",
+      alignItems: "center",
+      justifyContent: "center",
+      flexShrink: 0,
+    },
+    brandRingActive: {
+      borderColor: t.colors.accent,
     },
     brandAvatarWrap: {
       width: BRAND_AVATAR_SIZE,
       height: BRAND_AVATAR_SIZE,
       borderRadius: BRAND_AVATAR_RADIUS,
       backgroundColor: t.colors.surface,
-      borderWidth: 1,
-      borderColor: "transparent",
       alignItems: "center",
       justifyContent: "center",
       overflow: "hidden",
       flexShrink: 0,
-    },
-    brandAvatarActive: {
-      borderColor: t.colors.accent,
     },
     brandAvatar: {
       width: BRAND_AVATAR_SIZE,

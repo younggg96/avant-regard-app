@@ -3002,6 +3002,7 @@
       "chipPrice": "价格",
       "chipCondition": "成色",
       "chipFilter": "筛选",
+      "resetFilter": "重置",
       "sellerIndividual": "个人",
       "sellerMerchant": "买手店",
       "empty": "未找到符合的单品",

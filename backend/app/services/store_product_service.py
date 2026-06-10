@@ -1317,22 +1317,9 @@ class StoreProductService:
         except Exception:
             pass
 
-        # 4) seller_profiles.display_name 覆盖 username（个人卖家可自定义展示名）
-        try:
-            rows = (
-                self.db.table("seller_profiles")
-                .select("user_id, display_name")
-                .in_("user_id", list(user_ids))
-                .execute()
-                .data
-                or []
-            )
-            for r in rows:
-                uid = r.get("user_id")
-                if uid is not None and r.get("display_name"):
-                    username_map[uid] = r["display_name"]
-        except Exception:
-            pass
+        # 注意：这里刻意不用 seller_profiles.display_name 覆盖 —— 列表卡片要和
+        # 帖子卡片一致，展示用户的 id 名（users.username）；自定义展示名只在
+        # 详情页卖家卡（_fetch_seller_card）里使用。
 
         for p in products:
             uid = product_user.get(p.id)
