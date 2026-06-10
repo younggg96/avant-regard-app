@@ -108,15 +108,18 @@ function extractDetail(
   }
 }
 
-function orderStatusLabel(parsed: Record<string, unknown>): string | null {
-  const status = parsed.status;
+function orderStatusLabel(status: unknown): string | null {
   if (typeof status !== "string" || !status) return null;
   const key = `trading.orderStatus.${status}`;
   const translated = i18n.t(key);
   return translated !== key ? translated : null;
 }
 
-function formatCardPreview(cardType: CardType, parsed: Record<string, unknown>): string {
+function formatCardPreview(
+  cardType: CardType,
+  parsed: Record<string, unknown>,
+  orderStatusOverride?: string | null,
+): string {
   const detail = extractDetail(cardType, parsed);
 
   if (cardType === "product_listing" && detail) {
@@ -128,7 +131,9 @@ function formatCardPreview(cardType: CardType, parsed: Record<string, unknown>):
       : i18n.t("chat.previewOffer");
   }
   if (cardType === "order_status" && detail) {
-    const statusLabel = orderStatusLabel(parsed);
+    // 卡片 content 里的 status 是发送时刻的快照（如 pending_payment），
+    // 支付后即过期；列表行优先用 tradeContext 携带的订单实时状态覆盖。
+    const statusLabel = orderStatusLabel(orderStatusOverride ?? parsed.status);
     if (statusLabel) {
       return i18n.t("chat.previewOrderWithStatus", {
         orderNo: detail,
@@ -150,6 +155,7 @@ function formatCardPreview(cardType: CardType, parsed: Record<string, unknown>):
 export function formatChatMessagePreview(
   content: string | null | undefined,
   messageType?: string | null,
+  orderStatusOverride?: string | null,
 ): string {
   if (!content) return "";
 
@@ -163,7 +169,7 @@ export function formatChatMessagePreview(
       : null) ?? (parsed ? inferCardType(parsed) : null);
 
   if (resolvedType && parsed) {
-    return formatCardPreview(resolvedType, parsed);
+    return formatCardPreview(resolvedType, parsed, orderStatusOverride);
   }
 
   if (resolvedType && !parsed) {
@@ -177,8 +183,9 @@ export function formatChatMessagePreview(
 export function formatLastMessage(
   text: string | null,
   emptyFallbackKey = "chat.noMessages",
+  orderStatusOverride?: string | null,
 ): string {
   if (!text) return i18n.t(emptyFallbackKey);
-  const preview = formatChatMessagePreview(text);
+  const preview = formatChatMessagePreview(text, null, orderStatusOverride);
   return preview || i18n.t(emptyFallbackKey);
 }

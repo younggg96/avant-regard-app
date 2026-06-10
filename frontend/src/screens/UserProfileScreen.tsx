@@ -535,6 +535,39 @@ const UserProfileScreen = () => {
     [userId, userInfo, username, avatar, tabsData, updateTabState, isCurrentUser, privacySettings]
   );
 
+  // 帖子列表和用户资料是并发拉取的：若帖子先返回，作者会被烘焙成
+  // 「用户」占位 + 空头像且 hasLoaded 不再重拉。这里在 userInfo 到达后
+  // 把属于主人的卡片作者信息回填成真实昵称 / 头像。
+  useEffect(() => {
+    if (!userInfo) return;
+    const name = userInfo.username || "";
+    const avatarUrl = resolveAvatarUrlOrEmpty(userInfo.avatarUrl, avatar);
+    if (!name && !avatarUrl) return;
+    const ownerId = String(userId);
+    setTabsData((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      (Object.keys(prev) as PostsTabType[]).forEach((tab) => {
+        let tabChanged = false;
+        const updatedPosts = prev[tab].posts.map((p) => {
+          if (p.author.id !== ownerId) return p;
+          const newName = name || p.author.name;
+          const newAvatar = avatarUrl || p.author.avatar;
+          if (p.author.name === newName && p.author.avatar === newAvatar) {
+            return p;
+          }
+          tabChanged = true;
+          return { ...p, author: { ...p.author, name: newName, avatar: newAvatar } };
+        });
+        if (tabChanged) {
+          changed = true;
+          next[tab] = { ...prev[tab], posts: updatedPosts };
+        }
+      });
+      return changed ? next : prev;
+    });
+  }, [userInfo, userId, avatar]);
+
   const loadContributions = useCallback(async () => {
     setContribLoading(true);
     try {

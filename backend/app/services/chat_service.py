@@ -386,8 +386,11 @@ class ChatService:
         """根据订单买卖双方判定对端角色 + 返回订单实时状态。
 
         返回 (counterpart_role, order_status)：
-          - 我是卖家 → 对端是买家 ("buyer")；订单状态对买家行不展示，置 None
-          - 我是买家 → 对端是卖家 ("seller")；附带订单实时 status 供列表展示
+          - 我是卖家 → 对端是买家 ("buyer")
+          - 我是买家 → 对端是卖家 ("seller")
+          - 两侧都附带订单实时 status：列表行的角标和「最后一条消息」预览
+            都要用实时状态覆盖卡片 content 里发送时刻的状态快照
+            （如支付后那张 pending_payment 卡，要显示成「待发货」）。
         """
         if not order_id:
             return None, None
@@ -406,7 +409,7 @@ class ChatService:
             order.get("seller_merchant_id")
         )
         if user_id == seller_id:
-            return "buyer", None
+            return "buyer", order.get("status")
         if user_id == buyer_id:
             return "seller", order.get("status")
         return None, None

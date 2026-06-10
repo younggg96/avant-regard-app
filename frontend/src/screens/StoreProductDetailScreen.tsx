@@ -1351,9 +1351,13 @@ const StoreProductDetailScreen: React.FC = () => {
                     theme={theme}
                   />
                   <StatColumn
-                    value={t("store.productDetailV2.joinedYears", {
-                      years: yearsSince(seller.joinedAt),
-                    })}
+                    value={
+                      monthsSince(seller.joinedAt) != null
+                        ? t("store.productDetailV2.joinedMonths", {
+                            months: monthsSince(seller.joinedAt),
+                          })
+                        : "—"
+                    }
                     label={t("store.productDetailV2.statJoined")}
                     theme={theme}
                   />
@@ -2153,17 +2157,13 @@ function buildDetailRows(
   ];
 }
 
-function yearsSince(iso: string | null | undefined): string {
-  if (!iso) return "—";
+function monthsSince(iso: string | null | undefined): number | null {
+  if (!iso) return null;
   const then = new Date(iso).getTime();
-  if (Number.isNaN(then)) return "—";
+  if (Number.isNaN(then)) return null;
   const diff = Date.now() - then;
-  const years = diff / (365.25 * 24 * 60 * 60 * 1000);
-  if (years < 1) {
-    const months = Math.max(1, Math.round(years * 12));
-    return `${months}m`;
-  }
-  return years.toFixed(1);
+  const months = Math.floor(diff / (30.44 * 24 * 60 * 60 * 1000));
+  return Math.max(1, months);
 }
 
 // ============================================================================

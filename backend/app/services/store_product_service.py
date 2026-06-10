@@ -1410,6 +1410,21 @@ class StoreProductService:
         except Exception:
             pass
 
+        # 成交笔数：seller_profiles.total_sales 没有写入路径（始终为 0），
+        # 实时统计 orders 表中已付款且未退款的订单数，取两者较大值兜底。
+        try:
+            oc = (
+                self.db.table("orders")
+                .select("id", count="exact")
+                .eq("seller_user_id", user_id)
+                .in_("status", ["paid", "shipped", "delivered", "completed", "settled"])
+                .limit(1)
+                .execute()
+            )
+            total_sales = max(total_sales, oc.count or 0)
+        except Exception:
+            pass
+
         # user_levels
         level = 0
         try:

@@ -4,7 +4,7 @@
  * 视觉：跟随项目设计系统，ScreenHeader / useAppTheme / Box/HStack/Text。
  * 头部右上「+」按钮触发独立上传典藏页 (UploadArchiveItem)。
  */
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useState, useCallback } from "react";
 import {
   StyleSheet,
   FlatList,
@@ -12,7 +12,7 @@ import {
   RefreshControl,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 
@@ -62,9 +62,12 @@ const MyArchiveScreen: React.FC = () => {
     }
   }, []);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  // 聚焦即刷新：从评价完成页 / 独立上传页回来时能立刻看到新条目。
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load]),
+  );
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>

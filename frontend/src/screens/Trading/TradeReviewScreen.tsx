@@ -50,6 +50,7 @@ import {
   getOrderReviewStatus,
   submitTradeReview,
 } from "../../services/aftersalesService";
+import { transferOrderToArchive } from "../../services/archivePlusService";
 import { uploadImage } from "../../services/postService";
 
 const MAX_REVIEW_PHOTOS = 3;
@@ -114,6 +115,7 @@ const TradeReviewScreen: React.FC = () => {
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(true);
+  const [archiving, setArchiving] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // 庆祝页入场动画
@@ -210,6 +212,30 @@ const TradeReviewScreen: React.FC = () => {
     }
   };
 
+  /**
+   * 「加入我的典藏」：调用后端 from-order 接口（幂等），由服务端把
+   * 商品图片 / 标题 / 品牌 / 入手价格 / 入手日期自动落进 MY ARCHIVE，
+   * 成功后重置导航栈直达 MyArchive 页。
+   */
+  const addToArchive = async () => {
+    if (archiving) return;
+    setArchiving(true);
+    try {
+      await transferOrderToArchive(orderId);
+      navigation.reset({
+        index: 1,
+        routes: [{ name: "Main" }, { name: "MyArchive" }] as any,
+      });
+    } catch (e: any) {
+      Alert.alert(
+        t("common.error"),
+        e?.message ?? t("trading.review.archiveFailed"),
+      );
+    } finally {
+      setArchiving(false);
+    }
+  };
+
   if (checking) {
     return (
       <SafeAreaView style={styles.container} edges={["top"]}>
@@ -255,29 +281,34 @@ const TradeReviewScreen: React.FC = () => {
             ) : null}
 
             <Pressable
-              style={styles.primary}
-              onPress={() =>
-                navigation.reset({
-                  index: 0,
-                  routes: [{ name: "MainTabs" }, { name: "MyArchive" }] as any,
-                })
-              }
+              style={[
+                styles.primary,
+                styles.celebratePrimary,
+                archiving && styles.primaryDisabled,
+              ]}
+              onPress={addToArchive}
+              disabled={archiving}
             >
-              <HStack space="xs" alignItems="center">
-                <Ionicons
-                  name="albums"
-                  size={18}
-                  color={theme.colors.textInverted}
-                />
-                <Text style={styles.primaryText}>
-                  {t("trading.review.addToArchive")}
-                </Text>
-              </HStack>
+              {archiving ? (
+                <ActivityIndicator color={theme.colors.textInverted} />
+              ) : (
+                <HStack space="xs" alignItems="center">
+                  <Ionicons
+                    name="archive-outline"
+                    size={18}
+                    color={theme.colors.textInverted}
+                  />
+                  <Text style={styles.primaryText}>
+                    {t("trading.review.addToArchive")}
+                  </Text>
+                </HStack>
+              )}
             </Pressable>
 
             <Pressable
               style={styles.ghostCenter}
               onPress={() => navigation.goBack()}
+              disabled={archiving}
             >
               <Text style={styles.ghostCenterText}>
                 {t("trading.review.later")}
@@ -590,6 +621,12 @@ const makeStyles = (t: AppTheme) =>
       paddingVertical: 14,
       borderRadius: t.borderRadius.sm,
       alignItems: "center",
+      justifyContent: "center",
+      minHeight: 50,
+    },
+    celebratePrimary: {
+      alignSelf: "stretch",
+      marginTop: 12,
     },
     primaryDisabled: { opacity: 0.5 },
     primaryText: {

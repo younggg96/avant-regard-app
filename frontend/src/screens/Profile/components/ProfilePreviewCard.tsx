@@ -27,6 +27,8 @@ interface ProfilePreviewCardProps {
   count?: number;
   covers?: string[];
   fallbackIcon: IoniconName;
+  /** 最多展示的缩略图数量（窄卡片可调小），默认 3 */
+  maxVisible?: number;
   onPress: () => void;
 }
 
@@ -35,12 +37,13 @@ export const ProfilePreviewCard: React.FC<ProfilePreviewCardProps> = ({
   count,
   covers = [],
   fallbackIcon,
+  maxVisible = MAX_VISIBLE,
   onPress,
 }) => {
   const theme = useAppTheme();
   const styles = useThemedStyles(makeStyles);
 
-  const visible = covers.filter(Boolean).slice(0, MAX_VISIBLE);
+  const visible = covers.filter(Boolean).slice(0, maxVisible);
   const extraCount = Math.max(0, (count ?? visible.length) - visible.length);
 
   return (
@@ -101,8 +104,12 @@ const makeStyles = (t: AppTheme) =>
       gap: t.spacing.xs,
     },
     thumb: {
-      width: THUMB_SIZE,
-      height: THUMB_SIZE,
+      // 弹性宽度：窄卡片下自动收缩，避免缩略图溢出卡片
+      flexGrow: 1,
+      flexShrink: 1,
+      flexBasis: THUMB_SIZE,
+      maxWidth: THUMB_SIZE,
+      aspectRatio: 1,
       borderRadius: t.borderRadius.sm,
       overflow: "hidden",
       backgroundColor: t.colors.skeleton,

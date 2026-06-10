@@ -125,7 +125,7 @@ export const TradingConversationRow = ({
             style={{ color: hasUnread ? theme.colors.black : theme.colors.gray300 }}
             fontWeight={hasUnread ? "$medium" : "$normal"}
           >
-            {formatLastMessage(item.lastMessageText)}
+            {formatLastMessage(item.lastMessageText, trade?.orderStatus)}
           </Text>
         </VStack>
       </HStack>

@@ -20,7 +20,7 @@ import { useChatStore } from "../../store/chatStore";
 import { useNotificationStore } from "../../store/notificationStore";
 import { useAuthStore } from "../../store/authStore";
 import { Message, chatWS, sendMessageREST } from "../../services/chatService";
-import { getUserType } from "../../services/userInfoService";
+import { getUserInfo, getUserType } from "../../services/userInfoService";
 import { ChatRouteParams } from "./types";
 import { shouldShowTimestamp } from "./utils";
 import { ChatHeader } from "./components/ChatHeader";
@@ -67,9 +67,6 @@ const ChatScreen = () => {
   }, [openShippingForOrderId]);
 
   const isCsChat = isCustomerServiceUser(otherUserId);
-  const otherUserName = isCsChat
-    ? t("interaction.csDisplayName")
-    : routeOtherUserName;
 
   const {
     messages,
@@ -101,6 +98,50 @@ const ChatScreen = () => {
 
   const conversationMessages = messages[conversationId] || [];
 
+  // 兜底拉取对端公开资料：部分入口（订单详情「联系卖家/买家」等）拿不到
+  // 对端用户名，只能传占位文案；这里按 otherUserId 拉一次真实昵称 / 头像。
+  const [fetchedOtherUser, setFetchedOtherUser] = useState<{
+    username?: string;
+    avatarUrl?: string;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!otherUserId || isCsChat) return;
+    let cancelled = false;
+    getUserInfo(otherUserId)
+      .then((info) => {
+        if (cancelled) return;
+        setFetchedOtherUser({
+          username: info.username || undefined,
+          avatarUrl: info.avatarUrl || undefined,
+        });
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [otherUserId, isCsChat]);
+
+  const otherUserName = useMemo(() => {
+    if (isCsChat) return t("interaction.csDisplayName");
+    if (fetchedOtherUser?.username) return fetchedOtherUser.username;
+    const conv = conversations.find((c) => c.id === conversationId);
+    if (conv?.otherUser?.username) return conv.otherUser.username;
+    const peerMessage = conversationMessages.find(
+      (m) => !m.isMine && m.senderName,
+    );
+    if (peerMessage?.senderName) return peerMessage.senderName;
+    return routeOtherUserName;
+  }, [
+    isCsChat,
+    fetchedOtherUser,
+    conversations,
+    conversationId,
+    conversationMessages,
+    routeOtherUserName,
+    t,
+  ]);
+
   const resolvedOtherUserAvatar = useMemo(() => {
     if (otherUserAvatar) return otherUserAvatar;
     const conv = conversations.find((c) => c.id === conversationId);
@@ -108,8 +149,14 @@ const ChatScreen = () => {
     const peerMessage = conversationMessages.find(
       (m) => !m.isMine && m.senderAvatar,
     );
-    return peerMessage?.senderAvatar ?? undefined;
-  }, [otherUserAvatar, conversations, conversationId, conversationMessages]);
+    return peerMessage?.senderAvatar ?? fetchedOtherUser?.avatarUrl ?? undefined;
+  }, [
+    otherUserAvatar,
+    conversations,
+    conversationId,
+    conversationMessages,
+    fetchedOtherUser,
+  ]);
 
   // 把消息按时间倒序铺给 FlatList(inverted)。
   //

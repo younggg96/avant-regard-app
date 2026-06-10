@@ -204,9 +204,9 @@ export const OrderCard: React.FC<OrderCardProps> = ({
     try {
       setContactLoading(true);
       const { conversationId } = await createConversation(counterpartyUserId);
+      // 不传 otherUserName：Chat 页会按 otherUserId 拉取真实昵称 / 头像。
       navigation.navigate("Chat", {
         conversationId,
-        otherUserName: t("profile.user"),
         otherUserId: counterpartyUserId,
       });
     } catch (e: any) {

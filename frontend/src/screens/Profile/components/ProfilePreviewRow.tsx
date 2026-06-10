@@ -1,10 +1,11 @@
 /**
- * ProfilePreviewRow —— 个人主页头部双列预览行（图二顶部行）。
+ * ProfilePreviewRow —— 个人主页头部三列预览行。
  *
  * 左：我的收藏（收藏的单品） → MyCollections
+ * 中：浏览记录 → BrowsingHistory
  * 右：MY ARCHIVE（个人交易档案） → MyArchive
  *
- * 自包含地按需拉取两侧的封面 + 数量，避免污染 useProfileData。
+ * 自包含地按需拉取各侧的封面 + 数量，避免污染 useProfileData。
  */
 import React, { useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
@@ -100,32 +101,32 @@ export const ProfilePreviewRow: React.FC = () => {
 
   return (
     <View style={styles.wrap}>
+      {/* 三列并排：我的收藏 / 浏览记录 / MY ARCHIVE */}
       <View style={styles.row}>
         <ProfilePreviewCard
           title={t("profile.savedItemsCard")}
           count={collections.count}
           covers={collections.covers}
           fallbackIcon="bookmark-outline"
+          maxVisible={2}
           onPress={() => navigation.navigate("MyCollections")}
+        />
+        <ProfilePreviewCard
+          title={t("browsingHistory.title")}
+          count={history.count}
+          covers={history.covers}
+          fallbackIcon="time-outline"
+          maxVisible={2}
+          onPress={() => navigation.navigate("BrowsingHistory")}
         />
         <ProfilePreviewCard
           title={t("trading.archiveEntry.title")}
           count={archive.count}
           covers={archive.covers}
           fallbackIcon="albums-outline"
+          maxVisible={2}
           onPress={() => navigation.navigate("MyArchive")}
         />
-      </View>
-      {/* 「浏览记录」紧贴「我的收藏」下方，与之同宽对齐（右侧留空保持两列栅格）。 */}
-      <View style={styles.row}>
-        <ProfilePreviewCard
-          title={t("browsingHistory.title")}
-          count={history.count}
-          covers={history.covers}
-          fallbackIcon="time-outline"
-          onPress={() => navigation.navigate("BrowsingHistory")}
-        />
-        <View style={styles.spacer} />
       </View>
     </View>
   );
@@ -144,9 +145,6 @@ const makeStyles = (t: AppTheme) =>
       gap: t.spacing.sm,
       paddingHorizontal: t.spacing.md,
       paddingBottom: t.spacing.sm,
-    },
-    spacer: {
-      flex: 1,
     },
   });
 

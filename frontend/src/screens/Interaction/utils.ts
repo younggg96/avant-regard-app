@@ -19,8 +19,11 @@ export function formatTime(iso: string | null): string {
   return d.toLocaleDateString(i18next.language === "zh" ? "zh-CN" : "en-US");
 }
 
-export function formatLastMessage(text: string | null): string {
-  return formatChatPreview(text, "interaction.noMessages");
+export function formatLastMessage(
+  text: string | null,
+  orderStatusOverride?: string | null,
+): string {
+  return formatChatPreview(text, "interaction.noMessages", orderStatusOverride);
 }
 
 export const isChatNotification = (n: Notification) =>

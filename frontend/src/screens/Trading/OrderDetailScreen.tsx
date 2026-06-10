@@ -335,9 +335,9 @@ export default function OrderDetailScreen() {
     try {
       setActionLoading(true);
       const { conversationId } = await createConversation(contactTargetUserId);
+      // 不传 otherUserName：Chat 页会按 otherUserId 拉取真实昵称 / 头像。
       navigation.navigate("Chat", {
         conversationId,
-        otherUserName: t("profile.user"),
         otherUserId: contactTargetUserId,
       });
     } catch (e: any) {

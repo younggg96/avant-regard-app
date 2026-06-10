@@ -288,6 +288,13 @@ const TradingTabContent: React.FC<Props> = ({ isActive, onScroll }) => {
   const handleProductPress = (product: StoreProduct) =>
     navigation.navigate("StoreProductDetail", { productId: product.id });
 
+  // 点击卡片 footer 的卖家区域：跳到卖家个人主页（与帖子卡片点作者一致）。
+  // merchant 卖家在列表里拿不到 user_id，此时 Pressable 处于 disabled，点击落到整卡。
+  const handleSellerPress = (product: StoreProduct) => {
+    if (!product.sellerUserId) return;
+    (navigation as any).navigate("UserProfile", { userId: product.sellerUserId });
+  };
+
   const handleBrandMorePress = () => {
     setAllBrandsSheetVisible(true);
   };
@@ -533,34 +540,34 @@ const TradingTabContent: React.FC<Props> = ({ isActive, onScroll }) => {
           <Text style={styles.featuredTitle} numberOfLines={1}>
             {buildCardSubtitle(item, t)}
           </Text>
-          <HStack alignItems="center">
-            <Text style={styles.featuredPrice}>
-              {formatMarketplacePrice(item.priceCents, item.currency)}
-            </Text>
-            <View style={{ flex: 1 }} />
+          <Text style={styles.featuredPrice} numberOfLines={1}>
+            {formatMarketplacePrice(item.priceCents, item.currency)}
+          </Text>
+          {/* 卡片底部：与帖子卡片同款 footer —— 左侧卖家头像 + 名字，右侧爱心计数 */}
+          <HStack alignItems="center" style={styles.featuredFooter}>
+            <Pressable
+              style={styles.featuredSellerPressable}
+              disabled={!item.sellerUserId}
+              onPress={() => handleSellerPress(item)}
+            >
+              <HStack alignItems="center" space="xs">
+                <UserAvatar
+                  uri={resolveAvatarUrl(item.sellerAvatarUrl)}
+                  name={item.sellerName ?? "?"}
+                  size={20}
+                />
+                <Text style={styles.featuredSeller} numberOfLines={1}>
+                  {item.sellerName ?? "—"}
+                </Text>
+              </HStack>
+            </Pressable>
             {item.favoriteCount > 0 ? (
               <HStack alignItems="center" space="xs">
-                <Ionicons name="heart" size={12} color={theme.colors.error} />
+                <Ionicons name="heart" size={14} color={theme.colors.error} />
                 <Text style={styles.featuredFav}>{item.favoriteCount}</Text>
               </HStack>
             ) : null}
           </HStack>
-          {item.sellerName ? (
-            <HStack
-              alignItems="center"
-              space="xs"
-              style={styles.featuredSellerRow}
-            >
-              <UserAvatar
-                uri={resolveAvatarUrl(item.sellerAvatarUrl)}
-                name={item.sellerName}
-                size={18}
-              />
-              <Text style={styles.featuredSeller} numberOfLines={1}>
-                {item.sellerName}
-              </Text>
-            </HStack>
-          ) : null}
         </VStack>
       </Pressable>
     );
@@ -860,16 +867,20 @@ const makeStyles = (t: AppTheme) =>
       fontWeight: "700",
       color: t.colors.text,
     },
-    featuredFav: { fontSize: 11, color: t.colors.gray300 },
-    featuredSellerRow: {
-      marginTop: 8,
-      paddingTop: 8,
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: t.colors.border,
+    featuredFav: { fontSize: 12, color: t.colors.gray300 },
+    // 帖子卡片同款 footer：左侧卖家（avatar 20 + 名字），右侧爱心计数
+    featuredFooter: {
+      marginTop: 4,
+      justifyContent: "space-between",
+    },
+    featuredSellerPressable: {
+      flex: 1,
+      marginRight: 8,
     },
     featuredSeller: {
       flex: 1,
-      fontSize: 11,
+      fontSize: 12,
+      fontWeight: "500",
       color: t.colors.textSecondary,
     },
 
