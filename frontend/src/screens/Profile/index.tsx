@@ -48,6 +48,7 @@ import { CollapsedHeader } from "./components/CollapsedHeader";
 import { ProfileInfo } from "./components/ProfileInfo";
 import { ProfileInfoSkeleton } from "./components/ProfileInfoSkeleton";
 import { ProfilePreviewRow } from "./components/ProfilePreviewRow";
+import { FollowedBrandsSection } from "./components/FollowedBrandsSection";
 import { LevelProgressCard } from "./components/LevelProgressCard";
 import { QuickEntriesGrid } from "./components/QuickEntriesGrid";
 import { ProfileTabBar } from "./components/ProfileTabBar";
@@ -125,6 +126,7 @@ const ProfileScreen = () => {
     followingUsersCount,
     followersCount,
     coverImage,
+    followedBrands,
     userTitles,
     postStats,
     contribSubTab,
@@ -632,18 +634,21 @@ const ProfileScreen = () => {
           />
         )}
 
-        {/* 2026-06 改版 · 头部双列预览
-            左「我的收藏」/ 右「MY ARCHIVE」—— 紧贴 ProfileInfo 下方，
-            一眼可见收藏单品 + 个人交易档案的封面与数量。 */}
-        <ProfilePreviewRow />
+        <View style={styles.profileSectionStack}>
+          {!headerLoading ? <FollowedBrandsSection brands={followedBrands} /> : null}
 
-        {/* 核心快捷入口：我买到的 / 我的钱包 / 我在卖的 / offer出价 */}
-        <QuickEntriesGrid />
+          {/* 2026-06 改版 · 头部三列预览
+              我的收藏 / 浏览记录 / MY ARCHIVE */}
+          <ProfilePreviewRow />
 
-        <MonthlyLotteryEntry isOwnProfile currentLevel={ownLevel} />
+          {/* 核心快捷入口：我买到的 / 我的钱包 / 我在卖的 / offer出价 */}
+          <QuickEntriesGrid />
 
-        {/* 等级进度（整行，任务列表可展开/收起） */}
-        <LevelProgressCard />
+          <MonthlyLotteryEntry isOwnProfile currentLevel={ownLevel} stacked />
+
+          {/* 等级进度（整行，任务列表可展开/收起） */}
+          <LevelProgressCard />
+        </View>
 
         {/* Inline 一级 tab bar (笔记 / 购买 / 在售)。
             sticky 版用此处的 onLayout 作为锚点 —— 滚到这里之上时,

@@ -56,7 +56,7 @@ class WalletService:
             updatedAt=row.get("updated_at"),
         )
 
-    def _get_balance_row(self, user_id: int) -> Optional[dict]:
+    def _get_user_balance_row(self, user_id: int) -> Optional[dict]:
         res = (
             self.db.table("seller_balances")
             .select("*")
@@ -68,7 +68,7 @@ class WalletService:
         return res.data[0] if res.data else None
 
     def get_balance(self, user_id: int) -> SellerBalance:
-        row = self._get_balance_row(user_id)
+        row = self._get_user_balance_row(user_id)
         if row is None:
             return SellerBalance(ownerKind="user", ownerUserId=user_id)
         return self._format_balance(row)

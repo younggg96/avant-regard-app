@@ -14,8 +14,8 @@
  *   - 4pt grid 间距；Ionicons line-style；Playfair Display 字族
  *   - 颜色全部走 theme tokens，自动兼容 light / dark
  */
-import React from "react";
-import { StyleSheet, View } from "react-native";
+import React, { useEffect, useState } from "react";
+import { StyleSheet, View, Text as RNText } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
@@ -28,6 +28,10 @@ import {
   type AppTheme,
 } from "../../../theme";
 import { useProfileStyles } from "../styles";
+import { useAuthStore } from "../../../store/authStore";
+import { listMyOrders } from "../../../services/orderService";
+import { listMyListings } from "../../../services/storeProductService";
+import { listMyOffers } from "../../../services/orderService";
 
 type IoniconName = React.ComponentProps<typeof Ionicons>["name"];
 
@@ -35,6 +39,7 @@ interface QuickEntry {
   id: "orders" | "wallet" | "selling" | "offers";
   icon: IoniconName;
   label: string;
+  badge?: number;
   onPress: () => void;
 }
 
@@ -44,12 +49,31 @@ export const QuickEntriesGrid: React.FC = () => {
   const theme = useAppTheme();
   const profileStyles = useProfileStyles();
   const styles = useThemedStyles(makeStyles);
+  const userId = useAuthStore((s) => s.user?.userId);
+
+  const [ordersCount, setOrdersCount] = useState(0);
+  const [sellingCount, setSellingCount] = useState(0);
+  const [offersCount, setOffersCount] = useState(0);
+
+  useEffect(() => {
+    if (!userId) return;
+    listMyOrders({ page: 1, pageSize: 1 })
+      .then((r) => setOrdersCount(r.total))
+      .catch(() => {});
+    listMyListings({ page: 1, pageSize: 1 })
+      .then((r) => setSellingCount(r.total))
+      .catch(() => {});
+    listMyOffers({ page: 1, pageSize: 1 })
+      .then((r) => setOffersCount(r.total))
+      .catch(() => {});
+  }, [userId]);
 
   const entries: QuickEntry[] = [
     {
       id: "orders",
       icon: "receipt-outline",
       label: t("profile.quickEntries.orders"),
+      badge: ordersCount,
       onPress: () =>
         navigation.navigate("Main", {
           screen: "Profile",
@@ -66,12 +90,14 @@ export const QuickEntriesGrid: React.FC = () => {
       id: "selling",
       icon: "pricetag-outline",
       label: t("profile.quickEntries.selling"),
+      badge: sellingCount,
       onPress: () => navigation.navigate("SellerListings"),
     },
     {
       id: "offers",
       icon: "cash-outline",
       label: t("profile.quickEntries.offers"),
+      badge: offersCount,
       onPress: () => navigation.navigate("MyOffers"),
     },
   ];
@@ -92,6 +118,13 @@ export const QuickEntriesGrid: React.FC = () => {
               size={22}
               color={theme.colors.text}
             />
+            {entry.badge != null && entry.badge > 0 ? (
+              <View style={styles.badge}>
+                <RNText style={styles.badgeText}>
+                  {entry.badge > 99 ? "99+" : entry.badge}
+                </RNText>
+              </View>
+            ) : null}
           </View>
           <Text style={styles.label} numberOfLines={1}>
             {entry.label}
@@ -109,8 +142,8 @@ QuickEntriesGrid.displayName = "QuickEntriesGrid";
 const makeStyles = (t: AppTheme) =>
   StyleSheet.create({
     card: {
-      marginTop: t.spacing.sm,
-      marginBottom: t.spacing.xs,
+      marginTop: 0,
+      marginBottom: 0,
       paddingHorizontal: 0,
       paddingVertical: t.spacing.sm,
       flexDirection: "row",
@@ -147,6 +180,25 @@ const makeStyles = (t: AppTheme) =>
       bottom: "20%",
       width: StyleSheet.hairlineWidth,
       backgroundColor: t.colors.border,
+    },
+    badge: {
+      position: "absolute",
+      top: -4,
+      right: -6,
+      minWidth: 16,
+      height: 16,
+      paddingHorizontal: 4,
+      borderRadius: 8,
+      backgroundColor: t.colors.text,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    badgeText: {
+      fontSize: 9,
+      lineHeight: 16,
+      fontWeight: "700",
+      color: t.colors.textInverted,
+      fontFamily: playfairFonts.bold,
     },
   });
 

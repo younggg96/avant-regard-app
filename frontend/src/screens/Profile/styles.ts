@@ -280,9 +280,11 @@ const makeProfileStyles = (t: AppTheme) =>
       marginTop: t.spacing.xs,
       lineHeight: 16,
     },
+    /** 个人主页头部区块（关注品牌 / 预览卡 / 快捷入口 / 等级）统一垂直间距 */
+    profileSectionStack: {
+      gap: t.spacing.sm,
+    },
     followedBrandsSection: {
-      paddingTop: 4,
-      paddingBottom: 8,
       backgroundColor: t.colors.card,
     },
     followedBrandsHeader: {

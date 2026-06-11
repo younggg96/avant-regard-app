@@ -26,11 +26,14 @@ interface Props {
   isOwnProfile: boolean;
   /** 当前用户等级 */
   currentLevel: number;
+  /** 嵌入 profileSectionStack 时由父级 gap 统一间距，去掉自身 margin */
+  stacked?: boolean;
 }
 
 export const MonthlyLotteryEntry: React.FC<Props> = ({
   isOwnProfile,
   currentLevel,
+  stacked = false,
 }) => {
   const theme = useAppTheme();
   const { t } = useTranslation();
@@ -97,9 +100,9 @@ export const MonthlyLotteryEntry: React.FC<Props> = ({
 
         px="$md"
         py="$sm"
-        mt="$sm"
+        mt={stacked ? undefined : "$sm"}
         mx="$md"
-        mb="$sm"
+        mb={stacked ? undefined : "$sm"}
         onPress={() => setDetailVisible(true)}
         accessibilityRole="button"
         accessibilityLabel={t("level.monthlyLottery")}

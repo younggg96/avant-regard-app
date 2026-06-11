@@ -87,6 +87,7 @@ export const LevelProgressCard: React.FC<{ embedded?: boolean }> = ({
       cardTitle={t("profile.levelProgress")}
       embedded={embedded}
       embeddedFlex={embedded ? 3 : undefined}
+      style={embedded ? undefined : { paddingTop: 0, paddingBottom: 0 }}
       onPress={hasTasks ? toggleExpanded : goDetail}
       headerTrailing={
         hasTasks ? (

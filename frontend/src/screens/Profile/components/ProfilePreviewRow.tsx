@@ -100,9 +100,7 @@ export const ProfilePreviewRow: React.FC = () => {
   }, [userId]);
 
   return (
-    <View style={styles.wrap}>
-      {/* 三列并排：我的收藏 / 浏览记录 / MY ARCHIVE */}
-      <View style={styles.row}>
+    <View style={styles.row}>
         <ProfilePreviewCard
           title={t("profile.savedItemsCard")}
           count={collections.count}
@@ -127,7 +125,6 @@ export const ProfilePreviewRow: React.FC = () => {
           maxVisible={2}
           onPress={() => navigation.navigate("MyArchive")}
         />
-      </View>
     </View>
   );
 };
@@ -135,16 +132,11 @@ ProfilePreviewRow.displayName = "ProfilePreviewRow";
 
 const makeStyles = (t: AppTheme) =>
   StyleSheet.create({
-    wrap: {
-      paddingTop: t.spacing.sm,
-      paddingBottom: t.spacing.xs,
-    },
     row: {
       flexDirection: "row",
       alignItems: "stretch",
       gap: t.spacing.sm,
       paddingHorizontal: t.spacing.md,
-      paddingBottom: t.spacing.sm,
     },
   });
 
