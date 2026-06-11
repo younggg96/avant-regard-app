@@ -122,14 +122,15 @@ class StripeConnectService:
             return existing
 
         _ensure_live()
+        # 注意: Stripe 禁止同时传 `type` 和 `controller`(互斥)。
+        # 这里用 controller 配置等价表达 Express 账号:
+        # express dashboard + 平台承担手续费与争议损失。
         params: Dict[str, Any] = {
-            "type": "express",
             # capabilities 决定该账号能做什么。transfers 必须开,
             # 才能让平台用 Transfer 把钱挪给它。
             "capabilities": {
                 "transfers": {"requested": True},
             },
-            # 平台承担退款 / 争议责任(默认行为, 显式声明便于审计)。
             "controller": {
                 "stripe_dashboard": {"type": "express"},
                 "fees": {"payer": "application"},
