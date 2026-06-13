@@ -27,9 +27,11 @@ import ScreenHeader from "../../components/ScreenHeader";
 import { Text } from "../../components/ui";
 import {
   makeTradingFormStyles,
-  TradingFormField,
-  TradingFormInput,
-  TradingFormTextArea,
+  ShippingAddressFieldGroup,
+  ShippingAddressValue,
+  emptyShippingAddress,
+  composeShippingFullText,
+  isShippingAddressComplete,
   TRADING_FORM_PADDING,
 } from "../../components/trading/TradingFormShared";
 import { useAppTheme, useThemedStyles, type AppTheme } from "../../theme";
@@ -68,9 +70,8 @@ export default function CheckoutScreen() {
   const [selectedAddress, setSelectedAddress] = useState<UserAddress | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
 
-  const [receiverName, setReceiverName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [address, setAddress] = useState("");
+  const [manualAddress, setManualAddress] =
+    useState<ShippingAddressValue>(emptyShippingAddress);
 
   const [step, setStep] = useState<"form" | "submitting">("form");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -96,6 +97,11 @@ export default function CheckoutScreen() {
   };
 
   const submit = async () => {
+    if (mode === "manual" && !isShippingAddressComplete(manualAddress)) {
+      setErrorMsg(t("trading.checkout.fillAllFields"));
+      return;
+    }
+
     const payload =
       mode === "selected" && selectedAddress
         ? {
@@ -104,9 +110,9 @@ export default function CheckoutScreen() {
             address: selectedAddress.fullText,
           }
         : {
-            receiverName: receiverName.trim(),
-            phone: phone.trim(),
-            address: address.trim(),
+            receiverName: manualAddress.receiverName.trim(),
+            phone: manualAddress.phone.trim(),
+            address: composeShippingFullText(manualAddress),
           };
 
     if (!payload.receiverName || !payload.phone || !payload.address) {
@@ -212,31 +218,12 @@ export default function CheckoutScreen() {
               </View>
             </Pressable>
           ) : (
-            <>
-              <TradingFormField label={t("trading.checkout.receiverName")}>
-                <TradingFormInput
-                  value={receiverName}
-                  onChangeText={setReceiverName}
-                  placeholder={t("trading.checkout.receiverName")}
-                  autoCapitalize="words"
-                />
-              </TradingFormField>
-              <TradingFormField label={t("trading.checkout.phone")}>
-                <TradingFormInput
-                  value={phone}
-                  onChangeText={setPhone}
-                  placeholder={t("trading.checkout.phone")}
-                  keyboardType="phone-pad"
-                />
-              </TradingFormField>
-              <TradingFormField label={t("trading.checkout.address")}>
-                <TradingFormTextArea
-                  value={address}
-                  onChangeText={setAddress}
-                  placeholder={t("trading.checkout.address")}
-                />
-              </TradingFormField>
-            </>
+            <ShippingAddressFieldGroup
+              value={manualAddress}
+              onChange={(p) =>
+                setManualAddress((prev) => ({ ...prev, ...p }))
+              }
+            />
           )}
         </View>
 

@@ -25,7 +25,6 @@ import {
   setDefaultAddress,
   updateAddress,
   UserAddress,
-  UserAddressCreate,
 } from "../services/addressService";
 import { ApiError } from "../services/http";
 import ScreenHeader from "../components/ScreenHeader";
@@ -33,6 +32,11 @@ import { Text } from "../components/ui";
 import {
   makeTradingFormStyles,
   ShippingAddressFields,
+  ShippingAddressValue,
+  emptyShippingAddress,
+  shippingAddressFromUserAddress,
+  shippingAddressToPayload,
+  isShippingAddressComplete,
   TradingFormDefaultToggle,
   TRADING_FORM_PADDING,
 } from "../components/trading/TradingFormShared";
@@ -241,39 +245,26 @@ function AddressForm({
 
   const existing = mode?.kind === "edit" ? mode.address : null;
 
-  const [receiverName, setReceiverName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [fullText, setFullText] = useState("");
-  const [label, setLabel] = useState("");
+  const [value, setValue] = useState<ShippingAddressValue>(emptyShippingAddress);
   const [isDefault, setIsDefault] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!visible) return;
-    setReceiverName(existing?.receiverName ?? "");
-    setPhone(existing?.phone ?? "");
-    setFullText(existing?.fullText ?? "");
-    setLabel(existing?.label ?? "");
+    setValue(shippingAddressFromUserAddress(existing));
     setIsDefault(existing?.isDefault ?? false);
   }, [visible, existing]);
 
-  const canSave =
-    receiverName.trim().length > 0 &&
-    phone.trim().length >= 5 &&
-    fullText.trim().length > 0 &&
-    !saving;
+  const patch = (p: Partial<ShippingAddressValue>) =>
+    setValue((prev) => ({ ...prev, ...p }));
+
+  const canSave = isShippingAddressComplete(value) && !saving;
 
   const save = async () => {
     if (!canSave) return;
     setSaving(true);
     try {
-      const payload: UserAddressCreate = {
-        receiverName: receiverName.trim(),
-        phone: phone.trim(),
-        fullText: fullText.trim(),
-        label: label.trim() || undefined,
-        isDefault,
-      };
+      const payload = { ...shippingAddressToPayload(value), isDefault };
       if (existing) {
         await updateAddress(existing.id, payload);
       } else {
@@ -336,15 +327,9 @@ function AddressForm({
             showsVerticalScrollIndicator={false}
           >
             <ShippingAddressFields
-              receiverName={receiverName}
-              phone={phone}
-              fullText={fullText}
-              label={label}
+              value={value}
+              onChange={patch}
               showLabelField
-              onChangeReceiverName={setReceiverName}
-              onChangePhone={setPhone}
-              onChangeFullText={setFullText}
-              onChangeLabel={setLabel}
             />
 
             <TradingFormDefaultToggle

@@ -132,13 +132,23 @@ export default function OrderReviewsScreen() {
         : t("trading.review.roleSeller");
 
     if (!review) {
+      // 对方已评价但仍处于双盲隐藏期时,后端不会下发其内容。改用 status 标志
+      // 提示「对方已评价,待你提交后公开」,避免误以为没有任何评价。
+      const submittedHidden =
+        role === "buyer"
+          ? status?.buyerReviewSubmitted
+          : status?.sellerReviewSubmitted;
       return (
         <Animated.View
           entering={FadeInDown.delay(index * 80).duration(320)}
           style={styles.reviewCard}
         >
           <Text style={styles.reviewRole}>{title}</Text>
-          <Text style={styles.emptyText}>{t("trading.review.noReviewYet")}</Text>
+          <Text style={styles.emptyText}>
+            {submittedHidden
+              ? t("trading.review.counterpartReviewedHidden")
+              : t("trading.review.noReviewYet")}
+          </Text>
         </Animated.View>
       );
     }

@@ -33,7 +33,7 @@ const makeActivityStyles = (t: AppTheme) =>
       right: -2,
       width: 18,
       height: 18,
-      borderRadius: 9,
+      borderRadius: 5,
       justifyContent: "center",
       alignItems: "center",
       borderWidth: 2,

@@ -5,7 +5,7 @@ import { Box, Text, Pressable, HStack, VStack } from "../../../components/ui";
 import { OptimizedImage } from "../../../components/ui/OptimizedImage";
 import { ImageSize } from "../../../utils/imageUtils";
 import { Notification } from "../../../services/notificationService";
-import { getNotifIcon, formatTime } from "../utils";
+import { getActivityIcon, formatTime } from "../utils";
 import { useActivityStyles } from "../styles";
 
 interface NotificationRowProps {
@@ -15,7 +15,7 @@ interface NotificationRowProps {
 
 export const NotificationRow = ({ item, onPress }: NotificationRowProps) => {
   const theme = useAppTheme();
-  const icon = getNotifIcon(item.type);
+  const icon = getActivityIcon(item);
   const styles = useActivityStyles();
 
   // 交易类通知（物流 / 售后 / 心动）用商品封面图替代彩色「铃铛」图标；
@@ -52,9 +52,9 @@ export const NotificationRow = ({ item, onPress }: NotificationRowProps) => {
             </Box>
           ) : (
             <Box
-              w={48} h={48} rounded="$full"
+              w={48} h={48}
               justifyContent="center" alignItems="center"
-              style={{ backgroundColor: icon.color }}
+              style={{ backgroundColor: icon.color, borderRadius: 12 }}
             >
               <Ionicons name={icon.name as any} size={20} color={theme.colors.white} />
             </Box>

@@ -1,6 +1,11 @@
-import { NotificationType } from "../../services/notificationService";
-import { ActivityFilter, EXCLUDED_TYPES, NOTIF_ICON_MAP } from "./constants";
-import { theme } from "../../theme";
+import { Notification, NotificationType } from "../../services/notificationService";
+import {
+  ACTIVITY_ICON_COLOR,
+  ActivityFilter,
+  EXCLUDED_TYPES,
+  NOTIF_ICON_MAP,
+  ORDER_EVENT_ICON_RULES,
+} from "./constants";
 import i18n from "@/i18n";
 
 export function matchesFilter(type: NotificationType, filter: ActivityFilter): boolean {
@@ -19,7 +24,30 @@ export function matchesFilter(type: NotificationType, filter: ActivityFilter): b
 }
 
 export const getNotifIcon = (type: string) =>
-  NOTIF_ICON_MAP[type] || { name: "ellipse", color: theme.colors.gray400 };
+  NOTIF_ICON_MAP[type] || { name: "ellipse", color: ACTIVITY_ICON_COLOR.neutral };
+
+/**
+ * 列表行图标选择:交易 / 订单类通知(system 类型)按标题关键词细分图标,
+ * 命中具体事件(付款/发货/签收/完成/结算…)时返回对应图标,否则回落到
+ * 按类型映射的默认图标(铃铛等)。
+ */
+export const getActivityIcon = (
+  item: Pick<Notification, "type" | "title" | "category">
+) => {
+  const title = item.title || "";
+  const lower = title.toLowerCase();
+  for (const rule of ORDER_EVENT_ICON_RULES) {
+    if (rule.kws.some((k) => lower.includes(k.toLowerCase()))) {
+      return rule.icon;
+    }
+  }
+  // 未命中具体事件时,给售后 / 心动两类一个区别于物流的基础图标。
+  if (item.category === "after_sales")
+    return { name: "shield-checkmark", color: ACTIVITY_ICON_COLOR.neutral };
+  if (item.category === "wishlist")
+    return { name: "pricetag", color: ACTIVITY_ICON_COLOR.alert };
+  return getNotifIcon(item.type);
+};
 
 export function formatTime(iso: string | null): string {
   if (!iso) return "";

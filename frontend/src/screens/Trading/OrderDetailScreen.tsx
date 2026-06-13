@@ -51,6 +51,16 @@ import {
   ArchiveItem,
 } from "../../services/archivePlusService";
 import { useAppTheme, useThemedStyles, type AppTheme } from "../../theme";
+import { IS_NA } from "../../config/env";
+
+/**
+ * 发货承运商快捷选项,按 App 变体走不同地区逻辑:
+ *   - NA(北美版):美国主流承运商(USPS / UPS / FedEx / DHL);
+ *   - CN(国内版):国内主流快递(顺丰 / 京东 / 中通 / 圆通 / 韵达 / EMS)。
+ * 这些是承运商品牌名,不做 i18n;后端 carrier_codes.normalize_carrier 已能识别。
+ */
+const SHIP_CARRIERS_NA = ["USPS", "UPS", "FedEx", "DHL"];
+const SHIP_CARRIERS_CN = ["顺丰", "京东", "中通", "圆通", "韵达", "EMS"];
 
 /** 买家已实际拿到/完成、可手动「转入我的藏品」的订单状态。 */
 const ARCHIVE_TRANSFERABLE_STATUSES: OrderStatus[] = [
@@ -1043,19 +1053,52 @@ function ShipModal({
           <Text style={styles.modalTitle}>
             {t("trading.orderDetail.shipModalTitle")}
           </Text>
+          <View style={styles.carrierChipRow}>
+            {(IS_NA ? SHIP_CARRIERS_NA : SHIP_CARRIERS_CN).map((c) => {
+              const active = carrier.trim().toLowerCase() === c.toLowerCase();
+              return (
+                <Pressable
+                  key={c}
+                  style={[
+                    styles.carrierChip,
+                    active && styles.carrierChipActive,
+                  ]}
+                  onPress={() => setCarrier(c)}
+                >
+                  <Text
+                    style={[
+                      styles.carrierChipText,
+                      active && styles.carrierChipTextActive,
+                    ]}
+                  >
+                    {c}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
           <TextInput
             style={styles.input}
-            placeholder={t("trading.orderDetail.carrierPlaceholder")}
+            placeholder={t(
+              IS_NA
+                ? "trading.orderDetail.carrierPlaceholderNA"
+                : "trading.orderDetail.carrierPlaceholder"
+            )}
             placeholderTextColor={theme.colors.placeholder}
             value={carrier}
             onChangeText={setCarrier}
           />
           <TextInput
             style={styles.input}
-            placeholder={t("trading.orderDetail.trackingPlaceholder")}
+            placeholder={t(
+              IS_NA
+                ? "trading.orderDetail.trackingPlaceholderNA"
+                : "trading.orderDetail.trackingPlaceholder"
+            )}
             placeholderTextColor={theme.colors.placeholder}
             value={trackingNo}
             onChangeText={setTrackingNo}
+            autoCapitalize="characters"
           />
           {errorMsg ? <Text style={styles.error}>{errorMsg}</Text> : null}
           <View style={styles.modalActions}>
@@ -1392,6 +1435,26 @@ const makeStyles = (t: AppTheme) =>
       color: t.colors.text,
       backgroundColor: t.colors.inputBackground,
     },
+    carrierChipRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 8,
+      marginBottom: 12,
+    },
+    carrierChip: {
+      paddingVertical: 6,
+      paddingHorizontal: 12,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: t.colors.inputBorder,
+      backgroundColor: t.colors.inputBackground,
+    },
+    carrierChipActive: {
+      borderColor: t.colors.accent,
+      backgroundColor: t.colors.accent,
+    },
+    carrierChipText: { fontSize: 13, color: t.colors.text },
+    carrierChipTextActive: { color: t.colors.textInverted, fontWeight: "600" },
     error: { color: t.colors.error, marginBottom: 12, fontSize: 13 },
     modalActions: {
       flexDirection: "row",

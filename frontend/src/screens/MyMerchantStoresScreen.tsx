@@ -341,7 +341,7 @@ const MyMerchantStoresScreen = () => {
                 py="$sm"
                 rounded="$sm"
                 style={{ backgroundColor: theme.colors.black }}
-                onPress={() => (navigation as any).navigate("Main", { screen: "Map" })}
+                onPress={() => (navigation as any).navigate("AllBuyerStores")}
             >
                 <Text fontSize="$sm" fontWeight="$semibold" style={[styles.textBold, { color: theme.colors.white }]}>
                     {t("merchant.browseStores")}

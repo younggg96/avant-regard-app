@@ -1,22 +1,15 @@
 /**
  * KycVerificationScreen —— 卖家实名认证（用于解锁提现）。
  *
- * 入口：
- *   - MyWallet → 「实名认证」
- *   - WithdrawRequest 校验失败提示
- *
- * 字段：
- *   - 真实姓名 / 身份证号 / 联系电话（选填）
- *   - 身份证人像面 / 国徽面 / 手持身份证 三张证件照
+ * 北美版(IS_NA)：走 Stripe Identity 托管验证流程。
+ * 国内版：手动上传身份证三张照片。
  */
 import React, { useCallback, useEffect, useState } from "react";
 import {
   View,
   Text,
-  StyleSheet,
   ScrollView,
   Pressable,
-  TextInput,
   ActivityIndicator,
   Alert,
 } from "react-native";
@@ -28,6 +21,14 @@ import * as ImagePicker from "expo-image-picker";
 import * as WebBrowser from "expo-web-browser";
 import Constants from "expo-constants";
 
+import ScreenHeader from "../../components/ScreenHeader";
+import {
+  makeWalletScreenStyles,
+  TradingFormField,
+  TradingFormInput,
+  TradingFormSection,
+} from "../../components/trading/TradingFormShared";
+import { IS_NA } from "../../config/env";
 import {
   getMyKyc,
   KYCRecord,
@@ -39,13 +40,10 @@ import {
 import { uploadImage } from "../../services/postService";
 import { OptimizedImage } from "../../components/ui/OptimizedImage";
 import { ImageSize } from "../../utils/imageUtils";
-import { IS_NA } from "../../config/env";
 import { useAppTheme, useThemedStyles, type AppTheme } from "../../theme";
 
 type PhotoKey = "idFront" | "idBack" | "holderPhoto";
 
-// 与 PayoutAccountsScreen 同样的 scheme 解析 — 决定 Stripe Identity 托管页
-// 跳板应跳哪个 App variant 的 deep link(avantregard / avantregardna)。
 function resolveAppScheme(): string {
   const expoCfg = (Constants.expoConfig ??
     (Constants as { manifest?: unknown }).manifest) as
@@ -60,7 +58,7 @@ function resolveAppScheme(): string {
 export default function KycVerificationScreen() {
   const navigation = useNavigation<any>();
   const theme = useAppTheme();
-  const styles = useThemedStyles(makeStyles);
+  const styles = useThemedStyles(makeWalletScreenStyles);
   const { t } = useTranslation();
 
   const [record, setRecord] = useState<KYCRecord | null>(null);
@@ -83,7 +81,6 @@ export default function KycVerificationScreen() {
     try {
       const rec = await getMyKyc();
       setRecord(rec);
-      // 已通过 / 审核中：仍允许「重新提交」，但 UI 中的输入框默认空
       if (rec.idCardFrontUrl) {
         setPhotos((prev) => ({ ...prev, idFront: rec.idCardFrontUrl ?? undefined }));
       }
@@ -170,22 +167,18 @@ export default function KycVerificationScreen() {
     }
   };
 
-  // 海外(美国等)证件 + 活体自拍流程:发起会话 → 打开 Stripe 托管页 →
-  // 完成后跳回 App → refresh 同步状态。
   const startUsVerification = async () => {
     if (verifying) return;
     setVerifying(true);
     try {
       const appScheme = resolveAppScheme();
       const session = await startIdentitySession({ region: "US", appScheme });
-      // mock provider 没有托管页 url,创建即 verified,直接刷新状态即可。
       if (session.url) {
         await WebBrowser.openAuthSessionAsync(
           session.url,
           `${appScheme}://kyc/return`,
         );
       }
-      // 不论用户完成还是中途取消,都拉一次最新状态。
       const fresh = await refreshIdentitySession();
       await load();
       if (fresh.kycStatus === "approved") {
@@ -204,11 +197,14 @@ export default function KycVerificationScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.safe}>
-        <ActivityIndicator
-          style={{ marginTop: 48 }}
-          color={theme.colors.gray300}
-        />
+      <SafeAreaView
+        style={{ flex: 1, backgroundColor: theme.colors.background }}
+        edges={["top"]}
+      >
+        <ScreenHeader title={t("trading.kyc.headerTitle")} showBack />
+        <View style={styles.loadingCenter}>
+          <ActivityIndicator color={theme.colors.gray300} />
+        </View>
       </SafeAreaView>
     );
   }
@@ -218,18 +214,13 @@ export default function KycVerificationScreen() {
   const isPending = status === "pending";
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <View style={styles.header}>
-        <Pressable onPress={() => navigation.goBack()} hitSlop={8}>
-          <Ionicons name="chevron-back" size={26} color={theme.colors.text} />
-        </Pressable>
-        <Text style={styles.headerTitle}>
-          {t("trading.kyc.headerTitle")}
-        </Text>
-        <View style={{ width: 26 }} />
-      </View>
+    <SafeAreaView
+      style={{ flex: 1, backgroundColor: theme.colors.background }}
+      edges={["top"]}
+    >
+      <ScreenHeader title={t("trading.kyc.headerTitle")} showBack />
 
-      <ScrollView contentContainerStyle={styles.scroll}>
+      <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: 120 }]}>
         <Text style={styles.intro}>
           {t(IS_NA ? "trading.kyc.us.intro" : "trading.kyc.intro")}
         </Text>
@@ -265,8 +256,7 @@ export default function KycVerificationScreen() {
             ) : null}
             {status === "rejected" && record?.rejectReason ? (
               <Text style={styles.statusHint}>
-                {t("trading.kyc.rejectReasonTitle")}:{" "}
-                {record.rejectReason}
+                {t("trading.kyc.rejectReasonTitle")}: {record.rejectReason}
               </Text>
             ) : null}
           </View>
@@ -288,43 +278,36 @@ export default function KycVerificationScreen() {
           </View>
         ) : (
           <>
-            <View style={styles.section}>
-              <Field label={t("trading.kyc.realNameLabel")}>
-                <TextInput
-                  style={styles.input}
+            <TradingFormSection title={t("trading.kyc.headerTitle")}>
+              <TradingFormField label={t("trading.kyc.realNameLabel")}>
+                <TradingFormInput
                   placeholder={t("trading.kyc.realNamePlaceholder")}
-                  placeholderTextColor={theme.colors.placeholder}
                   value={realName}
                   onChangeText={setRealName}
-                  autoCapitalize="none"
                   editable={!isApproved && !isPending}
                 />
-              </Field>
-              <Field label={t("trading.kyc.idCardLabel")}>
-                <TextInput
-                  style={styles.input}
+              </TradingFormField>
+              <TradingFormField label={t("trading.kyc.idCardLabel")}>
+                <TradingFormInput
                   placeholder={t("trading.kyc.idCardPlaceholder")}
-                  placeholderTextColor={theme.colors.placeholder}
                   value={idCardNo}
                   onChangeText={setIdCardNo}
                   autoCapitalize="characters"
                   editable={!isApproved && !isPending}
                 />
-              </Field>
-              <Field label={t("trading.kyc.phoneLabel")}>
-                <TextInput
-                  style={styles.input}
+              </TradingFormField>
+              <TradingFormField label={t("trading.kyc.phoneLabel")}>
+                <TradingFormInput
                   placeholder={t("trading.kyc.phonePlaceholder")}
-                  placeholderTextColor={theme.colors.placeholder}
                   value={phone}
                   onChangeText={setPhone}
                   keyboardType="phone-pad"
                   editable={!isApproved && !isPending}
                 />
-              </Field>
-            </View>
+              </TradingFormField>
+            </TradingFormSection>
 
-            <View style={styles.section}>
+            <TradingFormSection title={t("trading.kyc.idFrontLabel")}>
               <PhotoSlot
                 label={t("trading.kyc.idFrontLabel")}
                 uri={photos.idFront}
@@ -346,7 +329,7 @@ export default function KycVerificationScreen() {
                 onPress={() => pickPhoto("holderPhoto")}
                 disabled={isApproved || isPending}
               />
-            </View>
+            </TradingFormSection>
           </>
         )}
       </ScrollView>
@@ -356,7 +339,7 @@ export default function KycVerificationScreen() {
           <Pressable
             style={[
               styles.primaryBtn,
-              (verifying || isApproved) && styles.disabled,
+              (verifying || isApproved) && styles.primaryBtnDisabled,
             ]}
             onPress={startUsVerification}
             disabled={verifying || isApproved}
@@ -379,7 +362,7 @@ export default function KycVerificationScreen() {
           <Pressable
             style={[
               styles.primaryBtn,
-              (submitting || isApproved || isPending) && styles.disabled,
+              (submitting || isApproved || isPending) && styles.primaryBtnDisabled,
             ]}
             onPress={submit}
             disabled={submitting || isApproved || isPending}
@@ -418,24 +401,34 @@ function PhotoSlot({
   disabled?: boolean;
 }) {
   const theme = useAppTheme();
-  const styles = useThemedStyles(makeStyles);
+  const styles = useThemedStyles(makeWalletScreenStyles);
   const { t } = useTranslation();
   return (
-    <View style={styles.photoSlot}>
-      <Text style={styles.photoLabel}>{label}</Text>
+    <View style={{ marginBottom: 12 }}>
+      <Text style={styles.fieldLabel}>{label}</Text>
       <Pressable
-        style={styles.photoFrame}
+        style={{
+          height: 140,
+          borderRadius: 4,
+          borderWidth: 1,
+          borderColor: theme.colors.inputBorder,
+          borderStyle: "dashed",
+          overflow: "hidden",
+          backgroundColor: theme.colors.inputBackground,
+        }}
         onPress={disabled ? undefined : onPress}
       >
         {uri ? (
           <OptimizedImage
             uri={uri}
             size={ImageSize.MEDIUM}
-            style={styles.photoImage}
+            style={{ width: "100%", height: "100%" }}
             contentFit="cover"
           />
         ) : (
-          <View style={styles.photoPlaceholder}>
+          <View
+            style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
+          >
             {loading ? (
               <ActivityIndicator color={theme.colors.text} />
             ) : (
@@ -445,37 +438,21 @@ function PhotoSlot({
                   size={24}
                   color={theme.colors.gray300}
                 />
-                <Text style={styles.photoPlaceholderText}>
+                <Text
+                  style={{
+                    fontSize: 12,
+                    fontFamily: "PlayfairDisplay-Regular",
+                    color: theme.colors.gray300,
+                    marginTop: 6,
+                  }}
+                >
                   {t("trading.kyc.uploadPhoto")}
                 </Text>
               </>
             )}
           </View>
         )}
-        {uri && !disabled ? (
-          <View style={styles.photoOverlay}>
-            <Text style={styles.photoOverlayText}>
-              {t("trading.kyc.replacePhoto")}
-            </Text>
-          </View>
-        ) : null}
       </Pressable>
-    </View>
-  );
-}
-
-function Field({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  const styles = useThemedStyles(makeStyles);
-  return (
-    <View style={styles.field}>
-      <Text style={styles.fieldLabel}>{label}</Text>
-      {children}
     </View>
   );
 }
@@ -487,173 +464,13 @@ function capitalize(s: string) {
 
 function statusColor(status: KYCStatus, t: AppTheme) {
   if (status === "approved") {
-    return {
-      backgroundColor: t.mode === "dark" ? "#0F1F14" : "#EEFBF2",
-    };
+    return { backgroundColor: t.mode === "dark" ? "#0F1F14" : "#EEFBF2" };
   }
   if (status === "pending") {
-    return {
-      backgroundColor: t.mode === "dark" ? "#2A2410" : "#FFF8E6",
-    };
+    return { backgroundColor: t.mode === "dark" ? "#2A2410" : "#FFF8E6" };
   }
   if (status === "rejected") {
-    return {
-      backgroundColor: t.mode === "dark" ? "#2A1414" : "#FFF5F5",
-    };
+    return { backgroundColor: t.mode === "dark" ? "#2A1414" : "#FFF5F5" };
   }
   return { backgroundColor: t.colors.cardElevated };
 }
-
-const makeStyles = (t: AppTheme) =>
-  StyleSheet.create({
-    safe: { flex: 1, backgroundColor: t.colors.background },
-    header: {
-      height: 48,
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      paddingHorizontal: 16,
-      backgroundColor: t.colors.card,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: t.colors.border,
-    },
-    headerTitle: { fontSize: 16, fontWeight: "600", color: t.colors.text },
-    scroll: { padding: 16, paddingBottom: 120 },
-    intro: {
-      fontSize: 13,
-      color: t.colors.gray300,
-      marginBottom: 12,
-      lineHeight: 20,
-    },
-    statusCard: {
-      flexDirection: "row",
-      alignItems: "flex-start",
-      padding: 12,
-      borderRadius: 4,
-      marginBottom: 16,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: t.colors.border,
-    },
-    statusTitle: { fontSize: 13, fontWeight: "600", color: t.colors.text },
-    statusHint: {
-      fontSize: 12,
-      color: t.colors.gray300,
-      marginTop: 4,
-      lineHeight: 18,
-    },
-    section: {
-      backgroundColor: t.colors.cardElevated,
-      borderRadius: 4,
-      padding: 16,
-      marginBottom: 12,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: t.colors.border,
-    },
-    field: { marginBottom: 12 },
-    fieldLabel: {
-      fontSize: 12,
-      color: t.colors.gray300,
-      marginBottom: 6,
-    },
-    input: {
-      borderWidth: 1,
-      borderColor: t.colors.inputBorder,
-      borderRadius: 4,
-      paddingVertical: 10,
-      paddingHorizontal: 12,
-      fontSize: 14,
-      color: t.colors.text,
-      backgroundColor: t.colors.inputBackground,
-    },
-    usStep: {
-      flexDirection: "row",
-      alignItems: "flex-start",
-      marginBottom: 14,
-    },
-    usStepBadge: {
-      width: 22,
-      height: 22,
-      borderRadius: 4,
-      backgroundColor: t.colors.accent,
-      alignItems: "center",
-      justifyContent: "center",
-      marginRight: 10,
-    },
-    usStepBadgeText: {
-      color: t.colors.textInverted,
-      fontSize: 12,
-      fontWeight: "700",
-    },
-    usStepText: {
-      flex: 1,
-      fontSize: 13,
-      lineHeight: 19,
-      color: t.colors.text,
-    },
-    usPrivacy: {
-      fontSize: 12,
-      lineHeight: 18,
-      color: t.colors.gray300,
-      marginTop: 4,
-    },
-    photoSlot: { marginBottom: 12 },
-    photoLabel: {
-      fontSize: 12,
-      color: t.colors.gray300,
-      marginBottom: 8,
-    },
-    photoFrame: {
-      height: 140,
-      borderRadius: 4,
-      borderWidth: 1,
-      borderColor: t.colors.inputBorder,
-      borderStyle: "dashed",
-      overflow: "hidden",
-      backgroundColor: t.colors.inputBackground,
-    },
-    photoImage: { width: "100%", height: "100%" },
-    photoPlaceholder: {
-      flex: 1,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    photoPlaceholderText: {
-      fontSize: 12,
-      color: t.colors.gray300,
-      marginTop: 6,
-    },
-    photoOverlay: {
-      position: "absolute",
-      bottom: 8,
-      right: 8,
-      paddingHorizontal: 8,
-      paddingVertical: 4,
-      backgroundColor: "rgba(0,0,0,0.6)",
-      borderRadius: 4,
-    },
-    photoOverlayText: { color: "#fff", fontSize: 11 },
-    footer: {
-      position: "absolute",
-      bottom: 0,
-      left: 0,
-      right: 0,
-      paddingHorizontal: 16,
-      paddingTop: 10,
-      paddingBottom: 24,
-      backgroundColor: t.colors.card,
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: t.colors.border,
-    },
-    primaryBtn: {
-      backgroundColor: t.colors.accent,
-      paddingVertical: 14,
-      borderRadius: 4,
-      alignItems: "center",
-    },
-    primaryBtnText: {
-      color: t.colors.textInverted,
-      fontSize: 15,
-      fontWeight: "600",
-    },
-    disabled: { opacity: 0.5 },
-  });

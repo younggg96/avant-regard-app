@@ -412,6 +412,16 @@ class ChatService:
         except (ValueError, TypeError):
             return None
 
+    @classmethod
+    def _extract_card_cover(cls, content: Optional[str]) -> Optional[str]:
+        """从 trade card 的 JSON content 里取商品封面,供通知缩略图使用。"""
+        payload = cls._safe_json(content)
+        if isinstance(payload, dict):
+            product = payload.get("product")
+            if isinstance(product, dict):
+                return product.get("coverImage") or product.get("image")
+        return None
+
     def _order_role_and_status(
         self, order_id: Any, user_id: int
     ) -> Tuple[Optional[str], Optional[str]]:
@@ -650,18 +660,25 @@ class ChatService:
             navigate_to = push_navigate_to or "Chat"
             navigate_params = push_navigate_params or {"conversationId": conversation_id}
             title = push_title or (sender_username or "新消息")
+            action_data: Dict[str, Any] = {
+                "user_id": sender_id,
+                "navigateTo": navigate_to,
+                "navigateParams": navigate_params,
+                "conversationId": conversation_id,
+                "messageType": message_type,
+            }
+            # trade card(offer / order_status / dispute…)的 content 是带商品摘要的
+            # JSON;把商品封面提出来作为通知缩略图(postImage),让交易类通知列表
+            # 显示对应单品图片,而不是回落到彩色图标。
+            cover = self._extract_card_cover(content)
+            if cover:
+                action_data["postImage"] = cover
             notification_service.create_notification(
                 user_id=recipient_id,
                 notification_type=NotificationType.SYSTEM,
                 title=title,
                 message=(preview or "")[:120],
-                action_data={
-                    "user_id": sender_id,
-                    "navigateTo": navigate_to,
-                    "navigateParams": navigate_params,
-                    "conversationId": conversation_id,
-                    "messageType": message_type,
-                },
+                action_data=action_data,
                 send_push=True,
             )
         except Exception as e:  # noqa: BLE001

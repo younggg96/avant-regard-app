@@ -318,6 +318,10 @@ function TabNavigator() {
   const loadNotifications = useNotificationStore((s) => s.loadNotifications);
   const refreshNotificationUnread = useNotificationStore((s) => s.refreshUnreadCount);
   const refreshChatUnread = useChatStore((s) => s.refreshUnreadCount);
+  // 底部「消息」Tab 角标 = 私信未读 + 互动通知未读。两个 store 任一变化都即时刷新。
+  const chatUnread = useChatStore((s) => s.totalUnread);
+  const notifUnread = useNotificationStore((s) => s.unreadCount);
+  const interactionBadge = chatUnread + notifUnread;
 
   const refreshInteractionUnread = useCallback(() => {
     refreshNotificationUnread();
@@ -404,6 +408,19 @@ function TabNavigator() {
           tabBarIcon: ({ color, focused }) => (
             <TabBarIcon name="messages" color={color} focused={focused} />
           ),
+          tabBarBadge: interactionBadge > 0 ? interactionBadge : undefined,
+          tabBarBadgeStyle: {
+            backgroundColor: "#FF3B30",
+            color: "#FFFFFF",
+            fontSize: 10,
+            fontWeight: "700",
+            minWidth: 16,
+            height: 16,
+            lineHeight: 18,
+            borderRadius: 9,
+            textAlign: "center",
+            paddingHorizontal: 2,
+          },
         }}
         listeners={{
           // 底部「消息」Tab：点它永远回到「私信」子 Tab，

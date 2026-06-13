@@ -79,6 +79,7 @@ import {
 } from "../services/storeProductService";
 import { createConversation } from "../services/chatService";
 import { useAuthStore } from "../store/authStore";
+import { usePublishListingStore } from "../store/publishListingStore";
 import { formatTimestamp } from "../components/PostDetail/types";
 import {
   CommentInputBar,
@@ -739,7 +740,7 @@ const StoreProductDetailScreen: React.FC = () => {
       });
     }
     return list;
-  }, [richDetail, t]);
+  }, [richDetail, t, commentsTotal]);
 
   /** section 容器的 onLayout —— 记录每个 section 在主 ScrollView 内的 Y 坐标 */
   const handleSectionLayout = useCallback(
@@ -1521,10 +1522,14 @@ const StoreProductDetailScreen: React.FC = () => {
               <Text style={styles.sectionTitle}>
                 {t("store.productDetailV2.relatedProductsTitle")}
               </Text>
-              <HStack flexWrap="wrap" justifyContent="space-between">
-                {relatedProducts.slice(0, 4).map((rp) => (
+              <FlatList
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                data={relatedProducts}
+                keyExtractor={(rp) => `rp-${rp.id}`}
+                contentContainerStyle={styles.relatedRow}
+                renderItem={({ item: rp }) => (
                   <RelatedProductCard
-                    key={`rp-${rp.id}`}
                     product={rp}
                     onPress={() =>
                       navigation.push("StoreProductDetail", {
@@ -1533,8 +1538,8 @@ const StoreProductDetailScreen: React.FC = () => {
                     }
                     theme={theme}
                   />
-                ))}
-              </HStack>
+                )}
+              />
             </View>
           )}
         </RNScrollView>
@@ -1564,7 +1569,10 @@ const StoreProductDetailScreen: React.FC = () => {
                 coverImage: productImages[0] ?? null,
               })
             }
-            onEdit={() => navigation.navigate("PublishListingStep1")}
+            onEdit={() => {
+              usePublishListingStore.getState().hydrateFromListing(product);
+              navigation.navigate("PublishListingStep1");
+            }}
             onTakeOffline={async () => {
               try {
                 setTradingBusy(true);
@@ -2566,6 +2574,9 @@ const makeStyles = (t: AppTheme) =>
       marginTop: 4,
     },
 
+    relatedRow: {
+      gap: RELATED_GAP,
+    },
     relatedCard: {
       marginBottom: 12,
     },

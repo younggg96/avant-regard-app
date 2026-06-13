@@ -5,24 +5,22 @@ import React, { useCallback, useEffect, useState } from "react";
 import {
   View,
   Text,
-  StyleSheet,
   FlatList,
-  Pressable,
   ActivityIndicator,
   RefreshControl,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
-import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 
+import ScreenHeader from "../../components/ScreenHeader";
+import { makeWalletScreenStyles } from "../../components/trading/TradingFormShared";
 import {
   formatWithdrawalStatus,
   listMyWithdrawals,
   Withdrawal,
 } from "../../services/walletService";
 import { useFormatWalletAmount } from "../../utils/currency";
-import { useAppTheme, useThemedStyles, type AppTheme } from "../../theme";
+import { useAppTheme, useThemedStyles } from "../../theme";
 
 function formatDate(iso?: string | null): string {
   if (!iso) return "—";
@@ -30,9 +28,8 @@ function formatDate(iso?: string | null): string {
 }
 
 export default function WithdrawalHistoryScreen() {
-  const navigation = useNavigation<any>();
   const theme = useAppTheme();
-  const styles = useThemedStyles(makeStyles);
+  const styles = useThemedStyles(makeWalletScreenStyles);
   const { t } = useTranslation();
   const formatPrice = useFormatWalletAmount();
 
@@ -56,31 +53,35 @@ export default function WithdrawalHistoryScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.safe}>
-        <ActivityIndicator
-          style={{ marginTop: 48 }}
-          color={theme.colors.gray300}
+      <SafeAreaView
+        style={{ flex: 1, backgroundColor: theme.colors.background }}
+        edges={["top"]}
+      >
+        <ScreenHeader
+          title={t("trading.wallet.withdrawalsHeader")}
+          showBack
         />
+        <View style={styles.loadingCenter}>
+          <ActivityIndicator color={theme.colors.gray300} />
+        </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <View style={styles.header}>
-        <Pressable onPress={() => navigation.goBack()} hitSlop={8}>
-          <Ionicons name="chevron-back" size={26} color={theme.colors.text} />
-        </Pressable>
-        <Text style={styles.headerTitle}>
-          {t("trading.wallet.withdrawalsHeader")}
-        </Text>
-        <View style={{ width: 26 }} />
-      </View>
+    <SafeAreaView
+      style={{ flex: 1, backgroundColor: theme.colors.background }}
+      edges={["top"]}
+    >
+      <ScreenHeader
+        title={t("trading.wallet.withdrawalsHeader")}
+        showBack
+      />
 
       <FlatList
         data={items}
         keyExtractor={(item) => String(item.id)}
-        contentContainerStyle={{ padding: 12 }}
+        contentContainerStyle={styles.listContent}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -91,7 +92,7 @@ export default function WithdrawalHistoryScreen() {
           />
         }
         ListEmptyComponent={
-          <Text style={styles.empty}>
+          <Text style={[styles.emptyText, { marginTop: 48 }]}>
             {t("trading.wallet.withdrawalsEmpty")}
           </Text>
         }
@@ -103,34 +104,52 @@ export default function WithdrawalHistoryScreen() {
               ? theme.colors.error
               : theme.colors.gray300;
           return (
-            <View style={styles.card}>
-              <View style={styles.cardHead}>
-                <Text style={styles.amount}>
+            <View style={[styles.card, { marginBottom: 10 }]}>
+              <View
+                style={{
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                  marginBottom: 6,
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 16,
+                    fontFamily: "PlayfairDisplay-Bold",
+                    color: theme.colors.text,
+                  }}
+                >
                   - {formatPrice(item.amountCents, item.currency)}
                 </Text>
-                <Text style={[styles.status, { color: statusColor }]}>
+                <Text
+                  style={{
+                    fontSize: 12,
+                    fontFamily: "PlayfairDisplay-Medium",
+                    color: statusColor,
+                  }}
+                >
                   {formatWithdrawalStatus(item.status)}
                 </Text>
               </View>
               {item.payoutAccountSummary ? (
-                <Text style={styles.subline}>
+                <Text style={styles.cardSubtitle}>
                   {t("trading.wallet.withdrawalAccountLabel")}:{" "}
                   {item.payoutAccountSummary}
                 </Text>
               ) : null}
               {item.note ? (
-                <Text style={styles.subline}>{item.note}</Text>
+                <Text style={styles.cardSubtitle}>{item.note}</Text>
               ) : null}
               {item.status === "rejected" && item.rejectReason ? (
-                <Text style={[styles.subline, { color: theme.colors.error }]}>
+                <Text
+                  style={[styles.cardSubtitle, { color: theme.colors.error }]}
+                >
                   {item.rejectReason}
                 </Text>
               ) : null}
-              <Text style={styles.date}>
+              <Text style={[styles.listRowDate, { marginTop: 6 }]}>
                 {formatDate(item.createdAt)}
-                {item.processedAt
-                  ? ` · ${formatDate(item.processedAt)}`
-                  : ""}
+                {item.processedAt ? ` · ${formatDate(item.processedAt)}` : ""}
               </Text>
             </View>
           );
@@ -139,37 +158,3 @@ export default function WithdrawalHistoryScreen() {
     </SafeAreaView>
   );
 }
-
-const makeStyles = (t: AppTheme) =>
-  StyleSheet.create({
-    safe: { flex: 1, backgroundColor: t.colors.background },
-    header: {
-      height: 48,
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      paddingHorizontal: 16,
-      backgroundColor: t.colors.card,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: t.colors.border,
-    },
-    headerTitle: { fontSize: 16, fontWeight: "600", color: t.colors.text },
-    card: {
-      backgroundColor: t.colors.cardElevated,
-      borderRadius: 12,
-      padding: 14,
-      marginBottom: 10,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: t.colors.border,
-    },
-    cardHead: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      marginBottom: 6,
-    },
-    amount: { fontSize: 16, fontWeight: "700", color: t.colors.text },
-    status: { fontSize: 12, fontWeight: "600" },
-    subline: { fontSize: 12, color: t.colors.gray300, marginBottom: 4 },
-    date: { fontSize: 11, color: t.colors.gray300, marginTop: 6 },
-    empty: { textAlign: "center", marginTop: 64, color: t.colors.gray300 },
-  });

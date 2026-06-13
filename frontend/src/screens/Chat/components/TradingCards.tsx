@@ -405,6 +405,9 @@ export function OrderStatusCardView({
   const [localStatus, setLocalStatus] = useState<OrderStatus | null>(null);
   const effectiveStatus = (localStatus ?? liveStatus ?? data.status) as OrderStatus;
   const pending = effectiveStatus === "pending_payment";
+  // 已付款卡:给卖家(收到方向,!isMine)一句明确的「买家已付款,请发货」提示,
+  // 给买家(发出方向)一句「已付款,等待卖家发货」回执。仅在 paid 阶段展示。
+  const paid = effectiveStatus === "paid";
   const hasShipment =
     !!data.shipment && (data.shipment.carrier || data.shipment.trackingNo);
   const canRefund =
@@ -490,6 +493,20 @@ export function OrderStatusCardView({
       <Text style={styles.bigPrice}>
         {formatPrice(data.paidPriceCents, data.currency)}
       </Text>
+      {paid ? (
+        <View style={styles.paidHint}>
+          <Ionicons
+            name="checkmark-circle"
+            size={14}
+            color={theme.colors.success}
+          />
+          <Text style={styles.paidHintText} numberOfLines={2}>
+            {isMine
+              ? t("trading.cards.paidHintBuyer")
+              : t("trading.cards.paidHintSeller")}
+          </Text>
+        </View>
+      ) : null}
       {hasShipment ? (
         <View style={styles.shipmentBlock}>
           <View style={styles.shipmentRow}>
@@ -661,6 +678,18 @@ const makeStyles = (t: AppTheme) =>
       fontWeight: "700",
       color: t.colors.text,
       marginVertical: 8,
+    },
+    paidHint: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      marginBottom: 4,
+    },
+    paidHintText: {
+      flex: 1,
+      fontSize: 12,
+      fontWeight: "600",
+      color: t.colors.success,
     },
     headerRow: {
       flexDirection: "row",

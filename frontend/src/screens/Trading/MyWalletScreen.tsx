@@ -1,21 +1,10 @@
 /**
  * MyWalletScreen —— 卖家钱包首屏（可提现 / 待解冻 / 总收入）。
- *
- * 入口：
- *   - 个人主页设置卡片「我的钱包」
- *   - 销售订单详情 / 结算回执的「查看钱包」深链
- *
- * 区块：
- *   - 余额 Hero（available + pending + total payout / withdrawn）
- *   - KYC / 默认放款账户状态提示
- *   - 待解冻款项（pending_payouts）
- *   - 快捷入口：实名认证 / 放款账户 / 资金流水 / 提现记录
  */
 import React, { useCallback, useEffect, useState } from "react";
 import {
   View,
   Text,
-  StyleSheet,
   ScrollView,
   Pressable,
   ActivityIndicator,
@@ -26,6 +15,8 @@ import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 
+import ScreenHeader from "../../components/ScreenHeader";
+import { makeWalletScreenStyles } from "../../components/trading/TradingFormShared";
 import {
   getWalletSummary,
   listPendingPayouts,
@@ -33,7 +24,7 @@ import {
   WalletSummary,
 } from "../../services/walletService";
 import { useFormatWalletAmount } from "../../utils/currency";
-import { useAppTheme, useThemedStyles, type AppTheme } from "../../theme";
+import { useAppTheme, useThemedStyles } from "../../theme";
 
 const ACTION_ITEMS = [
   { key: "kyc", icon: "shield-checkmark-outline" as const, route: "KycVerification" },
@@ -50,7 +41,7 @@ function formatDate(iso?: string | null): string {
 export default function MyWalletScreen() {
   const navigation = useNavigation<any>();
   const theme = useAppTheme();
-  const styles = useThemedStyles(makeStyles);
+  const styles = useThemedStyles(makeWalletScreenStyles);
   const { t } = useTranslation();
   const formatPrice = useFormatWalletAmount();
 
@@ -68,7 +59,7 @@ export default function MyWalletScreen() {
       setSummary(s);
       setPending(p.items);
     } catch {
-      // 静默；显示 empty
+      // 静默
     }
   }, []);
 
@@ -94,8 +85,14 @@ export default function MyWalletScreen() {
 
   if (loading && !summary) {
     return (
-      <SafeAreaView style={styles.safe}>
-        <ActivityIndicator style={{ marginTop: 48 }} color={theme.colors.gray300} />
+      <SafeAreaView
+        style={{ flex: 1, backgroundColor: theme.colors.background }}
+        edges={["top"]}
+      >
+        <ScreenHeader title={t("trading.wallet.headerTitle")} showBack />
+        <View style={styles.loadingCenter}>
+          <ActivityIndicator color={theme.colors.gray300} />
+        </View>
       </SafeAreaView>
     );
   }
@@ -118,14 +115,11 @@ export default function MyWalletScreen() {
       : "";
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <View style={styles.header}>
-        <Pressable onPress={() => navigation.goBack()} hitSlop={8}>
-          <Ionicons name="chevron-back" size={26} color={theme.colors.text} />
-        </Pressable>
-        <Text style={styles.headerTitle}>{t("trading.wallet.headerTitle")}</Text>
-        <View style={{ width: 26 }} />
-      </View>
+    <SafeAreaView
+      style={{ flex: 1, backgroundColor: theme.colors.background }}
+      edges={["top"]}
+    >
+      <ScreenHeader title={t("trading.wallet.headerTitle")} showBack />
 
       <ScrollView
         contentContainerStyle={styles.scroll}
@@ -133,8 +127,6 @@ export default function MyWalletScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        {/* 钱包未绑定红色 banner:KYC 未通过 / 无默认放款账户时显眼提示,
-            提现按钮也会因此 disabled,但顶部 banner 更早把用户引导到对应入口。 */}
         {summary &&
         (summary.kycStatus !== "approved" || !summary.hasDefaultPayoutAccount) ? (
           <Pressable
@@ -147,11 +139,7 @@ export default function MyWalletScreen() {
               }
             }}
           >
-            <Ionicons
-              name="alert-circle"
-              size={18}
-              color={theme.colors.error}
-            />
+            <Ionicons name="alert-circle" size={18} color={theme.colors.error} />
             <Text style={styles.walletBannerText}>
               {summary.kycStatus !== "approved"
                 ? t("trading.wallet.bannerNeedKyc")
@@ -173,12 +161,8 @@ export default function MyWalletScreen() {
             {formatPrice(balance?.availableCents ?? 0, currency)}
           </Text>
           {summary && summary.upcomingReleaseCents > 0 ? (
-            <Text style={styles.upcoming}>
-              <Ionicons
-                name="hourglass-outline"
-                size={12}
-                color={theme.colors.gray300}
-              />{" "}
+            <Text style={[styles.balanceLabel, { marginTop: 6, marginBottom: 0 }]}>
+              <Ionicons name="hourglass-outline" size={12} />{" "}
               {t("trading.wallet.upcomingReleaseLabel", {
                 amount: formatPrice(summary.upcomingReleaseCents, currency),
               })}
@@ -235,20 +219,20 @@ export default function MyWalletScreen() {
             {t("trading.wallet.pendingSectionTitle")}
           </Text>
           {pending.length === 0 ? (
-            <Text style={styles.empty}>
+            <Text style={styles.emptyText}>
               {t("trading.wallet.pendingEmpty")}
             </Text>
           ) : (
             pending.map((p) => (
               <Pressable
                 key={p.id}
-                style={styles.pendingItem}
+                style={styles.listRow}
                 onPress={() =>
                   navigation.navigate("OrderDetail", { orderId: p.orderId })
                 }
               >
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.pendingTitle}>
+                  <Text style={styles.listRowTitle}>
                     {p.orderNo
                       ? t("trading.wallet.pendingItem", {
                           no: p.orderNo,
@@ -260,7 +244,7 @@ export default function MyWalletScreen() {
                         })}
                   </Text>
                 </View>
-                <Text style={styles.pendingAmount}>
+                <Text style={styles.listRowAmount}>
                   + {formatPrice(p.amountCents, p.currency)}
                 </Text>
               </Pressable>
@@ -273,7 +257,7 @@ export default function MyWalletScreen() {
 }
 
 function BalanceCell({ label, value }: { label: string; value: string }) {
-  const styles = useThemedStyles(makeStyles);
+  const styles = useThemedStyles(makeWalletScreenStyles);
   return (
     <View style={styles.balanceCell}>
       <Text style={styles.balanceCellLabel}>{label}</Text>
@@ -281,139 +265,3 @@ function BalanceCell({ label, value }: { label: string; value: string }) {
     </View>
   );
 }
-
-const makeStyles = (t: AppTheme) =>
-  StyleSheet.create({
-    safe: { flex: 1, backgroundColor: t.colors.background },
-    header: {
-      height: 48,
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      paddingHorizontal: 16,
-      backgroundColor: t.colors.card,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: t.colors.border,
-    },
-    headerTitle: { fontSize: 16, fontWeight: "600", color: t.colors.text },
-    scroll: { padding: 16, paddingBottom: 32 },
-    walletBanner: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 10,
-      paddingHorizontal: 14,
-      paddingVertical: 12,
-      backgroundColor: t.colors.error + "12",
-      borderRadius: 10,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: t.colors.error,
-      marginBottom: 12,
-    },
-    walletBannerText: {
-      flex: 1,
-      fontSize: 13,
-      color: t.colors.error,
-      fontWeight: "600",
-    },
-    balanceCard: {
-      backgroundColor: t.colors.text,
-      borderRadius: 16,
-      padding: 20,
-      marginBottom: 16,
-    },
-    balanceLabel: {
-      color: t.colors.textInverted,
-      fontSize: 13,
-      opacity: 0.7,
-      marginBottom: 6,
-    },
-    balanceValue: {
-      color: t.colors.textInverted,
-      fontSize: 32,
-      fontWeight: "700",
-      letterSpacing: -0.5,
-    },
-    upcoming: {
-      color: t.colors.textInverted,
-      opacity: 0.7,
-      fontSize: 11,
-      marginTop: 6,
-    },
-    balanceRow: {
-      flexDirection: "row",
-      marginTop: 16,
-      paddingTop: 14,
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: t.mode === "dark" ? "#3A3A3A" : "rgba(255,255,255,0.18)",
-    },
-    balanceCell: { flex: 1 },
-    balanceCellLabel: {
-      color: t.colors.textInverted,
-      opacity: 0.7,
-      fontSize: 11,
-      marginBottom: 4,
-    },
-    balanceCellValue: {
-      color: t.colors.textInverted,
-      fontSize: 13,
-      fontWeight: "600",
-    },
-    withdrawCta: {
-      marginTop: 16,
-      paddingVertical: 12,
-      borderRadius: 4,
-      alignItems: "center",
-      backgroundColor: t.colors.background,
-    },
-    withdrawDisabled: { opacity: 0.5 },
-    withdrawCtaText: { color: t.colors.text, fontSize: 14, fontWeight: "600" },
-    actionRow: {
-      flexDirection: "row",
-      backgroundColor: t.colors.cardElevated,
-      borderRadius: 12,
-      padding: 12,
-      marginBottom: 16,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: t.colors.border,
-    },
-    actionItem: { flex: 1, alignItems: "center", paddingVertical: 4 },
-    actionIcon: {
-      width: 38,
-      height: 38,
-      borderRadius: 19,
-      backgroundColor: t.colors.skeleton,
-      alignItems: "center",
-      justifyContent: "center",
-      marginBottom: 6,
-    },
-    actionLabel: { fontSize: 11, color: t.colors.text },
-    section: {
-      backgroundColor: t.colors.cardElevated,
-      borderRadius: 12,
-      padding: 16,
-      marginBottom: 12,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: t.colors.border,
-    },
-    sectionTitle: {
-      fontSize: 13,
-      fontWeight: "600",
-      color: t.colors.text,
-      marginBottom: 12,
-    },
-    empty: {
-      textAlign: "center",
-      color: t.colors.gray300,
-      fontSize: 12,
-      paddingVertical: 24,
-    },
-    pendingItem: {
-      flexDirection: "row",
-      alignItems: "center",
-      paddingVertical: 10,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: t.colors.border,
-    },
-    pendingTitle: { fontSize: 13, color: t.colors.text },
-    pendingAmount: { fontSize: 14, fontWeight: "600", color: t.colors.text },
-  });

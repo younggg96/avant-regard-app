@@ -146,8 +146,13 @@ class OrderService:
         sender_user_id: int,
         recipient_user_id: int,
         note: Optional[str] = None,
+        send_push: bool = True,
     ) -> None:
-        """开会话 + 推送一张 order_status 富媒体卡片。失败静默。"""
+        """开会话 + 推送一张 order_status 富媒体卡片。失败静默。
+
+        ``send_push=False`` 时只在会话里落一张卡片(不再额外发推送),用于
+        某些状态(如 PAID)上层已经单独发过站内信 + push、不想重复推送的场景。
+        """
         if not recipient_user_id or sender_user_id == recipient_user_id:
             return
         try:
@@ -185,7 +190,7 @@ class OrderService:
                 sender_id=sender_user_id,
                 content=json.dumps(payload, ensure_ascii=False),
                 message_type="order_status",
-                send_push=True,
+                send_push=send_push,
                 push_title=push_title,
                 push_navigate_to="OrderDetail",
                 push_navigate_params={"orderId": order.id},
@@ -245,7 +250,7 @@ class OrderService:
         左 / 右气泡时方向是可预期的:
 
           - PENDING_PAYMENT  → 卖家 → 买家   (买家被提醒去支付)
-          - PAID             → 不发卡片        (见下)
+          - PAID             → 买家 → 卖家   (卖家被提醒「买家已付款,请发货」)
           - SHIPPED          → 卖家 → 买家   (买家被提醒关注物流)
           - REFUNDED         → 卖家 → 买家   (买家被告知退款结果)
           - REFUNDED_AUTO    → 卖家 → 买家   (同上,系统触发)
@@ -253,13 +258,15 @@ class OrderService:
           - COMPLETED        → 居中系统卡    (同上,交易终结的里程碑)
           - SETTLED          → 居中系统卡    (T+3 钱款释放,双方知晓即可)
 
-        为什么 PAID 不发卡片:
-          前端的 order_status 卡片会按「最新订单状态」live-override 渲染,即
-          创建订单时那张 PENDING_PAYMENT 卡(卖家 → 买家)在订单转 paid 后会
-          自动显示成「待发货」。如果 PAID 再发一张方向相反(买家 → 卖家)的卡,
-          买家就会同时在左右两侧各看到一张「待发货」卡(一收一发),这正是要
-          消除的重复。所以 PAID 只补发站内信(买家「支付成功」、卖家「请发货」),
-          聊天里复用那张会自动变成「待发货」的 PENDING_PAYMENT 卡即可。
+        关于 PAID 卡片(买家 → 卖家):
+          买家付款后给卖家发一张方向相反(买家 → 卖家)的卡,作为聊天内的
+          「买家已付款,请发货」提醒——否则卖家只能靠站内信感知付款,聊天里
+          看不到任何新消息。前端 ``reversedMessages`` 已按 orderId 对
+          order_status 卡去重(只保留时间上最新的一张),所以这张 PAID 卡会
+          顶替掉早先那张会 live-override 成「待发货」的 PENDING_PAYMENT 卡,
+          不会出现「左右各一张待发货」的重复。
+          PAID 卡不再单独推送(``send_push=False``):上层 mark-paid 时已给
+          卖家发过「买家已付款,请尽快发货」站内信 + push,避免双重推送。
 
         居中系统卡的 sender 选 buyer→seller 方向,理由:
           - DELIVERED/COMPLETED 通常由买家动作触发,sender=买家在底层数据上
@@ -291,9 +298,18 @@ class OrderService:
             )
             return
 
+        # PAID:买家 → 卖家,给卖家发「买家已付款,请发货」聊天提醒。
+        # push 已由上层 mark-paid 的站内信发出,这里不再重复推送。
+        if status == OrderStatus.PAID.value:
+            self._send_order_status_card(
+                order,
+                sender_user_id=buyer_id,
+                recipient_user_id=seller_id,
+                send_push=False,
+            )
+            return
+
         # 按业务事件流固定方向(全部 卖家 → 买家)。
-        # PAID 刻意不在此表里:它复用 PENDING_PAYMENT 卡的 live-override,
-        # 只补站内信,不再发会造成左右重复的反向卡片。
         direction_map = {
             OrderStatus.PENDING_PAYMENT.value: (seller_id, buyer_id),
             OrderStatus.SHIPPED.value:         (seller_id, buyer_id),
@@ -852,11 +868,11 @@ class OrderService:
             except Exception as e:
                 print(f"[orders] provenance updates failed: {e}")
 
-            # PAID 不再发 order_status 聊天卡(避免与会 live-override 成「待发货」
-            # 的 PENDING_PAYMENT 卡左右重复),改为给买卖双方各补一条站内信:
+            # PAID 给买卖双方各补一条站内信(通知中心条目 + push):
             #   - 买家:「支付成功，等待卖家发货」付款回执;
-            #   - 卖家:「买家已付款，请尽快发货」发货提醒(原本靠 paid 卡的 push
-            #     送达,卡片取消后用通知兜底)。
+            #   - 卖家:「买家已付款，请尽快发货」发货提醒。
+            # 注意:聊天里另有一张 PAID order_status 卡(买家 → 卖家),由后面的
+            # _notify_both_parties 发出且不带 push,与这里的站内信 push 互补、不重复。
             try:
                 from app.services.notification_service import notification_service
                 from app.schemas.notification import NotificationType

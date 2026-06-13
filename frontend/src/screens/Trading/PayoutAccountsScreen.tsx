@@ -5,16 +5,17 @@
  *   - 必须实名通过才能新增账户
  *   - 持卡人需与实名一致（后端 KYCService.create_payout_account 校验）
  *   - 同时只能有一个 is_default 账户
+ *
+ * 北美版(IS_NA)：主推 Stripe Connect；手动绑卡仅保留银行账户，
+ * 字段按美国逻辑（Routing Number + Account Number），隐藏支付宝/微信。
  */
 import React, { useCallback, useEffect, useState } from "react";
 import {
   View,
   Text,
-  StyleSheet,
   ScrollView,
   Pressable,
   Modal,
-  TextInput,
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
@@ -24,10 +25,17 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
-
 import * as WebBrowser from "expo-web-browser";
 import Constants from "expo-constants";
 
+import ScreenHeader from "../../components/ScreenHeader";
+import {
+  makeWalletScreenStyles,
+  TradingFormDefaultToggle,
+  TradingFormField,
+  TradingFormInput,
+} from "../../components/trading/TradingFormShared";
+import { IS_NA } from "../../config/env";
 import {
   createPayoutAccount,
   deletePayoutAccount,
@@ -37,9 +45,15 @@ import {
   PayoutAccountType,
   setDefaultPayoutAccount,
 } from "../../services/kycService";
+import {
+  getConnectStatus,
+  refreshConnectStatus,
+  startConnectOnboarding,
+  type ConnectAccountStatus,
+} from "../../services/walletService";
+import { useAppTheme, useThemedStyles } from "../../theme";
+import { summarizeStripeRequirements } from "../../utils/stripeRequirements";
 
-// 与 App.tsx / PaymentScreen 同样的 scheme 解析逻辑 — 决定 Stripe Connect
-// 跳板页应该跳哪个 App variant 的 deep link。
 function resolveAppScheme(): string {
   const expoCfg: any = (Constants.expoConfig ?? Constants.manifest) as any;
   const s = expoCfg?.scheme;
@@ -47,20 +61,15 @@ function resolveAppScheme(): string {
   if (typeof s === "string" && s.length > 0) return s;
   return "avantregard";
 }
-import {
-  getConnectStatus,
-  refreshConnectStatus,
-  startConnectOnboarding,
-  type ConnectAccountStatus,
-} from "../../services/walletService";
-import { useAppTheme, useThemedStyles, type AppTheme } from "../../theme";
 
-const TYPE_OPTIONS: PayoutAccountType[] = ["bank", "alipay", "wechat"];
+const TYPE_OPTIONS: PayoutAccountType[] = IS_NA
+  ? ["bank"]
+  : ["bank", "alipay", "wechat"];
 
 export default function PayoutAccountsScreen() {
   const navigation = useNavigation<any>();
   const theme = useAppTheme();
-  const styles = useThemedStyles(makeStyles);
+  const styles = useThemedStyles(makeWalletScreenStyles);
   const { t } = useTranslation();
 
   const [accounts, setAccounts] = useState<PayoutAccount[]>([]);
@@ -92,31 +101,17 @@ export default function PayoutAccountsScreen() {
     try {
       const appScheme = resolveAppScheme();
       const { url } = await startConnectOnboarding({ appScheme });
-      // openAuthSessionAsync(url, redirectUrl):
-      //   - iOS  使用 ASWebAuthenticationSession,看到 location 跳到
-      //     redirectUrl(scheme 完全匹配)就 dismiss
-      //   - Android 使用 Custom Tabs,行为一致
-      // 我们后端的 /api/connect/return HTML 会 JS 跳到
-      // {appScheme}://connect/return, 所以这里要把同一个 scheme 显式传过去,
-      // 否则 native session 不会自动关闭,用户得手动点 "Done"。
-      const result = await WebBrowser.openAuthSessionAsync(
+      await WebBrowser.openAuthSessionAsync(
         url,
         `${appScheme}://connect/return`,
       );
-      // 不论用户是 dismiss 还是完成,都拉一次最新状态;
-      // 如果还是 pending(没完成 KYC), refresh 也会反映出来。
       try {
         const fresh = await refreshConnectStatus();
         setConnect(fresh);
         if (fresh.status === "active" && fresh.stripeAccountId) {
-          // 自动把 acct 同步到 payout_accounts 表里(后端 createPayoutAccount
-          // 内部会校验 stripe_account_id 与 connect_row 一致)。
-          // 已存在则后端会返回 400,这里吞掉。
           try {
             await createPayoutAccount({
               accountType: "stripe_connect",
-              // Connect 类型对 holderName 不做强校验, 但占位写一个稳定值,
-              // 防止后续展示空白。
               holderName: "Stripe Connect",
               accountNo: fresh.stripeAccountId,
               isDefault: accounts.length === 0,
@@ -127,9 +122,6 @@ export default function PayoutAccountsScreen() {
         }
       } finally {
         load();
-      }
-      if (result?.type === "cancel") {
-        // 用户主动取消,不报错
       }
     } catch (e: any) {
       Alert.alert(t("common.failed"), e?.message ?? "");
@@ -158,40 +150,32 @@ export default function PayoutAccountsScreen() {
   };
 
   const remove = async (id: number) => {
-    Alert.alert(
-      t("trading.payoutAccount.removeConfirm"),
-      "",
-      [
-        { text: t("common.cancel"), style: "cancel" },
-        {
-          text: t("trading.payoutAccount.remove"),
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await deletePayoutAccount(id);
-              await load();
-            } catch (e: any) {
-              Alert.alert(t("common.failed"), e?.message ?? "");
-            }
-          },
+    Alert.alert(t("trading.payoutAccount.removeConfirm"), "", [
+      { text: t("common.cancel"), style: "cancel" },
+      {
+        text: t("trading.payoutAccount.remove"),
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await deletePayoutAccount(id);
+            await load();
+          } catch (e: any) {
+            Alert.alert(t("common.failed"), e?.message ?? "");
+          }
         },
-      ],
-    );
+      },
+    ]);
   };
 
   const handleAddPress = () => {
     if (kycStatus !== "approved") {
-      Alert.alert(
-        t("trading.payoutAccount.kycRequired"),
-        "",
-        [
-          { text: t("common.cancel"), style: "cancel" },
-          {
-            text: t("trading.withdraw.goKyc"),
-            onPress: () => navigation.navigate("KycVerification"),
-          },
-        ],
-      );
+      Alert.alert(t("trading.payoutAccount.kycRequired"), "", [
+        { text: t("common.cancel"), style: "cancel" },
+        {
+          text: t("trading.withdraw.goKyc"),
+          onPress: () => navigation.navigate("KycVerification"),
+        },
+      ]);
       return;
     }
     setShowAdd(true);
@@ -199,40 +183,42 @@ export default function PayoutAccountsScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.safe}>
-        <ActivityIndicator
-          style={{ marginTop: 48 }}
-          color={theme.colors.gray300}
+      <SafeAreaView
+        style={{ flex: 1, backgroundColor: theme.colors.background }}
+        edges={["top"]}
+      >
+        <ScreenHeader
+          title={t("trading.payoutAccount.headerTitle")}
+          showBack
         />
+        <View style={styles.loadingCenter}>
+          <ActivityIndicator color={theme.colors.gray300} />
+        </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <View style={styles.header}>
-        <Pressable onPress={() => navigation.goBack()} hitSlop={8}>
-          <Ionicons name="chevron-back" size={26} color={theme.colors.text} />
-        </Pressable>
-        <Text style={styles.headerTitle}>
-          {t("trading.payoutAccount.headerTitle")}
-        </Text>
-        <Pressable onPress={handleAddPress} hitSlop={8}>
-          <Ionicons name="add" size={26} color={theme.colors.text} />
-        </Pressable>
-      </View>
+    <SafeAreaView
+      style={{ flex: 1, backgroundColor: theme.colors.background }}
+      edges={["top"]}
+    >
+      <ScreenHeader
+        title={t("trading.payoutAccount.headerTitle")}
+        showBack
+        rightActions={[
+          { icon: "add", onPress: handleAddPress, style: "ghost" },
+        ]}
+      />
 
-      <ScrollView contentContainerStyle={styles.scroll}>
+      <ScrollView contentContainerStyle={styles.listContent}>
         <ConnectCard
           status={connect}
           busy={connectBusy}
           onPress={onboardConnect}
-          theme={theme}
-          styles={styles}
-          t={t}
         />
         {accounts.length === 0 ? (
-          <View style={styles.empty}>
+          <View style={styles.emptyWrap}>
             <Ionicons
               name="card-outline"
               size={56}
@@ -241,8 +227,16 @@ export default function PayoutAccountsScreen() {
             <Text style={styles.emptyText}>
               {t("trading.payoutAccount.empty")}
             </Text>
-            <Pressable style={styles.addCta} onPress={handleAddPress}>
-              <Text style={styles.addCtaText}>
+            {IS_NA ? (
+              <Text style={styles.emptyHint}>
+                {t("trading.payoutAccount.naManualHint")}
+              </Text>
+            ) : null}
+            <Pressable
+              style={[styles.primaryBtn, { marginTop: 16 }]}
+              onPress={handleAddPress}
+            >
+              <Text style={styles.primaryBtnText}>
                 {t("trading.payoutAccount.addCta")}
               </Text>
             </Pressable>
@@ -270,7 +264,7 @@ export default function PayoutAccountsScreen() {
                   <Text style={styles.cardSubtitle}>
                     {acct.holderName} · {acct.accountNoMasked}
                   </Text>
-                  {acct.branchName ? (
+                  {acct.branchName && !IS_NA ? (
                     <Text style={styles.cardSubtitle}>{acct.branchName}</Text>
                   ) : null}
                 </View>
@@ -334,7 +328,7 @@ function AddAccountModal({
   onSubmitted: () => void;
 }) {
   const theme = useAppTheme();
-  const styles = useThemedStyles(makeStyles);
+  const styles = useThemedStyles(makeWalletScreenStyles);
   const { t } = useTranslation();
   const [type, setType] = useState<PayoutAccountType>("bank");
   const [holder, setHolder] = useState("");
@@ -355,6 +349,10 @@ function AddAccountModal({
 
   const submit = async () => {
     if (!holder.trim() || !accountNo.trim()) {
+      Alert.alert(t("trading.payoutAccount.fillRequired"));
+      return;
+    }
+    if (IS_NA && type === "bank" && !branchName.trim()) {
       Alert.alert(t("trading.payoutAccount.fillRequired"));
       return;
     }
@@ -387,107 +385,123 @@ function AddAccountModal({
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <Pressable style={{ flex: 1 }} onPress={onClose} />
-        <ScrollView style={styles.modalSheet} keyboardShouldPersistTaps="handled">
+        <ScrollView
+          style={styles.modalSheet}
+          keyboardShouldPersistTaps="handled"
+        >
           <View style={styles.modalHandle} />
           <Text style={styles.modalTitle}>
             {t("trading.payoutAccount.addHeader")}
           </Text>
 
-          <Text style={styles.fieldLabel}>
-            {t("trading.payoutAccount.typeLabel")}
-          </Text>
-          <View style={styles.typeRow}>
-            {TYPE_OPTIONS.map((opt) => (
-              <Pressable
-                key={opt}
-                style={[
-                  styles.typePill,
-                  type === opt && styles.typePillActive,
-                ]}
-                onPress={() => setType(opt)}
-              >
-                <Text
-                  style={[
-                    styles.typePillText,
-                    type === opt && styles.typePillTextActive,
-                  ]}
-                >
-                  {t(`trading.payoutAccount.type${capitalize(opt)}`)}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
+          {IS_NA ? (
+            <Text style={[styles.emptyHint, { marginBottom: 12, paddingHorizontal: 0 }]}>
+              {t("trading.payoutAccount.naManualHint")}
+            </Text>
+          ) : null}
 
-          <Field
-            label={t("trading.payoutAccount.holderLabel")}
-            hint={t("trading.payoutAccount.holderHint")}
-          >
-            <TextInput
-              style={styles.input}
-              value={holder}
-              onChangeText={setHolder}
-              placeholderTextColor={theme.colors.placeholder}
-              autoCapitalize="none"
-            />
-          </Field>
-          <Field label={t("trading.payoutAccount.accountNoLabel")}>
-            <TextInput
-              style={styles.input}
-              value={accountNo}
-              onChangeText={setAccountNo}
-              placeholder={t("trading.payoutAccount.accountNoPlaceholder")}
-              placeholderTextColor={theme.colors.placeholder}
-              autoCapitalize="none"
-              keyboardType={type === "bank" ? "number-pad" : "default"}
-            />
-          </Field>
-          {type === "bank" ? (
+          {!IS_NA || TYPE_OPTIONS.length > 1 ? (
             <>
-              <Field label={t("trading.payoutAccount.bankNameLabel")}>
-                <TextInput
-                  style={styles.input}
-                  value={bankName}
-                  onChangeText={setBankName}
-                  placeholderTextColor={theme.colors.placeholder}
-                />
-              </Field>
-              <Field label={t("trading.payoutAccount.branchLabel")}>
-                <TextInput
-                  style={styles.input}
-                  value={branchName}
-                  onChangeText={setBranchName}
-                  placeholder={t("trading.payoutAccount.branchPlaceholder")}
-                  placeholderTextColor={theme.colors.placeholder}
-                />
-              </Field>
+              <Text style={styles.fieldLabel}>
+                {t("trading.payoutAccount.typeLabel")}
+              </Text>
+              <View style={styles.typeRow}>
+                {TYPE_OPTIONS.map((opt) => (
+                  <Pressable
+                    key={opt}
+                    style={[
+                      styles.typePill,
+                      type === opt && styles.typePillActive,
+                    ]}
+                    onPress={() => setType(opt)}
+                  >
+                    <Text
+                      style={[
+                        styles.typePillText,
+                        type === opt && styles.typePillTextActive,
+                      ]}
+                    >
+                      {t(`trading.payoutAccount.type${capitalize(opt)}`)}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
             </>
           ) : null}
 
-          <Pressable
-            style={styles.checkboxRow}
-            onPress={() => setIsDefault((v) => !v)}
+          <TradingFormField
+            label={t("trading.payoutAccount.holderLabel")}
           >
-            <View
-              style={[
-                styles.checkbox,
-                isDefault && styles.checkboxChecked,
-              ]}
-            >
-              {isDefault ? (
-                <Ionicons
-                  name="checkmark"
-                  size={14}
-                  color={theme.colors.textInverted}
+            <TradingFormInput
+              value={holder}
+              onChangeText={setHolder}
+              autoCapitalize="words"
+            />
+          </TradingFormField>
+          <Text style={[styles.fieldLabel, { marginTop: -4, marginBottom: 8 }]}>
+            {t("trading.payoutAccount.holderHint")}
+          </Text>
+
+          <TradingFormField
+            label={
+              IS_NA && type === "bank"
+                ? t("trading.payoutAccount.accountNoLabelNA")
+                : t("trading.payoutAccount.accountNoLabel")
+            }
+          >
+            <TradingFormInput
+              value={accountNo}
+              onChangeText={setAccountNo}
+              placeholder={t("trading.payoutAccount.accountNoPlaceholder")}
+              autoCapitalize="none"
+              keyboardType={type === "bank" ? "number-pad" : "default"}
+            />
+          </TradingFormField>
+
+          {type === "bank" ? (
+            <>
+              <TradingFormField
+                label={
+                  IS_NA
+                    ? t("trading.payoutAccount.bankNameLabelNA")
+                    : t("trading.payoutAccount.bankNameLabel")
+                }
+              >
+                <TradingFormInput
+                  value={bankName}
+                  onChangeText={setBankName}
+                  autoCapitalize="words"
                 />
-              ) : null}
-            </View>
-            <Text style={styles.checkboxText}>
-              {t("trading.payoutAccount.isDefaultLabel")}
-            </Text>
-          </Pressable>
+              </TradingFormField>
+              <TradingFormField
+                label={
+                  IS_NA
+                    ? t("trading.payoutAccount.routingLabel")
+                    : t("trading.payoutAccount.branchLabel")
+                }
+              >
+                <TradingFormInput
+                  value={branchName}
+                  onChangeText={setBranchName}
+                  placeholder={
+                    IS_NA
+                      ? t("trading.payoutAccount.routingPlaceholder")
+                      : t("trading.payoutAccount.branchPlaceholder")
+                  }
+                  keyboardType={IS_NA ? "number-pad" : "default"}
+                />
+              </TradingFormField>
+            </>
+          ) : null}
+
+          <TradingFormDefaultToggle
+            checked={isDefault}
+            label={t("trading.payoutAccount.isDefaultLabel")}
+            onToggle={() => setIsDefault((v) => !v)}
+          />
 
           <Pressable
-            style={[styles.primaryBtn, submitting && styles.disabled]}
+            style={[styles.primaryBtn, submitting && styles.primaryBtnDisabled]}
             onPress={submit}
             disabled={submitting}
           >
@@ -506,47 +520,18 @@ function AddAccountModal({
   );
 }
 
-function Field({
-  label,
-  hint,
-  children,
-}: {
-  label: string;
-  hint?: string;
-  children: React.ReactNode;
-}) {
-  const styles = useThemedStyles(makeStyles);
-  return (
-    <View style={styles.field}>
-      <Text style={styles.fieldLabel}>{label}</Text>
-      {children}
-      {hint ? <Text style={styles.fieldHint}>{hint}</Text> : null}
-    </View>
-  );
-}
-
-function accountIcon(type: string): keyof typeof Ionicons.glyphMap {
-  if (type === "alipay") return "logo-alipay";
-  if (type === "wechat") return "logo-wechat";
-  if (type === "stripe_connect") return "globe-outline";
-  return "card-outline";
-}
-
 function ConnectCard({
   status,
   busy,
   onPress,
-  theme,
-  styles,
-  t,
 }: {
   status: ConnectAccountStatus | null;
   busy: boolean;
   onPress: () => void;
-  theme: AppTheme;
-  styles: ReturnType<typeof makeStyles>;
-  t: (k: string, opts?: any) => string;
 }) {
+  const theme = useAppTheme();
+  const styles = useThemedStyles(makeWalletScreenStyles);
+  const { t } = useTranslation();
   const s = status?.status ?? "none";
   const titleKey = `trading.payoutAccount.stripeConnect.status.${s}`;
   const ctaKey =
@@ -555,12 +540,9 @@ function ConnectCard({
       : s === "restricted" || s === "pending"
       ? "trading.payoutAccount.stripeConnect.continue"
       : "trading.payoutAccount.stripeConnect.start";
+
   return (
-    <Pressable
-      style={styles.connectCard}
-      onPress={onPress}
-      disabled={busy}
-    >
+    <Pressable style={styles.connectCard} onPress={onPress} disabled={busy}>
       <View style={styles.connectIcon}>
         {busy ? (
           <ActivityIndicator color={theme.colors.textInverted} />
@@ -584,9 +566,11 @@ function ConnectCard({
         {(status?.requirementsCurrentlyDue ?? []).length > 0 ? (
           <Text style={styles.connectSubtitle}>
             {t("trading.payoutAccount.stripeConnect.needs", {
-              defaultValue: "需补充: ",
+              items: summarizeStripeRequirements(
+                status!.requirementsCurrentlyDue,
+                t,
+              ),
             })}
-            {status!.requirementsCurrentlyDue.slice(0, 3).join(", ")}
           </Text>
         ) : null}
       </View>
@@ -597,229 +581,14 @@ function ConnectCard({
   );
 }
 
+function accountIcon(type: string): keyof typeof Ionicons.glyphMap {
+  if (type === "alipay") return "logo-alipay";
+  if (type === "wechat") return "logo-wechat";
+  if (type === "stripe_connect") return "globe-outline";
+  return "card-outline";
+}
+
 function capitalize(s: string) {
   if (!s) return s;
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
-
-const makeStyles = (t: AppTheme) =>
-  StyleSheet.create({
-    safe: { flex: 1, backgroundColor: t.colors.background },
-    header: {
-      height: 48,
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      paddingHorizontal: 16,
-      backgroundColor: t.colors.card,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: t.colors.border,
-    },
-    headerTitle: { fontSize: 16, fontWeight: "600", color: t.colors.text },
-    scroll: { padding: 16, paddingBottom: 32 },
-    empty: {
-      alignItems: "center",
-      paddingVertical: 56,
-    },
-    emptyText: {
-      marginTop: 12,
-      color: t.colors.gray300,
-      fontSize: 13,
-    },
-    addCta: {
-      marginTop: 16,
-      paddingHorizontal: 24,
-      paddingVertical: 10,
-      borderRadius: 4,
-      backgroundColor: t.colors.accent,
-    },
-    addCtaText: {
-      color: t.colors.textInverted,
-      fontWeight: "600",
-    },
-    card: {
-      backgroundColor: t.colors.cardElevated,
-      borderRadius: 12,
-      padding: 12,
-      marginBottom: 12,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: t.colors.border,
-    },
-    cardRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 12,
-    },
-    cardIcon: {
-      width: 38,
-      height: 38,
-      borderRadius: 19,
-      backgroundColor: t.colors.skeleton,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    cardTitle: { fontSize: 14, color: t.colors.text, fontWeight: "600" },
-    cardSubtitle: {
-      fontSize: 12,
-      color: t.colors.gray300,
-      marginTop: 2,
-    },
-    defaultBadge: {
-      paddingHorizontal: 8,
-      paddingVertical: 4,
-      borderRadius: 4,
-      backgroundColor: t.colors.text,
-    },
-    defaultBadgeText: {
-      color: t.colors.textInverted,
-      fontSize: 11,
-      fontWeight: "600",
-    },
-    cardActions: {
-      flexDirection: "row",
-      gap: 12,
-      marginTop: 12,
-      paddingTop: 12,
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: t.colors.border,
-    },
-    connectCard: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 12,
-      padding: 14,
-      borderRadius: 12,
-      marginBottom: 14,
-      backgroundColor: t.colors.cardElevated,
-      borderWidth: 1,
-      borderColor: t.colors.accent,
-    },
-    connectIcon: {
-      width: 38,
-      height: 38,
-      borderRadius: 19,
-      backgroundColor: t.colors.accent,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    connectTitle: {
-      fontSize: 14,
-      color: t.colors.text,
-      fontWeight: "600",
-    },
-    connectSubtitle: {
-      fontSize: 12,
-      color: t.colors.gray300,
-      marginTop: 2,
-    },
-    connectCta: {
-      paddingHorizontal: 12,
-      paddingVertical: 6,
-      borderRadius: 6,
-      backgroundColor: t.colors.accent,
-    },
-    connectCtaText: {
-      color: t.colors.textInverted,
-      fontSize: 12,
-      fontWeight: "600",
-    },
-    actionBtn: {
-      paddingHorizontal: 12,
-      paddingVertical: 6,
-      borderRadius: 4,
-      borderWidth: 1,
-      borderColor: t.colors.border,
-    },
-    actionBtnDanger: { borderColor: t.colors.error },
-    actionBtnText: { fontSize: 12, color: t.colors.text },
-    modalBackdrop: {
-      flex: 1,
-      backgroundColor: t.colors.overlay,
-      justifyContent: "flex-end",
-    },
-    modalSheet: {
-      maxHeight: "85%",
-      backgroundColor: t.colors.card,
-      borderTopLeftRadius: 16,
-      borderTopRightRadius: 16,
-      paddingHorizontal: 20,
-      paddingTop: 12,
-    },
-    modalHandle: {
-      alignSelf: "center",
-      width: 36,
-      height: 4,
-      borderRadius: 2,
-      backgroundColor: t.colors.border,
-      marginBottom: 16,
-    },
-    modalTitle: {
-      fontSize: 16,
-      fontWeight: "600",
-      color: t.colors.text,
-      marginBottom: 16,
-    },
-    typeRow: { flexDirection: "row", gap: 8, marginBottom: 12 },
-    typePill: {
-      paddingHorizontal: 14,
-      paddingVertical: 6,
-      borderRadius: 14,
-      backgroundColor: t.colors.gray100,
-    },
-    typePillActive: { backgroundColor: t.colors.accent },
-    typePillText: { color: t.colors.gray300, fontSize: 13 },
-    typePillTextActive: {
-      color: t.colors.textInverted,
-      fontWeight: "600",
-    },
-    field: { marginBottom: 12 },
-    fieldLabel: {
-      fontSize: 12,
-      color: t.colors.gray300,
-      marginBottom: 6,
-    },
-    fieldHint: { marginTop: 4, fontSize: 11, color: t.colors.gray300 },
-    input: {
-      borderWidth: 1,
-      borderColor: t.colors.inputBorder,
-      borderRadius: 8,
-      paddingVertical: 10,
-      paddingHorizontal: 12,
-      fontSize: 14,
-      color: t.colors.text,
-      backgroundColor: t.colors.inputBackground,
-    },
-    checkboxRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      marginVertical: 8,
-    },
-    checkbox: {
-      width: 18,
-      height: 18,
-      borderRadius: 4,
-      borderWidth: 1.5,
-      borderColor: t.colors.gray200,
-      alignItems: "center",
-      justifyContent: "center",
-      marginRight: 8,
-    },
-    checkboxChecked: {
-      backgroundColor: t.colors.accent,
-      borderColor: t.colors.accent,
-    },
-    checkboxText: { fontSize: 13, color: t.colors.text },
-    primaryBtn: {
-      marginTop: 12,
-      backgroundColor: t.colors.accent,
-      paddingVertical: 14,
-      borderRadius: 4,
-      alignItems: "center",
-    },
-    primaryBtnText: {
-      color: t.colors.textInverted,
-      fontSize: 15,
-      fontWeight: "600",
-    },
-    disabled: { opacity: 0.5 },
-  });

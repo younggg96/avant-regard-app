@@ -19,6 +19,8 @@ import { useAppTheme } from "../../theme";
 import { SubTab, SUB_TAB_KEYS, TAB_INDEX, INDEX_TAB } from "./constants";
 import { MessagesContent } from "./components/MessagesContent";
 import { TradingContent } from "./components/TradingContent";
+import { isChatNotification } from "./utils";
+import { isTradeConversation } from "../../services/chatService";
 import { useInteractionStyles } from "./styles";
 
 const { width: screenWidth } = Dimensions.get("window");
@@ -75,6 +77,20 @@ const InteractionScreen = () => {
       .reduce((sum, c) => sum + (c.unreadCount > 0 ? c.unreadCount : 0), 0)
   );
   const tradingUnread = tradingNotifUnread + tradingConvUnread;
+
+  // 「私信」tab 角标：与该 tab 内容（MessagesContent）口径一致 ——
+  // 非交易会话(私聊/陌生人)未读 + 互动/系统通知未读(category 为空、非聊天跳转)。
+  const messagesConvUnread = useChatStore((s) =>
+    s.conversations
+      .filter((c) => !isTradeConversation(c))
+      .reduce((sum, c) => sum + (c.unreadCount > 0 ? c.unreadCount : 0), 0)
+  );
+  const messagesNotifUnread = useNotificationStore((s) =>
+    s.notifications.filter(
+      (n) => !n.isRead && n.category == null && !isChatNotification(n)
+    ).length
+  );
+  const messagesUnread = messagesConvUnread + messagesNotifUnread;
   const horizontalScrollRef = useRef<RNScrollView>(null);
   const hasAlignedAfterLayoutRef = useRef(false);
   // route.params.subTab 仅当与上次响应过的值不同时才驱动子 Tab 切换；
@@ -145,7 +161,7 @@ const InteractionScreen = () => {
   const tabItems = (Object.keys(SUB_TAB_KEYS) as SubTab[]).map((id) => ({
     id,
     label: t(SUB_TAB_KEYS[id]),
-    badge: id === "trading" ? tradingUnread : 0,
+    badge: id === "trading" ? tradingUnread : id === "messages" ? messagesUnread : 0,
   }));
 
   return (

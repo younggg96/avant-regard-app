@@ -276,12 +276,11 @@ export const MessageBubble = ({
             })
           }
           onPay={
-            // pending_payment 卡的 Pay now 按钮:按"我是买家"判定。
-            // 现在 pending_payment 是 seller → buyer,所以买家视角下 isMine=false。
-            // 旧消息可能仍然是 buyer → seller(sender=buyer,isMine=true),
-            // 两种情况都允许:status===pending_payment 时给两边都展示按钮,
-            // 卖家点了会被后端 PermissionError 兜底,UX 上稍微宽松一些以兼容历史数据。
-            orderStatusCard.status === "pending_payment"
+            // pending_payment 卡的「去支付」按钮只给买家。
+            // pending_payment 卡是 seller → buyer 下发的,所以买家视角下
+            // 这条消息是「收到的」(isMine=false);卖家是发送方(isMine=true),
+            // 卖家不需要支付,因此不给卖家展示按钮。
+            orderStatusCard.status === "pending_payment" && !isMine
               ? () =>
                   (navigation.navigate as any)("Payment", {
                     orderId: orderStatusCard.orderId,

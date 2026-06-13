@@ -26,6 +26,11 @@ import { Text } from "../ui";
 import {
   makeTradingFormStyles,
   ShippingAddressFields,
+  ShippingAddressValue,
+  emptyShippingAddress,
+  shippingAddressFromUserAddress,
+  composeShippingFullText,
+  isShippingAddressComplete,
 } from "./TradingFormShared";
 import { AddressPickerSheet } from "../AddressPickerSheet";
 import {
@@ -60,9 +65,7 @@ export function ShippingAddressModal({
   const formStyles = useThemedStyles(makeTradingFormStyles);
   const styles = useThemedStyles(makeModalStyles);
 
-  const [receiverName, setReceiverName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [fullText, setFullText] = useState("");
+  const [value, setValue] = useState<ShippingAddressValue>(emptyShippingAddress);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -75,9 +78,7 @@ export function ShippingAddressModal({
     getDefaultAddress()
       .then((addr) => {
         if (cancelled || !addr) return;
-        setReceiverName(addr.receiverName);
-        setPhone(addr.phone);
-        setFullText(addr.fullText);
+        setValue(shippingAddressFromUserAddress(addr));
         setSelectedId(addr.id);
       })
       .catch(() => {});
@@ -86,25 +87,28 @@ export function ShippingAddressModal({
     };
   }, [visible]);
 
+  const patch = (p: Partial<ShippingAddressValue>) => {
+    setValue((prev) => ({ ...prev, ...p }));
+    setSelectedId(null);
+  };
+
   const handleSelect = (addr: UserAddress) => {
-    setReceiverName(addr.receiverName);
-    setPhone(addr.phone);
-    setFullText(addr.fullText);
+    setValue(shippingAddressFromUserAddress(addr));
     setSelectedId(addr.id);
     setPickerOpen(false);
     setErrorMsg(null);
   };
 
   const submit = async () => {
-    const payload = {
-      receiverName: receiverName.trim(),
-      phone: phone.trim(),
-      address: fullText.trim(),
-    };
-    if (!payload.receiverName || !payload.phone || !payload.address) {
+    if (!isShippingAddressComplete(value)) {
       setErrorMsg(t("trading.checkout.fillAllFields"));
       return;
     }
+    const payload = {
+      receiverName: value.receiverName.trim(),
+      phone: value.phone.trim(),
+      address: composeShippingFullText(value),
+    };
     setErrorMsg(null);
     setSubmitting(true);
     try {
@@ -192,23 +196,7 @@ export function ShippingAddressModal({
                   </Text>
                 </Pressable>
 
-                <ShippingAddressFields
-                  receiverName={receiverName}
-                  phone={phone}
-                  fullText={fullText}
-                  onChangeReceiverName={(v) => {
-                    setReceiverName(v);
-                    setSelectedId(null);
-                  }}
-                  onChangePhone={(v) => {
-                    setPhone(v);
-                    setSelectedId(null);
-                  }}
-                  onChangeFullText={(v) => {
-                    setFullText(v);
-                    setSelectedId(null);
-                  }}
-                />
+                <ShippingAddressFields value={value} onChange={patch} />
 
                 {errorMsg ? (
                   <Text style={formStyles.errorText}>{errorMsg}</Text>
