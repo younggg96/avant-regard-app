@@ -1461,7 +1461,10 @@ class StoreProductService:
 
         return {
             "userId": user_id,
-            "username": display_name or username or "—",
+            # 与帖子卡 / 商品卡一致，优先展示 users.username（用户名），
+            # seller_profiles.display_name 仅作兜底——mock 数据把 display_name
+            # 写成了 'Seller-<id>'，若优先用它会显示成 id 而非用户名。
+            "username": username or display_name or "—",
             "avatarUrl": avatar_url,
             "level": level,
             "positiveRate": positive_rate,

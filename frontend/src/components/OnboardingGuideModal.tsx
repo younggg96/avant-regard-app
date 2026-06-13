@@ -14,10 +14,13 @@ import { useTranslation } from "react-i18next";
 import { useVideoPlayer, VideoView } from "expo-video";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useThemedStyles, type AppTheme } from "../theme";
+import { IS_NA } from "../config/env";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
-const GUIDE_VIDEOS = [
+// 引导视频按 App Store flavor 区分：CN（中国版）与 NA（北美版）走各自录制的
+// 步骤演示。NA 视频是英文 UI 录屏，放在 assets/guide-mov-na/，按 step 顺序命名。
+const GUIDE_VIDEOS_CN = [
   require("../../assets/guide-mov/1.mov"),
   require("../../assets/guide-mov/2.mov"),
   require("../../assets/guide-mov/3.mov"),
@@ -29,6 +32,18 @@ const GUIDE_VIDEOS = [
   require("../../assets/guide-mov/9.mov"),
   require("../../assets/guide-mov/11.mov"),
 ];
+
+const GUIDE_VIDEOS_NA = [
+  require("../../assets/guide-mov-na/1.mp4"),
+  require("../../assets/guide-mov-na/2.mp4"),
+  require("../../assets/guide-mov-na/3.mp4"),
+  require("../../assets/guide-mov-na/4.mp4"),
+  require("../../assets/guide-mov-na/5.mp4"),
+  require("../../assets/guide-mov-na/6.mp4"),
+  require("../../assets/guide-mov-na/7.mp4"),
+];
+
+const GUIDE_VIDEOS = IS_NA ? GUIDE_VIDEOS_NA : GUIDE_VIDEOS_CN;
 
 interface VideoSlideProps {
   source: any;

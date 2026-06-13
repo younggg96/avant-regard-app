@@ -115,6 +115,8 @@ const ProfileScreen = () => {
 
   const tabBarAnchorY = useSharedValue(9999);
   const tabScrollViewRef = useRef<RNScrollView>(null);
+  // sticky 叠加层里的 chip 子标签行有独立的横向滚动状态，单独一个 ref。
+  const stickyTabScrollViewRef = useRef<RNScrollView>(null);
   const mainScrollRef = useRef<RNScrollView>(null);
   const scrollY = useSharedValue(0);
   // 一级 tab / 笔记 sub-tab 切换时内容区淡入 + 轻微上移。
@@ -584,25 +586,44 @@ const ProfileScreen = () => {
         onAvatarPress={() => setAvatarPreviewVisible(true)}
       />
 
-      {/* 一级 tab (笔记 / 购买 / 在售) 的 sticky 版。当用户向下滚动
+      {/* 一级 tab (笔记 / 购买 / 在售 / 收藏) 的 sticky 版。当用户向下滚动
           越过下方 inline TopTabBar 时由 stickyTabBarAnimatedStyle 渐显。
-          一级 tab 设为 sticky, chip 条跟随内容滚动 —— 这样用户即使
-          在订单列表深处也能一键切回「笔记」。 */}
+          「笔记」一级 tab 下再叠一行 chip 子标签 —— 让用户即使滚到笔记
+          列表深处也能直接切换子标签 (审核中 / 论坛 / 赞过…)，且 chip 行
+          不会再从折叠头部缝隙里露出来。其它一级 tab 只显示一级 tab 行。 */}
       <Animated.View
         style={[styles.stickyTabBar, { top: headerTotalHeight }, stickyTabBarAnimatedStyle]}
         pointerEvents="box-none"
       >
-        <View style={{ flex: 1, backgroundColor: appTheme.colors.card }}>
-          <TopTabBar
-            tabs={[
-              { id: "notes", label: t("profile.tabNotes") },
-              { id: "buying", label: t("profile.tabBuying") },
-              { id: "selling", label: t("profile.tabSelling") },
-              { id: "collections", label: t("profile.tabCollections") },
-            ]}
-            activeTab={topTab}
-            onTabPress={setTopTab}
-          />
+        <View style={{ backgroundColor: appTheme.colors.card }}>
+          <View style={styles.tabBarContainer}>
+            <TopTabBar
+              tabs={[
+                { id: "notes", label: t("profile.tabNotes") },
+                { id: "buying", label: t("profile.tabBuying") },
+                { id: "selling", label: t("profile.tabSelling") },
+                { id: "collections", label: t("profile.tabCollections") },
+              ]}
+              activeTab={topTab}
+              onTabPress={setTopTab}
+            />
+          </View>
+          {topTab === "notes" ? (
+            <View
+              style={{
+                backgroundColor: appTheme.colors.card,
+                borderBottomWidth: StyleSheet.hairlineWidth,
+                borderBottomColor: appTheme.colors.border,
+              }}
+            >
+              <ProfileTabBar
+                tabs={tabs}
+                activeTab={activeTab}
+                onTabPress={setActiveTab}
+                scrollViewRef={stickyTabScrollViewRef}
+              />
+            </View>
+          ) : null}
         </View>
       </Animated.View>
 

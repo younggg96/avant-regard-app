@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import i18n from "@/i18n";
 import { useAuthStore } from "../../../store/authStore";
 import {
@@ -134,6 +134,9 @@ export function useProfileData() {
   const [collectionsLoading, setCollectionsLoading] = useState(false);
   const [headerLoading, setHeaderLoading] = useState(true);
   const [collectionsLoaded, setCollectionsLoaded] = useState(false);
+  // 头部数据是否已经成功加载过一次。首次加载（含切换账号）才显示骨架屏；
+  // 之后每次回到本页都用已有数据做「静默后台刷新」，避免每次进页面都闪 loading。
+  const hasLoadedHeaderRef = useRef(false);
 
   const [tabsData, setTabsData] = useState<Record<TabType, TabData>>({
     published: { ...initialTabState },
@@ -178,6 +181,8 @@ export function useProfileData() {
     setDefaultCollectionTotal(0);
     setDefaultCollectionCover(null);
     setCollectionsLoaded(false);
+    // 切换账号：强制下一次加载重新走骨架屏，避免短暂显示上一个账号的头部数据。
+    hasLoadedHeaderRef.current = false;
     setHeaderLoading(true);
   }, []);
 
@@ -474,7 +479,10 @@ export function useProfileData() {
       setHeaderLoading(false);
       return;
     }
-    setHeaderLoading(true);
+    // 只有还没成功加载过时才显示骨架；已有数据时静默刷新（不翻 loading 态）。
+    if (!hasLoadedHeaderRef.current) {
+      setHeaderLoading(true);
+    }
     try {
       await Promise.all([
         loadUserInfo(),
@@ -485,6 +493,7 @@ export function useProfileData() {
         loadUserTitles(),
         loadPostStats(),
       ]);
+      hasLoadedHeaderRef.current = true;
     } finally {
       setHeaderLoading(false);
     }

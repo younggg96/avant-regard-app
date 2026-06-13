@@ -9,7 +9,6 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 
 import {
-  playfairFonts,
   useAppTheme,
   useThemedStyles,
   type AppTheme,
@@ -97,6 +96,7 @@ export const NotificationBadge: React.FC<NotificationBadgeProps> = (props) => {
       <Text
         style={[styles.text, { fontSize: config.fontSize }]}
         allowFontScaling={false}
+        numberOfLines={1}
       >
         {displayText}
       </Text>
@@ -123,8 +123,9 @@ const makeStyles = (t: AppTheme) =>
       borderWidth: 0,
     },
     text: {
-      fontFamily: playfairFonts.bold,
-      fontWeight: "700",
+      // 角标数字用系统字体（非 Playfair 衬线）：衬线字体在小尺寸下字形度量会把
+      // 数字顶高，导致看起来不垂直居中。系统字体 + lineHeight=fontSize 可稳定居中。
+      fontWeight: "600",
       color: t.colors.textInverted,
       textAlign: "center",
       ...(Platform.OS === "android"

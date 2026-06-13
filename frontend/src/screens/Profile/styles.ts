@@ -6,7 +6,6 @@ import {
   AVATAR_SIZE_SMALL,
   AVATAR_BORDER,
   HEADER_CONTENT_HEIGHT,
-  TAB_BAR_HEIGHT,
   SCREEN_WIDTH,
   SCREEN_HEIGHT,
 } from "./constants";
@@ -125,15 +124,14 @@ const makeProfileStyles = (t: AppTheme) =>
       alignItems: "center",
       gap: 8,
     },
+    // sticky 叠加层：高度跟随内容（一级 tab,「笔记」时再叠 chip 子标签行）。
+    // 分割线交给内部容器 (tabBarContainer / chip 包裹层) 处理，避免重复描边。
     stickyTabBar: {
       position: "absolute",
       left: 0,
       right: 0,
       zIndex: 99,
-      height: TAB_BAR_HEIGHT,
       backgroundColor: t.colors.card,
-      borderBottomWidth: 1,
-      borderBottomColor: t.colors.border,
     },
     profileInfo: {
       paddingBottom: 10,

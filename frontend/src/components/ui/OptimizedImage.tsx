@@ -152,6 +152,22 @@ const OptimizedImageInner = ({
     [uri, size]
   );
 
+  // 渐进式占位：当主图走「原图直拉」(ORIGINAL，常是 1–5MB) 时，先用一张走代理的
+  // 小图 (FEED_CARD ~50KB) 作为 placeholder 顶上，原图在后台加载完再淡入替换。
+  // 这样大图下载期间用户看到的是一张略软的预览图，而不是长时间的灰块。
+  // 小图与原图是不同的缓存键，只作为临时预览，不会影响最终原图的清晰度，
+  // 也不会复现历史上「代理缩图被磁盘缓存固化」的马赛克问题。
+  const placeholderUri = React.useMemo(() => {
+    if (!uri || size !== ImageSize.ORIGINAL) return undefined;
+    const low = getOptimizedImageUrl(uri, ImageSize.FEED_CARD);
+    return low && low !== uri ? low : undefined;
+  }, [uri, size]);
+
+  const placeholderSource: ImageSource | undefined = React.useMemo(
+    () => (placeholderUri ? { uri: placeholderUri } : undefined),
+    [placeholderUri]
+  );
+
   // Reset load state when the underlying uri changes so recycled cells
   // show the spinner again instead of a stale "loaded" flag.
   //
@@ -209,7 +225,10 @@ const OptimizedImageInner = ({
     containerHeightRef.current = event.nativeEvent.layout.height;
   }, []);
 
-  const showSpinner = showPlaceholder && !isLoaded && !hasError && !!uri;
+  // 有低清占位图时不再叠加 spinner —— 预览图本身已经是「正在加载」的视觉反馈，
+  // 在清晰可见的预览上再压一个转圈反而更突兀。
+  const showSpinner =
+    showPlaceholder && !isLoaded && !hasError && !!uri && !placeholderSource;
   const showLabel =
     showSpinner && !hideLoadingLabel && containerHeightRef.current >= LOADING_LABEL_MIN_HEIGHT;
 
@@ -226,6 +245,8 @@ const OptimizedImageInner = ({
         source={imageSource}
         style={[StyleSheet.absoluteFill, styles.image]}
         contentFit={contentFit}
+        placeholder={placeholderSource}
+        placeholderContentFit={contentFit}
         transition={150}
         cachePolicy="memory-disk"
         priority={resolvedPriority}
@@ -250,7 +271,7 @@ const OptimizedImageInner = ({
         </View>
       )}
 
-      {hasError && (
+      {hasError && !placeholderSource && (
         <View
           style={[
             StyleSheet.absoluteFill,
