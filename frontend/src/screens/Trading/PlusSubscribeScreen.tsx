@@ -31,9 +31,23 @@ import {
   PlusStatus,
   PlusPlan,
 } from "../../services/archivePlusService";
-import { useFormatPrice } from "../../utils/currency";
+import { formatPriceDisplay } from "../../utils/currency";
 import { useAppTheme, useThemedStyles, type AppTheme } from "../../theme";
-import { config as envConfig } from "../../config/env";
+import { config as envConfig, IS_NA } from "../../config/env";
+
+/** Plus 套餐定价 —— 中美版各用本地币种展示,不再做汇率换算混显。 */
+const PLUS_PLAN_PRICING = {
+  monthly: { cnyCents: 2900, usdCents: 2900 },
+  annual: { cnyCents: 29800, usdCents: 29800 },
+} as const;
+
+const plusDisplayCurrency = IS_NA ? "USD" : "CNY";
+
+function formatPlusAmount(cents: number): string {
+  return formatPriceDisplay(cents, plusDisplayCurrency, plusDisplayCurrency, {
+    trimZeroFraction: true,
+  });
+}
 
 const BENEFITS: { icon: any; title: string; desc: string }[] = [
   { icon: "trending-down", title: "抽佣折扣", desc: "8% → 6%，每笔订单立省 2 个点" },
@@ -51,7 +65,6 @@ export default function PlusSubscribeScreen() {
   const theme = useAppTheme();
   const styles = useThemedStyles(makeStyles);
   const { t } = useTranslation();
-  const formatPrice = useFormatPrice();
   const [status, setStatus] = useState<PlusStatus | null>(null);
   const [plan, setPlan] = useState<PlusPlan>("annual");
   const [busy, setBusy] = useState(false);
@@ -116,6 +129,13 @@ export default function PlusSubscribeScreen() {
     }
   };
 
+  const planCents = (kind: "monthly" | "annual") =>
+    IS_NA ? PLUS_PLAN_PRICING[kind].usdCents : PLUS_PLAN_PRICING[kind].cnyCents;
+
+  const monthlyPrice = formatPlusAmount(planCents("monthly"));
+  const annualPrice = formatPlusAmount(planCents("annual"));
+  const annualPerMonthPrice = formatPlusAmount(Math.round(planCents("annual") / 12));
+
   const cancel = async () => {
     if (!status?.subscription) return;
     setBusy(true);
@@ -176,8 +196,8 @@ export default function PlusSubscribeScreen() {
                 onPress={() => setPlan("monthly")}
               >
                 <Text style={styles.planName}>{t("trading.plus.planMonthly")}</Text>
-                <Text style={styles.planPrice}>{formatPrice(2900)}</Text>
-                <Text style={styles.planMeta}>¥29 / 月</Text>
+                <Text style={styles.planPrice}>{monthlyPrice}</Text>
+                <Text style={styles.planMeta}>{t("trading.plus.billedMonthly")}</Text>
               </Pressable>
               <Pressable
                 style={[
@@ -188,8 +208,10 @@ export default function PlusSubscribeScreen() {
               >
                 <Text style={styles.planTag}>{t("trading.plus.recommended")}</Text>
                 <Text style={styles.planName}>{t("trading.plus.planYearly")}</Text>
-                <Text style={styles.planPrice}>{formatPrice(29800)}</Text>
-                <Text style={styles.planMeta}>¥24.8 / 月</Text>
+                <Text style={styles.planPrice}>{annualPrice}</Text>
+                <Text style={styles.planMeta}>
+                  {t("trading.plus.planPerMonth", { price: annualPerMonthPrice })}
+                </Text>
               </Pressable>
             </View>
           </>
@@ -217,7 +239,9 @@ export default function PlusSubscribeScreen() {
               <ActivityIndicator color={theme.colors.textInverted} />
             ) : (
               <Text style={styles.primaryBtnText}>
-                立即订阅（{plan === "monthly" ? "¥29/月" : "¥298/年"}）
+                {plan === "monthly"
+                  ? t("trading.plus.subscribeMonthly", { price: monthlyPrice })
+                  : t("trading.plus.subscribeAnnual", { price: annualPrice })}
               </Text>
             )}
           </Pressable>

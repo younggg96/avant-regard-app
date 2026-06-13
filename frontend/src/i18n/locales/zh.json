@@ -4291,6 +4291,10 @@
       "planMonthly": "月度",
       "planYearly": "年度",
       "recommended": "推荐",
+      "planPerMonth": "{{price}} / 月",
+      "billedMonthly": "按月计费",
+      "subscribeMonthly": "立即订阅（{{price}}/月）",
+      "subscribeAnnual": "立即订阅（{{price}}/年）",
       "cancelAutoRenew": "取消自动续费"
     },
     "orderStatus": {

@@ -4291,6 +4291,10 @@
       "planMonthly": "Monthly",
       "planYearly": "Annual",
       "recommended": "Recommended",
+      "planPerMonth": "{{price}} / mo",
+      "billedMonthly": "Billed monthly",
+      "subscribeMonthly": "Subscribe ({{price}}/mo)",
+      "subscribeAnnual": "Subscribe ({{price}}/yr)",
       "cancelAutoRenew": "Cancel auto-renewal"
     },
     "orderStatus": {
