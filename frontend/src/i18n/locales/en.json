@@ -1627,7 +1627,25 @@
       "conversation": "Conversation",
       "deletedMessage": "(Message deleted)",
       "fetchFailed": "Failed to load chat data",
-      "fetchDetailFailed": "Failed to load conversation"
+      "fetchDetailFailed": "Failed to load conversation",
+      "cardDetail": {
+        "disputeId": "Dispute #{{id}}",
+        "orderId": "Order #{{id}}",
+        "orderNo": "Order No.: {{value}}",
+        "offerId": "Offer #{{id}}",
+        "reason": "Reason: {{value}}",
+        "status": "Status: {{value}}",
+        "note": "Note: {{value}}",
+        "product": "Product: {{value}}",
+        "brand": "Brand: {{value}}",
+        "price": "Amount: {{value}}",
+        "title": "Title: {{value}}",
+        "name": "Name: {{value}}",
+        "user": "User: {{value}}",
+        "image": "Image message",
+        "sellerReject": "Seller: rejected & appealed",
+        "sellerAgreeRefund": "Seller: agreed to refund"
+      }
     },
     "userData": {
       "entry": "User Data",

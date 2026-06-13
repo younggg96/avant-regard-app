@@ -124,11 +124,7 @@ export const QuickEntriesGrid: React.FC<QuickEntriesGridProps> = ({
               color={theme.colors.text}
             />
             {entry.badge != null && entry.badge > 0 ? (
-              <NotificationBadge
-                count={entry.badge}
-                size="xs"
-                tone="neutral"
-              />
+              <NotificationBadge count={entry.badge} size="sm" />
             ) : null}
           </View>
           <Text style={styles.label} numberOfLines={1}>

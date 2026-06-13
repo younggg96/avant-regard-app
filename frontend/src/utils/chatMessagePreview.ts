@@ -179,6 +179,144 @@ export function formatChatMessagePreview(
   return content;
 }
 
+function formatCents(cents: unknown, currency?: unknown): string | null {
+  if (typeof cents !== "number") return null;
+  const cur = typeof currency === "string" && currency ? currency : "CNY";
+  const amount = (cents / 100).toLocaleString(undefined, {
+    minimumFractionDigits: cur === "CNY" ? 0 : 2,
+    maximumFractionDigits: 2,
+  });
+  const prefix = cur === "CNY" ? "¥" : cur === "USD" ? "$" : `${cur} `;
+  return `${prefix}${amount}`;
+}
+
+function translateEnum(keyPrefix: string, value: unknown): string | null {
+  if (typeof value !== "string" || !value) return null;
+  const key = `${keyPrefix}.${value}`;
+  const translated = i18n.t(key);
+  return translated !== key ? translated : value;
+}
+
+function pushLine(lines: string[], key: string, params: Record<string, unknown>) {
+  lines.push(i18n.t(key, params));
+}
+
+/** Structured audit lines for card payloads — replaces raw JSON in admin views. */
+export function formatChatCardAuditLines(
+  content: string,
+  messageType?: string | null,
+): string[] {
+  const trimmed = (content || "").trimStart();
+  const parsed = trimmed.startsWith("{") ? safeJson(trimmed) : null;
+  if (!parsed) return [];
+
+  const resolvedType: CardType | null =
+    (messageType && messageType in LABEL_KEYS
+      ? (messageType as CardType)
+      : null) ?? inferCardType(parsed);
+  if (!resolvedType) return [];
+
+  const lines: string[] = [];
+  const ns = "admin.chatMonitor.cardDetail";
+
+  switch (resolvedType) {
+    case "dispute": {
+      if (typeof parsed.disputeId === "number") {
+        pushLine(lines, `${ns}.disputeId`, { id: parsed.disputeId });
+      }
+      if (typeof parsed.orderId === "number") {
+        pushLine(lines, `${ns}.orderId`, { id: parsed.orderId });
+      }
+      const reason = parsed.reason;
+      if (typeof reason === "string" && reason.trim()) {
+        pushLine(lines, `${ns}.reason`, { value: reason.trim() });
+      }
+      const status = parsed.status;
+      if (typeof status === "string" && status.trim()) {
+        pushLine(lines, `${ns}.status`, { value: status.trim() });
+      }
+      if (parsed.sellerAction === "reject") {
+        lines.push(i18n.t(`${ns}.sellerReject`));
+      } else if (parsed.sellerAction === "agree_refund") {
+        lines.push(i18n.t(`${ns}.sellerAgreeRefund`));
+      }
+      const note = parsed.note;
+      if (typeof note === "string" && note.trim()) {
+        pushLine(lines, `${ns}.note`, { value: note.trim() });
+      }
+      break;
+    }
+    case "offer": {
+      const title = nestedProductTitle(parsed);
+      if (title) pushLine(lines, `${ns}.product`, { value: title });
+      const price = formatCents(parsed.priceCents, parsed.currency);
+      if (price) pushLine(lines, `${ns}.price`, { value: price });
+      const status = translateEnum("trading.offerStatus", parsed.status);
+      if (status) pushLine(lines, `${ns}.status`, { value: status });
+      if (typeof parsed.offerId === "number") {
+        pushLine(lines, `${ns}.offerId`, { id: parsed.offerId });
+      }
+      break;
+    }
+    case "order_status": {
+      const orderNo = parsed.orderNo;
+      if (typeof orderNo === "string" && orderNo.trim()) {
+        pushLine(lines, `${ns}.orderNo`, { value: orderNo.trim() });
+      }
+      const status =
+        orderStatusLabel(parsed.status) ??
+        (typeof parsed.status === "string" ? parsed.status : null);
+      if (status) pushLine(lines, `${ns}.status`, { value: status });
+      const price = formatCents(parsed.paidPriceCents, parsed.currency);
+      if (price) pushLine(lines, `${ns}.price`, { value: price });
+      const productTitle = nestedProductTitle(parsed);
+      if (productTitle) pushLine(lines, `${ns}.product`, { value: productTitle });
+      break;
+    }
+    case "product_listing": {
+      const title = parsed.title;
+      if (typeof title === "string" && title.trim()) {
+        pushLine(lines, `${ns}.product`, { value: title.trim() });
+      }
+      const brand = parsed.brand;
+      if (typeof brand === "string" && brand.trim()) {
+        pushLine(lines, `${ns}.brand`, { value: brand.trim() });
+      }
+      const price = formatCents(parsed.priceCents, parsed.currency);
+      if (price) pushLine(lines, `${ns}.price`, { value: price });
+      break;
+    }
+    case "post_card":
+    case "show_card": {
+      const title = parsed.title;
+      if (typeof title === "string" && title.trim()) {
+        pushLine(lines, `${ns}.title`, { value: title.trim() });
+      }
+      break;
+    }
+    case "store_card":
+    case "brand_card": {
+      const name = parsed.name ?? parsed.brandName;
+      if (typeof name === "string" && name.trim()) {
+        pushLine(lines, `${ns}.name`, { value: name.trim() });
+      }
+      break;
+    }
+    case "user_card": {
+      const username = parsed.username;
+      if (typeof username === "string" && username.trim()) {
+        pushLine(lines, `${ns}.user`, { value: username.trim() });
+      }
+      break;
+    }
+    case "image":
+      lines.push(i18n.t(`${ns}.image`));
+      break;
+  }
+
+  return lines;
+}
+
 /** Conversation list helper — includes empty-state fallback. */
 export function formatLastMessage(
   text: string | null,

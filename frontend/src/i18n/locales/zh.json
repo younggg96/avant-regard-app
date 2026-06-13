@@ -1627,7 +1627,25 @@
       "conversation": "会话",
       "deletedMessage": "(此消息已删除)",
       "fetchFailed": "加载聊天数据失败",
-      "fetchDetailFailed": "加载会话详情失败"
+      "fetchDetailFailed": "加载会话详情失败",
+      "cardDetail": {
+        "disputeId": "争议 #{{id}}",
+        "orderId": "订单 #{{id}}",
+        "orderNo": "订单号：{{value}}",
+        "offerId": "出价 #{{id}}",
+        "reason": "原因：{{value}}",
+        "status": "状态：{{value}}",
+        "note": "备注：{{value}}",
+        "product": "商品：{{value}}",
+        "brand": "品牌：{{value}}",
+        "price": "金额：{{value}}",
+        "title": "标题：{{value}}",
+        "name": "名称：{{value}}",
+        "user": "用户：{{value}}",
+        "image": "图片消息",
+        "sellerReject": "卖家：拒绝并申诉",
+        "sellerAgreeRefund": "卖家：同意退款"
+      }
     },
     "userData": {
       "entry": "数据查询",

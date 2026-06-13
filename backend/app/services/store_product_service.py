@@ -1113,7 +1113,7 @@ class StoreProductService:
     ) -> StoreProduct:
         """卖家提交审核（draft → reviewing）。
 
-        - 校验：5 视角图必须齐全、condition / condition_note 必填。
+        - 校验：7 视角图必须齐全、condition 必填。
         - auto_approve（dev / feature flag 开启）：连接到 reviewing → active 自动通过。
         """
         raw = self._get_product_raw(product_id)
@@ -1139,8 +1139,6 @@ class StoreProductService:
             raise ValueError(f"以下视角图缺失：{','.join(missing)}")
         if not raw.get("condition"):
             raise ValueError("请选择成色")
-        if not raw.get("condition_note"):
-            raise ValueError("请填写成色说明（PRD 1.3：无瑕疵也需说明）")
 
         # draft → reviewing
         result = self.transition_status(

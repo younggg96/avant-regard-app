@@ -127,8 +127,16 @@ class ArchiveService:
                 "currency": order.get("currency", "CNY"),
                 "photos": prod.get("images") or [],
                 "acquired_at": (order.get("completed_at") or order.get("paid_at") or datetime.utcnow().isoformat())[:10],
+                "source": "order",
             }
-            res = self.db.table("user_archive_items").insert(payload).execute()
+            try:
+                res = self.db.table("user_archive_items").insert(payload).execute()
+            except Exception as insert_err:
+                # 秀场外键失效时降级：去掉 original_show_id 再试一次。
+                if payload.pop("original_show_id", None) is not None:
+                    res = self.db.table("user_archive_items").insert(payload).execute()
+                else:
+                    raise insert_err
             if not res.data:
                 return None
             return self._format(res.data[0])

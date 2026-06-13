@@ -10,13 +10,15 @@
  *   - 「单品已加入 MY ARCHIVE」二级卡片
  *   - 行动：去评价 / 查看典藏 / 查看订单 / 完成
  */
-import React from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   Pressable,
+  ActivityIndicator,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
@@ -25,6 +27,7 @@ import { useTranslation } from "react-i18next";
 
 import type { ConfirmReceiptSettlement, Order } from "../../services/orderService";
 import { buildTradeReviewParams } from "../../services/aftersalesService";
+import { transferOrderToArchive } from "../../services/archivePlusService";
 import { useFormatWalletAmount } from "../../utils/currency";
 import { OptimizedImage } from "../../components/ui/OptimizedImage";
 import { ImageSize } from "../../utils/imageUtils";
@@ -60,6 +63,7 @@ export default function SettlementResultScreen() {
   const formatPrice = useFormatWalletAmount();
 
   const currency = settlement.currency || "CNY";
+  const [archiveLoading, setArchiveLoading] = useState(false);
 
   const goReview = () => {
     navigation.replace("TradeReview", buildTradeReviewParams(order));
@@ -69,8 +73,20 @@ export default function SettlementResultScreen() {
     navigation.replace("OrderDetail", { orderId: order.id });
   };
 
-  const goArchive = () => {
-    navigation.navigate("MyArchive");
+  const goArchive = async () => {
+    if (archiveLoading) return;
+    setArchiveLoading(true);
+    try {
+      await transferOrderToArchive(order.id);
+    } catch (e: any) {
+      Alert.alert(
+        t("common.error"),
+        e?.message ?? t("trading.review.archiveFailed"),
+      );
+    } finally {
+      setArchiveLoading(false);
+      navigation.navigate("MyArchive");
+    }
   };
 
   const goHome = () => {
@@ -159,8 +175,17 @@ export default function SettlementResultScreen() {
           ) : null}
         </View>
 
-        <Pressable style={styles.archiveCard} onPress={goArchive}>
-          {product?.cover ? (
+        <Pressable
+          style={styles.archiveCard}
+          onPress={goArchive}
+          disabled={archiveLoading}
+        >
+          {archiveLoading ? (
+            <ActivityIndicator
+              color={theme.colors.gray300}
+              style={{ marginRight: 12 }}
+            />
+          ) : product?.cover ? (
             <OptimizedImage
               uri={product.cover}
               size={ImageSize.THUMBNAIL}

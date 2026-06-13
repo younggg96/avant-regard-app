@@ -36,6 +36,7 @@ import { useFormatPrice } from "../../utils/currency";
 import { useSharedStyles } from "./adminStyles";
 import { formatDate } from "./adminUtils";
 import { CARD_LABELS, participantsLabel, previewContent } from "./ChatMonitorTab";
+import { formatChatCardAuditLines } from "../../utils/chatMessagePreview";
 import {
   adminService,
   type AdminChatConversation,
@@ -553,6 +554,10 @@ const MessageRow: React.FC<{ message: AdminChatMessage }> = ({ message }) => {
   const { t } = useTranslation();
   const styles = useThemedStyles(makeStyles);
   const isCard = !!CARD_LABELS[message.messageType];
+  const cardLines =
+    !message.isDeleted && isCard
+      ? formatChatCardAuditLines(message.content, message.messageType)
+      : [];
   return (
     <View style={styles.msgRow}>
       <UserAvatar uri={message.senderAvatar} name={message.senderName} size={24} />
@@ -575,11 +580,11 @@ const MessageRow: React.FC<{ message: AdminChatMessage }> = ({ message }) => {
           ) : (
             <Text style={styles.msgContent}>{previewContent(message)}</Text>
           )}
-          {!message.isDeleted && isCard ? (
-            <Text style={styles.msgRaw} numberOfLines={4}>
-              {message.content}
+          {cardLines.map((line, idx) => (
+            <Text key={idx} style={styles.msgDetail}>
+              {line}
             </Text>
-          ) : null}
+          ))}
         </View>
       </View>
     </View>
@@ -1302,12 +1307,12 @@ const makeStyles = (t: AppTheme) =>
       color: t.colors.gray300,
       fontStyle: "italic",
     },
-    msgRaw: {
+    msgDetail: {
       ...t.typography.caption,
       fontSize: 11,
-      lineHeight: 14,
-      color: t.colors.gray300,
-      marginTop: 4,
+      lineHeight: 15,
+      color: t.colors.gray400,
+      marginTop: 3,
     },
     // 订单
     orderBody: {

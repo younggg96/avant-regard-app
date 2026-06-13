@@ -375,17 +375,7 @@ export default function OrderDetailScreen() {
     try {
       const item = await transferOrderToArchive(order.id);
       setArchiveItem(item);
-      Alert.alert(
-        t("trading.orderDetail.transferSuccessTitle"),
-        t("trading.orderDetail.transferSuccessMessage"),
-        [
-          { text: t("common.cancel"), style: "cancel" },
-          {
-            text: t("trading.settlement.viewArchiveCta"),
-            onPress: () => navigation.navigate("MyArchive"),
-          },
-        ],
-      );
+      navigation.navigate("MyArchive");
     } catch (e: any) {
       Alert.alert(
         t("common.failed"),

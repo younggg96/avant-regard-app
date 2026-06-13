@@ -2,13 +2,11 @@ import React, { useEffect, useRef } from "react";
 import {
   Dimensions,
   LayoutChangeEvent,
-  Platform,
   ScrollView,
   StyleSheet,
-  Text as RNText,
   View,
 } from "react-native";
-import { Text, Pressable } from "./ui";
+import { Text, Pressable, NotificationBadge } from "./ui";
 import { useAppTheme, useThemedStyles, type AppTheme } from "../theme";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -50,11 +48,7 @@ function TabButton<T extends string>({
       </Text>
       {isActive && <View style={styles.tabIndicator} />}
       {!!tab.badge && tab.badge > 0 && (
-        <View style={styles.badge}>
-          <RNText style={styles.badgeText} allowFontScaling={false}>
-            {tab.badge > 99 ? "99+" : tab.badge}
-          </RNText>
-        </View>
+        <NotificationBadge count={tab.badge} size="sm" style={styles.badge} />
       )}
     </Pressable>
   );
@@ -155,24 +149,7 @@ const makeStyles = (t: AppTheme) =>
       borderRadius: 1,
     },
     badge: {
-      position: "absolute",
-      top: 4,
-      right: 4,
-      minWidth: 16,
-      height: 16,
-      borderRadius: t.borderRadius.full,
-      backgroundColor: t.colors.error,
-      justifyContent: "center",
-      alignItems: "center",
-      paddingHorizontal: 4,
-    },
-    badgeText: {
-      color: t.colors.textInverted,
-      fontSize: 10,
-      fontWeight: "700",
-      textAlign: "center",
-      ...(Platform.OS === "android"
-        ? { includeFontPadding: false, textAlignVertical: "center" as const }
-        : {}),
+      top: 2,
+      right: 2,
     },
   });

@@ -42,7 +42,7 @@ import {
   type AdminChatParticipant,
   type AdminChatSearchMessage,
 } from "../../services/adminService";
-import { formatChatMessagePreview } from "../../utils/chatMessagePreview";
+import { formatChatMessagePreview, formatChatCardAuditLines } from "../../utils/chatMessagePreview";
 
 type SearchMode = "users" | "messages";
 
@@ -472,6 +472,10 @@ const DetailModal: React.FC<DetailModalProps> = ({
 
   const renderMessage = ({ item }: { item: AdminChatMessage }) => {
     const isCard = !!CARD_LABELS[item.messageType];
+    const cardLines =
+      !item.isDeleted && isCard
+        ? formatChatCardAuditLines(item.content, item.messageType)
+        : [];
     return (
       <View style={styles.msgRow}>
         <UserAvatar
@@ -501,11 +505,11 @@ const DetailModal: React.FC<DetailModalProps> = ({
             ) : (
               <Text style={styles.msgContent}>{previewContent(item)}</Text>
             )}
-            {!item.isDeleted && isCard ? (
-              <Text style={styles.msgRaw} numberOfLines={4}>
-                {item.content}
+            {cardLines.map((line, idx) => (
+              <Text key={idx} style={styles.msgDetail}>
+                {line}
               </Text>
-            ) : null}
+            ))}
           </View>
         </View>
       </View>
@@ -832,12 +836,12 @@ const makeStyles = (t: AppTheme) =>
       color: t.colors.gray300,
       fontStyle: "italic",
     },
-    msgRaw: {
+    msgDetail: {
       ...t.typography.caption,
       fontSize: 11,
-      lineHeight: 14,
-      color: t.colors.gray300,
-      marginTop: 4,
+      lineHeight: 15,
+      color: t.colors.gray400,
+      marginTop: 3,
     },
   });
 

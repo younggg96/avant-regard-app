@@ -51,7 +51,9 @@ import {
   submitTradeReview,
 } from "../../services/aftersalesService";
 import { transferOrderToArchive } from "../../services/archivePlusService";
+import { getOrder } from "../../services/orderService";
 import { uploadImage } from "../../services/postService";
+import { useAuthStore } from "../../store/authStore";
 
 const MAX_REVIEW_PHOTOS = 3;
 
@@ -116,7 +118,9 @@ const TradeReviewScreen: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(true);
   const [archiving, setArchiving] = useState(false);
+  const [isBuyer, setIsBuyer] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const meUserId = useAuthStore((s) => s.user?.userId);
 
   // 庆祝页入场动画
   const medalScale = useSharedValue(0.6);
@@ -127,13 +131,24 @@ const TradeReviewScreen: React.FC = () => {
     let cancelled = false;
     (async () => {
       try {
-        const status = await getOrderReviewStatus(orderId);
-        if (!cancelled && status.myReviewSubmitted) {
-          Alert.alert(
-            t("trading.review.alreadyReviewedTitle"),
-            t("trading.review.alreadyReviewedMsg"),
-            [{ text: t("common.confirm"), onPress: () => navigation.goBack() }],
-          );
+        const [status, order] = await Promise.all([
+          getOrderReviewStatus(orderId),
+          getOrder(orderId).catch(() => null),
+        ]);
+        if (!cancelled) {
+          // 仅当能确认「不是买家」时隐藏按钮；拉单失败时仍展示，由后端鉴权。
+          const knownNotBuyer =
+            order != null &&
+            meUserId != null &&
+            order.buyerUserId !== meUserId;
+          setIsBuyer(!knownNotBuyer);
+          if (status.myReviewSubmitted) {
+            Alert.alert(
+              t("trading.review.alreadyReviewedTitle"),
+              t("trading.review.alreadyReviewedMsg"),
+              [{ text: t("common.confirm"), onPress: () => navigation.goBack() }],
+            );
+          }
         }
       } catch {
         // 权限/网络错误留给提交时再提示
@@ -144,7 +159,7 @@ const TradeReviewScreen: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [orderId, navigation, t]);
+  }, [orderId, navigation, t, meUserId]);
 
   useEffect(() => {
     if (step !== 4) return;
@@ -215,17 +230,13 @@ const TradeReviewScreen: React.FC = () => {
   /**
    * 「加入我的典藏」：调用后端 from-order 接口（幂等），由服务端把
    * 商品图片 / 标题 / 品牌 / 入手价格 / 入手日期自动落进 MY ARCHIVE，
-   * 成功后重置导航栈直达 MyArchive 页。
+   * 然后直达 MyArchive 页（订单完成时可能已自动入库，失败也允许跳转查看）。
    */
   const addToArchive = async () => {
     if (archiving) return;
     setArchiving(true);
     try {
       await transferOrderToArchive(orderId);
-      navigation.reset({
-        index: 1,
-        routes: [{ name: "Main" }, { name: "MyArchive" }] as any,
-      });
     } catch (e: any) {
       Alert.alert(
         t("common.error"),
@@ -233,6 +244,7 @@ const TradeReviewScreen: React.FC = () => {
       );
     } finally {
       setArchiving(false);
+      navigation.replace("MyArchive");
     }
   };
 
@@ -280,30 +292,32 @@ const TradeReviewScreen: React.FC = () => {
               <Text style={styles.celebrateProduct}>{productTitle}</Text>
             ) : null}
 
-            <Pressable
-              style={[
-                styles.primary,
-                styles.celebratePrimary,
-                archiving && styles.primaryDisabled,
-              ]}
-              onPress={addToArchive}
-              disabled={archiving}
-            >
-              {archiving ? (
-                <ActivityIndicator color={theme.colors.textInverted} />
-              ) : (
-                <HStack space="xs" alignItems="center">
-                  <Ionicons
-                    name="archive-outline"
-                    size={18}
-                    color={theme.colors.textInverted}
-                  />
-                  <Text style={styles.primaryText}>
-                    {t("trading.review.addToArchive")}
-                  </Text>
-                </HStack>
-              )}
-            </Pressable>
+            {isBuyer ? (
+              <Pressable
+                style={[
+                  styles.primary,
+                  styles.celebratePrimary,
+                  archiving && styles.primaryDisabled,
+                ]}
+                onPress={addToArchive}
+                disabled={archiving}
+              >
+                {archiving ? (
+                  <ActivityIndicator color={theme.colors.textInverted} />
+                ) : (
+                  <HStack space="xs" alignItems="center">
+                    <Ionicons
+                      name="archive-outline"
+                      size={18}
+                      color={theme.colors.textInverted}
+                    />
+                    <Text style={styles.primaryText}>
+                      {t("trading.review.addToArchive")}
+                    </Text>
+                  </HStack>
+                )}
+              </Pressable>
+            ) : null}
 
             <Pressable
               style={styles.ghostCenter}
