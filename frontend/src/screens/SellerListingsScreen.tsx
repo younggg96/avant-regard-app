@@ -4,10 +4,11 @@
  * 同时服务个人卖家（C2C）和买手店：
  *   - 默认合并展示该用户的所有 listing；
  *   - Tabs：全部 / 在售 / 草稿 / 审核中 / 已售 / 已下架 / 已拒；
+ *     内容区用 react-native-pager-view 横向分页，左右滑动可切换 tab；
  *   - 支持多选 + 批量下架（active）/ 批量删除（draft / rejected）；
  *   - 点击单品进入对应详情或继续编辑草稿。
  */
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -15,6 +16,9 @@ import {
   StyleSheet,
   View,
 } from "react-native";
+import PagerView, {
+  type PagerViewOnPageSelectedEvent,
+} from "react-native-pager-view";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
@@ -51,6 +55,17 @@ type TabValue =
   | "sold"
   | "offline"
   | "rejected";
+
+/** Pager 页序，与 tabs 数组保持同序。 */
+const TAB_ORDER: TabValue[] = [
+  "all",
+  "active",
+  "draft",
+  "reviewing",
+  "sold",
+  "offline",
+  "rejected",
+];
 
 const EMPTY_SUMMARY: ListingsStatusSummary = {
   active: 0,
@@ -118,13 +133,17 @@ const SellerListingsScreen: React.FC = () => {
   );
 
   const [tab, setTab] = useState<TabValue>("all");
-  const [products, setProducts] = useState<StoreProduct[]>([]);
+  const [productsByTab, setProductsByTab] = useState<
+    Partial<Record<TabValue, StoreProduct[]>>
+  >({});
   const [summary, setSummary] = useState<ListingsStatusSummary>(EMPTY_SUMMARY);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [menuProduct, setMenuProduct] = useState<StoreProduct | null>(null);
+
+  const pagerRef = useRef<PagerView>(null);
 
   const loadSummary = useCallback(async () => {
     try {
@@ -143,13 +162,31 @@ const SellerListingsScreen: React.FC = () => {
         page: 1,
         pageSize: PAGE_SIZE,
       });
-      setProducts(result.products || []);
+      setProductsByTab((prev) => ({ ...prev, [tab]: result.products || [] }));
     } catch (e) {
       Alert.show(e instanceof Error ? e.message : t("common.operationFailed"));
     } finally {
       setLoading(false);
     }
   }, [tab, t]);
+
+  /** tab 点击 / 统计卡点击 → 同步 pager 翻页；滑动翻页则只更新 state。 */
+  const switchTab = useCallback((next: TabValue, fromPager = false) => {
+    setTab(next);
+    setSelectedIds(new Set());
+    if (!fromPager) {
+      pagerRef.current?.setPage(TAB_ORDER.indexOf(next));
+    }
+  }, []);
+
+  const onPageSelected = useCallback(
+    (e: PagerViewOnPageSelectedEvent) => {
+      const idx = Math.round(Number(e.nativeEvent.position));
+      const next = TAB_ORDER[idx];
+      if (next) switchTab(next, true);
+    },
+    [switchTab],
+  );
 
   const reloadAll = useCallback(async () => {
     await Promise.all([load(), loadSummary()]);
@@ -337,10 +374,7 @@ const SellerListingsScreen: React.FC = () => {
             <Pressable
               key={item.key}
               style={styles.statCell}
-              onPress={() => {
-                setTab(item.key);
-                setSelectedIds(new Set());
-              }}
+              onPress={() => switchTab(item.key)}
             >
               <Ionicons name={item.icon} size={18} color={theme.colors.text} />
               <Text style={styles.statCount}>{summary[item.key] ?? 0}</Text>
@@ -374,47 +408,71 @@ const SellerListingsScreen: React.FC = () => {
       <CenteredTabBar
         tabs={tabs}
         activeTab={tab}
-        onTabChange={(next) => {
-          setTab(next);
-          setSelectedIds(new Set());
-        }}
+        onTabChange={(next) => switchTab(next)}
       />
 
-      {loading && products.length === 0 ? (
-        <Box style={styles.center}>
-          <ActivityIndicator color={theme.colors.text} />
-        </Box>
-      ) : (
-        <FlatList
-          data={products}
-          keyExtractor={(p) => String(p.id)}
-          ListHeaderComponent={renderListHeader}
-          renderItem={({ item }) => (
-            <ListingRow
-              item={item}
-              selected={selectedIds.has(item.id)}
-              selectionMode={selectionMode}
-              onPress={() => handleItemPress(item)}
-              onLongPress={() => {
-                setSelectionMode(true);
-                toggleSelected(item.id);
-              }}
-              onMenuPress={() => setMenuProduct(item)}
-            />
-          )}
-          ListEmptyComponent={
-            <Box style={styles.center}>
-              <Text style={styles.emptyText}>{t("trading.myListings.empty")}</Text>
-            </Box>
-          }
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-          }
-          contentContainerStyle={
-            products.length === 0 ? styles.listEmptyContent : styles.listContent
-          }
-        />
-      )}
+      {/* @ts-expect-error RNC codegen typings omit `children`; runtime supports pages. */}
+      <PagerView
+        ref={pagerRef}
+        style={styles.pager}
+        initialPage={0}
+        onPageSelected={onPageSelected}
+      >
+        {TAB_ORDER.map((tabValue, index) => {
+          const pageProducts = productsByTab[tabValue] ?? [];
+          const isActivePage = tabValue === tab;
+          // 只挂载当前页 ±1，避免 7 个 FlatList 同时常驻。
+          const mounted = Math.abs(index - TAB_ORDER.indexOf(tab)) <= 1;
+          return (
+            <View key={tabValue} style={styles.page} collapsable={false}>
+              {!mounted ? null : loading &&
+                isActivePage &&
+                pageProducts.length === 0 ? (
+                <Box style={styles.center}>
+                  <ActivityIndicator color={theme.colors.text} />
+                </Box>
+              ) : (
+                <FlatList
+                  data={pageProducts}
+                  keyExtractor={(p) => String(p.id)}
+                  ListHeaderComponent={renderListHeader}
+                  renderItem={({ item }) => (
+                    <ListingRow
+                      item={item}
+                      selected={selectedIds.has(item.id)}
+                      selectionMode={selectionMode}
+                      onPress={() => handleItemPress(item)}
+                      onLongPress={() => {
+                        setSelectionMode(true);
+                        toggleSelected(item.id);
+                      }}
+                      onMenuPress={() => setMenuProduct(item)}
+                    />
+                  )}
+                  ListEmptyComponent={
+                    <Box style={styles.center}>
+                      <Text style={styles.emptyText}>
+                        {t("trading.myListings.empty")}
+                      </Text>
+                    </Box>
+                  }
+                  refreshControl={
+                    <RefreshControl
+                      refreshing={refreshing && isActivePage}
+                      onRefresh={onRefresh}
+                    />
+                  }
+                  contentContainerStyle={
+                    pageProducts.length === 0
+                      ? styles.listEmptyContent
+                      : styles.listContent
+                  }
+                />
+              )}
+            </View>
+          );
+        })}
+      </PagerView>
 
       {selectionMode && (canBatchOffline || canBatchDelete) && (
         <Box style={styles.batchBar}>
@@ -707,6 +765,8 @@ const makeStyles = (t: AppTheme) =>
       padding: 32,
     },
     emptyText: { color: t.colors.textSecondary, fontSize: 14 },
+    pager: { flex: 1 },
+    page: { flex: 1 },
     listContent: { paddingBottom: 32 },
     listEmptyContent: { flexGrow: 1, paddingBottom: 32 },
     batchBar: {

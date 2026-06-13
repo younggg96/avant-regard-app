@@ -42,6 +42,7 @@ import {
   type AdminChatParticipant,
   type AdminChatSearchMessage,
 } from "../../services/adminService";
+import { formatChatMessagePreview } from "../../utils/chatMessagePreview";
 
 type SearchMode = "users" | "messages";
 
@@ -61,38 +62,7 @@ export const CARD_LABELS: Record<string, string> = {
 };
 
 export function previewContent(msg: { content: string; messageType: string }): string {
-  const label = CARD_LABELS[msg.messageType];
-  if (label) {
-    try {
-      const parsed = JSON.parse(msg.content);
-      if (parsed && typeof parsed === "object") {
-        for (const key of [
-          "title",
-          "name",
-          "brandName",
-          "username",
-          "orderNo",
-          "reason",
-        ]) {
-          const v = (parsed as any)[key];
-          if (typeof v === "string" && v.trim()) {
-            return `${label} ${v.trim()}`;
-          }
-        }
-        const product = (parsed as any).product;
-        if (product && typeof product === "object") {
-          const title = (product as any).title;
-          if (typeof title === "string" && title.trim()) {
-            return `${label} ${title.trim()}`;
-          }
-        }
-      }
-    } catch {
-      // 不是 JSON 就只显示 label.
-    }
-    return label;
-  }
-  return msg.content || "";
+  return formatChatMessagePreview(msg.content, msg.messageType);
 }
 
 export function participantsLabel(p: AdminChatParticipant[]): string {
@@ -257,9 +227,9 @@ const ChatMonitorTab: React.FC = () => {
           </Text>
         </View>
         <Text style={styles.rowPreview} numberOfLines={1}>
-          {item.lastMessagePreview ||
-            item.lastMessageText ||
-            t("admin.chatMonitor.noMessages")}
+          {item.lastMessageText
+            ? formatChatMessagePreview(item.lastMessageText)
+            : t("admin.chatMonitor.noMessages")}
         </Text>
         <View style={styles.rowMetaRow}>
           <Text style={styles.rowMeta}>

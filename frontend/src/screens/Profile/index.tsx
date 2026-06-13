@@ -115,6 +115,7 @@ const ProfileScreen = () => {
 
   const tabBarAnchorY = useSharedValue(9999);
   const tabScrollViewRef = useRef<RNScrollView>(null);
+  const mainScrollRef = useRef<RNScrollView>(null);
   const scrollY = useSharedValue(0);
   // 一级 tab / 笔记 sub-tab 切换时内容区淡入 + 轻微上移。
   const topPanelProgress = useSharedValue(1);
@@ -545,6 +546,20 @@ const ProfileScreen = () => {
     (navigation as any).navigate("StoreProductDetail", { productId });
   };
 
+  // 「我买到的」快捷入口：切到「购买」一级 tab 后把页面滚到 tab 内容处，
+  // 否则用户停在页面顶部，看不出点击有任何反应。
+  const handleQuickOrdersPress = useCallback(() => {
+    setTopTab("buying");
+    requestAnimationFrame(() => {
+      const anchor = tabBarAnchorY.value;
+      if (anchor === 9999) return;
+      mainScrollRef.current?.scrollTo({
+        y: Math.max(0, anchor - headerTotalHeight),
+        animated: true,
+      });
+    });
+  }, [headerTotalHeight, tabBarAnchorY]);
+
   const avatarUri = userInfo?.avatarUrl || user?.avatar;
   const displayUsername = userInfo?.username || user?.username || "";
 
@@ -592,6 +607,7 @@ const ProfileScreen = () => {
       </Animated.View>
 
       <AnimatedScrollView
+        ref={mainScrollRef}
         style={styles.scrollView}
         onScroll={scrollHandler}
         scrollEventThrottle={16}
@@ -641,8 +657,8 @@ const ProfileScreen = () => {
               我的收藏 / 浏览记录 / MY ARCHIVE */}
           <ProfilePreviewRow />
 
-          {/* 核心快捷入口：我买到的 / 我的钱包 / 我在卖的 / offer出价 */}
-          <QuickEntriesGrid />
+          {/* 核心快捷入口：我买到的 / 我的钱包 / 我的在售 / offer出价 */}
+          <QuickEntriesGrid onOrdersPress={handleQuickOrdersPress} />
 
           <MonthlyLotteryEntry isOwnProfile currentLevel={ownLevel} stacked />
 

@@ -465,7 +465,57 @@ class DisputeService:
         offset = (page - 1) * page_size
         q = q.range(offset, offset + page_size - 1)
         res = execute_with_retry(lambda: q.execute(), label="disputes.list")
-        return [self._format(r) for r in (res.data or [])], (res.count or 0)
+        rows = res.data or []
+        ctx_map = self._build_order_context_map([r["order_id"] for r in rows])
+        items = [self._format(r, context=ctx_map.get(r["order_id"])) for r in rows]
+        return items, (res.count or 0)
+
+    def _build_order_context_map(self, order_ids: List[int]) -> Dict[int, dict]:
+        """批量取一批订单的展示上下文（订单号 / 商品 / 金额 / 买卖家）。
+
+        admin 仲裁队列用来给每条争议补充订单 + 商品摘要，避免运营只能看到
+        裸 order_id。命中 0 个不会抛错。
+        """
+        unique = list({oid for oid in order_ids if oid})
+        if not unique:
+            return {}
+        try:
+            res = (
+                self.db.table("orders")
+                .select(
+                    "id, order_no, product_id, paid_price_cents, currency, "
+                    "buyer_user_id, seller_user_id"
+                )
+                .in_("id", unique)
+                .execute()
+            )
+        except Exception as e:  # noqa: BLE001
+            logger.warning("[dispute] admin order context query failed: %s", e)
+            return {}
+
+        ctx_map: Dict[int, dict] = {}
+        for r in res.data or []:
+            ctx_map[r["id"]] = {
+                "orderNo": r.get("order_no"),
+                "productId": r.get("product_id"),
+                "paidPriceCents": r.get("paid_price_cents"),
+                "currency": r.get("currency") or "CNY",
+                "buyerUserId": r.get("buyer_user_id"),
+                "sellerUserId": r.get("seller_user_id"),
+            }
+
+        product_ids = [c.get("productId") for c in ctx_map.values() if c.get("productId")]
+        if product_ids:
+            try:
+                product_map = order_service._build_product_brief_map(product_ids)
+            except Exception:
+                product_map = {}
+            for ctx in ctx_map.values():
+                pid = ctx.get("productId")
+                if pid and pid in product_map:
+                    ctx["productTitle"] = product_map[pid].get("title")
+                    ctx["productImage"] = product_map[pid].get("coverImage")
+        return ctx_map
 
     def list_for_order(self, order_id: int) -> List[Dispute]:
         res = (

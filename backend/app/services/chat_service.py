@@ -54,7 +54,30 @@ _CARD_TYPE_LABELS: Dict[str, str] = {
 }
 
 
-def format_chat_message_preview(content: str, message_type: str) -> str:
+def _infer_card_type(parsed: Dict[str, Any]) -> Optional[str]:
+    """Guess card type from JSON payload when message_type is missing or 'text'."""
+    if isinstance(parsed.get("postId"), str):
+        return "post_card"
+    if isinstance(parsed.get("storeId"), str):
+        return "store_card"
+    if isinstance(parsed.get("brandId"), int):
+        return "brand_card"
+    if isinstance(parsed.get("showId"), str):
+        return "show_card"
+    if isinstance(parsed.get("userId"), int) and isinstance(parsed.get("username"), str):
+        return "user_card"
+    if isinstance(parsed.get("disputeId"), int):
+        return "dispute"
+    if isinstance(parsed.get("offerId"), int):
+        return "offer"
+    if isinstance(parsed.get("orderId"), int) and isinstance(parsed.get("orderNo"), str):
+        return "order_status"
+    if isinstance(parsed.get("productId"), int) and isinstance(parsed.get("title"), str):
+        return "product_listing"
+    return None
+
+
+def format_chat_message_preview(content: str, message_type: str = "text") -> str:
     """Return a human-readable preview for a chat message.
 
     Card-type messages store their payload as a JSON string in `content`; showing
@@ -62,6 +85,15 @@ def format_chat_message_preview(content: str, message_type: str) -> str:
     to a localized label (e.g. "[帖子分享]"). Plain text messages are returned as-is.
     """
     label = _CARD_TYPE_LABELS.get(message_type)
+    if not label and content.strip().startswith("{"):
+        try:
+            parsed = json.loads(content)
+        except (ValueError, TypeError):
+            parsed = None
+        if isinstance(parsed, dict):
+            inferred = _infer_card_type(parsed)
+            if inferred:
+                label = _CARD_TYPE_LABELS.get(inferred)
     if label:
         title = _extract_card_title(content)
         return f"{label} {title}" if title else label

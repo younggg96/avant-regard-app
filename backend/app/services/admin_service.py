@@ -1236,7 +1236,7 @@ class AdminService:
             uids = participants_by_conv.get(cid, [])
             participants = [user_brief.get(uid, {"id": uid, "username": "", "avatarUrl": ""}) for uid in uids]
             preview_raw = row.get("last_message_text") or ""
-            preview = format_chat_message_preview(preview_raw, "text") if preview_raw else ""
+            preview = format_chat_message_preview(preview_raw) if preview_raw else ""
             conversations.append({
                 "id": cid,
                 "participants": participants,

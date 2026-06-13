@@ -398,18 +398,18 @@ function TabNavigator() {
       <Tab.Screen
         name="Interaction"
         component={InteractionScreen}
-        initialParams={{ subTab: "map" }}
+        initialParams={{ subTab: "messages" }}
         options={{
           tabBarLabel: t("tabs.interaction"),
           tabBarIcon: ({ color, focused }) => (
-            <TabBarIcon name="interaction" color={color} focused={focused} />
+            <TabBarIcon name="messages" color={color} focused={focused} />
           ),
         }}
         listeners={{
-          // 底部这枚图标是地图：点它永远回到「买手店地图」子 Tab，
-          // 即便互动页此刻停在「消息 / 交易」上。
+          // 底部「消息」Tab：点它永远回到「私信」子 Tab，
+          // 即便互动页此刻停在「交易 / 地图」上。
           tabPress: () => {
-            useMainBottomTabStore.getState().requestMapJump();
+            useMainBottomTabStore.getState().requestMessagesJump();
           },
         }}
       />

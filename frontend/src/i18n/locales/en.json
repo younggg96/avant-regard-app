@@ -62,7 +62,7 @@
   "tabs": {
     "home": "Home",
     "archive": "Archive",
-    "interaction": "Map",
+    "interaction": "Messages",
     "profile": "Me"
   },
   "discover": {
@@ -173,7 +173,7 @@
     "quickEntries": {
       "orders": "Purchases",
       "wallet": "Wallet",
-      "selling": "Selling",
+      "selling": "My Listings",
       "collections": "Saved",
       "offers": "Offers"
     }
@@ -1734,11 +1734,38 @@
       "damaged": "Damaged",
       "not_received": "Not received",
       "fake": "Counterfeit",
-      "other": "Other"
+      "other": "Other",
+      "no_logistics_update": "No tracking updates for a long time",
+      "delivered_not_received": "Marked delivered but not received",
+      "quality_issue": "Quality / condition issue",
+      "listing_delisted": "Seller delisted item after payment"
     },
     "disputeRole": {
       "buyer": "Buyer",
       "seller": "Seller"
+    },
+    "disputeDetail": {
+      "title": "Dispute Details",
+      "orderSection": "Order Info",
+      "orderNo": "Order No.",
+      "amount": "Amount paid",
+      "buyer": "Buyer",
+      "seller": "Seller",
+      "noProduct": "No product info",
+      "disputeSection": "Dispute Info",
+      "reason": "Reason",
+      "description": "Description",
+      "noDescription": "No description provided",
+      "evidence": "Buyer evidence",
+      "noEvidence": "No evidence uploaded",
+      "sellerResponse": "Seller response",
+      "sellerResponseAgree": "Agreed to refund",
+      "sellerResponseReject": "Rejected & appealed",
+      "sellerResponseNone": "No seller response yet",
+      "sellerEvidence": "Seller evidence",
+      "createdAt": "Opened at",
+      "openerLabel": "Opened by #{{userId}} ({{role}})",
+      "viewMore": "Tap to view details ›"
     },
     "productManagement": "Product Management",
     "productMgmt": {

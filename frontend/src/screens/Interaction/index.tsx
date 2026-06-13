@@ -63,8 +63,8 @@ const InteractionScreen = () => {
   // 初始化时若用户是从其它页通过 `subTab=map` 参数直达，则直接标记为已挂载。
   const [hasMountedMap, setHasMountedMap] = useState(initialTab === "map");
   const { refreshUnreadCount } = useChatStore();
-  // 底部地图图标点击信号：每次 nonce 变化都把子 Tab 切回「买手店地图」。
-  const mapJumpNonce = useMainBottomTabStore((s) => s.mapJumpNonce);
+  // 底部消息图标点击信号：每次 nonce 变化都把子 Tab 切回「私信」。
+  const messagesJumpNonce = useMainBottomTabStore((s) => s.messagesJumpNonce);
   // 「交易」tab 角标：未读交易类通知（已带 category）+ 未读交易会话的合计数量。
   const tradingNotifUnread = useNotificationStore((s) =>
     s.notifications.filter((n) => n.category != null && !n.isRead).length
@@ -119,14 +119,14 @@ const InteractionScreen = () => {
     [alignToTab]
   );
 
-  // 响应底部地图图标的点击：跳到「买手店地图」子 Tab。用 ref 跳过首次挂载，
-  // 只在 nonce 真正自增（= 用户点了底部地图 Tab）时切换。
-  const lastMapJumpNonceRef = useRef(mapJumpNonce);
+  // 响应底部消息图标的点击：跳到「私信」子 Tab。用 ref 跳过首次挂载，
+  // 只在 nonce 真正自增（= 用户点了底部消息 Tab）时切换。
+  const lastMessagesJumpNonceRef = useRef(messagesJumpNonce);
   useEffect(() => {
-    if (mapJumpNonce === lastMapJumpNonceRef.current) return;
-    lastMapJumpNonceRef.current = mapJumpNonce;
-    handleTabChange("map");
-  }, [mapJumpNonce, handleTabChange]);
+    if (messagesJumpNonce === lastMessagesJumpNonceRef.current) return;
+    lastMessagesJumpNonceRef.current = messagesJumpNonce;
+    handleTabChange("messages");
+  }, [messagesJumpNonce, handleTabChange]);
 
   const handleScrollEnd = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {

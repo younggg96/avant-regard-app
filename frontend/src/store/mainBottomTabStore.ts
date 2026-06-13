@@ -12,19 +12,20 @@ interface MainBottomTabState {
   activeMainTab: MainBottomTabId;
   setActiveMainTab: (tab: MainBottomTabId) => void;
   /**
-   * 「买手店地图」跳转信号。底部那枚地图图标的 Tab 即「互动」页，但互动页内还
-   * 嵌着 消息 / 交易 / 地图 三个子 Tab。用户点底部地图图标时，无论当前停在哪个
-   * 子 Tab，都应直接跳到买手店地图。靠 initialParams 只在首次挂载生效，无法满足
-   * 「每次点都回到地图」；这里用一个自增 nonce 作为信号，InteractionScreen 订阅它，
-   * 每次变化就切到 map 子 Tab。
+   * 「私信」跳转信号。底部「消息」Tab 对应 Interaction 页，页内还有
+   * 消息 / 交易 / 地图 三个子 Tab。用户点底部消息图标时，无论当前停在哪个
+   * 子 Tab，都应直接跳到私信。靠 initialParams 只在首次挂载生效，无法满足
+   * 「每次点都回到私信」；这里用一个自增 nonce 作为信号，InteractionScreen 订阅它，
+   * 每次变化就切到 messages 子 Tab。
    */
-  mapJumpNonce: number;
-  requestMapJump: () => void;
+  messagesJumpNonce: number;
+  requestMessagesJump: () => void;
 }
 
 export const useMainBottomTabStore = create<MainBottomTabState>((set) => ({
   activeMainTab: "Home",
   setActiveMainTab: (tab) => set({ activeMainTab: tab }),
-  mapJumpNonce: 0,
-  requestMapJump: () => set((s) => ({ mapJumpNonce: s.mapJumpNonce + 1 })),
+  messagesJumpNonce: 0,
+  requestMessagesJump: () =>
+    set((s) => ({ messagesJumpNonce: s.messagesJumpNonce + 1 })),
 }));

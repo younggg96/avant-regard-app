@@ -62,7 +62,7 @@
   "tabs": {
     "home": "首页",
     "archive": "Archive档案",
-    "interaction": "地图",
+    "interaction": "消息",
     "profile": "我"
   },
   "discover": {
@@ -173,7 +173,7 @@
     "quickEntries": {
       "orders": "我买到的",
       "wallet": "我的钱包",
-      "selling": "我在卖的",
+      "selling": "我的在售",
       "collections": "我的收藏",
       "offers": "offer出价"
     }
@@ -1734,11 +1734,38 @@
       "damaged": "商品损坏",
       "not_received": "未收到",
       "fake": "假货",
-      "other": "其他"
+      "other": "其他",
+      "no_logistics_update": "包裹长期无物流更新",
+      "delivered_not_received": "显示已签收但买家未收到",
+      "quality_issue": "商品质量 / 成色问题",
+      "listing_delisted": "卖家下架商品导致已付款订单问题"
     },
     "disputeRole": {
       "buyer": "买家",
       "seller": "卖家"
+    },
+    "disputeDetail": {
+      "title": "争议详情",
+      "orderSection": "订单信息",
+      "orderNo": "订单号",
+      "amount": "成交金额",
+      "buyer": "买家",
+      "seller": "卖家",
+      "noProduct": "无商品信息",
+      "disputeSection": "争议信息",
+      "reason": "原因",
+      "description": "问题说明",
+      "noDescription": "未填写说明",
+      "evidence": "买家凭证",
+      "noEvidence": "未上传凭证",
+      "sellerResponse": "卖家响应",
+      "sellerResponseAgree": "同意退款",
+      "sellerResponseReject": "拒绝并申诉",
+      "sellerResponseNone": "卖家暂未响应",
+      "sellerEvidence": "卖家凭证",
+      "createdAt": "发起时间",
+      "openerLabel": "发起人 #{{userId}}（{{role}}）",
+      "viewMore": "点击查看详情 ›"
     },
     "productManagement": "商品管理",
     "productMgmt": {

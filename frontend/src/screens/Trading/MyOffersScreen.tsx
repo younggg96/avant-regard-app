@@ -8,17 +8,14 @@
  * 状态 Tab：全部 / 待响应（pending）/ 已处理（accepted+rejected+countered+expired+withdrawn）
  *
  * 双向议价：根据后端返回的 `allowedActions` 显示按钮（accept/reject/counter/withdraw）。
+ *
+ * UI：ScreenHeader / TopTabBar / AnimatedChip / OptimizedImage + Playfair Display + theme tokens。
  */
 import React, { useCallback, useMemo, useState } from "react";
 import {
-  View,
-  Text,
   StyleSheet,
   FlatList,
-  Pressable,
   ActivityIndicator,
-  Alert,
-  Image,
   RefreshControl,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -38,9 +35,27 @@ import {
 } from "../../services/orderService";
 import { useFormatPrice } from "../../utils/currency";
 import { useOrderAddressPromptStore } from "../../store/orderAddressPromptStore";
-import { useAppTheme, useThemedStyles, type AppTheme } from "../../theme";
-import { AnimatedChip, chipRowStyle } from "../../components/ui";
+import {
+  playfairFonts,
+  useAppTheme,
+  useThemedStyles,
+  type AppTheme,
+} from "../../theme";
+import {
+  AnimatedChip,
+  Box,
+  HStack,
+  Pressable,
+  Text,
+  TopTabBar,
+  VStack,
+  chipRowStyle,
+} from "../../components/ui";
+import { OptimizedImage } from "../../components/ui/OptimizedImage";
+import ScreenHeader from "../../components/ScreenHeader";
 import { UserAvatar } from "../../components/ui/UserAvatar";
+import { ImageSize } from "../../utils/imageUtils";
+import { Alert } from "../../utils/Alert";
 import OfferModal from "./OfferModal";
 
 type RoleMode = "outgoing" | "incoming";
@@ -53,6 +68,19 @@ const PROCESSED_STATUSES: OfferStatus[] = [
   "expired",
   "withdrawn",
 ];
+
+const STATUS_FILTERS: StatusFilter[] = ["all", "pending", "processed"];
+
+function formatExpiresAt(iso?: string | null): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso.slice(0, 16);
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  const hh = String(d.getHours()).padStart(2, "0");
+  const min = String(d.getMinutes()).padStart(2, "0");
+  return `${mm}-${dd} ${hh}:${min}`;
+}
 
 export default function MyOffersScreen() {
   const navigation = useNavigation<any>();
@@ -70,6 +98,14 @@ export default function MyOffersScreen() {
 
   const [counterTarget, setCounterTarget] = useState<OfferWithDetail | null>(
     null,
+  );
+
+  const roleTabs = useMemo(
+    () => [
+      { id: "outgoing" as const, label: t("trading.offers.tabOutgoing") },
+      { id: "incoming" as const, label: t("trading.offers.tabIncoming") },
+    ],
+    [t],
   );
 
   const load = useCallback(
@@ -92,9 +128,6 @@ export default function MyOffersScreen() {
     [mode],
   );
 
-  // 每次进入页面都刷新一次。
-  // useEffect 只在 mount 时跑，但 `navigation.navigate("MyOffers")` 在已存在栈实例时
-  // 会 pop 回去而不会重挂载 —— 之前出价完成跳回时看不到新出价就是这个原因。
   useFocusEffect(
     useCallback(() => {
       load();
@@ -105,10 +138,13 @@ export default function MyOffersScreen() {
     if (statusFilter === "all") return offers;
     if (statusFilter === "pending")
       return offers.filter((o) => o.status === "pending");
-    return offers.filter((o) =>
-      PROCESSED_STATUSES.includes(o.status),
-    );
+    return offers.filter((o) => PROCESSED_STATUSES.includes(o.status));
   }, [offers, statusFilter]);
+
+  const handleRoleChange = (next: RoleMode) => {
+    setMode(next);
+    setStatusFilter("all");
+  };
 
   const handleAction = async (
     action: "accept" | "reject" | "withdraw",
@@ -119,8 +155,6 @@ export default function MyOffersScreen() {
       if (action === "accept") {
         const res = await acceptOffer(offerId);
         if (mode === "outgoing") {
-          // 买家身份 accept 卖家的 counter → 成交。
-          // 从顶部弹出「填写收货地址」提示, 点击进入与卖家私聊并补填地址。
           showAddressPrompt({
             orderId: res.order.id,
             sellerUserId: res.order.sellerUserId ?? offer?.seller?.userId ?? null,
@@ -130,7 +164,6 @@ export default function MyOffersScreen() {
             coverImage: offer?.product?.coverImage ?? null,
           });
         } else {
-          // 卖家身份 accept 买家 offer → 通知卖家查看订单(买家侧会收到补填提示)。
           Alert.alert(
             t("trading.offers.acceptedTitle"),
             t("trading.offers.acceptedMessage"),
@@ -151,7 +184,7 @@ export default function MyOffersScreen() {
       }
       load(true);
     } catch (e: any) {
-      Alert.alert(
+      Alert.show(
         t("trading.offers.failedTitle"),
         e?.message ?? t("trading.offers.actionFailed"),
       );
@@ -173,37 +206,40 @@ export default function MyOffersScreen() {
     const isCounter = (item.parentOfferId ?? null) !== null;
 
     return (
-      <View style={styles.card}>
-        <Pressable
-          style={styles.productRow}
-          onPress={() => openProduct(item.productId)}
-        >
+      <Box style={styles.card}>
+        <Pressable style={styles.productRow} onPress={() => openProduct(item.productId)}>
           {item.product?.coverImage ? (
-            <Image
-              source={{ uri: item.product.coverImage }}
+            <OptimizedImage
+              uri={item.product.coverImage}
+              size={ImageSize.THUMBNAIL}
               style={styles.thumb}
+              contentFit="cover"
             />
           ) : (
-            <View style={[styles.thumb, styles.thumbPlaceholder]}>
+            <Box style={[styles.thumb, styles.thumbPlaceholder]}>
               <Ionicons name="image" size={22} color={theme.colors.gray300} />
-            </View>
+            </Box>
           )}
-          <View style={styles.productInfo}>
-            <Text style={styles.brand} numberOfLines={1}>
-              {item.product?.brand ?? ""}
-            </Text>
+
+          <VStack style={styles.productInfo} space="xs">
+            {item.product?.brand ? (
+              <Text style={styles.brand} numberOfLines={1}>
+                {item.product.brand}
+              </Text>
+            ) : null}
             <Text style={styles.productTitle} numberOfLines={2}>
               {item.product?.title ??
                 t("trading.offers.productLabel", { id: item.productId })}
             </Text>
             {item.product?.priceCents != null ? (
               <Text style={styles.listingPrice}>
-                {t("trading.offers.listingPriceLabel")}：
+                {t("trading.offers.listingPriceLabel")}{" "}
                 {formatPrice(item.product.priceCents)}
               </Text>
             ) : null}
-          </View>
-          <View style={styles.statusWrap}>
+          </VStack>
+
+          <VStack style={styles.statusWrap} space="xs">
             <Text
               style={[
                 styles.statusPill,
@@ -217,13 +253,13 @@ export default function MyOffersScreen() {
                 {t("trading.offers.counterBadge")}
               </Text>
             ) : null}
-          </View>
+          </VStack>
         </Pressable>
 
-        <View style={styles.divider} />
+        <Box style={styles.divider} />
 
-        <View style={styles.bodyRow}>
-          <View style={{ flex: 1 }}>
+        <HStack style={styles.bodyRow} alignItems="center" space="md">
+          <VStack style={styles.bodyMain} space="xs">
             <Text style={styles.priceLabel}>
               {t("trading.offers.offerPriceLabel")}
             </Text>
@@ -236,11 +272,11 @@ export default function MyOffersScreen() {
             {item.expiresAt && isPending ? (
               <Text style={styles.meta}>
                 {t("trading.offers.expiresAt", {
-                  date: item.expiresAt.slice(0, 16),
+                  date: formatExpiresAt(item.expiresAt),
                 })}
               </Text>
             ) : null}
-          </View>
+          </VStack>
 
           {counterpart ? (
             <Pressable
@@ -262,10 +298,10 @@ export default function MyOffersScreen() {
               </Text>
             </Pressable>
           ) : null}
-        </View>
+        </HStack>
 
         {isPending && allowed.length > 0 ? (
-          <View style={styles.actions}>
+          <HStack style={styles.actions} space="sm" flexWrap="wrap">
             {canWithdraw ? (
               <Pressable
                 style={styles.ghostBtn}
@@ -306,54 +342,31 @@ export default function MyOffersScreen() {
                 </Text>
               </Pressable>
             ) : null}
-          </View>
+          </HStack>
         ) : null}
-      </View>
+      </Box>
     );
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <View style={styles.header}>
-        <Pressable onPress={() => navigation.goBack()}>
-          <Ionicons name="chevron-back" size={26} color={theme.colors.text} />
-        </Pressable>
-        <Text style={styles.headerTitle}>{t("trading.offers.headerTitle")}</Text>
-        <View style={{ width: 26 }} />
-      </View>
+    <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
+      <ScreenHeader
+        title={t("trading.offers.headerTitle")}
+        showBack
+        borderless
+      />
 
-      <View style={styles.tabBar}>
-        <Pressable
-          style={[styles.tab, mode === "outgoing" && styles.tabActive]}
-          onPress={() => setMode("outgoing")}
-        >
-          <Text
-            style={[
-              styles.tabText,
-              mode === "outgoing" && styles.tabTextActive,
-            ]}
-          >
-            {t("trading.offers.tabOutgoing")}
-          </Text>
-        </Pressable>
-        <Pressable
-          style={[styles.tab, mode === "incoming" && styles.tabActive]}
-          onPress={() => setMode("incoming")}
-        >
-          <Text
-            style={[
-              styles.tabText,
-              mode === "incoming" && styles.tabTextActive,
-            ]}
-          >
-            {t("trading.offers.tabIncoming")}
-          </Text>
-        </Pressable>
-      </View>
+      <Box style={styles.roleTabWrap}>
+        <TopTabBar
+          tabs={roleTabs}
+          activeTab={mode}
+          onTabPress={handleRoleChange}
+        />
+      </Box>
 
-      <View style={styles.filterBar}>
-        <View style={chipRowStyle}>
-          {(["all", "pending", "processed"] as StatusFilter[]).map((s) => (
+      <Box style={styles.filterBar}>
+        <Box style={chipRowStyle}>
+          {STATUS_FILTERS.map((s) => (
             <AnimatedChip
               key={s}
               label={t(`trading.offers.filter.${s}`)}
@@ -361,16 +374,18 @@ export default function MyOffersScreen() {
               onPress={() => setStatusFilter(s)}
             />
           ))}
-        </View>
-      </View>
+        </Box>
+      </Box>
 
       {loading && offers.length === 0 ? (
-        <ActivityIndicator style={{ marginTop: 32 }} />
+        <Box style={styles.center}>
+          <ActivityIndicator color={theme.colors.text} />
+        </Box>
       ) : (
         <FlatList
           data={filtered}
           keyExtractor={(o) => String(o.id)}
-          contentContainerStyle={{ padding: 12 }}
+          contentContainerStyle={styles.listContent}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -378,7 +393,7 @@ export default function MyOffersScreen() {
                 setRefreshing(true);
                 load(true);
               }}
-              tintColor={theme.colors.gray300}
+              tintColor={theme.colors.text}
             />
           }
           renderItem={renderItem}
@@ -412,144 +427,180 @@ export default function MyOffersScreen() {
 const makeStyles = (t: AppTheme) =>
   StyleSheet.create({
     safe: { flex: 1, backgroundColor: t.colors.background },
-    header: {
-      height: 48,
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      paddingHorizontal: 16,
+    roleTabWrap: {
       backgroundColor: t.colors.card,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: t.colors.border,
     },
-    headerTitle: { fontSize: 16, fontWeight: "600", color: t.colors.text },
-    tabBar: {
-      flexDirection: "row",
-      backgroundColor: t.colors.card,
-      paddingVertical: 8,
-      paddingHorizontal: 12,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: t.colors.border,
-    },
-    tab: {
-      flex: 1,
-      paddingVertical: 8,
-      alignItems: "center",
-      borderRadius: 4,
-      marginHorizontal: 4,
-      backgroundColor: t.colors.gray100,
-    },
-    tabActive: { backgroundColor: t.colors.accent },
-    tabText: { fontSize: 13, color: t.colors.gray300 },
-    tabTextActive: { color: t.colors.textInverted, fontWeight: "600" },
     filterBar: {
-      paddingHorizontal: 12,
-      paddingVertical: 10,
+      paddingHorizontal: t.spacing.md,
+      paddingVertical: t.spacing.sm,
       backgroundColor: t.colors.background,
+    },
+    listContent: {
+      padding: t.spacing.md,
+      paddingBottom: t.spacing.xl,
+      flexGrow: 1,
+    },
+    center: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      padding: t.spacing.xl,
     },
     card: {
       backgroundColor: t.colors.cardElevated,
-      borderRadius: 4,
-      padding: 12,
-      marginBottom: 12,
+      borderRadius: t.borderRadius.sm,
+      padding: t.spacing.md,
+      marginBottom: t.spacing.md,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: t.colors.border,
     },
-    productRow: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
-    thumb: { width: 60, height: 60, borderRadius: 4 },
-    thumbPlaceholder: {
+    productRow: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: t.spacing.sm,
+    },
+    thumb: {
+      width: 60,
+      height: 60,
+      borderRadius: t.borderRadius.sm,
       backgroundColor: t.colors.skeleton,
+    },
+    thumbPlaceholder: {
       alignItems: "center",
       justifyContent: "center",
     },
     productInfo: { flex: 1 },
-    brand: { fontSize: 11, color: t.colors.gray300, marginBottom: 2 },
-    productTitle: {
-      fontSize: 14,
-      fontWeight: "600",
-      color: t.colors.text,
-      marginBottom: 4,
+    brand: {
+      ...t.typography.caption,
+      fontFamily: playfairFonts.regular,
+      color: t.colors.gray300,
     },
-    listingPrice: { fontSize: 11, color: t.colors.gray300 },
-    statusWrap: { alignItems: "flex-end", gap: 4 },
+    productTitle: {
+      ...t.typography.bodySmall,
+      fontFamily: playfairFonts.medium,
+      color: t.colors.text,
+    },
+    listingPrice: {
+      ...t.typography.caption,
+      fontFamily: playfairFonts.regular,
+      color: t.colors.gray300,
+    },
+    statusWrap: { alignItems: "flex-end" },
     statusPill: {
-      fontSize: 11,
+      ...t.typography.caption,
+      fontFamily: playfairFonts.medium,
       color: t.colors.gray300,
       paddingHorizontal: 8,
       paddingVertical: 2,
-      borderRadius: 4,
+      borderRadius: t.borderRadius.sm,
       backgroundColor: t.colors.gray100,
       overflow: "hidden",
+      textAlign: "center",
     },
     statusPillPending: {
       color: t.colors.plusGold,
-      backgroundColor: t.mode === "dark" ? "#3A2E14" : "#FFF6E0",
+      backgroundColor: `${t.colors.plusGold}22`,
     },
     counterBadge: {
       fontSize: 10,
-      color: t.colors.accent,
+      fontFamily: playfairFonts.medium,
+      color: t.colors.text,
       paddingHorizontal: 6,
       paddingVertical: 2,
-      borderRadius: 4,
-      borderWidth: 1,
-      borderColor: t.colors.accent,
+      borderRadius: t.borderRadius.sm,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: t.colors.border,
       overflow: "hidden",
+      textAlign: "center",
     },
     divider: {
       height: StyleSheet.hairlineWidth,
       backgroundColor: t.colors.border,
-      marginVertical: 10,
+      marginVertical: t.spacing.sm,
     },
     bodyRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 12,
+      justifyContent: "space-between",
     },
-    priceLabel: { fontSize: 11, color: t.colors.gray300, marginBottom: 2 },
-    price: { fontSize: 22, fontWeight: "700", color: t.colors.text },
-    message: { fontSize: 13, color: t.colors.gray400, marginTop: 4 },
-    meta: { fontSize: 11, color: t.colors.gray300, marginTop: 4 },
+    bodyMain: { flex: 1 },
+    priceLabel: {
+      ...t.typography.caption,
+      fontFamily: playfairFonts.regular,
+      color: t.colors.gray300,
+    },
+    price: {
+      fontSize: 22,
+      lineHeight: 28,
+      fontFamily: playfairFonts.bold,
+      color: t.colors.text,
+    },
+    message: {
+      ...t.typography.bodySmall,
+      fontFamily: playfairFonts.regular,
+      color: t.colors.textSecondary,
+    },
+    meta: {
+      ...t.typography.caption,
+      fontFamily: playfairFonts.regular,
+      color: t.colors.gray300,
+    },
     counterpart: {
       alignItems: "center",
       maxWidth: 80,
       gap: 4,
     },
     counterpartName: {
-      fontSize: 11,
-      color: t.colors.gray400,
+      ...t.typography.caption,
+      fontFamily: playfairFonts.regular,
+      color: t.colors.textSecondary,
       maxWidth: 80,
+      textAlign: "center",
     },
     actions: {
-      flexDirection: "row",
       justifyContent: "flex-end",
-      marginTop: 12,
-      gap: 8,
-      flexWrap: "wrap",
+      marginTop: t.spacing.sm,
     },
     ghostBtn: {
       paddingVertical: 8,
       paddingHorizontal: 14,
-      borderRadius: 4,
-      borderWidth: 1,
+      borderRadius: t.borderRadius.sm,
+      borderWidth: StyleSheet.hairlineWidth,
       borderColor: t.colors.border,
     },
-    ghostBtnText: { color: t.colors.gray400, fontSize: 13 },
+    ghostBtnText: {
+      ...t.typography.bodySmall,
+      fontFamily: playfairFonts.medium,
+      color: t.colors.textSecondary,
+    },
     secondaryBtn: {
       paddingVertical: 8,
       paddingHorizontal: 14,
-      borderRadius: 4,
-      borderWidth: 1,
+      borderRadius: t.borderRadius.sm,
+      borderWidth: StyleSheet.hairlineWidth,
       borderColor: t.colors.text,
     },
-    secondaryBtnText: { color: t.colors.text, fontSize: 13, fontWeight: "600" },
+    secondaryBtnText: {
+      ...t.typography.bodySmall,
+      fontFamily: playfairFonts.medium,
+      color: t.colors.text,
+    },
     primaryBtn: {
       paddingVertical: 8,
       paddingHorizontal: 18,
-      borderRadius: 4,
-      backgroundColor: t.colors.accent,
+      borderRadius: t.borderRadius.sm,
+      backgroundColor: t.colors.text,
     },
     primaryBtnText: {
+      ...t.typography.bodySmall,
+      fontFamily: playfairFonts.medium,
       color: t.colors.textInverted,
-      fontSize: 13,
-      fontWeight: "600",
     },
-    empty: { textAlign: "center", color: t.colors.gray300, marginTop: 32 },
+    empty: {
+      ...t.typography.bodySmall,
+      fontFamily: playfairFonts.regular,
+      textAlign: "center",
+      color: t.colors.gray300,
+      marginTop: t.spacing.xl,
+    },
   });

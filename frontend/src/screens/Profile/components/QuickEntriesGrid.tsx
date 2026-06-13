@@ -6,7 +6,7 @@
  *
  *   1. 我买到的     →  Profile (initialTopTab=buying)，订单卡内含「联系卖家」
  *   2. 我的钱包     →  MyWallet（卖家收入 + 提现）
- *   3. 我在卖的     →  SellerListings（卖家在售/草稿/审核中）
+ *   3. 我的在售     →  SellerListings（角标 = 在售中数量，与该页统计一致）
  *   4. offer出价    →  MyOffers（我发出的 / 收到的报价）
  *
  * 视觉与 design.md 一致：
@@ -15,12 +15,12 @@
  *   - 颜色全部走 theme tokens，自动兼容 light / dark
  */
 import React, { useEffect, useState } from "react";
-import { StyleSheet, View, Text as RNText } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 
-import { Pressable, Text } from "../../../components/ui";
+import { NotificationBadge, Pressable, Text } from "../../../components/ui";
 import {
   playfairFonts,
   useAppTheme,
@@ -30,7 +30,7 @@ import {
 import { useProfileStyles } from "../styles";
 import { useAuthStore } from "../../../store/authStore";
 import { listMyOrders } from "../../../services/orderService";
-import { listMyListings } from "../../../services/storeProductService";
+import { getMyListingsSummary } from "../../../services/storeProductService";
 import { listMyOffers } from "../../../services/orderService";
 
 type IoniconName = React.ComponentProps<typeof Ionicons>["name"];
@@ -43,7 +43,15 @@ interface QuickEntry {
   onPress: () => void;
 }
 
-export const QuickEntriesGrid: React.FC = () => {
+interface QuickEntriesGridProps {
+  /** 「我买到的」：本组件就渲染在 Profile 页内，由父级直接切「购买」tab，
+      避免 navigate 回已聚焦的自身屏幕（不会触发跳转）。 */
+  onOrdersPress: () => void;
+}
+
+export const QuickEntriesGrid: React.FC<QuickEntriesGridProps> = ({
+  onOrdersPress,
+}) => {
   const navigation = useNavigation<any>();
   const { t } = useTranslation();
   const theme = useAppTheme();
@@ -60,8 +68,9 @@ export const QuickEntriesGrid: React.FC = () => {
     listMyOrders({ page: 1, pageSize: 1 })
       .then((r) => setOrdersCount(r.total))
       .catch(() => {});
-    listMyListings({ page: 1, pageSize: 1 })
-      .then((r) => setSellingCount(r.total))
+    // 角标只统计「在售中」，与 SellerListings 页的统计卡保持一致。
+    getMyListingsSummary()
+      .then((s) => setSellingCount(s.active ?? 0))
       .catch(() => {});
     listMyOffers({ page: 1, pageSize: 1 })
       .then((r) => setOffersCount(r.total))
@@ -74,11 +83,7 @@ export const QuickEntriesGrid: React.FC = () => {
       icon: "receipt-outline",
       label: t("profile.quickEntries.orders"),
       badge: ordersCount,
-      onPress: () =>
-        navigation.navigate("Main", {
-          screen: "Profile",
-          params: { initialTopTab: "buying" },
-        }),
+      onPress: onOrdersPress,
     },
     {
       id: "wallet",
@@ -119,11 +124,11 @@ export const QuickEntriesGrid: React.FC = () => {
               color={theme.colors.text}
             />
             {entry.badge != null && entry.badge > 0 ? (
-              <View style={styles.badge}>
-                <RNText style={styles.badgeText}>
-                  {entry.badge > 99 ? "99+" : entry.badge}
-                </RNText>
-              </View>
+              <NotificationBadge
+                count={entry.badge}
+                size="xs"
+                tone="neutral"
+              />
             ) : null}
           </View>
           <Text style={styles.label} numberOfLines={1}>
@@ -180,25 +185,6 @@ const makeStyles = (t: AppTheme) =>
       bottom: "20%",
       width: StyleSheet.hairlineWidth,
       backgroundColor: t.colors.border,
-    },
-    badge: {
-      position: "absolute",
-      top: -4,
-      right: -6,
-      minWidth: 16,
-      height: 16,
-      paddingHorizontal: 4,
-      borderRadius: 8,
-      backgroundColor: t.colors.text,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    badgeText: {
-      fontSize: 9,
-      lineHeight: 16,
-      fontWeight: "700",
-      color: t.colors.textInverted,
-      fontFamily: playfairFonts.bold,
     },
   });
 

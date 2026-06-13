@@ -27,7 +27,6 @@ import { useTranslation } from "react-i18next";
 import {
   AnimatedChip,
   Box,
-  chipRowStyle,
   HStack,
   VStack,
   Text,
@@ -274,7 +273,7 @@ const ArchiveDetailScreen: React.FC = () => {
             <Text style={styles.holdingAddLabel}>
               {t("trading.archiveDetail.addHoldingTitle")}
             </Text>
-            <View style={chipRowStyle}>
+            <View style={styles.holdingChipRow}>
               {(
                 ["owned", "lent", "transferred", "resold", "returned"] as const
               ).map((s) => (
@@ -430,15 +429,21 @@ const makeStyles = (t: AppTheme) =>
     holdingAddCard: {
       backgroundColor: t.colors.cardElevated,
       borderRadius: 12,
-      padding: 12,
-      marginTop: 12,
+      padding: t.spacing.md,
+      marginTop: t.spacing.sm,
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: t.colors.border,
+      gap: t.spacing.sm,
     },
     holdingAddLabel: {
       fontSize: 12,
       color: t.colors.gray300,
-      marginBottom: 8,
+    },
+    holdingChipRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      alignItems: "flex-start",
+      gap: t.spacing.xs,
     },
     smallDarkBtn: {
       alignSelf: "flex-start",
@@ -446,7 +451,6 @@ const makeStyles = (t: AppTheme) =>
       paddingVertical: 8,
       backgroundColor: t.colors.accent,
       borderRadius: 16,
-      marginTop: 6,
     },
     smallDarkBtnText: {
       color: t.colors.textInverted,
@@ -491,8 +495,8 @@ const makeStyles = (t: AppTheme) =>
       color: t.colors.text,
       backgroundColor: t.colors.inputBackground,
     },
-    textarea: { minHeight: 100 },
-    textareaShort: { minHeight: 80, marginTop: 12 },
+    textarea: { minHeight: 88 },
+    textareaShort: { minHeight: 80, marginTop: t.spacing.sm },
 
     footer: {
       padding: 16,

@@ -171,7 +171,6 @@ const makeStyles = (t: AppTheme) =>
       fontSize: 10,
       fontWeight: "700",
       textAlign: "center",
-      lineHeight: 16,
       ...(Platform.OS === "android"
         ? { includeFontPadding: false, textAlignVertical: "center" as const }
         : {}),
