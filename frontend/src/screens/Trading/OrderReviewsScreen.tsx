@@ -14,8 +14,13 @@ import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import Animated, { FadeInDown } from "react-native-reanimated";
 
+import { Ionicons } from "@expo/vector-icons";
+
 import ScreenHeader from "../../components/ScreenHeader";
 import { TradeReviewStars } from "../../components/trading/TradeReviewStars";
+import { OptimizedImage } from "../../components/ui/OptimizedImage";
+import { ImageSize } from "../../utils/imageUtils";
+import { useFormatPrice } from "../../utils/currency";
 import { HStack, Pressable, Text } from "../../components/ui";
 import { useAuthStore } from "../../store/authStore";
 import {
@@ -60,6 +65,7 @@ export default function OrderReviewsScreen() {
   const theme = useAppTheme();
   const styles = useThemedStyles(makeStyles);
   const me = useAuthStore((s) => s.user);
+  const formatPrice = useFormatPrice();
 
   const [order, setOrder] = useState<Order | null>(null);
   const [reviews, setReviews] = useState<TradeReview[]>([]);
@@ -222,6 +228,56 @@ export default function OrderReviewsScreen() {
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.scroll}>
+          {order && (
+            <Pressable
+              style={styles.orderCard}
+              onPress={() =>
+                navigation.navigate("OrderDetail", { orderId: order.id })
+              }
+            >
+              <HStack alignItems="center" flex={1}>
+                {order.product?.coverImage ? (
+                  <OptimizedImage
+                    uri={order.product.coverImage}
+                    size={ImageSize.THUMBNAIL}
+                    style={styles.orderCover}
+                    contentFit="cover"
+                  />
+                ) : (
+                  <View style={[styles.orderCover, styles.orderCoverPlaceholder]}>
+                    <Ionicons
+                      name="image-outline"
+                      size={20}
+                      color={theme.colors.gray300}
+                    />
+                  </View>
+                )}
+                <View style={styles.orderInfo}>
+                  {order.product?.brand ? (
+                    <Text style={styles.orderBrand} numberOfLines={1}>
+                      {order.product.brand}
+                    </Text>
+                  ) : null}
+                  <Text style={styles.orderTitle} numberOfLines={1}>
+                    {order.product?.title ??
+                      t("trading.orders.productLabel", { id: order.productId })}
+                  </Text>
+                  <Text style={styles.orderPrice}>
+                    {formatPrice(order.paidPriceCents, order.currency)}
+                  </Text>
+                  <Text style={styles.orderNo} numberOfLines={1}>
+                    {t("trading.orderDetail.orderNo")}: {order.orderNo}
+                  </Text>
+                </View>
+                <Ionicons
+                  name="chevron-forward"
+                  size={16}
+                  color={theme.colors.gray300}
+                />
+              </HStack>
+            </Pressable>
+          )}
+
           {renderReviewCard("buyer", buyerReview, 0)}
           {renderReviewCard("seller", sellerReview, 1)}
 
@@ -257,6 +313,53 @@ const makeStyles = (t: AppTheme) =>
       padding: 16,
       paddingBottom: 32,
       gap: 12,
+    },
+    orderCard: {
+      backgroundColor: t.colors.card,
+      borderRadius: t.borderRadius.sm,
+      padding: 12,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: t.colors.border,
+    },
+    orderCover: {
+      width: 52,
+      height: 52,
+      borderRadius: t.borderRadius.sm,
+      marginRight: 12,
+    },
+    orderCoverPlaceholder: {
+      backgroundColor: t.colors.skeleton,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    orderInfo: {
+      flex: 1,
+      justifyContent: "center",
+    },
+    orderBrand: {
+      fontSize: 11,
+      fontFamily: "PlayfairDisplay-Regular",
+      color: t.colors.gray300,
+      textTransform: "uppercase",
+      letterSpacing: 0.5,
+      marginBottom: 2,
+    },
+    orderTitle: {
+      fontSize: 14,
+      fontFamily: "PlayfairDisplay-Medium",
+      color: t.colors.text,
+      lineHeight: 20,
+      marginBottom: 4,
+    },
+    orderPrice: {
+      fontSize: 13,
+      fontFamily: "PlayfairDisplay-Medium",
+      color: t.colors.text,
+    },
+    orderNo: {
+      fontSize: 11,
+      fontFamily: "PlayfairDisplay-Regular",
+      color: t.colors.gray300,
     },
     reviewCard: {
       backgroundColor: t.colors.card,

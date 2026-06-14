@@ -473,7 +473,8 @@ async def get_order_detail(order_id: int, user_id: int = Depends(get_current_use
                 raise HTTPException(status_code=403, detail="无权查看")
         else:
             raise HTTPException(status_code=403, detail="无权查看")
-    return success(order.dict())
+    enriched = _enrich_orders_with_product([order])
+    return success(enriched[0] if enriched else order.dict())
 
 
 # --------------- Offers ---------------
