@@ -163,7 +163,10 @@ export default function AuthenticationScreen() {
         <View style={{ width: 26 }} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.scroll}>
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+      >
         <Text style={styles.sectionTitle}>
           {t("trading.authentication.selectPackage")}
         </Text>
@@ -176,12 +179,34 @@ export default function AuthenticationScreen() {
                 style={[styles.pkgCard, active && styles.pkgCardActive]}
                 onPress={() => setSelectedCode(p.code)}
               >
-                <Text style={styles.pkgName}>{p.name}</Text>
-                <Text style={styles.pkgPrice}>{formatPrice(p.priceCents)}</Text>
-                <Text style={styles.pkgSla}>{p.slaHours}h 出报告</Text>
-                <Text style={styles.pkgDesc} numberOfLines={3}>
-                  {p.description}
-                </Text>
+                <View
+                  style={[styles.radio, active && styles.radioActive]}
+                >
+                  {active ? (
+                    <Ionicons
+                      name="checkmark"
+                      size={14}
+                      color={theme.colors.textInverted}
+                    />
+                  ) : null}
+                </View>
+                <View style={styles.pkgBody}>
+                  <View style={styles.pkgTopRow}>
+                    <Text style={styles.pkgName}>{p.name}</Text>
+                    <Text style={styles.pkgPrice}>
+                      {formatPrice(p.priceCents)}
+                    </Text>
+                  </View>
+                  <View style={styles.slaBadge}>
+                    <Ionicons
+                      name="time-outline"
+                      size={11}
+                      color={theme.colors.gray300}
+                    />
+                    <Text style={styles.pkgSla}>{p.slaHours}h 出报告</Text>
+                  </View>
+                  <Text style={styles.pkgDesc}>{p.description}</Text>
+                </View>
               </Pressable>
             );
           })}
@@ -190,21 +215,24 @@ export default function AuthenticationScreen() {
         <Text style={styles.sectionTitle}>
           {t("trading.authentication.productInfo")}
         </Text>
-        <TextInput
-          style={styles.input}
-          placeholder="品牌（选填）"
-          placeholderTextColor={theme.colors.placeholder}
-          value={brandName}
-          onChangeText={setBrandName}
-        />
-        <TextInput
-          style={[styles.input, { minHeight: 80, textAlignVertical: "top" }]}
-          placeholder="备注（如型号、购买渠道）"
-          placeholderTextColor={theme.colors.placeholder}
-          value={note}
-          onChangeText={setNote}
-          multiline
-        />
+        <View style={styles.inputGroup}>
+          <TextInput
+            style={styles.input}
+            placeholder="品牌（选填）"
+            placeholderTextColor={theme.colors.placeholder}
+            value={brandName}
+            onChangeText={setBrandName}
+          />
+          <View style={styles.inputDivider} />
+          <TextInput
+            style={[styles.input, styles.inputMultiline]}
+            placeholder="备注（如型号、购买渠道）"
+            placeholderTextColor={theme.colors.placeholder}
+            value={note}
+            onChangeText={setNote}
+            multiline
+          />
+        </View>
 
         <Text style={styles.sectionTitle}>
           {t("trading.authentication.productPhotos")}
@@ -220,8 +248,8 @@ export default function AuthenticationScreen() {
                 }
               >
                 <Ionicons
-                  name="close-circle"
-                  size={20}
+                  name="close"
+                  size={14}
                   color={theme.colors.textInverted}
                 />
               </Pressable>
@@ -229,24 +257,49 @@ export default function AuthenticationScreen() {
           ))}
           {photos.length < 6 ? (
             <Pressable style={styles.photoAdd} onPress={pickPhoto}>
-              <Ionicons name="add" size={32} color={theme.colors.gray300} />
+              <Ionicons
+                name="camera-outline"
+                size={24}
+                color={theme.colors.gray300}
+              />
+              <Text style={styles.photoAddText}>{photos.length}/6</Text>
             </Pressable>
           ) : null}
         </View>
 
-        {errorMsg ? <Text style={styles.error}>{errorMsg}</Text> : null}
+        {errorMsg ? (
+          <View style={styles.errorBox}>
+            <Ionicons
+              name="alert-circle"
+              size={15}
+              color={theme.colors.error}
+            />
+            <Text style={styles.error}>{errorMsg}</Text>
+          </View>
+        ) : null}
 
-        <Text style={[styles.sectionTitle, { marginTop: 24 }]}>
+        <Text style={[styles.sectionTitle, { marginTop: 28 }]}>
           {t("trading.authentication.myOrders")}
         </Text>
         {orders.length === 0 ? (
-          <Text style={styles.empty}>{t("trading.authentication.empty")}</Text>
+          <View style={styles.emptyBox}>
+            <Ionicons
+              name="document-text-outline"
+              size={28}
+              color={theme.colors.gray200}
+            />
+            <Text style={styles.empty}>
+              {t("trading.authentication.empty")}
+            </Text>
+          </View>
         ) : (
           orders.map((o) => (
             <View key={o.id} style={styles.authOrderCard}>
               <View style={styles.authOrderHeader}>
                 <Text style={styles.authOrderNo}>#{o.orderNo}</Text>
-                <Text style={styles.authOrderStatus}>{o.status}</Text>
+                <View style={styles.statusPill}>
+                  <Text style={styles.authOrderStatus}>{o.status}</Text>
+                </View>
               </View>
               <Text style={styles.authOrderMeta}>
                 {formatPrice(o.priceCents)} · 结果 {o.result}
@@ -296,93 +349,162 @@ const makeStyles = (t: AppTheme) =>
     headerTitle: { fontSize: 16, fontWeight: "600", color: t.colors.text },
     scroll: { padding: 16, paddingBottom: 120 },
     sectionTitle: {
-      fontSize: 13,
-      fontWeight: "600",
-      marginBottom: 8,
-      marginTop: 12,
-      color: t.colors.text,
+      fontSize: 12,
+      fontWeight: "700",
+      letterSpacing: 0.6,
+      textTransform: "uppercase",
+      marginBottom: 12,
+      marginTop: 20,
+      color: t.colors.gray300,
     },
-    pkgList: { flexDirection: "row", gap: 8, alignItems: "stretch" },
+    pkgList: { gap: 10 },
     pkgCard: {
-      flex: 1,
+      flexDirection: "row",
+      alignItems: "flex-start",
       backgroundColor: t.colors.cardElevated,
-      padding: 12,
-      borderRadius: 12,
-      borderWidth: 2,
+      padding: 16,
+      borderRadius: t.borderRadius.sm,
+      borderWidth: 1,
       borderColor: t.colors.border,
     },
     pkgCardActive: { borderColor: t.colors.accent },
+    radio: {
+      width: 22,
+      height: 22,
+      borderRadius: t.borderRadius.full,
+      borderWidth: 1,
+      borderColor: t.colors.gray200,
+      alignItems: "center",
+      justifyContent: "center",
+      marginRight: 14,
+      marginTop: 1,
+    },
+    radioActive: {
+      backgroundColor: t.colors.accent,
+      borderColor: t.colors.accent,
+    },
+    pkgBody: { flex: 1 },
+    pkgTopRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "baseline",
+    },
     pkgName: {
-      fontSize: 14,
+      fontSize: 16,
       fontWeight: "700",
-      marginBottom: 4,
       color: t.colors.text,
     },
     pkgPrice: {
       fontSize: 18,
-      fontWeight: "700",
+      fontWeight: "800",
       color: t.colors.text,
-      marginBottom: 4,
     },
-    pkgSla: { fontSize: 12, color: t.colors.gray300, marginBottom: 8 },
+    slaBadge: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+      marginTop: 6,
+      marginBottom: 6,
+    },
+    pkgSla: { fontSize: 12, color: t.colors.gray300 },
     pkgDesc: {
-      fontSize: 12,
-      lineHeight: 17,
-      minHeight: 51,
+      fontSize: 13,
+      lineHeight: 18,
       color: t.colors.gray400,
     },
-    input: {
+    inputGroup: {
       backgroundColor: t.colors.inputBackground,
-      borderRadius: 8,
-      padding: 12,
-      marginBottom: 8,
-      fontSize: 14,
-      color: t.colors.text,
+      borderRadius: t.borderRadius.sm,
       borderWidth: 1,
       borderColor: t.colors.inputBorder,
+      overflow: "hidden",
     },
-    photoGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+    input: {
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+      fontSize: 15,
+      color: t.colors.text,
+    },
+    inputMultiline: { minHeight: 88, textAlignVertical: "top" },
+    inputDivider: {
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: t.colors.inputBorder,
+      marginHorizontal: 16,
+    },
+    photoGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
     photoCell: { position: "relative" },
-    photo: { width: 80, height: 80, borderRadius: 8 },
+    photo: { width: 84, height: 84, borderRadius: t.borderRadius.sm },
     removeBtn: {
       position: "absolute",
       top: -6,
       right: -6,
+      width: 22,
+      height: 22,
+      borderRadius: t.borderRadius.full,
       backgroundColor: t.colors.accent,
-      borderRadius: 12,
+      alignItems: "center",
+      justifyContent: "center",
     },
     photoAdd: {
-      width: 80,
-      height: 80,
-      borderRadius: 8,
+      width: 84,
+      height: 84,
+      borderRadius: t.borderRadius.sm,
       backgroundColor: t.colors.cardElevated,
       alignItems: "center",
       justifyContent: "center",
+      gap: 4,
       borderWidth: 1,
       borderColor: t.colors.border,
       borderStyle: "dashed",
     },
-    error: { color: t.colors.error, marginTop: 8 },
-    empty: { color: t.colors.gray300, marginTop: 8 },
+    photoAddText: { fontSize: 11, color: t.colors.gray300 },
+    errorBox: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      marginTop: 12,
+    },
+    error: { color: t.colors.error, fontSize: 13 },
+    emptyBox: {
+      alignItems: "center",
+      justifyContent: "center",
+      paddingVertical: 28,
+      gap: 8,
+    },
+    empty: { color: t.colors.gray300, fontSize: 13 },
     authOrderCard: {
       backgroundColor: t.colors.cardElevated,
-      padding: 12,
-      borderRadius: 8,
-      marginTop: 8,
+      padding: 16,
+      borderRadius: t.borderRadius.sm,
+      marginBottom: 10,
+      borderWidth: 1,
+      borderColor: t.colors.border,
     },
     authOrderHeader: {
       flexDirection: "row",
       justifyContent: "space-between",
-      marginBottom: 4,
+      alignItems: "center",
+      marginBottom: 8,
     },
-    authOrderNo: { color: t.colors.gray300, fontSize: 12 },
+    authOrderNo: { color: t.colors.gray300, fontSize: 13, fontWeight: "600" },
+    statusPill: {
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: t.borderRadius.full,
+      backgroundColor: t.colors.surface,
+    },
     authOrderStatus: {
-      fontSize: 12,
-      fontWeight: "600",
+      fontSize: 11,
+      fontWeight: "700",
       color: t.colors.text,
     },
-    authOrderMeta: { fontSize: 13, color: t.colors.gray400 },
-    authOrderReport: { fontSize: 12, color: t.colors.gray400, marginTop: 4 },
+    authOrderMeta: { fontSize: 14, color: t.colors.gray400 },
+    authOrderReport: {
+      fontSize: 13,
+      lineHeight: 18,
+      color: t.colors.gray400,
+      marginTop: 6,
+    },
     footer: {
       position: "absolute",
       bottom: 0,
@@ -398,7 +520,7 @@ const makeStyles = (t: AppTheme) =>
     primaryBtn: {
       backgroundColor: t.colors.accent,
       paddingVertical: 14,
-      borderRadius: 24,
+      borderRadius: t.borderRadius.sm,
       alignItems: "center",
     },
     primaryBtnText: {

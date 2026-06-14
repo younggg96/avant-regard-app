@@ -471,6 +471,7 @@
     "addCoverImage": "Add cover image",
     "changeCoverHint": "Tap to change cover (16:9 recommended)",
     "selectProvince": "Select your province",
+    "selectState": "Select your state",
     "agePlaceholder": "Enter age"
   },
   "store": {
@@ -3588,6 +3589,8 @@
       "submitFailed": "Submit failed",
       "celebrateTitle": "Congrats on the new piece!",
       "celebrateSubtitle": "Review submitted. It will reveal once the other party rates too.\nReady to enshrine it into MY ARCHIVE?",
+      "celebrateSellerTitle": "Thanks for your review!",
+      "celebrateSellerSubtitle": "Review submitted. It will reveal once the other party rates too.",
       "addToArchive": "Add to my archive",
       "archiveFailed": "Failed to add to archive. Please try again.",
       "later": "Maybe later",

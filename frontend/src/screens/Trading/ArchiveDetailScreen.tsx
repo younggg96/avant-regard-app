@@ -11,11 +11,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   StyleSheet,
-  ScrollView,
   TextInput,
   Image as RNImage,
   ActivityIndicator,
-  KeyboardAvoidingView,
   Platform,
   View,
 } from "react-native";
@@ -33,6 +31,7 @@ import {
   Pressable,
 } from "../../components/ui";
 import ScreenHeader from "../../components/ScreenHeader";
+import { KeyboardFriend, KeyboardFriendScrollView } from "../../components/KeyboardFriend";
 import { TradingNotFoundState } from "../../components/trading/TradingFormShared";
 import { useAppTheme, useThemedStyles, type AppTheme } from "../../theme";
 import { Alert } from "../../utils/Alert";
@@ -175,13 +174,9 @@ const ArchiveDetailScreen: React.FC = () => {
     <SafeAreaView style={styles.container} edges={["top"]}>
       <ScreenHeader title={t("trading.archiveDetail.headerTitle")} showBack />
 
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
-        <ScrollView
+      <KeyboardFriend style={styles.flex}>
+        <KeyboardFriendScrollView
           contentContainerStyle={styles.scroll}
-          keyboardShouldPersistTaps="handled"
         >
           {item.photos?.[0] ? (
             <RNImage source={{ uri: item.photos[0] }} style={styles.cover} />
@@ -342,7 +337,7 @@ const ArchiveDetailScreen: React.FC = () => {
           )}
 
           <Box style={{ height: 24 }} />
-        </ScrollView>
+        </KeyboardFriendScrollView>
 
         {!item.relistedProductId ? (
           <Box style={styles.footer}>
@@ -361,7 +356,7 @@ const ArchiveDetailScreen: React.FC = () => {
             </Pressable>
           </Box>
         ) : null}
-      </KeyboardAvoidingView>
+      </KeyboardFriend>
     </SafeAreaView>
   );
 };

@@ -471,6 +471,7 @@
     "addCoverImage": "添加封面图片",
     "changeCoverHint": "点击更换封面（推荐比例 16:9）",
     "selectProvince": "请选择所在省份",
+    "selectState": "Select your state",
     "agePlaceholder": "请输入年龄"
   },
   "store": {
@@ -3588,6 +3589,8 @@
       "submitFailed": "提交失败",
       "celebrateTitle": "恭喜收到喜欢的单品！",
       "celebrateSubtitle": "评价已提交，对方评完会自动揭示。\n准备好将它加入 MY ARCHIVE 典藏了吗？",
+      "celebrateSellerTitle": "感谢您的评价！",
+      "celebrateSellerSubtitle": "评价已提交，对方评完会自动揭示。",
       "addToArchive": "加入我的典藏",
       "archiveFailed": "加入典藏失败，请稍后重试",
       "later": "稍后再说",

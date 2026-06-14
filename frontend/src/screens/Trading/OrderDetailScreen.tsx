@@ -432,6 +432,7 @@ export default function OrderDetailScreen() {
       </View>
 
       <ScrollView
+        style={{ flex: 1 }}
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
       >
@@ -773,7 +774,6 @@ export default function OrderDetailScreen() {
             ))}
           </View>
         </SectionCard>
-      </ScrollView>
 
       <View style={styles.footer}>
         {isBuyer && order.status === "pending_payment" ? (
@@ -842,104 +842,108 @@ export default function OrderDetailScreen() {
             )}
           </Pressable>
         ) : null}
-        {canContactCounterparty ? (
-          <Pressable
-            style={styles.secondaryBtn}
-            onPress={handleContactCounterparty}
-            disabled={actionLoading}
-          >
-            <Ionicons
-              name="chatbubble-outline"
-              size={16}
-              color={theme.colors.text}
-              style={{ marginRight: 6 }}
-            />
-            <Text style={styles.secondaryBtnText}>
-              {isBuyer
-                ? t("trading.orderDetail.contactSeller")
-                : t("trading.orderDetail.contactBuyer")}
-            </Text>
-          </Pressable>
-        ) : null}
-        {isBuyer && canRequestAftersales ? (
-          <Pressable
-            style={styles.secondaryBtn}
-            onPress={() =>
-              navigation.navigate("DisputeOpen", { orderId: order.id })
-            }
-            disabled={actionLoading}
-          >
-            <Ionicons
-              name="help-buoy-outline"
-              size={16}
-              color={theme.colors.text}
-              style={{ marginRight: 6 }}
-            />
-            <Text style={styles.secondaryBtnText}>
-              {t("trading.aftersales.entryButton")}
-            </Text>
-          </Pressable>
-        ) : null}
-        {isSeller && canRequestAftersales ? (
-          <Pressable
-            style={styles.secondaryBtn}
-            onPress={() => navigation.navigate("SellerAfterSales")}
-            disabled={actionLoading}
-          >
-            <Ionicons
-              name="clipboard-outline"
-              size={16}
-              color={theme.colors.text}
-              style={{ marginRight: 6 }}
-            />
-            <Text style={styles.secondaryBtnText}>
-              {t("trading.aftersales.sellerEntryButton")}
-            </Text>
-          </Pressable>
-        ) : null}
-        {canTransferToArchive ? (
-          <Pressable
-            style={styles.secondaryBtn}
-            onPress={handleTransferToArchive}
-            disabled={transferLoading || actionLoading}
-          >
-            {transferLoading ? (
-              <ActivityIndicator color={theme.colors.text} />
-            ) : (
-              <>
-                <Ionicons
-                  name={archiveItem ? "albums-outline" : "add-circle-outline"}
-                  size={16}
-                  color={theme.colors.text}
-                  style={{ marginRight: 6 }}
-                />
-                <Text style={styles.secondaryBtnText}>
-                  {archiveItem
-                    ? t("trading.orderDetail.viewInArchive")
-                    : t("trading.orderDetail.transferToArchive")}
-                </Text>
-              </>
-            )}
-          </Pressable>
-        ) : null}
-        {(isBuyer || isSeller) &&
-        (order.status === "completed" ||
-          order.status === "settled" ||
-          order.status === "resolved") ? (
-          <Pressable
-            style={styles.linkBtn}
-            onPress={() =>
-              navigation.navigate("OrderReviews", { orderId: order.id })
-            }
-          >
-            <Text style={styles.linkBtnText}>
-              {myReviewSubmitted
-                ? t("trading.tradingTab.viewReview")
-                : t("trading.tradingTab.writeReview")}
-            </Text>
-          </Pressable>
-        ) : null}
+        <View style={styles.footerGrid}>
+          {canContactCounterparty ? (
+            <Pressable
+              style={styles.gridBtn}
+              onPress={handleContactCounterparty}
+              disabled={actionLoading}
+            >
+              <Ionicons
+                name="chatbubble-outline"
+                size={16}
+                color={theme.colors.text}
+              />
+              <Text style={styles.gridBtnText}>
+                {isBuyer
+                  ? t("trading.orderDetail.contactSeller")
+                  : t("trading.orderDetail.contactBuyer")}
+              </Text>
+            </Pressable>
+          ) : null}
+          {isBuyer && canRequestAftersales ? (
+            <Pressable
+              style={styles.gridBtn}
+              onPress={() =>
+                navigation.navigate("DisputeOpen", { orderId: order.id })
+              }
+              disabled={actionLoading}
+            >
+              <Ionicons
+                name="help-buoy-outline"
+                size={16}
+                color={theme.colors.text}
+              />
+              <Text style={styles.gridBtnText}>
+                {t("trading.aftersales.entryButton")}
+              </Text>
+            </Pressable>
+          ) : null}
+          {isSeller && canRequestAftersales ? (
+            <Pressable
+              style={styles.gridBtn}
+              onPress={() => navigation.navigate("SellerAfterSales")}
+              disabled={actionLoading}
+            >
+              <Ionicons
+                name="clipboard-outline"
+                size={16}
+                color={theme.colors.text}
+              />
+              <Text style={styles.gridBtnText}>
+                {t("trading.aftersales.sellerEntryButton")}
+              </Text>
+            </Pressable>
+          ) : null}
+          {canTransferToArchive ? (
+            <Pressable
+              style={styles.gridBtn}
+              onPress={handleTransferToArchive}
+              disabled={transferLoading || actionLoading}
+            >
+              {transferLoading ? (
+                <ActivityIndicator color={theme.colors.text} size="small" />
+              ) : (
+                <>
+                  <Ionicons
+                    name={archiveItem ? "albums-outline" : "add-circle-outline"}
+                    size={16}
+                    color={theme.colors.text}
+                  />
+                  <Text style={styles.gridBtnText}>
+                    {archiveItem
+                      ? t("trading.orderDetail.viewInArchive")
+                      : t("trading.orderDetail.transferToArchive")}
+                  </Text>
+                </>
+              )}
+            </Pressable>
+          ) : null}
+          {(isBuyer || isSeller) &&
+          (order.status === "completed" ||
+            order.status === "settled" ||
+            order.status === "resolved") ? (
+            <Pressable
+              style={styles.gridBtn}
+              onPress={() =>
+                navigation.navigate("OrderReviews", { orderId: order.id })
+              }
+            >
+              <Ionicons
+                name="star-outline"
+                size={16}
+                color={theme.colors.text}
+              />
+              <Text style={styles.gridBtnText}>
+                {myReviewSubmitted
+                  ? t("trading.tradingTab.viewReview")
+                  : t("trading.tradingTab.writeReview")}
+              </Text>
+            </Pressable>
+          ) : null}
+        </View>
       </View>
+      </ScrollView>
 
       <ShipModal
         visible={showShipModal}
@@ -1141,7 +1145,7 @@ const makeStyles = (t: AppTheme) =>
       borderBottomColor: t.colors.border,
     },
     headerTitle: { fontSize: 16, fontWeight: "600", color: t.colors.text },
-    scroll: { padding: 16, paddingBottom: 140 },
+    scroll: { padding: 16, paddingBottom: 32 },
     statusHero: {
       flexDirection: "row",
       alignItems: "center",
@@ -1362,18 +1366,28 @@ const makeStyles = (t: AppTheme) =>
     timelineTime: { fontSize: 11, color: t.colors.gray300, marginTop: 2 },
     empty: { textAlign: "center", marginTop: 48, color: t.colors.gray300 },
     footer: {
-      position: "absolute",
-      bottom: 0,
-      left: 0,
-      right: 0,
       paddingHorizontal: 16,
       paddingTop: 10,
       paddingBottom: 24,
-      backgroundColor: t.colors.card,
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: t.colors.border,
       gap: 8,
     },
+    footerGrid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 8,
+    },
+    gridBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 6,
+      paddingVertical: 10,
+      borderRadius: 4,
+      borderWidth: 1,
+      borderColor: t.colors.border,
+      width: "48.5%",
+    },
+    gridBtnText: { color: t.colors.text, fontSize: 13, fontWeight: "500" },
     primaryBtn: {
       backgroundColor: t.colors.accent,
       paddingVertical: 14,

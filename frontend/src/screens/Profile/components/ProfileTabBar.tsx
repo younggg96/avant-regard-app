@@ -61,7 +61,7 @@ export const ProfileTabBar = ({
         alignItems: "flex-start",
       }}
     >
-      <View style={chipRowStyle}>
+      <View style={[chipRowStyle, { flexWrap: "nowrap", width: undefined }]}>
       {tabs.map((tab) => (
         <AnimatedChip
           key={tab.id}

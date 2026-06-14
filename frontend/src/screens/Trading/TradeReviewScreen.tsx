@@ -136,12 +136,11 @@ const TradeReviewScreen: React.FC = () => {
           getOrder(orderId).catch(() => null),
         ]);
         if (!cancelled) {
-          // 仅当能确认「不是买家」时隐藏按钮；拉单失败时仍展示，由后端鉴权。
-          const knownNotBuyer =
+          const confirmedBuyer =
             order != null &&
             meUserId != null &&
-            order.buyerUserId !== meUserId;
-          setIsBuyer(!knownNotBuyer);
+            order.buyerUserId === meUserId;
+          setIsBuyer(confirmedBuyer);
           if (status.myReviewSubmitted) {
             Alert.alert(
               t("trading.review.alreadyReviewedTitle"),
@@ -276,10 +275,14 @@ const TradeReviewScreen: React.FC = () => {
 
           <Animated.View style={[styles.celebrateContent, celebrateContentStyle]}>
             <Text style={styles.celebrateTitle}>
-              {t("trading.review.celebrateTitle")}
+              {isBuyer
+                ? t("trading.review.celebrateTitle")
+                : t("trading.review.celebrateSellerTitle")}
             </Text>
             <Text style={styles.celebrateSubtitle}>
-              {t("trading.review.celebrateSubtitle")}
+              {isBuyer
+                ? t("trading.review.celebrateSubtitle")
+                : t("trading.review.celebrateSellerSubtitle")}
             </Text>
 
             {productCover ? (

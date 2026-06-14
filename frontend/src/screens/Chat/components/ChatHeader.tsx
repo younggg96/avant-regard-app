@@ -77,7 +77,7 @@ export const ChatHeader = ({
 
   return (
     <>
-      <Box style={[{ backgroundColor: theme.colors.white }, { borderBottomColor: theme.colors.gray100 }]} px="$md" py="$sm" borderBottomWidth={1}>
+      <Box style={[{ backgroundColor: theme.colors.background }, { borderBottomColor: theme.colors.gray100 }]} px="$md" py="$sm" borderBottomWidth={1}>
         <HStack alignItems="center" space="sm">
           <Pressable
             w={40}

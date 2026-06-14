@@ -2,7 +2,7 @@
 Chat routes - REST API + WebSocket for real-time messaging
 """
 
-from typing import Optional, Dict, Set
+from typing import Optional
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, Query
 from app.schemas.chat import (
     CreateConversationRequest,
@@ -21,46 +21,12 @@ from app.api.deps import get_current_user_id, decode_token_without_expiry
 from app.core.response import success, error
 from app.db.supabase import get_supabase, get_supabase_admin
 from app.services.auth_service import auth_service
+# ConnectionManager / manager 已抽到中立模块 app.services.realtime，
+# 以便 service 层（订单 / 出价 / 售后等）程序化发卡片时也能复用同一连接池广播，
+# 避免与 chat_service 形成循环 import。
+from app.services.realtime import manager
 
 router = APIRouter(prefix="/chat", tags=["Chat"])
-
-
-# ======================= WebSocket Connection Manager =======================
-
-class ConnectionManager:
-    """Manages active WebSocket connections grouped by user_id."""
-
-    def __init__(self):
-        self.active_connections: Dict[int, Set[WebSocket]] = {}
-
-    async def connect(self, websocket: WebSocket, user_id: int):
-        await websocket.accept()
-        if user_id not in self.active_connections:
-            self.active_connections[user_id] = set()
-        self.active_connections[user_id].add(websocket)
-
-    def disconnect(self, websocket: WebSocket, user_id: int):
-        if user_id in self.active_connections:
-            self.active_connections[user_id].discard(websocket)
-            if not self.active_connections[user_id]:
-                del self.active_connections[user_id]
-
-    async def send_to_user(self, user_id: int, message: dict):
-        if user_id in self.active_connections:
-            dead = []
-            for ws in self.active_connections[user_id]:
-                try:
-                    await ws.send_json(message)
-                except Exception:
-                    dead.append(ws)
-            for ws in dead:
-                self.active_connections[user_id].discard(ws)
-
-    def is_online(self, user_id: int) -> bool:
-        return user_id in self.active_connections and len(self.active_connections[user_id]) > 0
-
-
-manager = ConnectionManager()
 
 
 def _authenticate_ws_token(token: str) -> Optional[int]:

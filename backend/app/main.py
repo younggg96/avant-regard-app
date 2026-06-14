@@ -102,6 +102,15 @@ async def lifespan(app: FastAPI):
     # 连接 Redis
     cache_service.connect()
 
+    # 捕获主事件循环：让 service 层（订单 / 出价 / 售后等）程序化发交易卡片时，
+    # 能跨线程把消息实时广播给在线的 WebSocket 客户端（含后台调度器线程触发的场景）。
+    try:
+        import asyncio
+        from app.services.realtime import set_event_loop
+        set_event_loop(asyncio.get_running_loop())
+    except Exception as e:
+        print(f"⚠️  capture event loop for realtime broadcast failed: {e}")
+
     # 启动后台调度器(订单/钱包/物流定时任务)。
     # 通过 settings.ENABLE_BACKGROUND_SCHEDULER 控制,默认关闭便于本地调试,
     # 生产环境只在选举出来的"主"实例打开,避免多副本重复执行。

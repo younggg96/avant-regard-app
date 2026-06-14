@@ -6,7 +6,7 @@ import { AuthMode } from "./types";
 export const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 // 中国省份列表
-export const PROVINCES = [
+const CN_PROVINCES = [
   "北京",
   "上海",
   "天津",
@@ -43,6 +43,22 @@ export const PROVINCES = [
   "澳门",
   "海外",
 ];
+
+const US_STATES = [
+  "Alabama", "Alaska", "Arizona", "Arkansas", "California",
+  "Colorado", "Connecticut", "Delaware", "Florida", "Georgia",
+  "Hawaii", "Idaho", "Illinois", "Indiana", "Iowa",
+  "Kansas", "Kentucky", "Louisiana", "Maine", "Maryland",
+  "Massachusetts", "Michigan", "Minnesota", "Mississippi", "Missouri",
+  "Montana", "Nebraska", "Nevada", "New Hampshire", "New Jersey",
+  "New Mexico", "New York", "North Carolina", "North Dakota", "Ohio",
+  "Oklahoma", "Oregon", "Pennsylvania", "Rhode Island", "South Carolina",
+  "South Dakota", "Tennessee", "Texas", "Utah", "Vermont",
+  "Virginia", "Washington", "West Virginia", "Wisconsin", "Wyoming",
+  "District of Columbia",
+];
+
+export const PROVINCES = IS_NA ? US_STATES : CN_PROVINCES;
 
 // 年龄段选项
 export const AGE_RANGES = [

@@ -34,10 +34,8 @@ import { Alert } from "../utils/Alert";
 import {
   batchDeleteListings,
   batchOfflineListings,
-  getMyListingsSummary,
   listMyListings,
   transitionListing,
-  type ListingsStatusSummary,
   type StoreProduct,
   type ProductStatus,
 } from "../services/storeProductService";
@@ -67,16 +65,6 @@ const TAB_ORDER: TabValue[] = [
   "rejected",
 ];
 
-const EMPTY_SUMMARY: ListingsStatusSummary = {
-  active: 0,
-  draft: 0,
-  reviewing: 0,
-  sold: 0,
-  offline: 0,
-  rejected: 0,
-  frozen: 0,
-};
-
 function formatSubmittedDate(iso?: string | null): string {
   if (!iso) return "";
   const d = new Date(iso);
@@ -105,38 +93,10 @@ const SellerListingsScreen: React.FC = () => {
     [t],
   );
 
-  const statItems = useMemo(
-    () =>
-      [
-        {
-          key: "active" as const,
-          label: t("trading.myListings.statActive"),
-          icon: "cube-outline" as const,
-        },
-        {
-          key: "reviewing" as const,
-          label: t("trading.myListings.statReviewing"),
-          icon: "document-text-outline" as const,
-        },
-        {
-          key: "offline" as const,
-          label: t("trading.myListings.statOffline"),
-          icon: "pause-circle-outline" as const,
-        },
-        {
-          key: "sold" as const,
-          label: t("trading.myListings.statSold"),
-          icon: "checkmark-done-outline" as const,
-        },
-      ] as const,
-    [t],
-  );
-
   const [tab, setTab] = useState<TabValue>("all");
   const [productsByTab, setProductsByTab] = useState<
     Partial<Record<TabValue, StoreProduct[]>>
   >({});
-  const [summary, setSummary] = useState<ListingsStatusSummary>(EMPTY_SUMMARY);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [selectionMode, setSelectionMode] = useState(false);
@@ -144,15 +104,6 @@ const SellerListingsScreen: React.FC = () => {
   const [menuProduct, setMenuProduct] = useState<StoreProduct | null>(null);
 
   const pagerRef = useRef<PagerView>(null);
-
-  const loadSummary = useCallback(async () => {
-    try {
-      const data = await getMyListingsSummary();
-      setSummary({ ...EMPTY_SUMMARY, ...data });
-    } catch {
-      setSummary(EMPTY_SUMMARY);
-    }
-  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -170,7 +121,7 @@ const SellerListingsScreen: React.FC = () => {
     }
   }, [tab, t]);
 
-  /** tab 点击 / 统计卡点击 → 同步 pager 翻页；滑动翻页则只更新 state。 */
+  /** tab 点击 → 同步 pager 翻页；滑动翻页则只更新 state。 */
   const switchTab = useCallback((next: TabValue, fromPager = false) => {
     setTab(next);
     setSelectedIds(new Set());
@@ -189,8 +140,8 @@ const SellerListingsScreen: React.FC = () => {
   );
 
   const reloadAll = useCallback(async () => {
-    await Promise.all([load(), loadSummary()]);
-  }, [load, loadSummary]);
+    await load();
+  }, [load]);
 
   useEffect(() => {
     load();
@@ -366,26 +317,6 @@ const SellerListingsScreen: React.FC = () => {
 
   const renderListHeader = () => (
     <VStack style={styles.listHeader} space="md">
-      <Text style={styles.sectionTitle}>{t("trading.myListings.sectionTitle")}</Text>
-
-      <Box style={styles.statsCard}>
-        <HStack style={styles.statsRow}>
-          {statItems.map((item) => (
-            <Pressable
-              key={item.key}
-              style={styles.statCell}
-              onPress={() => switchTab(item.key)}
-            >
-              <Ionicons name={item.icon} size={18} color={theme.colors.text} />
-              <Text style={styles.statCount}>{summary[item.key] ?? 0}</Text>
-              <Text style={styles.statLabel} numberOfLines={1}>
-                {item.label}
-              </Text>
-            </Pressable>
-          ))}
-        </HStack>
-      </Box>
-
       <Pressable style={styles.publishBtn} onPress={handleNewListing}>
         <Ionicons name="add" size={20} color={theme.colors.textInverted} />
         <Text style={styles.publishBtnText}>
@@ -658,38 +589,6 @@ const makeStyles = (t: AppTheme) =>
       paddingHorizontal: 16,
       paddingTop: 16,
       paddingBottom: 8,
-    },
-    sectionTitle: {
-      fontSize: 16,
-      fontWeight: "600",
-      color: t.colors.text,
-    },
-    statsCard: {
-      backgroundColor: t.colors.cardElevated,
-      borderRadius: CARD_RADIUS,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: t.colors.border,
-      paddingVertical: 14,
-      paddingHorizontal: 8,
-    },
-    statsRow: {
-      justifyContent: "space-between",
-    },
-    statCell: {
-      flex: 1,
-      alignItems: "center",
-      gap: 4,
-      paddingHorizontal: 4,
-    },
-    statCount: {
-      fontSize: 18,
-      fontWeight: "700",
-      color: t.colors.text,
-    },
-    statLabel: {
-      fontSize: 11,
-      color: t.colors.textSecondary,
-      textAlign: "center",
     },
     publishBtn: {
       flexDirection: "row",

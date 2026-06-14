@@ -45,7 +45,7 @@ export const DiscoverHeader: React.FC<DiscoverHeaderProps> = ({
     const styles = useThemedStyles(makeStyles);
 
     return (
-        <Box style={{ backgroundColor: theme.colors.white }} px="$md" pt="$xs">
+        <Box style={{ backgroundColor: theme.colors.background }} px="$md" pt="$xs">
             <VStack space="sm">
                 <HStack alignItems="center" justifyContent="space-between">
                     <DiscoverLogo />

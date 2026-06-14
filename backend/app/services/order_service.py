@@ -194,6 +194,7 @@ class OrderService:
                 push_title=push_title,
                 push_navigate_to="OrderDetail",
                 push_navigate_params={"orderId": order.id},
+                broadcast=True,
             )
         except Exception as e:
             print(f"[orders] send order_status card failed: {e}")

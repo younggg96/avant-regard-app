@@ -27,6 +27,7 @@ import { userInfoService, Gender } from "../services/userInfoService";
 import { brandService, Brand } from "../services/brandService";
 import { OptimizedImage } from "../components/ui/OptimizedImage";
 import { ImageSize } from "../utils/imageUtils";
+import { IS_NA } from "../config/env";
 
 // Brand 选项类型
 interface BrandOption {
@@ -56,43 +57,33 @@ const GENDER_KEYS: { value: Gender; key: string }[] = [
   { value: "OTHER", key: "auth.other" },
 ];
 
-// 中国所有省份列表
-const PROVINCES = [
-  "北京市",
-  "天津市",
-  "上海市",
-  "重庆市",
-  "河北省",
-  "山西省",
-  "辽宁省",
-  "吉林省",
-  "黑龙江省",
-  "江苏省",
-  "浙江省",
-  "安徽省",
-  "福建省",
-  "江西省",
-  "山东省",
-  "河南省",
-  "湖北省",
-  "湖南省",
-  "广东省",
-  "海南省",
-  "四川省",
-  "贵州省",
-  "云南省",
-  "陕西省",
-  "甘肃省",
-  "青海省",
-  "台湾省",
-  "内蒙古自治区",
-  "广西壮族自治区",
-  "西藏自治区",
-  "宁夏回族自治区",
-  "新疆维吾尔自治区",
-  "香港特别行政区",
-  "澳门特别行政区",
+const CN_PROVINCES: string[] = [
+  "北京市", "天津市", "上海市", "重庆市",
+  "河北省", "山西省", "辽宁省", "吉林省", "黑龙江省",
+  "江苏省", "浙江省", "安徽省", "福建省", "江西省",
+  "山东省", "河南省", "湖北省", "湖南省", "广东省",
+  "海南省", "四川省", "贵州省", "云南省", "陕西省",
+  "甘肃省", "青海省", "台湾省",
+  "内蒙古自治区", "广西壮族自治区", "西藏自治区",
+  "宁夏回族自治区", "新疆维吾尔自治区",
+  "香港特别行政区", "澳门特别行政区",
 ];
+
+const US_STATES = [
+  "Alabama", "Alaska", "Arizona", "Arkansas", "California",
+  "Colorado", "Connecticut", "Delaware", "Florida", "Georgia",
+  "Hawaii", "Idaho", "Illinois", "Indiana", "Iowa",
+  "Kansas", "Kentucky", "Louisiana", "Maine", "Maryland",
+  "Massachusetts", "Michigan", "Minnesota", "Mississippi", "Missouri",
+  "Montana", "Nebraska", "Nevada", "New Hampshire", "New Jersey",
+  "New Mexico", "New York", "North Carolina", "North Dakota", "Ohio",
+  "Oklahoma", "Oregon", "Pennsylvania", "Rhode Island", "South Carolina",
+  "South Dakota", "Tennessee", "Texas", "Utah", "Vermont",
+  "Virginia", "Washington", "West Virginia", "Wisconsin", "Wyoming",
+  "District of Columbia",
+];
+
+const PROVINCES = IS_NA ? US_STATES : CN_PROVINCES;
 
 const EditProfileScreen = () => {
   const { t } = useTranslation();
@@ -531,6 +522,7 @@ const EditProfileScreen = () => {
                 ? "hourglass-outline"
                 : "checkmark",
             onPress: handleSave,
+            style: "primary",
           },
         ]}
       />
@@ -546,8 +538,45 @@ const EditProfileScreen = () => {
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="interactive"
         >
-          {/* 头像区域 */}
-          <View style={styles.avatarSection}>
+          {/* 封面 + 头像 */}
+          <View style={styles.heroSection}>
+            <TouchableOpacity
+              style={styles.coverContainer}
+              onPress={handlePickCoverImage}
+              disabled={uploadingCover}
+            >
+              {cover ? (
+                <OptimizedImage
+                  uri={cover}
+                  size={ImageSize.LARGE}
+                  style={styles.coverImage}
+                  contentFit="cover"
+                  lazy={false}
+                />
+              ) : (
+                <View style={styles.coverPlaceholder}>
+                  <Ionicons
+                    name="image-outline"
+                    size={28}
+                    color={theme.colors.gray300}
+                  />
+                </View>
+              )}
+              {uploadingCover ? (
+                <View style={styles.coverLoadingOverlay}>
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                </View>
+              ) : (
+                <View style={styles.coverEditIcon}>
+                  <Ionicons
+                    name="camera-outline"
+                    size={16}
+                    color={theme.colors.white}
+                  />
+                </View>
+              )}
+            </TouchableOpacity>
+
             <TouchableOpacity
               style={styles.avatarContainer}
               onPress={handlePickImage}
@@ -575,61 +604,15 @@ const EditProfileScreen = () => {
               ) : (
                 <View style={styles.avatarEditIcon}>
                   <Ionicons
-                    name="camera"
-                    size={20}
-                    color={theme.colors.white}
+                    name="camera-outline"
+                    size={14}
+                    color={theme.colors.textInverted}
                   />
                 </View>
               )}
             </TouchableOpacity>
-            <Text style={styles.avatarHint}>
-              {uploadingAvatar ? t("publish.uploading") : t("editProfile.changeAvatar")}
-            </Text>
           </View>
-          {/* 封面图片区域 */}
-          <View style={styles.coverSection}>
-            <TouchableOpacity
-              style={styles.coverContainer}
-              onPress={handlePickCoverImage}
-              disabled={uploadingCover}
-            >
-              {cover ? (
-                <OptimizedImage
-                  uri={cover}
-                  size={ImageSize.LARGE}
-                  style={styles.coverImage}
-                  contentFit="cover"
-                  lazy={false}
-                />
-              ) : (
-                <View style={styles.coverPlaceholder}>
-                  <Ionicons
-                    name="image-outline"
-                    size={32}
-                    color={theme.colors.gray400}
-                  />
-                  <Text style={styles.coverPlaceholderText}>{t("editProfile.addCoverImage")}</Text>
-                </View>
-              )}
-              {uploadingCover ? (
-                <View style={styles.coverLoadingOverlay}>
-                  <ActivityIndicator size="small" color="#FFFFFF" />
-                  <Text style={styles.coverLoadingText}>{t("publish.uploading")}</Text>
-                </View>
-              ) : (
-                <View style={styles.coverEditIcon}>
-                  <Ionicons
-                    name="camera"
-                    size={18}
-                    color={theme.colors.white}
-                  />
-                </View>
-              )}
-            </TouchableOpacity>
-            <Text style={styles.coverHint}>
-              {uploadingCover ? t("publish.uploading") : t("editProfile.changeCoverHint")}
-            </Text>
-          </View>
+
           {/* 表单区域 */}
           <View style={styles.formSection}>
             {/* 用户名 */}
@@ -689,7 +672,7 @@ const EditProfileScreen = () => {
                     !location && styles.selectInputPlaceholder,
                   ]}
                 >
-                  {location || t("editProfile.selectProvince")}
+                  {location || t(IS_NA ? "editProfile.selectState" : "editProfile.selectProvince")}
                 </Text>
                 <Ionicons
                   name="chevron-down"
@@ -807,7 +790,7 @@ const EditProfileScreen = () => {
             onPress={() => { }}
           >
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{t("editProfile.selectProvince")}</Text>
+              <Text style={styles.modalTitle}>{t(IS_NA ? "editProfile.selectState" : "editProfile.selectProvince")}</Text>
               <TouchableOpacity
                 onPress={() => setShowProvinceModal(false)}
                 style={styles.modalCloseButton}
@@ -1068,71 +1051,18 @@ const makeStyles = (t: AppTheme) =>
     fontSize: 14,
     color: t.colors.gray500,
   },
-  // 头像区域
-  avatarSection: {
+  heroSection: {
     alignItems: "center",
-    paddingVertical: 32,
-  },
-  avatarContainer: {
-    position: "relative",
-    marginBottom: 12,
-  },
-  avatar: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: t.colors.skeleton,
-  },
-  avatarEmpty: {
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: t.colors.gray100,
-  },
-  avatarEmptyText: {
-    fontSize: 28,
-    fontWeight: "600",
-    color: t.colors.gray400,
-  },
-  avatarEditIcon: {
-    position: "absolute",
-    bottom: 0,
-    right: 0,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: t.colors.text,
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 2,
-    borderColor: t.colors.card,
-  },
-  avatarLoadingOverlay: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    borderRadius: 50,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  avatarHint: {
-    fontSize: 13,
-    color: t.colors.gray500,
-  },
-  // 封面区域
-  coverSection: {
-    alignItems: "center",
-    paddingTop: 16,
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    marginBottom: 4,
   },
   coverContainer: {
     width: "100%",
-    height: 160,
-    borderRadius: 12,
+    height: 140,
+    borderRadius: t.borderRadius.sm,
     overflow: "hidden",
-    backgroundColor: t.colors.gray100,
+    backgroundColor: t.colors.surface,
     position: "relative",
   },
   coverImage: {
@@ -1143,21 +1073,16 @@ const makeStyles = (t: AppTheme) =>
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: t.colors.gray100,
-  },
-  coverPlaceholderText: {
-    marginTop: 8,
-    fontSize: 14,
-    color: t.colors.gray400,
+    backgroundColor: t.colors.surface,
   },
   coverEditIcon: {
     position: "absolute",
-    bottom: 10,
-    right: 10,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: "rgba(0, 0, 0, 0.6)",
+    bottom: 8,
+    right: 8,
+    width: 28,
+    height: 28,
+    borderRadius: t.borderRadius.sm,
+    backgroundColor: "rgba(0, 0, 0, 0.55)",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -1171,34 +1096,72 @@ const makeStyles = (t: AppTheme) =>
     justifyContent: "center",
     alignItems: "center",
   },
-  coverLoadingText: {
-    marginTop: 8,
-    fontSize: 13,
-    color: "#FFFFFF",
+  avatarContainer: {
+    position: "relative",
+    marginTop: -40,
   },
-  coverHint: {
-    marginTop: 8,
-    fontSize: 13,
-    color: t.colors.gray500,
-    textAlign: "center",
+  avatar: {
+    width: 80,
+    height: 80,
+    borderRadius: t.borderRadius.full,
+    backgroundColor: t.colors.skeleton,
+    borderWidth: 3,
+    borderColor: t.colors.background,
+  },
+  avatarEmpty: {
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: t.colors.surface,
+  },
+  avatarEmptyText: {
+    fontSize: 24,
+    fontWeight: "600",
+    color: t.colors.gray300,
+  },
+  avatarEditIcon: {
+    position: "absolute",
+    bottom: 0,
+    right: 0,
+    width: 26,
+    height: 26,
+    borderRadius: t.borderRadius.full,
+    backgroundColor: t.colors.accent,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: t.colors.background,
+  },
+  avatarLoadingOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: t.borderRadius.full,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   // 表单区域
   formSection: {
-    padding: 20,
+    paddingHorizontal: 16,
+    paddingTop: 8,
   },
   inputGroup: {
-    marginBottom: 20,
+    marginBottom: 16,
   },
   label: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: t.colors.text,
+    fontSize: 12,
+    fontWeight: "700",
+    letterSpacing: 0.6,
+    textTransform: "uppercase",
+    color: t.colors.gray300,
     marginBottom: 8,
   },
   input: {
     borderWidth: 1,
     borderColor: t.colors.inputBorder,
-    borderRadius: 10,
+    borderRadius: t.borderRadius.sm,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 15,
@@ -1206,12 +1169,12 @@ const makeStyles = (t: AppTheme) =>
     backgroundColor: t.colors.inputBackground,
   },
   textArea: {
-    height: 100,
+    height: 96,
     paddingTop: 12,
   },
   charCount: {
-    fontSize: 12,
-    color: t.colors.gray400,
+    fontSize: 11,
+    color: t.colors.gray300,
     textAlign: "right",
     marginTop: 4,
   },
@@ -1222,9 +1185,9 @@ const makeStyles = (t: AppTheme) =>
     justifyContent: "space-between",
     borderWidth: 1,
     borderColor: t.colors.inputBorder,
-    borderRadius: 10,
+    borderRadius: t.borderRadius.sm,
     paddingHorizontal: 14,
-    paddingVertical: 14,
+    paddingVertical: 12,
     backgroundColor: t.colors.inputBackground,
   },
   selectInputText: {
@@ -1242,8 +1205,8 @@ const makeStyles = (t: AppTheme) =>
   },
   modalContainer: {
     backgroundColor: t.colors.card,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderTopLeftRadius: t.borderRadius.sm,
+    borderTopRightRadius: t.borderRadius.sm,
     maxHeight: "70%",
   },
   modalHeader: {
@@ -1290,8 +1253,8 @@ const makeStyles = (t: AppTheme) =>
   // 性别弹窗
   genderModalContainer: {
     backgroundColor: t.colors.card,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderTopLeftRadius: t.borderRadius.sm,
+    borderTopRightRadius: t.borderRadius.sm,
   },
   // 设计师选择
   designerItem: {
@@ -1322,10 +1285,10 @@ const makeStyles = (t: AppTheme) =>
     marginTop: 2,
   },
   checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 2,
+    width: 22,
+    height: 22,
+    borderRadius: t.borderRadius.sm,
+    borderWidth: 1.5,
     borderColor: t.colors.gray300,
     justifyContent: "center",
     alignItems: "center",
@@ -1350,8 +1313,8 @@ const makeStyles = (t: AppTheme) =>
     marginVertical: 12,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    backgroundColor: t.colors.gray50,
-    borderRadius: 10,
+    backgroundColor: t.colors.surface,
+    borderRadius: t.borderRadius.sm,
     gap: 8,
   },
   brandSearchInput: {
@@ -1386,9 +1349,9 @@ const makeStyles = (t: AppTheme) =>
     color: t.colors.gray400,
   },
   confirmButton: {
-    margin: 20,
-    backgroundColor: t.colors.text,
-    borderRadius: 10,
+    margin: 16,
+    backgroundColor: t.colors.accent,
+    borderRadius: t.borderRadius.sm,
     paddingVertical: 14,
     alignItems: "center",
   },

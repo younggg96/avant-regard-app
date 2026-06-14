@@ -140,6 +140,7 @@ class OfferService:
                 push_title=push_title,
                 push_navigate_to="StoreProductDetail",
                 push_navigate_params={"productId": offer_row["product_id"]},
+                broadcast=True,
             )
         except Exception as e:
             print(f"[offer_service] send offer card failed: {e}")

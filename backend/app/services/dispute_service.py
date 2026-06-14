@@ -118,6 +118,7 @@ class DisputeService:
                 push_title=push_title,
                 push_navigate_to="OrderDetail",
                 push_navigate_params={"orderId": order_id},
+                broadcast=True,
             )
         except Exception as e:  # noqa: BLE001
             logger.warning("[dispute] send dispute card failed: %s", e)

@@ -572,6 +572,7 @@ class ChatService:
         push_title: Optional[str] = None,
         push_navigate_to: Optional[str] = None,
         push_navigate_params: Optional[Dict[str, Any]] = None,
+        broadcast: bool = False,
     ) -> Optional[MessageResponse]:
         """Send a message in a conversation.
 
@@ -580,6 +581,12 @@ class ChatService:
         默认 ``push_navigate_to="Chat"`` —— 点击通知直达本会话。
         程序化发送 trade card（订单 / 出价 / 售后等）请显式传 ``send_push=True``，
         与用户手动发文字消息保持一致的触达体验。
+
+        ``broadcast=True`` 时还会通过 WebSocket 把这条消息实时推给会话双方在线的客户端
+        （发送方 ``isMine=True``、对端 ``isMine=False``）。用户手动发的文字消息由 chat 路由层
+        自己广播，故默认 False；而 service 层程序化发的交易卡片（发货 / 退款 / 出价 / 售后等）
+        不走路由层，必须显式传 ``broadcast=True``，否则停留在聊天页的用户收不到实时更新、
+        需退出重进才能看到。
         """
         if not self._is_participant(conversation_id, sender_id):
             return None
@@ -620,7 +627,7 @@ class ChatService:
                 push_navigate_params=push_navigate_params,
             )
 
-        return MessageResponse(
+        response = MessageResponse(
             id=msg["id"],
             conversationId=msg["conversation_id"],
             senderId=sender_id,
@@ -633,6 +640,38 @@ class ChatService:
             isDeleted=False,
             isMine=True,
         )
+
+        if broadcast:
+            self._broadcast_message_ws(conversation_id, sender_id, other_id, response)
+
+        return response
+
+    def _broadcast_message_ws(
+        self,
+        conversation_id: int,
+        sender_id: int,
+        other_id: Optional[int],
+        msg: MessageResponse,
+    ) -> None:
+        """把一条消息通过 WebSocket 实时推给会话双方在线的客户端。失败静默。
+
+        发送方收到 ``isMine=True``（聊天页能立即看到自己触发的卡片，如卖家发货后看到发货卡），
+        对端收到 ``isMine=False``。前端 ``chatStore.addMessage`` 会按消息 id 去重，
+        因此与路由层广播即便重叠也不会出现重复气泡。
+        """
+        try:
+            from app.services.realtime import schedule_send_to_user
+
+            base = msg.model_dump()
+            schedule_send_to_user(
+                sender_id, {"type": "new_message", "data": {**base, "isMine": True}}
+            )
+            if other_id and other_id != sender_id:
+                schedule_send_to_user(
+                    other_id, {"type": "new_message", "data": {**base, "isMine": False}}
+                )
+        except Exception as e:  # noqa: BLE001
+            print(f"[chat] ws broadcast failed (conv={conversation_id}): {e}")
 
     def _dispatch_message_push(
         self,

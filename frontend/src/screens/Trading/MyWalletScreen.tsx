@@ -161,7 +161,7 @@ export default function MyWalletScreen() {
             {formatPrice(balance?.availableCents ?? 0, currency)}
           </Text>
           {summary && summary.upcomingReleaseCents > 0 ? (
-            <Text style={[styles.balanceLabel, { marginTop: 6, marginBottom: 0 }]}>
+            <Text style={styles.balanceHint}>
               <Ionicons name="hourglass-outline" size={12} />{" "}
               {t("trading.wallet.upcomingReleaseLabel", {
                 amount: formatPrice(summary.upcomingReleaseCents, currency),
@@ -189,7 +189,12 @@ export default function MyWalletScreen() {
             disabled={!canWithdraw}
             onPress={() => navigation.navigate("WithdrawRequest")}
           >
-            <Text style={styles.withdrawCtaText}>
+            <Text
+              style={[
+                styles.withdrawCtaText,
+                !canWithdraw && styles.withdrawCtaTextDisabled,
+              ]}
+            >
               {canWithdraw
                 ? t("trading.wallet.withdrawCta")
                 : withdrawDisabledReason}

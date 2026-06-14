@@ -138,6 +138,7 @@ class TradingSupportService:
                 sender_id=user_id,
                 content=json.dumps(card_payload, ensure_ascii=False),
                 message_type="order_status",
+                broadcast=True,
             )
         except Exception as e:
             print(f"[trading_support] seed order card failed: {e}")
@@ -151,6 +152,7 @@ class TradingSupportService:
                         sender_id=user_id,
                         content=template,
                         message_type="text",
+                        broadcast=True,
                     )
                 except Exception as e:
                     print(f"[trading_support] send aftersales template failed: {e}")
@@ -189,6 +191,7 @@ class TradingSupportService:
                 sender_id=user_id,
                 content=json.dumps(card_payload, ensure_ascii=False),
                 message_type="product_listing",
+                broadcast=True,
             )
         except Exception as e:
             print(f"[trading_support] seed product card failed: {e}")
