@@ -20,7 +20,8 @@ class ArchiveItem(BaseModel):
     size: Optional[str] = None
     color: Optional[str] = None
     condition: Optional[str] = None
-    originalShowId: Optional[int] = None
+    # shows.id 是 VARCHAR(100)（MongoDB ObjectId 字符串），不能用 int。
+    originalShowId: Optional[str] = None
     acquiredPriceCents: Optional[int] = None
     currency: str = "CNY"
     photos: List[str] = Field(default_factory=list)
@@ -49,7 +50,7 @@ class ArchiveItemManualCreate(BaseModel):
     acquiredAt: Optional[str] = None
     note: Optional[str] = None
     storageLocation: Optional[str] = None
-    originalShowId: Optional[int] = None
+    originalShowId: Optional[str] = None
 
 
 # PDF p.22 · MY ARCHIVE 持有记录

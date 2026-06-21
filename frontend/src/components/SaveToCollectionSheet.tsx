@@ -24,7 +24,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   StyleSheet,
   Switch,
   TouchableOpacity,
@@ -391,9 +393,14 @@ export const SaveToCollectionSheet: React.FC<SaveToCollectionSheetProps> = ({
         <Animated.View style={[styles.backdrop, { opacity: backdrop }]} />
       </TouchableWithoutFeedback>
 
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={styles.container}
+        pointerEvents="box-none"
+      >
       <Animated.View
         style={[
-          styles.container,
+          styles.sheetOuter,
           { paddingBottom: insets.bottom || 16 },
           { transform: [{ translateY }] },
         ]}
@@ -544,6 +551,7 @@ export const SaveToCollectionSheet: React.FC<SaveToCollectionSheetProps> = ({
           )}
         </Box>
       </Animated.View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 };
@@ -555,10 +563,10 @@ const makeStyles = (t: AppTheme) =>
       backgroundColor: t.colors.overlay,
     },
     container: {
-      position: "absolute",
-      bottom: 0,
-      left: 0,
-      right: 0,
+      ...StyleSheet.absoluteFillObject,
+      justifyContent: "flex-end",
+    },
+    sheetOuter: {
     },
     sheet: {
       backgroundColor: t.colors.card,

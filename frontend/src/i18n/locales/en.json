@@ -130,6 +130,7 @@
     "tabNotes": "Notes",
     "tabBuying": "Buying",
     "tabSelling": "Selling",
+    "tabSaleStatus": "Sale Status",
     "tabCollections": "Saved",
     "published": "Published",
     "pending": "Under Review",
@@ -3589,8 +3590,8 @@
       "submitFailed": "Submit failed",
       "celebrateTitle": "Congrats on the new piece!",
       "celebrateSubtitle": "Review submitted. It will reveal once the other party rates too.\nReady to enshrine it into MY ARCHIVE?",
-      "celebrateSellerTitle": "Thanks for your review!",
-      "celebrateSellerSubtitle": "Review submitted. It will reveal once the other party rates too.",
+      "celebrateSellerTitle": "Congrats on the sale!",
+      "celebrateSellerSubtitle": "Add this sold piece to MY ARCHIVE as a memory.\nYour review is in — both ratings reveal once the other party submits theirs.",
       "addToArchive": "Add to my archive",
       "archiveFailed": "Failed to add to archive. Please try again.",
       "later": "Maybe later",
@@ -4180,7 +4181,8 @@
       "signedAt": "Received on {{date}}",
       "tapToViewOrder": "Tap to view order details",
       "paidHintSeller": "Buyer has paid — please ship soon",
-      "paidHintBuyer": "Paid — waiting for seller to ship"
+      "paidHintBuyer": "Paid — waiting for seller to ship",
+      "deliveredHint": "Note: funds are released to the seller only after the buyer confirms receipt and confirms the item is as described"
     },
     "payment": {
       "headerTitle": "Choose Payment Method",

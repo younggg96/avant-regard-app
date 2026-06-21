@@ -108,12 +108,58 @@ interface PublishListingStore extends ListingFormState {
   hydrateFromListing: (listing: StoreProduct) => void;
 }
 
+const PHOTO_ANGLE_SLOT_ORDER: Array<keyof PhotoAngles> = [
+  "front",
+  "back",
+  "wash_label",
+  "wash_label_back",
+  "brand_label",
+  "brand_label_back",
+  "flaw",
+];
+
+/**
+ * Resolve the `photoAngles` object for a listing.
+ *
+ * Priority:
+ *   1. `listing.photoAngles` if it contains at least one non-empty slot URL.
+ *   2. Reconstruct from `listing.images` using the known slot order produced
+ *      by `buildPayload()` in Step 4 (front, back, wash_label, wash_label_back,
+ *      brand_label, brand_label_back, flaw, ...extras).
+ *   3. Fall back to EMPTY.photoAngles.
+ */
+function resolvePhotoAngles(listing: StoreProduct): PhotoAngles {
+  const pa = listing.photoAngles;
+  if (pa) {
+    const hasAnySlot = PHOTO_ANGLE_SLOT_ORDER.some(
+      (k) => !!(pa as Record<string, unknown>)[k],
+    );
+    if (hasAnySlot) return pa;
+  }
+
+  const imgs = listing.images;
+  if (!imgs || imgs.length === 0) return EMPTY.photoAngles;
+
+  const rebuilt: PhotoAngles = { ...EMPTY.photoAngles, extras: [] };
+  PHOTO_ANGLE_SLOT_ORDER.forEach((key, idx) => {
+    if (idx < imgs.length) {
+      (rebuilt as Record<string, unknown>)[key] = imgs[idx];
+    }
+  });
+  const extrasStart = PHOTO_ANGLE_SLOT_ORDER.length;
+  if (imgs.length > extrasStart) {
+    rebuilt.extras = imgs.slice(extrasStart);
+  }
+  return rebuilt;
+}
+
 export const usePublishListingStore = create<PublishListingStore>((set) => ({
   ...EMPTY,
   reset: (preset) => set({ ...EMPTY, ...(preset ?? {}) }),
   patch: (data) => set((prev) => ({ ...prev, ...data })),
   setProductId: (id) => set({ productId: id }),
-  hydrateFromListing: (listing) =>
+  hydrateFromListing: (listing) => {
+    const photoAngles = resolvePhotoAngles(listing);
     set({
       productId: listing.id,
       sellerKind: (listing.sellerKind as SellerKind) ?? "individual",
@@ -127,8 +173,8 @@ export const usePublishListingStore = create<PublishListingStore>((set) => ({
       condition: (listing.condition as ProductCondition) ?? null,
       accessoriesNote: listing.accessoriesNote ?? "",
       conditionNote: listing.conditionNote ?? "",
-      photoAngles: listing.photoAngles ?? EMPTY.photoAngles,
-      extras: listing.photoAngles?.extras ?? [],
+      photoAngles,
+      extras: photoAngles.extras ?? [],
       title: listing.title,
       description: listing.description ?? "",
       priceCents: listing.priceCents,
@@ -142,7 +188,8 @@ export const usePublishListingStore = create<PublishListingStore>((set) => ({
       shipFromState: listing.shipFromState ?? null,
       shipFromCity: listing.shipFromCity ?? null,
       shippingFeeMode: (listing.shippingFeeMode as ShippingFeeMode) ?? "cod",
-    }),
+    });
+  },
 }));
 
 /**

@@ -19,7 +19,6 @@ import {
   Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import * as ImagePicker from "expo-image-picker";
@@ -36,11 +35,16 @@ import {
 } from "../../services/aftersalesService";
 import { useFormatPrice } from "../../utils/currency";
 import { uploadImageFromUri } from "../admin/adminUtils";
-import { useAppTheme, useThemedStyles, type AppTheme } from "../../theme";
+import {
+  playfairFonts,
+  useAppTheme,
+  useThemedStyles,
+  type AppTheme,
+} from "../../theme";
+import ScreenHeader from "../../components/ScreenHeader";
 import { config as envConfig } from "../../config/env";
 
 export default function AuthenticationScreen() {
-  const navigation = useNavigation<any>();
   const theme = useAppTheme();
   const styles = useThemedStyles(makeStyles);
   const { t } = useTranslation();
@@ -152,16 +156,12 @@ export default function AuthenticationScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <View style={styles.header}>
-        <Pressable onPress={() => navigation.goBack()}>
-          <Ionicons name="chevron-back" size={26} color={theme.colors.text} />
-        </Pressable>
-        <Text style={styles.headerTitle}>
-          {t("trading.authentication.headerTitle")}
-        </Text>
-        <View style={{ width: 26 }} />
-      </View>
+    <SafeAreaView style={styles.safe} edges={["top"]}>
+      <ScreenHeader
+        title={t("trading.authentication.headerTitle")}
+        showBack
+        borderless
+      />
 
       <ScrollView
         contentContainerStyle={styles.scroll}
@@ -336,21 +336,10 @@ export default function AuthenticationScreen() {
 const makeStyles = (t: AppTheme) =>
   StyleSheet.create({
     safe: { flex: 1, backgroundColor: t.colors.background },
-    header: {
-      height: 48,
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      paddingHorizontal: 16,
-      backgroundColor: t.colors.card,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: t.colors.border,
-    },
-    headerTitle: { fontSize: 16, fontWeight: "600", color: t.colors.text },
     scroll: { padding: 16, paddingBottom: 120 },
     sectionTitle: {
-      fontSize: 12,
-      fontWeight: "700",
+      ...t.typography.caption,
+      fontFamily: playfairFonts.medium,
       letterSpacing: 0.6,
       textTransform: "uppercase",
       marginBottom: 12,
@@ -390,13 +379,14 @@ const makeStyles = (t: AppTheme) =>
       alignItems: "baseline",
     },
     pkgName: {
-      fontSize: 16,
-      fontWeight: "700",
+      ...t.typography.bodySmall,
+      fontFamily: playfairFonts.medium,
       color: t.colors.text,
     },
     pkgPrice: {
       fontSize: 18,
-      fontWeight: "800",
+      lineHeight: 24,
+      fontFamily: playfairFonts.bold,
       color: t.colors.text,
     },
     slaBadge: {
@@ -406,10 +396,16 @@ const makeStyles = (t: AppTheme) =>
       marginTop: 6,
       marginBottom: 6,
     },
-    pkgSla: { fontSize: 12, color: t.colors.gray300 },
+    pkgSla: {
+      ...t.typography.caption,
+      fontFamily: playfairFonts.regular,
+      color: t.colors.gray300,
+    },
     pkgDesc: {
+      ...t.typography.bodySmall,
       fontSize: 13,
       lineHeight: 18,
+      fontFamily: playfairFonts.regular,
       color: t.colors.gray400,
     },
     inputGroup: {
@@ -422,7 +418,8 @@ const makeStyles = (t: AppTheme) =>
     input: {
       paddingHorizontal: 16,
       paddingVertical: 14,
-      fontSize: 15,
+      ...t.typography.bodySmall,
+      fontFamily: playfairFonts.regular,
       color: t.colors.text,
     },
     inputMultiline: { minHeight: 88, textAlignVertical: "top" },
@@ -457,21 +454,33 @@ const makeStyles = (t: AppTheme) =>
       borderColor: t.colors.border,
       borderStyle: "dashed",
     },
-    photoAddText: { fontSize: 11, color: t.colors.gray300 },
+    photoAddText: {
+      ...t.typography.caption,
+      fontFamily: playfairFonts.regular,
+      color: t.colors.gray300,
+    },
     errorBox: {
       flexDirection: "row",
       alignItems: "center",
       gap: 6,
       marginTop: 12,
     },
-    error: { color: t.colors.error, fontSize: 13 },
+    error: {
+      ...t.typography.bodySmall,
+      fontFamily: playfairFonts.regular,
+      color: t.colors.error,
+    },
     emptyBox: {
       alignItems: "center",
       justifyContent: "center",
       paddingVertical: 28,
       gap: 8,
     },
-    empty: { color: t.colors.gray300, fontSize: 13 },
+    empty: {
+      ...t.typography.bodySmall,
+      fontFamily: playfairFonts.regular,
+      color: t.colors.gray300,
+    },
     authOrderCard: {
       backgroundColor: t.colors.cardElevated,
       padding: 16,
@@ -486,7 +495,11 @@ const makeStyles = (t: AppTheme) =>
       alignItems: "center",
       marginBottom: 8,
     },
-    authOrderNo: { color: t.colors.gray300, fontSize: 13, fontWeight: "600" },
+    authOrderNo: {
+      ...t.typography.bodySmall,
+      fontFamily: playfairFonts.medium,
+      color: t.colors.gray300,
+    },
     statusPill: {
       paddingHorizontal: 10,
       paddingVertical: 4,
@@ -494,14 +507,20 @@ const makeStyles = (t: AppTheme) =>
       backgroundColor: t.colors.surface,
     },
     authOrderStatus: {
-      fontSize: 11,
-      fontWeight: "700",
+      ...t.typography.caption,
+      fontFamily: playfairFonts.medium,
       color: t.colors.text,
     },
-    authOrderMeta: { fontSize: 14, color: t.colors.gray400 },
+    authOrderMeta: {
+      ...t.typography.bodySmall,
+      fontFamily: playfairFonts.regular,
+      color: t.colors.gray400,
+    },
     authOrderReport: {
+      ...t.typography.bodySmall,
       fontSize: 13,
       lineHeight: 18,
+      fontFamily: playfairFonts.regular,
       color: t.colors.gray400,
       marginTop: 6,
     },
@@ -524,8 +543,9 @@ const makeStyles = (t: AppTheme) =>
       alignItems: "center",
     },
     primaryBtnText: {
-      color: t.colors.textInverted,
+      ...t.typography.button,
       fontSize: 15,
-      fontWeight: "600",
+      fontFamily: playfairFonts.medium,
+      color: t.colors.textInverted,
     },
   });

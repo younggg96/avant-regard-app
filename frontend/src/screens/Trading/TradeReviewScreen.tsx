@@ -119,6 +119,7 @@ const TradeReviewScreen: React.FC = () => {
   const [checking, setChecking] = useState(true);
   const [archiving, setArchiving] = useState(false);
   const [isBuyer, setIsBuyer] = useState(false);
+  const [isSeller, setIsSeller] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const meUserId = useAuthStore((s) => s.user?.userId);
 
@@ -136,11 +137,13 @@ const TradeReviewScreen: React.FC = () => {
           getOrder(orderId).catch(() => null),
         ]);
         if (!cancelled) {
-          const confirmedBuyer =
-            order != null &&
-            meUserId != null &&
-            order.buyerUserId === meUserId;
-          setIsBuyer(confirmedBuyer);
+          if (order != null && meUserId != null) {
+            setIsBuyer(order.buyerUserId === meUserId);
+            setIsSeller(order.sellerUserId === meUserId);
+          } else {
+            setIsBuyer(false);
+            setIsSeller(false);
+          }
           if (status.myReviewSubmitted) {
             Alert.alert(
               t("trading.review.alreadyReviewedTitle"),
@@ -295,7 +298,7 @@ const TradeReviewScreen: React.FC = () => {
               <Text style={styles.celebrateProduct}>{productTitle}</Text>
             ) : null}
 
-            {isBuyer ? (
+            {(isBuyer || isSeller) ? (
               <Pressable
                 style={[
                   styles.primary,

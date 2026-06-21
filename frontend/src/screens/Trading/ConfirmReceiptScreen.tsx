@@ -5,7 +5,7 @@
  *   - OrderDetailScreen 「确认收货」按钮 → navigation.navigate("ConfirmReceipt", { orderId })
  *
  * 流程：
- *   - 拉订单 + 商品 → 展示结算明细（1% 手续费 / 卖家实收 / 3 天解冻）
+ *   - 拉订单 + 商品 → 展示买家支付金额
  *   - 用户勾选 3 项核对清单 → 「确认收货」可点
  *   - 调 confirmOrder → 拿到 settlement → navigation.replace("SettlementResult", { ... })
  */
@@ -231,35 +231,6 @@ export default function ConfirmReceiptScreen() {
             label={t("trading.confirmReceipt.buyerPaid")}
             value={formatPrice(order.paidPriceCents, currency)}
           />
-          <InfoRow
-            label={t("trading.confirmReceipt.commission", {
-              rate: (order.commissionRateBps / 100).toFixed(1),
-            })}
-            value={`- ${formatPrice(order.commissionCents, currency)}`}
-            muted
-          />
-          <View style={styles.divider} />
-          <InfoRow
-            label={t("trading.confirmReceipt.sellerPayout")}
-            value={formatPrice(order.sellerPayoutCents, currency)}
-            bold
-          />
-          <View style={styles.hintBox}>
-            <Ionicons
-              name="lock-closed-outline"
-              size={14}
-              color={theme.colors.gray300}
-              style={{ marginRight: 6, marginTop: 2 }}
-            />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.hintText}>
-                {t("trading.confirmReceipt.lockHint")}
-              </Text>
-              <Text style={[styles.hintText, { marginTop: 4 }]}>
-                {t("trading.confirmReceipt.kycHint")}
-              </Text>
-            </View>
-          </View>
         </View>
       </ScrollView>
 
@@ -421,24 +392,7 @@ const makeStyles = (t: AppTheme) =>
       paddingVertical: 6,
     },
     infoLabel: { fontSize: 13, color: t.colors.text, flex: 1 },
-    infoLabelMuted: { color: t.colors.gray300 },
     infoValue: { fontSize: 13, color: t.colors.text },
-    infoValueBold: { fontWeight: "700", fontSize: 16 },
-    infoValueMuted: { color: t.colors.gray300 },
-    divider: {
-      height: StyleSheet.hairlineWidth,
-      backgroundColor: t.colors.border,
-      marginVertical: 8,
-    },
-    hintBox: {
-      marginTop: 12,
-      padding: 10,
-      borderRadius: 8,
-      backgroundColor: t.mode === "dark" ? "#1F1B12" : "#FFF8E6",
-      flexDirection: "row",
-      alignItems: "flex-start",
-    },
-    hintText: { fontSize: 12, color: t.colors.gray300, lineHeight: 18 },
     empty: { textAlign: "center", marginTop: 48, color: t.colors.gray300 },
     footer: {
       position: "absolute",

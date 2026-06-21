@@ -6,7 +6,7 @@
  *
  * 渲染：
  *   - 顶部勾选 hero
- *   - 结算明细：订单号 / 成交金额 / 1% 手续费 / 卖家实收 / 解冻时间（卖家可提现时间）
+ *   - 结算明细：订单号 / 成交金额
  *   - 「单品已加入 MY ARCHIVE」二级卡片
  *   - 行动：去评价 / 查看典藏 / 查看订单 / 完成
  */
@@ -46,11 +46,6 @@ type RouteParams = {
   };
 };
 
-function formatDateRange(iso?: string | null): string {
-  if (!iso) return "—";
-  return iso.replace("T", " ").slice(0, 16);
-}
-
 export default function SettlementResultScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<RouteProp<RouteParams, "SettlementResult">>();
@@ -58,8 +53,6 @@ export default function SettlementResultScreen() {
   const theme = useAppTheme();
   const styles = useThemedStyles(makeStyles);
   const { t } = useTranslation();
-  // 结算回执是「卖家实际入账 / 抽成」的真实金额，按订单原始币种展示，
-  // 不能跟随用户展示偏好做汇率换算，否则会与钱包余额、提现金额对不上。
   const formatPrice = useFormatWalletAmount();
 
   const currency = settlement.currency || "CNY";
@@ -139,40 +132,6 @@ export default function SettlementResultScreen() {
             label={t("trading.settlement.buyerPaid")}
             value={formatPrice(settlement.grossAmountCents, currency)}
           />
-          <InfoRow
-            label={t("trading.settlement.commission", {
-              rate: (settlement.commissionRateBps / 100).toFixed(1),
-            })}
-            value={`- ${formatPrice(settlement.commissionCents, currency)}`}
-            muted
-          />
-          <View style={styles.divider} />
-          <InfoRow
-            label={t("trading.settlement.sellerPayout")}
-            value={formatPrice(settlement.sellerPayoutCents, currency)}
-            bold
-          />
-          {settlement.releaseAt ? (
-            <View style={styles.releaseBox}>
-              <Ionicons
-                name="time-outline"
-                size={16}
-                color={theme.colors.text}
-                style={{ marginRight: 6 }}
-              />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.releaseLabel}>
-                  {t("trading.settlement.releaseAtLabel")}
-                </Text>
-                <Text style={styles.releaseValue}>
-                  {formatDateRange(settlement.releaseAt)}
-                </Text>
-                <Text style={styles.releaseHint}>
-                  {t("trading.settlement.releaseAtHint")}
-                </Text>
-              </View>
-            </View>
-          ) : null}
         </View>
 
         <Pressable
@@ -338,27 +297,6 @@ const makeStyles = (t: AppTheme) =>
     infoValue: { fontSize: 13, color: t.colors.text },
     infoValueBold: { fontWeight: "700", fontSize: 16 },
     infoValueMuted: { color: t.colors.gray300 },
-    divider: {
-      height: StyleSheet.hairlineWidth,
-      backgroundColor: t.colors.border,
-      marginVertical: 8,
-    },
-    releaseBox: {
-      marginTop: 12,
-      padding: 12,
-      borderRadius: 8,
-      backgroundColor: t.mode === "dark" ? "#0F1F14" : "#EEFBF2",
-      flexDirection: "row",
-      alignItems: "flex-start",
-    },
-    releaseLabel: { fontSize: 12, color: t.colors.gray300, marginBottom: 2 },
-    releaseValue: {
-      fontSize: 14,
-      fontWeight: "600",
-      color: t.colors.text,
-      marginBottom: 4,
-    },
-    releaseHint: { fontSize: 11, color: t.colors.gray300, lineHeight: 16 },
     archiveCard: {
       flexDirection: "row",
       alignItems: "center",

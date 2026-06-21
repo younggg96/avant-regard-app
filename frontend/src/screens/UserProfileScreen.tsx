@@ -1158,6 +1158,10 @@ const UserProfileScreen = () => {
       <View style={styles.sellingGrid}>
         {sellingProducts.map((product) => {
           const cover = product.images?.[0];
+          const isSold =
+            sellingSubTab === "sold" ||
+            product.status === "sold" ||
+            product.status === "SOLD_OUT";
           return (
             <Pressable
               key={product.id}
@@ -1174,6 +1178,13 @@ const UserProfileScreen = () => {
                     <Ionicons name="image-outline" size={28} color={theme.colors.gray300} />
                   </View>
                 )}
+                {isSold ? (
+                  <View style={styles.soldBadge}>
+                    <Text style={styles.soldBadgeText}>
+                      {t("trading.myListings.tabSold")}
+                    </Text>
+                  </View>
+                ) : null}
               </View>
               <VStack px="$sm" py="$sm" gap={3}>
                 <Text fontSize={13} fontWeight="$semibold" numberOfLines={2} style={{ color: appTheme.colors.text }}>
@@ -2247,6 +2258,22 @@ const makeStyles = (t: AppTheme) =>
   sellingImagePlaceholder: {
     justifyContent: "center",
     alignItems: "center",
+  },
+  soldBadge: {
+    position: "absolute",
+    top: t.spacing.xs,
+    right: t.spacing.xs,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: t.borderRadius.sm,
+    backgroundColor: "rgba(0,0,0,0.6)",
+  },
+  soldBadgeText: {
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.5,
+    color: "#FFFFFF",
+    fontFamily: playfairFonts.bold,
   },
 });
 

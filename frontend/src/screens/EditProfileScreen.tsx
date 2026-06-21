@@ -19,7 +19,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
-import { theme, useThemedStyles, type AppTheme } from "../theme";
+import { theme, playfairFonts, useThemedStyles, type AppTheme } from "../theme";
 import { useAuthStore } from "../store/authStore";
 import ScreenHeader from "../components/ScreenHeader";
 import KeyboardFriend from "../components/KeyboardFriend";
@@ -1115,7 +1115,7 @@ const makeStyles = (t: AppTheme) =>
   },
   avatarEmptyText: {
     fontSize: 24,
-    fontWeight: "600",
+    fontFamily: playfairFonts.medium,
     color: t.colors.gray300,
   },
   avatarEditIcon: {
@@ -1151,8 +1151,8 @@ const makeStyles = (t: AppTheme) =>
     marginBottom: 16,
   },
   label: {
-    fontSize: 12,
-    fontWeight: "700",
+    ...t.typography.caption,
+    fontFamily: playfairFonts.medium,
     letterSpacing: 0.6,
     textTransform: "uppercase",
     color: t.colors.gray300,
@@ -1164,7 +1164,8 @@ const makeStyles = (t: AppTheme) =>
     borderRadius: t.borderRadius.sm,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    fontSize: 15,
+    ...t.typography.bodySmall,
+    fontFamily: playfairFonts.regular,
     color: t.colors.text,
     backgroundColor: t.colors.inputBackground,
   },
@@ -1173,7 +1174,8 @@ const makeStyles = (t: AppTheme) =>
     paddingTop: 12,
   },
   charCount: {
-    fontSize: 11,
+    ...t.typography.caption,
+    fontFamily: playfairFonts.regular,
     color: t.colors.gray300,
     textAlign: "right",
     marginTop: 4,
@@ -1191,7 +1193,8 @@ const makeStyles = (t: AppTheme) =>
     backgroundColor: t.colors.inputBackground,
   },
   selectInputText: {
-    fontSize: 15,
+    ...t.typography.bodySmall,
+    fontFamily: playfairFonts.regular,
     color: t.colors.text,
   },
   selectInputPlaceholder: {
@@ -1356,8 +1359,9 @@ const makeStyles = (t: AppTheme) =>
     alignItems: "center",
   },
   confirmButtonText: {
+    ...t.typography.button,
     fontSize: 16,
-    fontWeight: "600",
+    fontFamily: playfairFonts.medium,
     color: t.colors.textInverted,
   },
 });

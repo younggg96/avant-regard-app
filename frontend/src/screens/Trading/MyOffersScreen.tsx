@@ -1,7 +1,7 @@
 /**
  * MyOffersScreen —— 出价中心。
  *
- * 角色 Tab：
+ * 角色 Tab（可点击或横向滑动切换）：
  *   - 我的出价   GET /api/offers/me
  *   - 待我处理   GET /api/offers/me/incoming
  *
@@ -11,13 +11,17 @@
  *
  * UI：ScreenHeader / TopTabBar / AnimatedChip / OptimizedImage + Playfair Display + theme tokens。
  */
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
   StyleSheet,
   FlatList,
   ActivityIndicator,
   RefreshControl,
+  View,
 } from "react-native";
+import PagerView, {
+  type PagerViewOnPageSelectedEvent,
+} from "react-native-pager-view";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -71,6 +75,18 @@ const PROCESSED_STATUSES: OfferStatus[] = [
 
 const STATUS_FILTERS: StatusFilter[] = ["all", "pending", "processed"];
 
+const ROLE_ORDER: RoleMode[] = ["outgoing", "incoming"];
+
+function filterOffers(
+  items: OfferWithDetail[],
+  statusFilter: StatusFilter,
+): OfferWithDetail[] {
+  if (statusFilter === "all") return items;
+  if (statusFilter === "pending")
+    return items.filter((o) => o.status === "pending");
+  return items.filter((o) => PROCESSED_STATUSES.includes(o.status));
+}
+
 function formatExpiresAt(iso?: string | null): string {
   if (!iso) return "";
   const d = new Date(iso);
@@ -92,9 +108,15 @@ export default function MyOffersScreen() {
 
   const [mode, setMode] = useState<RoleMode>("outgoing");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
-  const [offers, setOffers] = useState<OfferWithDetail[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [offersByMode, setOffersByMode] = useState<
+    Partial<Record<RoleMode, OfferWithDetail[]>>
+  >({});
+  const [loadingByMode, setLoadingByMode] = useState<
+    Partial<Record<RoleMode, boolean>>
+  >({});
   const [refreshing, setRefreshing] = useState(false);
+
+  const pagerRef = useRef<PagerView>(null);
 
   const [counterTarget, setCounterTarget] = useState<OfferWithDetail | null>(
     null,
@@ -108,43 +130,50 @@ export default function MyOffersScreen() {
     [t],
   );
 
-  const load = useCallback(
-    async (silent = false) => {
-      if (!silent) setLoading(true);
-      try {
-        const res =
-          mode === "outgoing"
-            ? await listMyOffers({ pageSize: 50 })
-            : await listIncomingOffers({ pageSize: 50 });
-        setOffers(res.items);
-      } catch (e) {
-        console.warn("[MyOffers] load failed:", e);
-        setOffers([]);
-      } finally {
-        if (!silent) setLoading(false);
-        setRefreshing(false);
+  const load = useCallback(async (targetMode: RoleMode, silent = false) => {
+    if (!silent) {
+      setLoadingByMode((prev) => ({ ...prev, [targetMode]: true }));
+    }
+    try {
+      const res =
+        targetMode === "outgoing"
+          ? await listMyOffers({ pageSize: 50 })
+          : await listIncomingOffers({ pageSize: 50 });
+      setOffersByMode((prev) => ({ ...prev, [targetMode]: res.items }));
+    } catch (e) {
+      console.warn("[MyOffers] load failed:", e);
+      setOffersByMode((prev) => ({ ...prev, [targetMode]: [] }));
+    } finally {
+      if (!silent) {
+        setLoadingByMode((prev) => ({ ...prev, [targetMode]: false }));
       }
-    },
-    [mode],
-  );
+      setRefreshing(false);
+    }
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
-      load();
-    }, [load]),
+      load(mode);
+    }, [load, mode]),
   );
 
-  const filtered = useMemo(() => {
-    if (statusFilter === "all") return offers;
-    if (statusFilter === "pending")
-      return offers.filter((o) => o.status === "pending");
-    return offers.filter((o) => PROCESSED_STATUSES.includes(o.status));
-  }, [offers, statusFilter]);
-
-  const handleRoleChange = (next: RoleMode) => {
+  /** tab 点击 → 同步 pager；横向滑动 → 只更新 state。 */
+  const switchMode = useCallback((next: RoleMode, fromPager = false) => {
     setMode(next);
     setStatusFilter("all");
-  };
+    if (!fromPager) {
+      pagerRef.current?.setPage(ROLE_ORDER.indexOf(next));
+    }
+  }, []);
+
+  const onPageSelected = useCallback(
+    (e: PagerViewOnPageSelectedEvent) => {
+      const idx = Math.round(Number(e.nativeEvent.position));
+      const next = ROLE_ORDER[idx];
+      if (next) switchMode(next, true);
+    },
+    [switchMode],
+  );
 
   const handleAction = async (
     action: "accept" | "reject" | "withdraw",
@@ -182,7 +211,7 @@ export default function MyOffersScreen() {
       } else {
         await withdrawOffer(offerId);
       }
-      load(true);
+      load(mode, true);
     } catch (e: any) {
       Alert.show(
         t("trading.offers.failedTitle"),
@@ -195,8 +224,8 @@ export default function MyOffersScreen() {
     navigation.navigate("StoreProductDetail", { productId });
   };
 
-  const renderItem = ({ item }: { item: OfferWithDetail }) => {
-    const counterpart = mode === "outgoing" ? item.seller : item.buyer;
+  const renderItem = (pageMode: RoleMode) => ({ item }: { item: OfferWithDetail }) => {
+    const counterpart = pageMode === "outgoing" ? item.seller : item.buyer;
     const allowed = item.allowedActions ?? [];
     const canAccept = allowed.includes("accept");
     const canReject = allowed.includes("reject");
@@ -360,7 +389,7 @@ export default function MyOffersScreen() {
         <TopTabBar
           tabs={roleTabs}
           activeTab={mode}
-          onTabPress={handleRoleChange}
+          onTabPress={(next) => switchMode(next)}
         />
       </Box>
 
@@ -377,31 +406,51 @@ export default function MyOffersScreen() {
         </Box>
       </Box>
 
-      {loading && offers.length === 0 ? (
-        <Box style={styles.center}>
-          <ActivityIndicator color={theme.colors.text} />
-        </Box>
-      ) : (
-        <FlatList
-          data={filtered}
-          keyExtractor={(o) => String(o.id)}
-          contentContainerStyle={styles.listContent}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={() => {
-                setRefreshing(true);
-                load(true);
-              }}
-              tintColor={theme.colors.text}
-            />
-          }
-          renderItem={renderItem}
-          ListEmptyComponent={
-            <Text style={styles.empty}>{t("trading.offers.empty")}</Text>
-          }
-        />
-      )}
+      {/* @ts-expect-error RNC codegen typings omit `children`; runtime supports pages. */}
+      <PagerView
+        ref={pagerRef}
+        style={styles.pager}
+        initialPage={0}
+        onPageSelected={onPageSelected}
+      >
+        {ROLE_ORDER.map((pageMode) => {
+          const pageOffers = offersByMode[pageMode] ?? [];
+          const filtered = filterOffers(pageOffers, statusFilter);
+          const isActivePage = pageMode === mode;
+          const pageLoading =
+            !!loadingByMode[pageMode] && pageOffers.length === 0;
+
+          return (
+            <View key={pageMode} style={styles.page} collapsable={false}>
+              {pageLoading ? (
+                <Box style={styles.center}>
+                  <ActivityIndicator color={theme.colors.text} />
+                </Box>
+              ) : (
+                <FlatList
+                  data={filtered}
+                  keyExtractor={(o) => String(o.id)}
+                  contentContainerStyle={styles.listContent}
+                  refreshControl={
+                    <RefreshControl
+                      refreshing={refreshing && isActivePage}
+                      onRefresh={() => {
+                        setRefreshing(true);
+                        load(pageMode, true);
+                      }}
+                      tintColor={theme.colors.text}
+                    />
+                  }
+                  renderItem={renderItem(pageMode)}
+                  ListEmptyComponent={
+                    <Text style={styles.empty}>{t("trading.offers.empty")}</Text>
+                  }
+                />
+              )}
+            </View>
+          );
+        })}
+      </PagerView>
 
       {counterTarget ? (
         <OfferModal
@@ -416,7 +465,7 @@ export default function MyOffersScreen() {
           onClose={() => setCounterTarget(null)}
           onSuccess={() => {
             setCounterTarget(null);
-            load(true);
+            load(mode, true);
           }}
         />
       ) : null}
@@ -437,6 +486,8 @@ const makeStyles = (t: AppTheme) =>
       paddingVertical: t.spacing.sm,
       backgroundColor: t.colors.background,
     },
+    pager: { flex: 1 },
+    page: { flex: 1 },
     listContent: {
       padding: t.spacing.md,
       paddingBottom: t.spacing.xl,

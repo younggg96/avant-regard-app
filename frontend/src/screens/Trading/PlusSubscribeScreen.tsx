@@ -17,7 +17,6 @@ import {
   Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 
@@ -32,7 +31,13 @@ import {
   PlusPlan,
 } from "../../services/archivePlusService";
 import { formatPriceDisplay } from "../../utils/currency";
-import { useAppTheme, useThemedStyles, type AppTheme } from "../../theme";
+import {
+  playfairFonts,
+  useAppTheme,
+  useThemedStyles,
+  type AppTheme,
+} from "../../theme";
+import ScreenHeader from "../../components/ScreenHeader";
 import { config as envConfig, IS_NA } from "../../config/env";
 
 /** Plus 套餐定价 —— 中美版各用本地币种展示,不再做汇率换算混显。 */
@@ -61,7 +66,6 @@ const BENEFITS: { icon: any; title: string; desc: string }[] = [
 ];
 
 export default function PlusSubscribeScreen() {
-  const navigation = useNavigation<any>();
   const theme = useAppTheme();
   const styles = useThemedStyles(makeStyles);
   const { t } = useTranslation();
@@ -151,16 +155,17 @@ export default function PlusSubscribeScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <View style={styles.header}>
-        <Pressable onPress={() => navigation.goBack()}>
-          <Ionicons name="chevron-back" size={26} color={theme.colors.text} />
-        </Pressable>
-        <Text style={styles.headerTitle}>{t("trading.plus.headerTitle")}</Text>
-        <View style={{ width: 26 }} />
-      </View>
+    <SafeAreaView style={styles.safe} edges={["top"]}>
+      <ScreenHeader
+        title={t("trading.plus.headerTitle")}
+        showBack
+        borderless
+      />
 
-      <ScrollView contentContainerStyle={styles.scroll}>
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.hero}>
           <Text style={styles.heroTitle}>{t("trading.plus.heroTitle")}</Text>
           <Text style={styles.heroSub}>
@@ -176,8 +181,10 @@ export default function PlusSubscribeScreen() {
         <Text style={styles.sectionTitle}>{t("trading.plus.benefits")}</Text>
         {BENEFITS.map((b) => (
           <View key={b.title} style={styles.benefitRow}>
-            <Ionicons name={b.icon} size={22} color={theme.colors.text} />
-            <View style={{ flex: 1, marginLeft: 12 }}>
+            <View style={styles.benefitIcon}>
+              <Ionicons name={b.icon} size={18} color={theme.colors.plusGold} />
+            </View>
+            <View style={styles.benefitBody}>
               <Text style={styles.benefitTitle}>{b.title}</Text>
               <Text style={styles.benefitDesc}>{b.desc}</Text>
             </View>
@@ -195,6 +202,17 @@ export default function PlusSubscribeScreen() {
                 ]}
                 onPress={() => setPlan("monthly")}
               >
+                <View
+                  style={[styles.radio, plan === "monthly" && styles.radioActive]}
+                >
+                  {plan === "monthly" ? (
+                    <Ionicons
+                      name="checkmark"
+                      size={12}
+                      color={theme.colors.textInverted}
+                    />
+                  ) : null}
+                </View>
                 <Text style={styles.planName}>{t("trading.plus.planMonthly")}</Text>
                 <Text style={styles.planPrice}>{monthlyPrice}</Text>
                 <Text style={styles.planMeta}>{t("trading.plus.billedMonthly")}</Text>
@@ -207,6 +225,17 @@ export default function PlusSubscribeScreen() {
                 onPress={() => setPlan("annual")}
               >
                 <Text style={styles.planTag}>{t("trading.plus.recommended")}</Text>
+                <View
+                  style={[styles.radio, plan === "annual" && styles.radioActive]}
+                >
+                  {plan === "annual" ? (
+                    <Ionicons
+                      name="checkmark"
+                      size={12}
+                      color={theme.colors.textInverted}
+                    />
+                  ) : null}
+                </View>
                 <Text style={styles.planName}>{t("trading.plus.planYearly")}</Text>
                 <Text style={styles.planPrice}>{annualPrice}</Text>
                 <Text style={styles.planMeta}>
@@ -254,81 +283,135 @@ export default function PlusSubscribeScreen() {
 const makeStyles = (t: AppTheme) =>
   StyleSheet.create({
     safe: { flex: 1, backgroundColor: t.colors.background },
-    header: {
-      height: 48,
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      paddingHorizontal: 16,
-      backgroundColor: t.colors.card,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: t.colors.border,
-    },
-    headerTitle: { fontSize: 16, fontWeight: "600", color: t.colors.text },
     scroll: { padding: 16, paddingBottom: 120 },
     hero: {
-      backgroundColor: t.colors.accent,
-      borderRadius: 16,
-      padding: 24,
-      marginBottom: 16,
+      backgroundColor: t.colors.cardElevated,
+      borderRadius: t.borderRadius.sm,
+      padding: 20,
+      marginBottom: 8,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: t.colors.border,
     },
-    heroTitle: { color: t.colors.plusGold, fontSize: 26, fontWeight: "800" },
-    heroSub: { color: t.colors.textInverted, opacity: 0.7, marginTop: 6 },
+    heroTitle: {
+      ...t.typography.h2,
+      fontFamily: playfairFonts.bold,
+      color: t.colors.plusGold,
+    },
+    heroSub: {
+      ...t.typography.bodySmall,
+      fontFamily: playfairFonts.regular,
+      color: t.colors.textSecondary,
+      marginTop: 6,
+    },
     activeBadge: {
+      ...t.typography.bodySmall,
+      fontFamily: playfairFonts.medium,
       color: t.colors.plusGold,
       marginTop: 12,
-      fontWeight: "600",
     },
     sectionTitle: {
-      fontSize: 13,
-      fontWeight: "600",
-      color: t.colors.text,
-      marginTop: 16,
-      marginBottom: 8,
+      ...t.typography.caption,
+      fontFamily: playfairFonts.medium,
+      letterSpacing: 0.6,
+      textTransform: "uppercase",
+      color: t.colors.gray300,
+      marginTop: 20,
+      marginBottom: 10,
     },
     benefitRow: {
       flexDirection: "row",
       alignItems: "center",
-      paddingVertical: 12,
-      paddingHorizontal: 12,
+      paddingVertical: 14,
+      paddingHorizontal: 14,
       backgroundColor: t.colors.cardElevated,
-      borderRadius: 10,
+      borderRadius: t.borderRadius.sm,
       marginBottom: 8,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: t.colors.border,
     },
-    benefitTitle: { fontSize: 14, fontWeight: "600", color: t.colors.text },
-    benefitDesc: { fontSize: 12, color: t.colors.gray300, marginTop: 2 },
-    planRow: { flexDirection: "row", gap: 8 },
+    benefitIcon: {
+      width: 36,
+      height: 36,
+      borderRadius: t.borderRadius.sm,
+      backgroundColor: t.colors.surface,
+      alignItems: "center",
+      justifyContent: "center",
+      marginRight: 12,
+    },
+    benefitBody: { flex: 1 },
+    benefitTitle: {
+      ...t.typography.bodySmall,
+      fontFamily: playfairFonts.medium,
+      color: t.colors.text,
+    },
+    benefitDesc: {
+      ...t.typography.caption,
+      fontFamily: playfairFonts.regular,
+      color: t.colors.textSecondary,
+      marginTop: 2,
+    },
+    planRow: { flexDirection: "row", gap: 10 },
     planCard: {
       flex: 1,
       backgroundColor: t.colors.cardElevated,
-      borderRadius: 12,
+      borderRadius: t.borderRadius.sm,
       padding: 16,
+      paddingTop: 36,
       borderWidth: 1,
       borderColor: t.colors.border,
       position: "relative",
     },
-    planCardActive: { borderColor: t.colors.accent, borderWidth: 2 },
+    planCardActive: { borderColor: t.colors.accent },
+    radio: {
+      position: "absolute",
+      top: 12,
+      left: 12,
+      width: 20,
+      height: 20,
+      borderRadius: t.borderRadius.full,
+      borderWidth: 1,
+      borderColor: t.colors.gray200,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    radioActive: {
+      backgroundColor: t.colors.accent,
+      borderColor: t.colors.accent,
+    },
     planTag: {
       position: "absolute",
       top: 8,
       right: 8,
       backgroundColor: t.colors.plusGold,
       color: t.mode === "dark" ? "#1A1100" : "#FFFFFF",
+      ...t.typography.caption,
       fontSize: 10,
+      fontFamily: playfairFonts.medium,
       paddingHorizontal: 6,
       paddingVertical: 2,
-      borderRadius: 8,
-      fontWeight: "700",
+      borderRadius: t.borderRadius.sm,
       overflow: "hidden",
     },
     planName: {
-      fontSize: 14,
-      fontWeight: "700",
-      marginBottom: 4,
+      ...t.typography.caption,
+      fontFamily: playfairFonts.medium,
+      marginBottom: 6,
+      color: t.colors.textSecondary,
+      textTransform: "uppercase",
+      letterSpacing: 0.4,
+    },
+    planPrice: {
+      fontSize: 22,
+      lineHeight: 28,
+      fontFamily: playfairFonts.bold,
       color: t.colors.text,
     },
-    planPrice: { fontSize: 22, fontWeight: "700", color: t.colors.text },
-    planMeta: { fontSize: 11, color: t.colors.gray300, marginTop: 4 },
+    planMeta: {
+      ...t.typography.caption,
+      fontFamily: playfairFonts.regular,
+      color: t.colors.textSecondary,
+      marginTop: 4,
+    },
     footer: {
       position: "absolute",
       bottom: 0,
@@ -344,20 +427,26 @@ const makeStyles = (t: AppTheme) =>
     primaryBtn: {
       backgroundColor: t.colors.accent,
       paddingVertical: 14,
-      borderRadius: 24,
+      borderRadius: t.borderRadius.sm,
       alignItems: "center",
     },
     primaryBtnText: {
-      color: t.colors.textInverted,
+      ...t.typography.button,
       fontSize: 15,
-      fontWeight: "600",
+      fontFamily: playfairFonts.medium,
+      color: t.colors.textInverted,
     },
     ghostBtn: {
       paddingVertical: 14,
-      borderRadius: 24,
+      borderRadius: t.borderRadius.sm,
       alignItems: "center",
       borderWidth: 1,
-      borderColor: t.colors.gray200,
+      borderColor: t.colors.border,
     },
-    ghostBtnText: { color: t.colors.gray400, fontWeight: "600" },
+    ghostBtnText: {
+      ...t.typography.button,
+      fontSize: 15,
+      fontFamily: playfairFonts.medium,
+      color: t.colors.gray400,
+    },
   });

@@ -601,7 +601,7 @@ const ProfileScreen = () => {
               tabs={[
                 { id: "notes", label: t("profile.tabNotes") },
                 { id: "buying", label: t("profile.tabBuying") },
-                { id: "selling", label: t("profile.tabSelling") },
+                { id: "selling", label: t("profile.tabSaleStatus") },
                 { id: "collections", label: t("profile.tabCollections") },
               ]}
               activeTab={topTab}
@@ -703,7 +703,7 @@ const ProfileScreen = () => {
             tabs={[
               { id: "notes", label: t("profile.tabNotes") },
               { id: "buying", label: t("profile.tabBuying") },
-              { id: "selling", label: t("profile.tabSelling") },
+              { id: "selling", label: t("profile.tabSaleStatus") },
               { id: "collections", label: t("profile.tabCollections") },
             ]}
             activeTab={topTab}

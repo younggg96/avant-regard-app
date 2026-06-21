@@ -408,6 +408,9 @@ export function OrderStatusCardView({
   // 已付款卡:给卖家(收到方向,!isMine)一句明确的「买家已付款,请发货」提示,
   // 给买家(发出方向)一句「已付款,等待卖家发货」回执。仅在 paid 阶段展示。
   const paid = effectiveStatus === "paid";
+  // 已签收/物流送达卡:提醒买卖双方还需买家「确认收货」这一步资金才会释放,
+  // 避免双方卡在「物流已签收但不知道还要双重确认」的状态。
+  const delivered = effectiveStatus === "delivered";
   const hasShipment =
     !!data.shipment && (data.shipment.carrier || data.shipment.trackingNo);
   const canRefund =
@@ -530,6 +533,18 @@ export function OrderStatusCardView({
           ) : null}
         </View>
       ) : null}
+      {delivered ? (
+        <View style={styles.deliveredHint}>
+          <Ionicons
+            name="information-circle"
+            size={14}
+            color={theme.colors.plusGold}
+          />
+          <Text style={styles.deliveredHintText}>
+            {t("trading.cards.deliveredHint")}
+          </Text>
+        </View>
+      ) : null}
       {pending && onPay ? (
         <TouchableOpacity
           style={styles.payInlineBtn}
@@ -642,10 +657,10 @@ export function DisputeCardView({
 const makeStyles = (t: AppTheme) =>
   StyleSheet.create({
     card: {
-      minWidth: 220,
-      maxWidth: 280,
+      minWidth: 200,
+      maxWidth: 260,
       borderRadius: 12,
-      padding: 12,
+      padding: 10,
       backgroundColor: t.colors.cardElevated,
       borderWidth: 1,
       borderColor: t.colors.border,
@@ -674,10 +689,10 @@ const makeStyles = (t: AppTheme) =>
       marginTop: 4,
     },
     bigPrice: {
-      fontSize: 22,
+      fontSize: 16,
       fontWeight: "700",
       color: t.colors.text,
-      marginVertical: 8,
+      marginVertical: 6,
     },
     paidHint: {
       flexDirection: "row",
@@ -690,6 +705,22 @@ const makeStyles = (t: AppTheme) =>
       fontSize: 12,
       fontWeight: "600",
       color: t.colors.success,
+    },
+    deliveredHint: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: 6,
+      marginTop: 8,
+      paddingTop: 8,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: t.colors.border,
+    },
+    deliveredHintText: {
+      flex: 1,
+      fontSize: 12,
+      lineHeight: 17,
+      fontWeight: "600",
+      color: t.colors.plusGold,
     },
     headerRow: {
       flexDirection: "row",

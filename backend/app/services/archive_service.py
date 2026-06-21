@@ -32,6 +32,48 @@ class ArchiveService:
         self.db = get_supabase_admin()
 
     @staticmethod
+    def _resolve_seller_user_id(order_row: dict) -> Optional[int]:
+        """C2C 取 seller_user_id；买手店卖家回退 merchant.user_id。"""
+        if order_row.get("seller_user_id"):
+            return order_row["seller_user_id"]
+        merchant_id = order_row.get("seller_merchant_id")
+        if not merchant_id:
+            return None
+        try:
+            from app.services.store_merchant_service import store_merchant_service
+
+            merchant = store_merchant_service.get_merchant_by_id(merchant_id)
+            if merchant:
+                return getattr(merchant, "userId", None)
+        except Exception:
+            return None
+        return None
+
+    def _product_snapshot(self, product_id: int) -> dict:
+        prod_res = (
+            self.db.table("store_products")
+            .select(
+                "id, title, brand, size, color, condition, original_show_id, images"
+            )
+            .eq("id", product_id)
+            .limit(1)
+            .execute()
+        )
+        return prod_res.data[0] if prod_res.data else {}
+
+    def _insert_archive_payload(self, payload: dict) -> Optional[ArchiveItem]:
+        try:
+            res = self.db.table("user_archive_items").insert(payload).execute()
+        except Exception as insert_err:
+            if payload.pop("original_show_id", None) is not None:
+                res = self.db.table("user_archive_items").insert(payload).execute()
+            else:
+                raise insert_err
+        if not res.data:
+            return None
+        return self._format(res.data[0])
+
+    @staticmethod
     def _format(row: dict) -> ArchiveItem:
         return ArchiveItem(
             id=row["id"],
@@ -144,6 +186,80 @@ class ArchiveService:
             print(f"[archive] snapshot_from_order failed: {e}")
             return None
 
+    def snapshot_sold_from_order(
+        self, order_id: int, seller_user_id: int
+    ) -> Optional[ArchiveItem]:
+        """卖家售出后手动/自动写入 MY ARCHIVE（已售回忆，不再持有）。"""
+        try:
+            order_res = (
+                self.db.table("orders")
+                .select("*")
+                .eq("id", order_id)
+                .limit(1)
+                .execute()
+            )
+            if not order_res.data:
+                return None
+            order = order_res.data[0]
+
+            existing = (
+                self.db.table("user_archive_items")
+                .select("*")
+                .eq("order_id", order_id)
+                .eq("user_id", seller_user_id)
+                .limit(1)
+                .execute()
+            )
+            if existing.data:
+                return self._format(existing.data[0])
+
+            prod = self._product_snapshot(order["product_id"])
+            sold_at = (
+                order.get("completed_at")
+                or order.get("paid_at")
+                or datetime.utcnow().isoformat()
+            )[:10]
+
+            payload = {
+                "user_id": seller_user_id,
+                "product_id": order["product_id"],
+                "order_id": order_id,
+                "title": prod.get("title"),
+                "brand_name": prod.get("brand"),
+                "size": prod.get("size"),
+                "color": prod.get("color"),
+                "condition": prod.get("condition"),
+                "original_show_id": prod.get("original_show_id"),
+                "acquired_price_cents": order["paid_price_cents"],
+                "currency": order.get("currency", "CNY"),
+                "photos": prod.get("images") or [],
+                "acquired_at": sold_at,
+                "source": "order",
+                "is_currently_owned": False,
+            }
+            item = self._insert_archive_payload(payload)
+            if not item:
+                return None
+
+            try:
+                self.add_holding(
+                    item.id,
+                    seller_user_id,
+                    ArchiveHoldingCreate(
+                        heldFrom=sold_at,
+                        status="resold",
+                        note="订单售出 · 入藏",
+                        counterpartUserId=order.get("buyer_user_id"),
+                        relatedOrderId=order_id,
+                    ),
+                )
+            except Exception as e:
+                print(f"[archive] seller sold holding failed: {e}")
+            return item
+        except Exception as e:
+            print(f"[archive] snapshot_sold_from_order failed: {e}")
+            return None
+
     def get_by_order(self, order_id: int, user_id: int) -> Optional[ArchiveItem]:
         """查询某订单是否已转入当前用户的 MY ARCHIVE。"""
         res = (
@@ -159,15 +275,17 @@ class ArchiveService:
         return self._format(res.data[0])
 
     def transfer_from_order(self, order_id: int, user_id: int) -> ArchiveItem:
-        """手动把买家「已购入的商品」转入 MY ARCHIVE。
+        """手动把订单相关单品转入 MY ARCHIVE（买家购入 / 卖家售出）。
 
-        - 仅订单买家本人可操作
+        - 仅订单买家或卖家本人可操作
         - 订单需处于已收货/完成等状态
         - 幂等：已入库则返回既有条目
         """
         order_res = (
             self.db.table("orders")
-            .select("id, buyer_user_id, status")
+            .select(
+                "id, buyer_user_id, seller_user_id, seller_merchant_id, status"
+            )
             .eq("id", order_id)
             .limit(1)
             .execute()
@@ -175,8 +293,11 @@ class ArchiveService:
         if not order_res.data:
             raise ValueError("订单不存在")
         order = order_res.data[0]
-        if order.get("buyer_user_id") != user_id:
-            raise PermissionError("只能将自己购入的商品转入藏品")
+        seller_id = self._resolve_seller_user_id(order)
+        is_buyer = order.get("buyer_user_id") == user_id
+        is_seller = seller_id == user_id
+        if not is_buyer and not is_seller:
+            raise PermissionError("只能将与本订单相关的商品转入藏品")
         if order.get("status") not in self.TRANSFERABLE_ORDER_STATUSES:
             raise ValueError("该订单尚未完成收货，暂时无法转入藏品")
 
@@ -184,7 +305,10 @@ class ArchiveService:
         if existing:
             return existing
 
-        item = self.snapshot_from_order(order_id)
+        if is_buyer:
+            item = self.snapshot_from_order(order_id)
+        else:
+            item = self.snapshot_sold_from_order(order_id, seller_id)
         if not item:
             raise ValueError("转入藏品失败，请稍后重试")
         return item

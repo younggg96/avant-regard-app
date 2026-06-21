@@ -81,7 +81,7 @@ async def archive_from_order_status(
 async def archive_transfer_from_order(
     order_id: int, user_id: int = Depends(get_current_user)
 ):
-    """把买家已购入的商品转入 MY ARCHIVE（幂等）。"""
+    """把买家已购入 / 卖家已售出的商品转入 MY ARCHIVE（幂等）。"""
     try:
         item = archive_service.transfer_from_order(order_id, user_id)
     except PermissionError as e:

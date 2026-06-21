@@ -13,7 +13,7 @@ export interface ArchiveItem {
   size?: string | null;
   color?: string | null;
   condition?: string | null;
-  originalShowId?: number | null;
+  originalShowId?: string | null;
   acquiredPriceCents?: number | null;
   currency: string;
   photos: string[];
@@ -89,7 +89,7 @@ export interface ArchiveManualCreatePayload {
   acquiredAt?: string;
   note?: string;
   storageLocation?: string;
-  originalShowId?: number;
+  originalShowId?: string;
 }
 
 export async function createArchiveItem(

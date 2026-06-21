@@ -175,7 +175,10 @@ const PublishListingStep4Screen: React.FC = () => {
     try {
       await ensureDraft();
       Alert.show(t("trading.publishListing.draftSaved"));
-      navigation.navigate("SellerListings");
+      navigation.navigate("Main", {
+        screen: "Home",
+        params: { targetDiscoverTab: "trading" },
+      });
     } catch (e) {
       Alert.show(e instanceof Error ? e.message : t("common.saveFailed"));
     } finally {
