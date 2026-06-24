@@ -8,34 +8,20 @@
  *   - 尺码按"体系" (鞋码 EUR/US, 女装 / 男装 含身高+胸围, 数字, 简码) 分组,
  *     用户先挑体系再挑值, 减少展示的 chip 数量.
  */
+import {
+  MARKETPLACE_COLORS,
+  getColorOptionByValue,
+} from "../../constants/marketplaceTaxonomy";
 
 /**
- * 颜色快捷选项。展示文案 = 入库值（中文）。
- * 后端 `store_products.color` 是 VARCHAR(32), 直接存中文即可（保留与现有数据
- * 一致的写法, e.g. "黑色"）。需要做英文展示时由调用方做 i18n key 映射。
+ * 颜色快捷选项 —— 直接复用共享 taxonomy（`MARKETPLACE_COLORS`），保证发布与筛选
+ * 用同一套颜色与「入库值」。
+ *
+ * 入库值是英文 slug（如 `black`），与筛选 / 后端 mock 数据精确匹配一致；展示时通过
+ * `labelKey` 做中英文本地化。历史上发布存中文（"黑色"）而筛选发英文 slug，导致
+ * 发布的单品在按颜色筛选时匹配不到 —— 现已统一为 slug。
  */
-export const COLOR_PRESETS: ReadonlyArray<{
-  /** 入库值（中文） */
-  value: string;
-  /** i18n key (在 trading.publishListing.colors.* 下) */
-  labelKey: string;
-}> = [
-  { value: "黑色", labelKey: "black" },
-  { value: "白色", labelKey: "white" },
-  { value: "灰色", labelKey: "gray" },
-  { value: "米色", labelKey: "beige" },
-  { value: "棕色", labelKey: "brown" },
-  { value: "红色", labelKey: "red" },
-  { value: "粉色", labelKey: "pink" },
-  { value: "橙色", labelKey: "orange" },
-  { value: "黄色", labelKey: "yellow" },
-  { value: "绿色", labelKey: "green" },
-  { value: "蓝色", labelKey: "blue" },
-  { value: "紫色", labelKey: "purple" },
-  { value: "金色", labelKey: "gold" },
-  { value: "银色", labelKey: "silver" },
-  { value: "彩色", labelKey: "multi" },
-];
+export const COLOR_PRESETS = MARKETPLACE_COLORS;
 
 /**
  * 尺码体系。
@@ -64,33 +50,36 @@ export const SIZE_STANDARDS: ReadonlyArray<{
   {
     key: "shoeEur",
     labelKey: "shoeEur",
+    // value 落库为裸号（"42"），与筛选 / 后端精确匹配一致（旧版存 "EUR 42" 导致筛选匹配不到）。
     options: [
-      { value: "EUR 35", label: "35" },
-      { value: "EUR 36", label: "36" },
-      { value: "EUR 37", label: "37" },
-      { value: "EUR 38", label: "38" },
-      { value: "EUR 39", label: "39" },
-      { value: "EUR 40", label: "40" },
-      { value: "EUR 41", label: "41" },
-      { value: "EUR 42", label: "42" },
-      { value: "EUR 43", label: "43" },
-      { value: "EUR 44", label: "44" },
-      { value: "EUR 45", label: "45" },
-      { value: "EUR 46", label: "46" },
+      { value: "34", label: "34" },
+      { value: "35", label: "35" },
+      { value: "36", label: "36" },
+      { value: "37", label: "37" },
+      { value: "38", label: "38" },
+      { value: "39", label: "39" },
+      { value: "40", label: "40" },
+      { value: "41", label: "41" },
+      { value: "42", label: "42" },
+      { value: "43", label: "43" },
+      { value: "44", label: "44" },
+      { value: "45", label: "45" },
+      { value: "46", label: "46" },
     ],
   },
   {
     key: "shoeUs",
     labelKey: "shoeUs",
     options: [
-      { value: "US 5", label: "5" },
-      { value: "US 6", label: "6" },
-      { value: "US 7", label: "7" },
-      { value: "US 8", label: "8" },
-      { value: "US 9", label: "9" },
-      { value: "US 10", label: "10" },
-      { value: "US 11", label: "11" },
-      { value: "US 12", label: "12" },
+      { value: "4.5", label: "4.5" },
+      { value: "5", label: "5" },
+      { value: "5.5", label: "5.5" },
+      { value: "6", label: "6" },
+      { value: "7", label: "7" },
+      { value: "8", label: "8" },
+      { value: "9", label: "9" },
+      { value: "10", label: "10" },
+      { value: "11", label: "11" },
     ],
   },
   {
@@ -119,12 +108,18 @@ export const SIZE_STANDARDS: ReadonlyArray<{
   {
     key: "numeric",
     labelKey: "numeric",
+    // 欧码数字号 36–54，与筛选「数字码」选项一致。
     options: [
+      { value: "36", label: "36" },
+      { value: "38", label: "38" },
+      { value: "40", label: "40" },
+      { value: "42", label: "42" },
       { value: "44", label: "44" },
       { value: "46", label: "46" },
       { value: "48", label: "48" },
       { value: "50", label: "50" },
       { value: "52", label: "52" },
+      { value: "54", label: "54" },
     ],
   },
   {
@@ -142,21 +137,19 @@ export const SIZE_STANDARDS: ReadonlyArray<{
 
 export type SizeStandardKey = (typeof SIZE_STANDARDS)[number]["key"];
 
-/** 按入库值（中文）查找预设 */
+/** 按入库 slug 查找预设 */
 export function getColorPresetByStoredValue(value: string) {
-  const trimmed = value.trim();
-  if (!trimmed) return undefined;
-  return COLOR_PRESETS.find((c) => c.value === trimmed);
+  return getColorOptionByValue(value);
 }
 
-/** 表单展示：预设走 i18n，自定义文本原样显示 */
+/** 表单展示：预设走 i18n（本地化中英文），自定义文本原样显示 */
 export function getColorDisplayText(
   value: string,
   t: (key: string) => string
 ): string {
   const preset = getColorPresetByStoredValue(value);
   if (preset) {
-    return t(`trading.publishListing.colors.${preset.labelKey}`);
+    return t(preset.labelKey);
   }
   return value;
 }

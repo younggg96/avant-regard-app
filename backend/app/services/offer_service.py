@@ -128,6 +128,9 @@ class OfferService:
                 "status": offer_row["status"],
                 "expiresAt": offer_row.get("expires_at"),
                 "parentOfferId": offer_row.get("parent_offer_id"),
+                # 买/卖双方 user_id：前端据此把卡片点击落到正确的「我的出价 / 待我处理」Tab。
+                "buyerUserId": offer_row.get("buyer_user_id"),
+                "sellerUserId": self._resolve_seller_user_id(offer_row),
                 "product": product or None,
             }
             push_title = self._offer_push_title(offer_row.get("status") or "")

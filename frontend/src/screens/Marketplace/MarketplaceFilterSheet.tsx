@@ -56,67 +56,19 @@ import {
   type SellerKind,
 } from "../../services/storeProductService";
 import { brandService, type Brand } from "../../services/brandService";
+import {
+  MARKETPLACE_CATEGORIES as CATEGORY_KINDS,
+  MARKETPLACE_CONDITIONS as CONDITION_OPTIONS,
+  MARKETPLACE_COLORS as COLORS,
+  LETTER_SIZES,
+  NUMERIC_SIZES,
+  SHOE_SIZES_EU,
+  SHOE_SIZES_US,
+} from "../../constants/marketplaceTaxonomy";
 
 // ---------------------------------------------------------------------------
-// PRD 维度静态数据
+// PRD 维度静态数据（分类 / 成色 / 颜色 / 尺码 取自共享 taxonomy，与发布表单统一）
 // ---------------------------------------------------------------------------
-
-/**
- * PRD 6 大类 —— 用 i18n key 渲染中英文，value 是后端 ``category`` 查询参数
- * （会做 ``store_product_categories.name ilike %value%`` 模糊匹配）。
- */
-const CATEGORY_KINDS: Array<{ value: string; labelKey: string }> = [
-  { value: "外套", labelKey: "trading.filter.categoryOuter" },
-  { value: "上衣", labelKey: "trading.filter.categoryTop" },
-  { value: "裤装", labelKey: "trading.filter.categoryPants" },
-  { value: "鞋履", labelKey: "trading.filter.categoryShoes" },
-  { value: "包袋", labelKey: "trading.filter.categoryBag" },
-  { value: "配饰", labelKey: "trading.filter.categoryAccessory" },
-];
-
-/** 字母尺码（适用上衣 / 外套 / 配饰）。 */
-const LETTER_SIZES = ["XXS", "XS", "S", "M", "L", "XL", "XXL"];
-/** 数字号（适用上衣 / 外套 / 裤装：欧码 36–54）。 */
-const NUMERIC_SIZES = [
-  "36",
-  "38",
-  "40",
-  "42",
-  "44",
-  "46",
-  "48",
-  "50",
-  "52",
-  "54",
-];
-/** 鞋码 EU。 */
-const SHOE_SIZES_EU = [
-  "34",
-  "35",
-  "36",
-  "37",
-  "38",
-  "39",
-  "40",
-  "41",
-  "42",
-  "43",
-  "44",
-  "45",
-  "46",
-];
-/** 鞋码 US（仅用于「鞋履」分类）。 */
-const SHOE_SIZES_US = [
-  "4.5",
-  "5",
-  "5.5",
-  "6",
-  "7",
-  "8",
-  "9",
-  "10",
-  "11",
-];
 
 /** 价格预设区段（cents）。 */
 const PRICE_PRESETS: Array<{ minCents?: number; maxCents?: number; labelKey: string }> = [
@@ -128,39 +80,6 @@ const PRICE_PRESETS: Array<{ minCents?: number; maxCents?: number; labelKey: str
     labelKey: "trading.filter.pricePreset20kto50k",
   },
   { minCents: 5_000_000, labelKey: "trading.filter.pricePreset50kPlus" },
-];
-
-interface ColorOption {
-  value: string;
-  labelKey: string;
-  hex: string;
-  bordered?: boolean;
-}
-
-/** 8 主色 + 1 多彩 兜底；与 ProductInfoSection 的 PRD 颜色集合保持一致基础上扩展。 */
-const COLORS: ColorOption[] = [
-  { value: "black", labelKey: "trading.filter.colorBlack", hex: "#000000" },
-  {
-    value: "white",
-    labelKey: "trading.filter.colorWhite",
-    hex: "#FFFFFF",
-    bordered: true,
-  },
-  { value: "gray", labelKey: "trading.filter.colorGray", hex: "#9CA3AF" },
-  { value: "brown", labelKey: "trading.filter.colorBrown", hex: "#8B4513" },
-  { value: "beige", labelKey: "trading.filter.colorBeige", hex: "#D9C9A8" },
-  { value: "red", labelKey: "trading.filter.colorRed", hex: "#DC2626" },
-  { value: "blue", labelKey: "trading.filter.colorBlue", hex: "#2563EB" },
-  { value: "green", labelKey: "trading.filter.colorGreen", hex: "#16A34A" },
-  { value: "yellow", labelKey: "trading.filter.colorYellow", hex: "#FACC15" },
-  { value: "pink", labelKey: "trading.filter.colorPink", hex: "#EC4899" },
-];
-
-const CONDITION_OPTIONS: Array<{ value: ProductCondition; labelKey: string }> = [
-  { value: "BNWT", labelKey: "trading.filter.conditionBnwt" },
-  { value: "NEW_95", labelKey: "trading.filter.conditionNear" },
-  { value: "USED_8", labelKey: "trading.filter.conditionLight" },
-  { value: "FLAW", labelKey: "trading.filter.conditionUsed" },
 ];
 
 const SELLER_OPTIONS: Array<{ value: SellerKind | ""; labelKey: string }> = [

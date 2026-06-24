@@ -6,6 +6,7 @@ import type {
   PhotoAngles,
   StoreProduct,
 } from "../services/storeProductService";
+import { isMarketplaceCategory } from "../constants/marketplaceTaxonomy";
 
 /**
  * 发布单品 Wizard 全局状态（4-step flow，PRD 单品发布 Phase 2）。
@@ -198,6 +199,8 @@ export const usePublishListingStore = create<PublishListingStore>((set) => ({
 export const validateStep1 = (s: ListingFormState): string[] => {
   const missing: string[] = [];
   if (!s.brand.trim()) missing.push("brand");
+  // 必须是 PRD 6 大类之一，才能在交易大厅按分类筛到。
+  if (!isMarketplaceCategory(s.categoryName)) missing.push("category");
   if (!s.size.trim()) missing.push("size");
   if (!s.color.trim()) missing.push("color");
   if (!s.condition) missing.push("condition");

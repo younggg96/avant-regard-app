@@ -30,6 +30,11 @@ import type {
   ProductCondition,
 } from "../../services/storeProductService";
 import { brandService, type Brand } from "../../services/brandService";
+import {
+  MARKETPLACE_CATEGORIES as CATEGORY_KINDS,
+  MARKETPLACE_CONDITIONS as CONDITION_OPTIONS,
+  LETTER_SIZES as SIZE_PRESETS,
+} from "../../constants/marketplaceTaxonomy";
 
 export type ChipFilterKey =
   | "brand"
@@ -37,24 +42,6 @@ export type ChipFilterKey =
   | "size"
   | "price"
   | "condition";
-
-const CATEGORY_KINDS: Array<{ value: string; labelKey: string }> = [
-  { value: "外套", labelKey: "trading.filter.categoryOuter" },
-  { value: "上衣", labelKey: "trading.filter.categoryTop" },
-  { value: "裤装", labelKey: "trading.filter.categoryPants" },
-  { value: "鞋履", labelKey: "trading.filter.categoryShoes" },
-  { value: "包袋", labelKey: "trading.filter.categoryBag" },
-  { value: "配饰", labelKey: "trading.filter.categoryAccessory" },
-];
-
-const SIZE_PRESETS = ["XS", "S", "M", "L", "XL", "XXL"];
-
-const CONDITION_OPTIONS: Array<{ value: ProductCondition; labelKey: string }> = [
-  { value: "BNWT", labelKey: "trading.filter.conditionBnwt" },
-  { value: "NEW_95", labelKey: "trading.filter.conditionNear" },
-  { value: "USED_8", labelKey: "trading.filter.conditionLight" },
-  { value: "FLAW", labelKey: "trading.filter.conditionUsed" },
-];
 
 const TITLE_KEY: Record<ChipFilterKey, string> = {
   brand: "trading.filter.brand",

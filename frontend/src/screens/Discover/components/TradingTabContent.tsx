@@ -65,6 +65,7 @@ import {
   type StoreProduct,
 } from "../../../services/storeProductService";
 import MarketplaceFilterSheet from "../../Marketplace/MarketplaceFilterSheet";
+import { getColorDisplayText } from "../../PublishListing/publishListingPresets";
 import MarketplaceChipSheet, {
   type ChipFilterKey,
 } from "../../Marketplace/MarketplaceChipSheet";
@@ -799,7 +800,7 @@ function buildCardSubtitle(
 ): string {
   const parts: string[] = [];
   if (item.size) parts.push(item.size);
-  if (item.color) parts.push(item.color);
+  if (item.color) parts.push(getColorDisplayText(item.color, t));
   if (item.wantCount > 0) {
     parts.push(t("trading.marketplace.wantCountLabel", { count: item.wantCount }));
   }

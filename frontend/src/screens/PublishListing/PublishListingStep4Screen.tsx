@@ -45,6 +45,7 @@ import {
   PublishListingFieldRow,
 } from "./publishListingFormShared";
 import { formatRegionDisplay } from "../../data/regionCatalog";
+import { isMarketplaceCategory } from "../../constants/marketplaceTaxonomy";
 
 const PublishListingStep4Screen: React.FC = () => {
   const { t } = useTranslation();
@@ -121,6 +122,9 @@ const PublishListingStep4Screen: React.FC = () => {
     description: form.description,
     brand: form.brand,
     categoryId: form.categoryId,
+    categoryKind: isMarketplaceCategory(form.categoryName)
+      ? form.categoryName
+      : null,
     // PRD 1.3 7 视角图 + extras: 顺序固定, 让首图(列表卡片封面)始终是正面.
     // photoAngles 字段本身也透传一份, 让详情页能区分"哪张是领标背面"等。
     images: [

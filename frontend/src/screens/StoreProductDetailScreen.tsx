@@ -89,6 +89,7 @@ import {
 import TradingActionBar from "../components/TradingActionBar";
 import OfferModal from "./Trading/OfferModal";
 import OfferHistorySheet from "./Trading/OfferHistorySheet";
+import { getColorDisplayText } from "./PublishListing/publishListingPresets";
 import {
   listProductOffers,
   type ProductOfferThread,
@@ -2104,8 +2105,8 @@ function buildQuickInfo(
   if (product.size) {
     out.push(`${t("store.productDetailV2.fieldSize")} ${product.size}`);
   }
-  // chunk 3：颜色（直接显示值）。
-  if (product.color) out.push(product.color);
+  // chunk 3：颜色（预设 slug 本地化展示，自定义值原样）。
+  if (product.color) out.push(getColorDisplayText(product.color, t));
   return out;
 }
 
@@ -2122,7 +2123,10 @@ function buildDetailRows(
       value: product.title || dash,
     },
     { label: t("store.productDetailV2.fieldSize"), value: product.size || dash },
-    { label: t("store.productDetailV2.fieldColor"), value: product.color || dash },
+    {
+      label: t("store.productDetailV2.fieldColor"),
+      value: product.color ? getColorDisplayText(product.color, t) : dash,
+    },
     {
       label: t("store.productDetailV2.fieldCondition"),
       value: product.condition

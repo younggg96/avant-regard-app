@@ -55,7 +55,6 @@ import {
   TOTAL_PUBLISH_STEPS,
 } from "../../store/publishListingStore";
 import type { Brand } from "../../services/brandService";
-import { type ProductCondition } from "../../services/storeProductService";
 import {
   makePublishListingFormStyles,
   PublishListingFieldRow,
@@ -68,6 +67,10 @@ import {
   getColorDisplayText,
   type SizeStandardKey,
 } from "./publishListingPresets";
+import {
+  MARKETPLACE_CATEGORIES,
+  MARKETPLACE_CONDITIONS,
+} from "../../constants/marketplaceTaxonomy";
 
 const PublishListingStep1Screen: React.FC = () => {
   const { t } = useTranslation();
@@ -80,19 +83,9 @@ const PublishListingStep1Screen: React.FC = () => {
   const [brandSheetVisible, setBrandSheetVisible] = useState(false);
   const [sizeStandard, setSizeStandard] = useState<SizeStandardKey>("womensCn");
 
-  // 4 档成色: 全新 / 几乎全新 / 轻微使用 / 明显使用（标题直观，副标题补充细节）.
-  // enum value 复用后端已有的 4 个值 (跳过 NEW_95), 后端 schema 不需要改。
-  const conditionOptions = useMemo<
-    Array<{ value: ProductCondition; labelKey: string; subKey: string }>
-  >(
-    () => [
-      { value: "BNWT",   labelKey: "conditionBrandNew",  subKey: "conditionBrandNewSub" },
-      { value: "NEW_99", labelKey: "conditionGentlyUsed", subKey: "conditionGentlyUsedSub" },
-      { value: "USED_8", labelKey: "conditionUsed",       subKey: "conditionUsedSub" },
-      { value: "FLAW",   labelKey: "conditionWorn",       subKey: "conditionWornSub" },
-    ],
-    []
-  );
+  // 4 档成色（全新 / 几乎全新 / 轻微使用 / 明显使用）与分类选项均取自共享 taxonomy，
+  // 与筛选（MarketplaceFilterSheet）完全一致，保证发布的单品筛选时匹配得上。
+  const conditionOptions = MARKETPLACE_CONDITIONS;
 
   const activeStandard = useMemo(
     () => SIZE_STANDARDS.find((s) => s.key === sizeStandard) ?? SIZE_STANDARDS[0],
@@ -167,6 +160,24 @@ const PublishListingStep1Screen: React.FC = () => {
               </Pressable>
             </PublishListingFieldRow>
 
+            {/* 分类: PRD 6 大类, 与筛选一致, 决定该单品在交易大厅按分类筛选时能否命中. */}
+            <PublishListingFieldRow
+              label={t("trading.filter.category")}
+              required
+              hint={t("trading.publishListing.fields.categoryHint")}
+            >
+              <View style={chipRowStyle}>
+                {MARKETPLACE_CATEGORIES.map((c) => (
+                  <AnimatedChip
+                    key={c.value}
+                    label={t(c.labelKey)}
+                    isActive={form.categoryName === c.value}
+                    onPress={() => patch({ categoryName: c.value })}
+                  />
+                ))}
+              </View>
+            </PublishListingFieldRow>
+
             <PublishListingFieldRow
               label={t("trading.publishListing.fields.styleName")}
               hint={t("trading.publishListing.fields.styleNameHint")}
@@ -235,7 +246,7 @@ const PublishListingStep1Screen: React.FC = () => {
                   {COLOR_PRESETS.map((c) => (
                     <AnimatedChip
                       key={c.value}
-                      label={t(`trading.publishListing.colors.${c.labelKey}`)}
+                      label={t(c.labelKey)}
                       isActive={form.color === c.value}
                       onPress={() => patch({ color: c.value })}
                     />
@@ -267,10 +278,10 @@ const PublishListingStep1Screen: React.FC = () => {
                     >
                       <VStack>
                         <Text style={styles.optionTitle}>
-                          {t(`trading.publishListing.${opt.labelKey}`)}
+                          {t(opt.labelKey)}
                         </Text>
                         <Text style={styles.optionSubtitle}>
-                          {t(`trading.publishListing.${opt.subKey}`)}
+                          {t(opt.subKey)}
                         </Text>
                       </VStack>
                       {active ? (

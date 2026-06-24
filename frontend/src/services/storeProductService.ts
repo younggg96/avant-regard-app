@@ -230,6 +230,8 @@ export interface StoreProduct {
   sellerAvatarUrl?: string | null;
   categoryId?: number | null;
   categoryName?: string | null;
+  /** PRD 6 大类名（外套/上衣/裤装/鞋履/包袋/配饰）。 */
+  categoryKind?: string | null;
   title: string;
   description?: string | null;
   brand?: string | null;
@@ -851,6 +853,8 @@ export const unlikeStoreProductComment = async (
 
 export interface ListingPatchBody {
   categoryId?: number | null;
+  /** PRD 6 大类名（外套/上衣/裤装/鞋履/包袋/配饰）。用于交易大厅按分类筛选。 */
+  categoryKind?: string | null;
   title?: string;
   description?: string;
   brand?: string;

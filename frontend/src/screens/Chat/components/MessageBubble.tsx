@@ -117,6 +117,7 @@ export const MessageBubble = ({
   // 否则普通 admin 跟卖家私聊买东西时也会看到「退款」按钮,既越权又违反产品意图。
   // 仅在「客服窗口」里才允许客服触发主动退款,与 PRD 模块 7 IM 售后流程一致。
   const isAdmin = useAuthStore((s) => !!s.user?.is_admin);
+  const currentUserId = useAuthStore((s) => s.user?.userId);
   const isCsConversation = isCustomerServiceUser(otherUserId);
   const isCustomerService = isAdmin && isCsConversation;
 
@@ -253,11 +254,27 @@ export const MessageBubble = ({
       );
     }
     if (offerCard) {
+      // 卡片落地到正确的 Tab：当前用户是该 offer 的卖家 → 「待我处理」(incoming)，
+      // 否则 → 「我的出价」(outgoing)。旧卡片缺少买/卖 user_id 时，用消息方向兜底
+      // （收到的出价大多是卖家待处理）。
+      let offerTab: "incoming" | "outgoing";
+      if (offerCard.sellerUserId != null && currentUserId === offerCard.sellerUserId) {
+        offerTab = "incoming";
+      } else if (
+        offerCard.buyerUserId != null &&
+        currentUserId === offerCard.buyerUserId
+      ) {
+        offerTab = "outgoing";
+      } else {
+        offerTab = isMine ? "outgoing" : "incoming";
+      }
       return (
         <OfferCardView
           data={offerCard}
           isMine={isMine}
-          onPress={() => (navigation.navigate as any)("MyOffers")}
+          onPress={() =>
+            (navigation.navigate as any)("MyOffers", { initialTab: offerTab })
+          }
         />
       );
     }

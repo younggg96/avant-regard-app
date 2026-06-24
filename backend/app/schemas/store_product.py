@@ -227,6 +227,11 @@ class StoreProductCreate(BaseModel):
     默认 status='draft'，提交审核走单独接口 transition。
     """
     categoryId: Optional[int] = Field(None, description="商品分类 ID")
+    categoryKind: Optional[str] = Field(
+        None,
+        max_length=16,
+        description="PRD 6 大类名（外套/上衣/裤装/鞋履/包袋/配饰），用于交易大厅按分类筛选",
+    )
     title: str = Field(..., min_length=1, max_length=200)
     description: Optional[str] = None
     brand: Optional[str] = Field(None, max_length=200)
@@ -279,6 +284,7 @@ class StoreProductUpdate(BaseModel):
     到「卖家可自行触发」的状态：draft / offline；其他状态切换必须走 transition 接口。
     """
     categoryId: Optional[int] = None
+    categoryKind: Optional[str] = Field(None, max_length=16)
     title: Optional[str] = Field(None, max_length=200)
     description: Optional[str] = None
     brand: Optional[str] = Field(None, max_length=200)
@@ -345,6 +351,7 @@ class StoreProduct(BaseModel):
     sellerAvatarUrl: Optional[str] = None
     categoryId: Optional[int] = None
     categoryName: Optional[str] = None
+    categoryKind: Optional[str] = None
     title: str
     description: Optional[str] = None
     brand: Optional[str] = None

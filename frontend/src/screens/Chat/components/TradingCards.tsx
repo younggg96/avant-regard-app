@@ -54,6 +54,8 @@ export interface OfferCard {
   status: OfferStatus;
   expiresAt?: string;
   parentOfferId?: number | null;
+  buyerUserId?: number | null;
+  sellerUserId?: number | null;
   product?: {
     productId: number;
     title?: string | null;

@@ -40,6 +40,7 @@ import {
   type ProductStatus,
 } from "../services/storeProductService";
 import { usePublishListingStore } from "../store/publishListingStore";
+import { getColorDisplayText } from "./PublishListing/publishListingPresets";
 import { useFormatPrice } from "../utils/currency";
 
 const CARD_RADIUS = 4;
@@ -538,7 +539,7 @@ const ListingRow: React.FC<ListingRowProps> = ({
               ) : null}
               {item.color ? (
                 <Text style={styles.attrText}>
-                  {t("trading.myListings.colorLabel")} {item.color}
+                  {t("trading.myListings.colorLabel")} {getColorDisplayText(item.color, t)}
                 </Text>
               ) : null}
             </HStack>

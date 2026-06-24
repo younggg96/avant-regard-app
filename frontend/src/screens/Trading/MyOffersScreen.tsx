@@ -23,7 +23,7 @@ import PagerView, {
   type PagerViewOnPageSelectedEvent,
 } from "react-native-pager-view";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation, useFocusEffect } from "@react-navigation/native";
+import { useNavigation, useFocusEffect, useRoute } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 
@@ -100,13 +100,17 @@ function formatExpiresAt(iso?: string | null): string {
 
 export default function MyOffersScreen() {
   const navigation = useNavigation<any>();
+  const route = useRoute<any>();
   const theme = useAppTheme();
   const styles = useThemedStyles(makeStyles);
   const { t } = useTranslation();
   const formatPrice = useFormatPrice();
   const showAddressPrompt = useOrderAddressPromptStore((s) => s.showPrompt);
 
-  const [mode, setMode] = useState<RoleMode>("outgoing");
+  const initialMode: RoleMode =
+    route.params?.initialTab === "incoming" ? "incoming" : "outgoing";
+
+  const [mode, setMode] = useState<RoleMode>(initialMode);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [offersByMode, setOffersByMode] = useState<
     Partial<Record<RoleMode, OfferWithDetail[]>>
@@ -410,7 +414,7 @@ export default function MyOffersScreen() {
       <PagerView
         ref={pagerRef}
         style={styles.pager}
-        initialPage={0}
+        initialPage={ROLE_ORDER.indexOf(initialMode)}
         onPageSelected={onPageSelected}
       >
         {ROLE_ORDER.map((pageMode) => {

@@ -106,6 +106,7 @@ class StoreProductService:
             sellerUserId=row.get("seller_user_id"),
             categoryId=row.get("category_id"),
             categoryName=category.get("name") if isinstance(category, dict) else None,
+            categoryKind=row.get("category_kind"),
             title=row["title"],
             description=row.get("description"),
             brand=row.get("brand"),
@@ -421,6 +422,7 @@ class StoreProductService:
             "seller_kind": seller_kind.value,
             "seller_user_id": seller_user_id,
             "category_id": data.categoryId,
+            "category_kind": getattr(data, "categoryKind", None),
             "title": data.title,
             "description": data.description,
             "brand": data.brand,
@@ -533,6 +535,7 @@ class StoreProductService:
 
         field_map = {
             "categoryId": "category_id",
+            "categoryKind": "category_kind",
             "title": "title",
             "description": "description",
             "brand": "brand",
@@ -1027,6 +1030,7 @@ class StoreProductService:
 
         field_map = {
             "categoryId": "category_id",
+            "categoryKind": "category_kind",
             "title": "title",
             "description": "description",
             "brand": "brand",
@@ -2188,15 +2192,28 @@ class StoreProductService:
             elif cleaned:
                 expr = ",".join(f"brand.ilike.{b}" for b in cleaned)
                 q = q.or_(expr)
-        # PRD 6 大类 → 名称模糊匹配 store_product_categories.name → category_id list
+        # PRD 6 大类筛选。两条命中路径取 OR：
+        #   1. 单品直接写了 ``category_kind``（发布单品 Step1 选的 PRD 大类，含个人卖家 C2C）。
+        #   2. 买手店自建分类：按名称模糊匹配 store_product_categories.name → category_id。
         if category_kinds:
             extra_ids = self._resolve_category_ids_by_name(category_kinds)
-            if extra_ids:
-                category_ids = (category_ids or []) + extra_ids
-            elif not category_ids:
-                # 用户选了 PRD 大类但库里没有对应分类 → 直接返回空集，
+            merged_ids = list(
+                {int(c) for c in ((category_ids or []) + (extra_ids or []))}
+            )
+            or_parts: List[str] = []
+            kinds_csv = ",".join(k for k in category_kinds if k)
+            if kinds_csv:
+                or_parts.append(f"category_kind.in.({kinds_csv})")
+            if merged_ids:
+                ids_csv = ",".join(str(i) for i in merged_ids)
+                or_parts.append(f"category_id.in.({ids_csv})")
+            if not or_parts:
+                # 用户选了 PRD 大类但既无 category_kind 命中也无对应分类 → 直接返回空集，
                 # 比把 filter 静默忽略要诚实。
                 return [], 0
+            q = q.or_(",".join(or_parts))
+            # category_id 已在上面的 or_ 中处理，跳过下面的精确过滤分支。
+            category_ids = None
         if category_ids:
             uniq = list({int(c) for c in category_ids})
             if len(uniq) == 1:
