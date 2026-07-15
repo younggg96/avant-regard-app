@@ -1,26 +1,3 @@
-/**
- * PRD 单品发布 · Step 1 / 4：基本信息。
- *
- * 字段:
- *   - 品牌 (搜索选择, 找不到可联系小客服)
- *   - 款式 / 系列 (选填)
- *   - 尺码 (按"体系"分组的快捷 chip + 自定义输入)
- *   - 颜色 (预设色板 chip + 自定义输入)
- *   - 成色 (4 档, 描述精简化避免"几新"主观分歧)
- *   - 配件说明 (选填)
- *
- * 设计变更说明 (重要):
- *   1. 移除「出售身份」选择: sellerKind 不再让卖家手选, 默认走 individual.
- *      个人 / 买手在身份资料里就已区分, 这里再放一次只会让流程变重.
- *   2. 颜色 / 尺码改成"先选预设, 再可自定义". 旧版完全自由输入导致
- *      "雾霾蓝/做旧靛蓝" 这种诗意文案大量入库, 后台筛选 / 推荐无法对齐.
- *   3. 成色文案改成动作描述 (全新/试穿/日常/磨损), 不再用 "99新/95新/8成新"
- *      —— 不同人对几新的定义差异巨大, 改成行为描述能显著降低交易纠纷.
- *      enum 值仍复用 BNWT / NEW_99 / USED_8 / FLAW (后端不变),
- *      只是 UI 上不再暴露 NEW_95 这种容易争议的中间档.
- *   4. 移除「年代」字段: 多数卖家无法准确判断衣物年份, 强制 / 选填都会污染
- *      数据, 产品决定完全删除该字段 (前后端 schema 同步移除).
- */
 import React, { useCallback, useMemo, useState } from "react";
 import {
   KeyboardAvoidingView,
@@ -83,8 +60,6 @@ const PublishListingStep1Screen: React.FC = () => {
   const [brandSheetVisible, setBrandSheetVisible] = useState(false);
   const [sizeStandard, setSizeStandard] = useState<SizeStandardKey>("womensCn");
 
-  // 4 档成色（全新 / 几乎全新 / 轻微使用 / 明显使用）与分类选项均取自共享 taxonomy，
-  // 与筛选（MarketplaceFilterSheet）完全一致，保证发布的单品筛选时匹配得上。
   const conditionOptions = MARKETPLACE_CONDITIONS;
 
   const activeStandard = useMemo(
@@ -125,7 +100,6 @@ const PublishListingStep1Screen: React.FC = () => {
         current={1}
         labels={stepLabels}
       />
-      {/* 1% 抽佣提醒 */}
       <PublishListingFeeNotice />
       <KeyboardAvoidingView
         style={styles.flex}
@@ -160,11 +134,9 @@ const PublishListingStep1Screen: React.FC = () => {
               </Pressable>
             </PublishListingFieldRow>
 
-            {/* 分类: PRD 6 大类, 与筛选一致, 决定该单品在交易大厅按分类筛选时能否命中. */}
             <PublishListingFieldRow
               label={t("trading.filter.category")}
               required
-              hint={t("trading.publishListing.fields.categoryHint")}
             >
               <View style={chipRowStyle}>
                 {MARKETPLACE_CATEGORIES.map((c) => (
@@ -180,7 +152,6 @@ const PublishListingStep1Screen: React.FC = () => {
 
             <PublishListingFieldRow
               label={t("trading.publishListing.fields.styleName")}
-              hint={t("trading.publishListing.fields.styleNameHint")}
             >
               <Input
                 value={form.styleName}
@@ -192,11 +163,9 @@ const PublishListingStep1Screen: React.FC = () => {
               />
             </PublishListingFieldRow>
 
-            {/* 尺码: 先选体系 -> 选具体码 -> 仍可自定义输入. */}
             <PublishListingFieldRow
               label={t("trading.publishListing.fields.size")}
               required
-              hint={t("trading.publishListing.fields.sizeHint")}
             >
               <VStack space="sm">
                 <Text style={styles.subLabel}>
@@ -235,11 +204,9 @@ const PublishListingStep1Screen: React.FC = () => {
               </VStack>
             </PublishListingFieldRow>
 
-            {/* 颜色: 预设色板 chip + 自定义输入兜底 */}
             <PublishListingFieldRow
               label={t("trading.publishListing.fields.color")}
               required
-              hint={t("trading.publishListing.fields.colorHint")}
             >
               <VStack space="sm">
                 <View style={chipRowStyle}>
@@ -276,14 +243,7 @@ const PublishListingStep1Screen: React.FC = () => {
                       onPress={() => patch({ condition: opt.value })}
                       style={[styles.optionRow, active && styles.optionRowActive]}
                     >
-                      <VStack>
-                        <Text style={styles.optionTitle}>
-                          {t(opt.labelKey)}
-                        </Text>
-                        <Text style={styles.optionSubtitle}>
-                          {t(opt.subKey)}
-                        </Text>
-                      </VStack>
+                      <Text style={styles.optionTitle}>{t(opt.labelKey)}</Text>
                       {active ? (
                         <Ionicons
                           name="checkmark-circle"

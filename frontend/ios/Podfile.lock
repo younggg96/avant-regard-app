@@ -281,6 +281,8 @@ PODS:
   - ExpoNativeWechat (0.1.8):
     - ExpoModulesCore
     - WechatOpenSDK-XCFramework
+  - ExpoSecureStore (13.0.2):
+    - ExpoModulesCore
   - ExpoVideo (1.2.7):
     - ExpoModulesCore
   - ExpoVideoThumbnails (8.0.0):
@@ -1687,6 +1689,7 @@ DEPENDENCIES:
   - ExpoLocalization (from `../node_modules/expo-localization/ios`)
   - ExpoModulesCore (from `../node_modules/expo-modules-core`)
   - ExpoNativeWechat (from `../node_modules/expo-native-wechat/ios`)
+  - ExpoSecureStore (from `../../node_modules/expo-secure-store/ios`)
   - ExpoVideo (from `../node_modules/expo-video/ios`)
   - ExpoVideoThumbnails (from `../node_modules/expo-video-thumbnails/ios`)
   - ExpoWebBrowser (from `../../node_modules/expo-web-browser/ios`)
@@ -1835,6 +1838,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/expo-modules-core"
   ExpoNativeWechat:
     :path: "../node_modules/expo-native-wechat/ios"
+  ExpoSecureStore:
+    :path: "../../node_modules/expo-secure-store/ios"
   ExpoVideo:
     :path: "../node_modules/expo-video/ios"
   ExpoVideoThumbnails:
@@ -2002,6 +2007,7 @@ SPEC CHECKSUMS:
   ExpoLocalization: 1b4195ed48148c7f52ce790d3965cc19483fcbf2
   ExpoModulesCore: 9ac73e2f60e0ea1d30137ca96cfc8c2aa34ef2b2
   ExpoNativeWechat: 602ca5aacb5fa7a45258fce5e9ed492a8756aac1
+  ExpoSecureStore: 6506992a9f53c94ea716c54d4a63144965945c2c
   ExpoVideo: 34140ec2f01cfeb22d32165e79c4c819225e99cd
   ExpoVideoThumbnails: 4a88c3b1d2accb7ea8f36fce28d6de45974284a6
   ExpoWebBrowser: cf10afe886891ab495877dada977fe6c269614a4

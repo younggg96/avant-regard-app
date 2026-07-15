@@ -1,5 +1,5 @@
 import React, { useEffect, useCallback, useState, useRef, useMemo } from "react";
-import { View, AppState, AppStateStatus, useColorScheme } from "react-native";
+import { View, AppState, AppStateStatus, Platform, useColorScheme } from "react-native";
 import {
   NavigationContainer,
   NavigationContainerRef,
@@ -410,16 +410,18 @@ function TabNavigator() {
           ),
           tabBarBadge: interactionBadge > 0 ? interactionBadge : undefined,
           tabBarBadgeStyle: {
-            backgroundColor: "#FF3B30",
+            backgroundColor: appTheme.colors.error,
             color: "#FFFFFF",
             fontSize: 10,
             fontWeight: "700",
             minWidth: 16,
             height: 16,
-            lineHeight: 18,
-            borderRadius: 9,
+            borderRadius: 8,
             textAlign: "center",
             paddingHorizontal: 2,
+            ...(Platform.OS === "android"
+              ? { lineHeight: 16 }
+              : { lineHeight: 15 }),
           },
         }}
         listeners={{

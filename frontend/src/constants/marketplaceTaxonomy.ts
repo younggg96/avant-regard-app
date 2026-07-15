@@ -50,8 +50,6 @@ export interface ConditionOption {
   value: ProductCondition;
   /** 简短标题 i18n key（筛选 + 发布共用）。 */
   labelKey: string;
-  /** 副标题 i18n key（仅发布表单展示，帮助卖家自检）。 */
-  subKey: string;
 }
 
 /**
@@ -62,22 +60,18 @@ export const MARKETPLACE_CONDITIONS: ReadonlyArray<ConditionOption> = [
   {
     value: "BNWT",
     labelKey: "trading.filter.conditionBnwt",
-    subKey: "trading.publishListing.conditionBrandNewSub",
   },
   {
     value: "NEW_99",
     labelKey: "trading.filter.conditionNear",
-    subKey: "trading.publishListing.conditionGentlyUsedSub",
   },
   {
     value: "USED_8",
     labelKey: "trading.filter.conditionLight",
-    subKey: "trading.publishListing.conditionUsedSub",
   },
   {
     value: "FLAW",
     labelKey: "trading.filter.conditionUsed",
-    subKey: "trading.publishListing.conditionWornSub",
   },
 ];
 

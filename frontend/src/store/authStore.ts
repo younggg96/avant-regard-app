@@ -6,6 +6,11 @@ import {
   AuthRequestError,
   LoginResponse,
 } from "../services/authService";
+import {
+  saveRefreshToken,
+  getRefreshToken,
+  deleteRefreshToken,
+} from "./secureTokenStorage";
 
 export interface AuthUser {
   id: string;
@@ -25,7 +30,9 @@ export interface AuthUser {
 
 interface AuthTokens {
   accessToken: string;
-  refreshToken: string;
+  // refreshToken 可能缺失：持久化到 AsyncStorage 的 blob 里不含它（存在
+  // SecureStore），冷启动 rehydrate 后由 onRehydrateStorage 异步合并回来。
+  refreshToken?: string;
   expiresAt?: number; // Token 过期时间戳（秒）
 }
 
@@ -35,6 +42,7 @@ interface AuthState {
   tokens: AuthTokens | null;
   isLoading: boolean;
   isRefreshing: boolean; // 是否正在刷新 token
+  lastLoginAt: number | null; // 上次登录/成功刷新的时间戳（毫秒），用于诊断日志
   lastProfileReminderTime: number | null; // 上次提醒填写资料的时间戳
   /** 本地主题偏好写入世代；用于丢弃「发起请求之后才改过主题」的过时 getUserInfo 响应。不参与持久化。 */
   themePreferenceRevision: number;
@@ -67,6 +75,30 @@ let inflightRefresh: Promise<boolean> | null = null;
 
 // Token 刷新提前量（提前 5 分钟刷新）
 const REFRESH_THRESHOLD_SECONDS = 5 * 60;
+
+// 把（登录 / 轮换后的）refresh token 落到安全存储，写失败时打错误日志。
+// 采用 fire-and-forget：不阻塞同步的 set()，但失败会被记录以便定位「很久没
+// 用要重新登录」这类问题。
+function persistRefreshToken(token: string): void {
+  saveRefreshToken(token)
+    .then((ok) => {
+      if (!ok) {
+        console.error(
+          "[auth] refresh token 持久化失败：下次冷启动可能无法刷新，会被强制登出"
+        );
+      }
+    })
+    .catch((error) => {
+      console.error("[auth] refresh token 持久化异常:", error);
+    });
+}
+
+// 距离上次登录/刷新成功过去了多少天（用于诊断日志）。
+function daysSince(timestampMs: number | null): string {
+  if (!timestampMs) return "unknown";
+  const days = (Date.now() - timestampMs) / (1000 * 60 * 60 * 24);
+  return days.toFixed(1);
+}
 
 /**
  * Robust base64 (URL-safe) → utf-8 decode, works under both Hermes (`atob`
@@ -154,6 +186,7 @@ export const useAuthStore = create<AuthStore>()(
       tokens: null,
       isLoading: false,
       isRefreshing: false,
+      lastLoginAt: null,
       lastProfileReminderTime: null,
       themePreferenceRevision: 0,
 
@@ -190,7 +223,12 @@ export const useAuthStore = create<AuthStore>()(
           user,
           tokens,
           isLoading: false,
+          lastLoginAt: Date.now(),
         });
+
+        // refresh token 写入安全存储（Keychain / Keystore），而不是明文
+        // AsyncStorage（partialize 已把它从 persist blob 里剔除）。
+        persistRefreshToken(response.refreshToken);
 
         // 登录后启动自动刷新
         get().startAutoRefresh();
@@ -202,10 +240,14 @@ export const useAuthStore = create<AuthStore>()(
           user,
           tokens: tokens || null,
           isLoading: false,
+          lastLoginAt: Date.now(),
         });
 
         // 登录后启动自动刷新
         if (tokens) {
+          if (tokens.refreshToken) {
+            persistRefreshToken(tokens.refreshToken);
+          }
           get().startAutoRefresh();
         }
       },
@@ -214,12 +256,18 @@ export const useAuthStore = create<AuthStore>()(
         // 停止自动刷新
         get().stopAutoRefresh();
 
+        // 清除安全存储里的 refresh token（fire-and-forget）。
+        deleteRefreshToken().catch((error) => {
+          console.error("[auth] 登出时删除 refresh token 失败:", error);
+        });
+
         set({
           isAuthenticated: false,
           user: null,
           tokens: null,
           isLoading: false,
           isRefreshing: false,
+          lastLoginAt: null,
           themePreferenceRevision: 0,
         });
       },
@@ -271,6 +319,7 @@ export const useAuthStore = create<AuthStore>()(
         if (!currentTokens?.refreshToken) {
           return false;
         }
+        const currentRefreshToken = currentTokens.refreshToken;
 
         // 并发去重：如果已经有一个 refresh 在飞，所有调用方都 await 同一个 promise。
         // 否则原代码会让第二个调用直接拿到 false → 触发 logout，连环爆。
@@ -284,7 +333,7 @@ export const useAuthStore = create<AuthStore>()(
           try {
             console.log("Refreshing token...");
             const response = await authService.refreshToken({
-              refreshToken: currentTokens.refreshToken,
+              refreshToken: currentRefreshToken,
             });
 
             const currentUser = get().user;
@@ -315,7 +364,13 @@ export const useAuthStore = create<AuthStore>()(
               user,
               tokens,
               isRefreshing: false,
+              lastLoginAt: Date.now(),
             });
+
+            // Supabase 默认开启 refresh token 轮换：每次刷新都会发一个新的
+            // refresh token，旧的立即作废。必须把新 token 落盘，否则下次冷启动
+            // 用旧 token 会被 401 → 强制登出。写失败会打错误日志。
+            persistRefreshToken(response.refreshToken);
 
             console.log("Token refreshed successfully");
 
@@ -324,7 +379,17 @@ export const useAuthStore = create<AuthStore>()(
 
             return true;
           } catch (error) {
-            console.error("Token refresh failed:", error);
+            // 结构化诊断日志：定位「很久没用要重新登录」的关键信息——
+            // HTTP 状态码、服务端消息、距上次登录/刷新成功过去了几天。
+            const status =
+              error instanceof AuthRequestError ? error.status : "n/a";
+            const message =
+              error instanceof Error ? error.message : String(error);
+            console.error(
+              `[auth] refresh 失败 status=${status} daysSinceLogin=${daysSince(
+                get().lastLoginAt
+              )} message=${message}`
+            );
             set({ isRefreshing: false });
 
             // 关键修复：只有在 refresh token 真的被服务端拒绝时才登出用户。
@@ -489,37 +554,77 @@ export const useAuthStore = create<AuthStore>()(
       name: "avant-regard-auth",
       storage: createJSONStorage(() => safeAsyncStorage),
       // Only persist essential auth data
+      // 注意：refreshToken 不再写进 AsyncStorage（明文）——它单独存进
+      // SecureStore（见 secureTokenStorage.ts）。这里把它从持久化的 tokens 里
+      // 剔除，只保留短期有效的 accessToken 和过期时间。
       partialize: (state) => ({
         isAuthenticated: state.isAuthenticated,
         user: state.user,
-        tokens: state.tokens,
+        tokens: state.tokens
+          ? {
+              accessToken: state.tokens.accessToken,
+              expiresAt: state.tokens.expiresAt,
+            }
+          : null,
+        lastLoginAt: state.lastLoginAt,
         lastProfileReminderTime: state.lastProfileReminderTime,
       }),
       // Add error handling for storage failures
       onRehydrateStorage: () => (state) => {
         console.log("Auth store rehydrated:", state ? "success" : "failed");
 
-        // 恢复登录状态后，启动自动刷新并检查 token
-        if (state?.isAuthenticated && state?.tokens) {
-          // 延迟执行以确保 store 完全初始化；冷启动时同时也给网络栈一点时间
-          // 完成 DNS / TLS 握手，避免第一个 refresh 请求在网络还没就绪时就
-          // 失败。
-          setTimeout(() => {
+        if (!state?.isAuthenticated || !state?.tokens) return;
+
+        // refresh token 不在 persist blob 里，需要从 SecureStore 异步取回并
+        // 合并进内存状态，之后才能刷新。
+        (async () => {
+          try {
+            let refreshToken = await getRefreshToken();
+
+            // 迁移：老版本把 refresh token 明文存在 AsyncStorage 的 persist
+            // blob 里。首次升级后 SecureStore 为空，但 state.tokens 里可能还带
+            // 着旧的 refresh token —— 把它搬进 SecureStore，随后 partialize 会
+            // 自动把明文那份从 blob 里清掉。
+            const legacyRefreshToken = state.tokens?.refreshToken;
+            if (!refreshToken && legacyRefreshToken) {
+              console.log("[auth] 迁移 refresh token 到 SecureStore");
+              await saveRefreshToken(legacyRefreshToken);
+              refreshToken = legacyRefreshToken;
+            }
+
             const store = useAuthStore.getState();
 
-            // 无论是否"即将过期"，都先把定时器拉起来；这样即使本次启动跳过
-            // 了 refresh，后续也有兜底重试。
-            store.startAutoRefresh();
-
-            // 隔了几天再开 app，access token 几乎必然已经过期；主动刷一次。
-            // 即使刷失败也不会立刻 logout（见 refreshTokens 的修复），只会
-            // 在 1 分钟后重试 / 等 AppState active / 等下一次 API 401 触发。
-            if (store.isTokenExpiringSoon()) {
-              console.log("Token expiring soon, refreshing...");
-              store.refreshTokens();
+            if (refreshToken && store.tokens) {
+              // 把 refresh token 合并回内存 tokens（这次 set 会触发一次
+              // persist，partialize 会顺手把明文 refresh token 从 blob 清掉）。
+              useAuthStore.setState({
+                tokens: { ...store.tokens, refreshToken },
+              });
+            } else if (!refreshToken) {
+              console.warn(
+                "[auth] rehydrate 后没有找到 refresh token，无法自动刷新"
+              );
             }
-          }, 1000);
-        }
+
+            // 给网络栈一点时间完成 DNS / TLS 握手，避免冷启动第一个 refresh
+            // 请求在网络就绪前失败。
+            setTimeout(() => {
+              const s = useAuthStore.getState();
+              // 无论是否"即将过期"，都先把定时器拉起来。
+              s.startAutoRefresh();
+
+              // 隔了几天再开 app，access token 几乎必然已过期；主动刷一次。
+              // 即使刷失败也不会立刻 logout（见 refreshTokens），只会稍后重试
+              // / 等 AppState active / 等下一次 API 401 触发。
+              if (s.tokens?.refreshToken && s.isTokenExpiringSoon()) {
+                console.log("Token expiring soon, refreshing...");
+                s.refreshTokens();
+              }
+            }, 1000);
+          } catch (error) {
+            console.error("[auth] rehydrate 处理 refresh token 失败:", error);
+          }
+        })();
       },
     }
   )

@@ -45,7 +45,7 @@ const config = {
     bundleIdentifier: IS_NA
       ? "com.yanggg96.avant-regard.na"
       : "com.yanggg96.avant-regard",
-    buildNumber: "33",
+    buildNumber: "35",
     associatedDomains: ["applinks:app.avantregard.com"],
   },
   android: {
@@ -87,6 +87,7 @@ const config = {
   },
   plugins: [
     "expo-apple-authentication",
+    "expo-secure-store",
     "expo-font",
     [
       "expo-splash-screen",

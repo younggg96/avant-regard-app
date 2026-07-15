@@ -78,6 +78,11 @@ export const NotificationBadge: React.FC<NotificationBadgeProps> = (props) => {
   const displayText = count > maxCount ? `${maxCount}+` : `${count}`;
   const backgroundColor =
     tone === "neutral" ? theme.colors.text : theme.colors.error;
+  // error 红底（两种模式都是红色）：数字始终用纯白 #FFFFFF。
+  // 注意不能用 theme.colors.white / textInverted —— dark mode 下它们是近黑色，
+  // 会让红底上的数字看不清。neutral 底色是主题 text 色，仍用 textInverted 反色。
+  const textColor =
+    tone === "neutral" ? theme.colors.textInverted : "#FFFFFF";
 
   return (
     <View
@@ -94,7 +99,13 @@ export const NotificationBadge: React.FC<NotificationBadgeProps> = (props) => {
       ]}
     >
       <Text
-        style={[styles.text, { fontSize: config.fontSize }]}
+        style={[
+          styles.text,
+          {
+            fontSize: config.fontSize,
+            color: textColor,
+          },
+        ]}
         allowFontScaling={false}
         numberOfLines={1}
       >
@@ -124,12 +135,12 @@ const makeStyles = (t: AppTheme) =>
     },
     text: {
       // 角标数字用系统字体（非 Playfair 衬线）：衬线字体在小尺寸下字形度量会把
-      // 数字顶高，导致看起来不垂直居中。系统字体 + lineHeight=fontSize 可稳定居中。
+      // 数字顶高。不设 lineHeight，由容器 flexbox 居中；iOS 上补偿 1px ascender 偏移。
       fontWeight: "600",
       color: t.colors.textInverted,
       textAlign: "center",
       ...(Platform.OS === "android"
         ? { includeFontPadding: false, textAlignVertical: "center" as const }
-        : {}),
+        : { marginTop: 1 }),
     },
   });
