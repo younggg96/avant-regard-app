@@ -28,10 +28,14 @@ coverage/
 .env.production.local
 frontend/.env
 frontend/.env.local
+frontend/.env.cn
+frontend/.env.na
 web/.env
 web/.env.local
 backend/.env
 backend/.env.production
+backend/.env.cn
+backend/.env.na
 
 # ---------- Logs ----------
 npm-debug.log*
