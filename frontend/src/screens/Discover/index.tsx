@@ -17,6 +17,8 @@ import { Post } from "../../components/PostCard";
 import { Banner } from "../../services/bannerService";
 import { useAuthStore } from "../../store/authStore";
 import { useDiscoverTabStore } from "../../store/discoverTabStore";
+import { useMapFocusStore } from "../../store/mapFocusStore";
+import type { BuyerStore } from "../../services/buyerStoreService";
 import { useMainBottomTabStore } from "../../store/mainBottomTabStore";
 import { getUnreadCount } from "../../services/notificationService";
 import { getUnreadCount as getChatUnreadCount } from "../../services/chatService";
@@ -368,6 +370,20 @@ const DiscoverScreen: React.FC = () => {
     (navigation.navigate as any)("AllBuyerStores");
   }, [navigation]);
 
+  // 「在地图上查看」：先把目标店铺压入跨屏聚焦信号通道（BuyerMapScreen
+  // 订阅了 mapFocusStore，挂载后会 animateToRegion + showCallout），
+  // 再切到 Interaction Tab 的「买手店地图」子页。
+  const handleViewStoreOnMap = useCallback(
+    (store: BuyerStore) => {
+      useMapFocusStore.getState().requestFocus(store);
+      (navigation.navigate as any)("Main", {
+        screen: "Interaction",
+        params: { subTab: "map" },
+      });
+    },
+    [navigation]
+  );
+
   const handleOpenProductList = useCallback(
     (payload: {
       storeId: string;
@@ -511,6 +527,7 @@ const DiscoverScreen: React.FC = () => {
             onProductPress={handleBuyerProductPress}
             onPostPress={handleBuyerPostPress}
             onOpenAllStores={handleOpenAllBuyerStores}
+            onViewStoreOnMap={handleViewStoreOnMap}
             onOpenProductList={handleOpenProductList}
           />
         );

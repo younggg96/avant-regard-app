@@ -7,6 +7,7 @@
 import React, { useMemo, useState } from "react";
 import { StyleSheet } from "react-native";
 import { useTranslation } from "react-i18next";
+import { Ionicons } from "@expo/vector-icons";
 import { Box, HStack, Pressable, Text, VStack } from "../../../../components/ui";
 import { OptimizedImage } from "../../../../components/ui/OptimizedImage";
 import { ImageSize } from "../../../../utils/imageUtils";
@@ -21,6 +22,8 @@ interface StoreProfileCardProps {
   isFollowed: boolean;
   onFollowToggle: () => void;
   onDetailPress: () => void;
+  /** 「在地图上查看」按钮点击。未传（店铺无有效坐标等）时不渲染该按钮。 */
+  onViewOnMap?: () => void;
 }
 
 const formatCompactCount = (count: number): string => {
@@ -55,6 +58,7 @@ const StoreProfileCardImpl: React.FC<StoreProfileCardProps> = ({
   isFollowed,
   onFollowToggle,
   onDetailPress,
+  onViewOnMap,
 }) => {
   const { t } = useTranslation();
   const styles = useThemedStyles(makeStyles);
@@ -136,7 +140,7 @@ const StoreProfileCardImpl: React.FC<StoreProfileCardProps> = ({
               />
             </HStack>
 
-            <HStack alignItems="center" style={styles.actionsRow}>
+            <HStack alignItems="center" style={styles.actionsRow} gap={8}>
               <Pressable
                 onPress={(e: { stopPropagation?: () => void }) => {
                   e?.stopPropagation?.();
@@ -150,6 +154,24 @@ const StoreProfileCardImpl: React.FC<StoreProfileCardProps> = ({
                     : t("discover.buyerFollowBtn")}
                 </Text>
               </Pressable>
+              {onViewOnMap && (
+                <Pressable
+                  onPress={(e: { stopPropagation?: () => void }) => {
+                    e?.stopPropagation?.();
+                    onViewOnMap();
+                  }}
+                  style={styles.mapButton}
+                >
+                  <Ionicons
+                    name="location-outline"
+                    size={12}
+                    style={styles.mapButtonIcon}
+                  />
+                  <Text style={styles.mapButtonText}>
+                    {t("discover.buyerViewOnMap")}
+                  </Text>
+                </Pressable>
+              )}
             </HStack>
           </VStack>
 
@@ -303,6 +325,27 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
     fontSize: 10,
     fontWeight: "600",
     color: t.colors.textInverted,
+    letterSpacing: 0.5,
+  },
+  // 「在地图上查看」按钮：描边款与实心关注按钮形成主次关系。
+  mapButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    height: 34,
+    paddingHorizontal: 12,
+    borderRadius: 4,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: t.colors.text,
+  },
+  mapButtonIcon: {
+    color: t.colors.text,
+    marginRight: 4,
+  },
+  mapButtonText: {
+    fontFamily: PLAYFAIR.medium,
+    fontSize: 10,
+    fontWeight: "600",
+    color: t.colors.text,
     letterSpacing: 0.5,
   },
   heroWrap: {

@@ -41,6 +41,10 @@ import { ProductCard } from "./ProductCard";
 import { StorePostCard } from "./StorePostCard";
 import { useBuyerTabData } from "./hooks/useBuyerTabData";
 import { recordBannerClick } from "../../../../services/storeMerchantService";
+import {
+  hasValidCoordinates,
+  type BuyerStore,
+} from "../../../../services/buyerStoreService";
 import type { Post as ApiPost } from "../../../../services/postService";
 import type { BuyerStoreProduct, StoreEntryCardView } from "./types";
 import { PLAYFAIR } from "./playfair";
@@ -76,6 +80,11 @@ export interface BuyerTabContentProps {
   /** 点击顶部横向选择条末尾的"查看全部"入口时触发。 */
   onOpenAllStores: () => void;
   /**
+   * 「在地图上查看」按钮点击 → 跳转买手店地图并聚焦该店。
+   * 由 DiscoverScreen 透传（那里握有 navigation 实例）。
+   */
+  onViewStoreOnMap: (store: BuyerStore) => void;
+  /**
    * 入口卡片分流：Phase 4 起 `CLASSIFICATION` / `DISCOUNT` / `NEW_ARRIVAL`
    * 都走这一条回调；`EVENT` 暂无独立屏，当前仍落到 `onStorePress`。
    */
@@ -96,6 +105,7 @@ const BuyerTabContentImpl: React.FC<BuyerTabContentProps> = ({
   onProductPress,
   onPostPress,
   onOpenAllStores,
+  onViewStoreOnMap,
   onOpenProductList,
 }) => {
   const theme = useAppTheme();
@@ -226,6 +236,13 @@ const BuyerTabContentImpl: React.FC<BuyerTabContentProps> = ({
     if (!selectedStoreId) return;
     onStorePress(selectedStoreId);
   }, [selectedStoreId, onStorePress]);
+
+  // 「在地图上查看」—— 只有店铺有有效坐标时才提供入口（否则地图聚焦不了）。
+  const canViewOnMap = !!selectedStore && hasValidCoordinates(selectedStore);
+  const handleViewOnMap = useCallback(() => {
+    if (!selectedStore || !hasValidCoordinates(selectedStore)) return;
+    onViewStoreOnMap(selectedStore);
+  }, [selectedStore, onViewStoreOnMap]);
 
   const handleFollowToggle = useCallback(async () => {
     const willFollow = !isFollowed;
@@ -368,6 +385,7 @@ const BuyerTabContentImpl: React.FC<BuyerTabContentProps> = ({
             isFollowed={isFollowed}
             onFollowToggle={handleFollowToggle}
             onDetailPress={handleStorePress}
+            onViewOnMap={canViewOnMap ? handleViewOnMap : undefined}
           />
         )}
 

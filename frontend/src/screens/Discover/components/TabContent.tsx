@@ -31,6 +31,7 @@ import {
 import { BrandSection } from "./BrandSection";
 import { BuyerTabContent } from "./BuyerTab";
 import type { BuyerStoreProduct } from "./BuyerTab/types";
+import type { BuyerStore } from "../../../services/buyerStoreService";
 import { clampAspectRatio } from "../../../utils/useMediaAspectRatio";
 import { ImageSize } from "../../../utils/imageUtils";
 
@@ -110,6 +111,8 @@ export interface BuyerTabSlotProps extends TabContentBaseProps {
   onPostPress?: (postId: number) => void;
   /** 点击顶部"查看全部"入口时触发；上游决定跳哪个屏。 */
   onOpenAllStores: () => void;
+  /** 「在地图上查看」按钮点击 → 跳转买手店地图并聚焦该店。 */
+  onViewStoreOnMap: (store: BuyerStore) => void;
   /**
    * Phase 4：入口卡片（分类 / 折扣 / 新品）→ 商品列表屏的分流回调。
    * 语义与 `BuyerTab/index.tsx` 的 `OpenProductListPayload` 一致。
@@ -723,6 +726,7 @@ const TabContentInner: React.FC<TabContentProps> = (props) => {
         onProductPress={props.onProductPress}
         onPostPress={props.onPostPress}
         onOpenAllStores={props.onOpenAllStores}
+        onViewStoreOnMap={props.onViewStoreOnMap}
         onOpenProductList={props.onOpenProductList}
       />
     );
