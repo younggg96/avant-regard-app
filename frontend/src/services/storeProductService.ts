@@ -174,6 +174,98 @@ export const getStoreProductCategories = async (
 };
 
 // ============================================================================
+// 品牌图集（Brand Collections，migration 057）
+// ============================================================================
+
+export interface StoreBrandCollection {
+  id: number;
+  storeId: string;
+  merchantId?: number | null;
+  brandName: string;
+  coverImage: string;
+  description?: string | null;
+  sortOrder: number;
+  status: "PUBLISHED" | "HIDDEN";
+  /** 该品牌下 PUBLISHED 商品数（服务端回填） */
+  productCount?: number | null;
+}
+
+/**
+ * GET /api/store-merchants/store/{storeId}/brand-collections
+ * 公开：只返回 PUBLISHED 的品牌图集卡片，含 productCount。
+ */
+export const getStoreBrandCollections = async (
+  storeId: string
+): Promise<StoreBrandCollection[]> => {
+  const result = await request<{
+    collections: StoreBrandCollection[];
+    total: number;
+  }>(
+    `/api/store-merchants/store/${encodeURIComponent(storeId)}/brand-collections`,
+    { method: "GET" }
+  );
+  return result.collections || [];
+};
+
+/**
+ * GET /api/store-merchants/{merchantId}/brand-collections
+ * 商家后台：含 HIDDEN。
+ */
+export const getMerchantBrandCollections = async (
+  merchantId: number
+): Promise<StoreBrandCollection[]> => {
+  const result = await request<{
+    collections: StoreBrandCollection[];
+    total: number;
+  }>(`/api/store-merchants/${merchantId}/brand-collections`, {
+    method: "GET",
+  });
+  return result.collections || [];
+};
+
+export interface BrandCollectionCreateParams {
+  brandName: string;
+  coverImage: string;
+  description?: string;
+  sortOrder?: number;
+  status?: "PUBLISHED" | "HIDDEN";
+}
+
+export type BrandCollectionUpdateParams = Partial<BrandCollectionCreateParams>;
+
+/** POST /api/store-merchants/{merchantId}/brand-collections */
+export const createBrandCollection = async (
+  merchantId: number,
+  params: BrandCollectionCreateParams
+): Promise<StoreBrandCollection> => {
+  return request<StoreBrandCollection>(
+    `/api/store-merchants/${merchantId}/brand-collections`,
+    { method: "POST", body: JSON.stringify(params) }
+  );
+};
+
+/** PUT /api/store-merchants/brand-collections/{collectionId} */
+export const updateBrandCollection = async (
+  collectionId: number,
+  params: BrandCollectionUpdateParams
+): Promise<StoreBrandCollection> => {
+  return request<StoreBrandCollection>(
+    `/api/store-merchants/brand-collections/${collectionId}`,
+    { method: "PUT", body: JSON.stringify(params) }
+  );
+};
+
+/** DELETE /api/store-merchants/brand-collections/{collectionId} */
+export const deleteBrandCollection = async (
+  collectionId: number
+): Promise<void> => {
+  await request<null>(
+    `/api/store-merchants/brand-collections/${collectionId}`,
+    { method: "DELETE" }
+  );
+};
+
+// ============================================================================
 // 商品
 // ============================================================================
 
@@ -294,6 +386,8 @@ export interface ProductListParams {
   categoryId?: number | null;
   isNew?: boolean;
   hasDiscount?: boolean;
+  /** 品牌精确筛选（大小写不敏感）——品牌图集展开时用 */
+  brand?: string;
   searchQuery?: string;
   page?: number;
   pageSize?: number;
@@ -316,6 +410,7 @@ export const getStoreProducts = async (
   if (rest.categoryId != null) qs.append("categoryId", String(rest.categoryId));
   if (rest.isNew) qs.append("isNew", "true");
   if (rest.hasDiscount) qs.append("hasDiscount", "true");
+  if (rest.brand) qs.append("brand", rest.brand);
   if (rest.searchQuery) qs.append("searchQuery", rest.searchQuery);
   qs.append("page", String(rest.page ?? 1));
   qs.append("pageSize", String(rest.pageSize ?? 20));

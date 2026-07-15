@@ -90,6 +90,7 @@ import AllBuyerStoresScreen from "./src/screens/AllBuyerStoresScreen";
 import StoreReviewScreen from "./src/screens/StoreReviewScreen";
 import StoreProductListScreen from "./src/screens/StoreProductListScreen";
 import StoreProductDetailScreen from "./src/screens/StoreProductDetailScreen";
+import StoreImageGalleryScreen from "./src/screens/StoreImageGalleryScreen";
 // Publish Screens
 import PublishTypeScreen from "./src/screens/PublishTypeScreen";
 import PublishLookbookScreen from "./src/screens/PublishLookbookScreen";
@@ -155,6 +156,7 @@ import AllCommunitiesScreen from "./src/screens/AllCommunitiesScreen";
 import MyMerchantStoresScreen from "./src/screens/MyMerchantStoresScreen";
 import MerchantManageScreen from "./src/screens/MerchantManageScreen";
 import MerchantProductsScreen from "./src/screens/MerchantProductsScreen";
+import MerchantBrandCollectionsScreen from "./src/screens/MerchantBrandCollectionsScreen";
 import MerchantReviewScreen from "./src/screens/MerchantReviewScreen";
 // Search Screens
 import SearchScreen from "./src/screens/SearchScreen";
@@ -926,6 +928,11 @@ function AppNavigator({
           options={{ headerShown: false }}
         />
         <Stack.Screen
+          name="StoreImageGallery"
+          component={StoreImageGalleryScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
           name="StoreSearch"
           component={StoreSearchScreen}
           options={{ headerShown: false }}
@@ -1197,6 +1204,11 @@ function AppNavigator({
         <Stack.Screen
           name="MerchantProducts"
           component={MerchantProductsScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="MerchantBrandCollections"
+          component={MerchantBrandCollectionsScreen}
           options={{ headerShown: false }}
         />
         <Stack.Screen

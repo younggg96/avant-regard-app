@@ -34,6 +34,7 @@ import { SCREEN_WIDTH } from "../../constants";
 import { StoreSelector } from "./StoreSelector";
 import { SearchBar } from "./SearchBar";
 import { StoreProfileCard } from "./StoreProfileCard";
+import { BrandCollections } from "./BrandCollections";
 import { CategoryCards } from "./CategoryCards";
 import { NewArrivalBanner } from "./NewArrivalBanner";
 import { ProductCard } from "./ProductCard";
@@ -107,6 +108,7 @@ const BuyerTabContentImpl: React.FC<BuyerTabContentProps> = ({
     selectedStore,
     selectedProfile,
     entryCards,
+    brandCollections,
     banner,
     products,
     storePosts,
@@ -240,10 +242,6 @@ const BuyerTabContentImpl: React.FC<BuyerTabContentProps> = ({
     );
   }, [toggleFollow, isFollowed, t]);
 
-  const handleMorePress = useCallback(() => {
-    Alert.show(t("discover.buyerMoreComingSoon"));
-  }, [t]);
-
   // 点击 Banner 时异步打埋点（失败静默），再落到店铺详情页。埋点走 fire-&-forget
   // 的原因：商家 banner 的点击/曝光统计是后端的业务指标，对前端用户体验来说
   // 不是阻塞路径；等待它返回会让导航感觉"卡一下"。
@@ -370,7 +368,14 @@ const BuyerTabContentImpl: React.FC<BuyerTabContentProps> = ({
             isFollowed={isFollowed}
             onFollowToggle={handleFollowToggle}
             onDetailPress={handleStorePress}
-            onMorePress={handleMorePress}
+          />
+        )}
+
+        {selectedStoreId && (
+          <BrandCollections
+            storeId={selectedStoreId}
+            collections={brandCollections}
+            onProductPress={onProductPress}
           />
         )}
 

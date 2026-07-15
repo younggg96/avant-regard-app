@@ -26,6 +26,8 @@ from app.schemas.store_product import (
     StoreProductCreate,
     StoreProductUpdate,
     ProductCommentCreate,
+    StoreBrandCollectionCreate,
+    StoreBrandCollectionUpdate,
 )
 from app.api.deps import get_current_user, get_current_user_optional
 
@@ -151,6 +153,88 @@ def delete_entry_card(
     if store_profile_service.delete_entry_card(card_id, merchant.id):
         return success(None, message="删除成功")
     raise HTTPException(status_code=404, detail="入口卡片不存在或无权限删除")
+
+
+# ==========================================================================
+# 品牌图集（Brand Collections，migration 057）
+# ==========================================================================
+
+
+@router.get("/store/{store_id}/brand-collections")
+def list_brand_collections_public(store_id: str):
+    """公开：店铺的品牌图集卡片（按 sort_order，回填 productCount）。"""
+    collections = store_profile_service.list_brand_collections(store_id)
+    return success({
+        "collections": [c.model_dump() for c in collections],
+        "total": len(collections),
+    })
+
+
+@router.get("/{merchant_id}/brand-collections")
+def list_brand_collections_for_merchant(
+    merchant_id: int,
+    current_user_id: int = Depends(get_current_user),
+):
+    """商家后台：列出自己店铺全部品牌图集（含 HIDDEN）。"""
+    merchant = _assert_merchant_owns(merchant_id, current_user_id)
+    collections = store_profile_service.list_brand_collections(
+        merchant.storeId, include_hidden=True
+    )
+    return success({
+        "collections": [c.model_dump() for c in collections],
+        "total": len(collections),
+    })
+
+
+@router.post("/{merchant_id}/brand-collections")
+def create_brand_collection(
+    merchant_id: int,
+    data: StoreBrandCollectionCreate,
+    current_user_id: int = Depends(get_current_user),
+):
+    merchant = _assert_merchant_owns(merchant_id, current_user_id)
+    try:
+        collection = store_profile_service.create_brand_collection(
+            merchant.storeId, merchant.id, data
+        )
+        return success(collection.model_dump(), message="品牌图集已创建")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        if "duplicate" in str(e).lower() or "unique" in str(e).lower():
+            raise HTTPException(status_code=400, detail="该品牌图集已存在")
+        raise
+
+
+@router.put("/brand-collections/{collection_id}")
+def update_brand_collection(
+    collection_id: int,
+    data: StoreBrandCollectionUpdate,
+    current_user_id: int = Depends(get_current_user),
+):
+    merchant = store_merchant_service.get_merchant_by_user(current_user_id)
+    if not merchant or merchant.status != "APPROVED":
+        raise HTTPException(status_code=403, detail="您不是认证商家")
+    try:
+        collection = store_profile_service.update_brand_collection(
+            collection_id, merchant.id, data
+        )
+        return success(collection.model_dump(), message="品牌图集已更新")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.delete("/brand-collections/{collection_id}")
+def delete_brand_collection(
+    collection_id: int,
+    current_user_id: int = Depends(get_current_user),
+):
+    merchant = store_merchant_service.get_merchant_by_user(current_user_id)
+    if not merchant or merchant.status != "APPROVED":
+        raise HTTPException(status_code=403, detail="您不是认证商家")
+    if store_profile_service.delete_brand_collection(collection_id, merchant.id):
+        return success(None, message="品牌图集已删除")
+    raise HTTPException(status_code=404, detail="品牌图集不存在或无权限删除")
 
 
 # ==========================================================================
@@ -316,6 +400,7 @@ def list_store_products(
     categoryId: Optional[int] = Query(None, description="分类 ID"),
     isNew: Optional[bool] = Query(None, description="仅查看新品"),
     hasDiscount: Optional[bool] = Query(None, description="仅查看有折扣"),
+    brand: Optional[str] = Query(None, description="品牌精确筛选（大小写不敏感）"),
     searchQuery: Optional[str] = Query(None, description="关键词搜索 title/brand"),
     page: int = Query(1, ge=1),
     pageSize: int = Query(20, ge=1, le=100),
@@ -326,6 +411,7 @@ def list_store_products(
         category_id=categoryId,
         is_new=isNew,
         has_discount=hasDiscount,
+        brand=brand,
         search_query=searchQuery,
         page=page,
         page_size=pageSize,

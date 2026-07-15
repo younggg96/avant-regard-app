@@ -83,6 +83,7 @@ import {
 } from "../services/postService";
 import HalfStarRating from "../components/HalfStarRating";
 import { formatTimestamp } from "../components/PostDetail/types";
+import { FullscreenImageViewer } from "../components/PostDetail";
 import { ShareToChatModal } from "../components/ShareToChatModal";
 import * as ImagePicker from "expo-image-picker";
 import { useTranslation } from "react-i18next";
@@ -177,6 +178,10 @@ const StoreDetailScreen = () => {
 
   // 分享状态
   const [showShareToChat, setShowShareToChat] = useState(false);
+
+  // 店铺图片全屏预览（左右滑动）
+  const [storeImageViewerVisible, setStoreImageViewerVisible] = useState(false);
+  const [storeImageViewerIndex, setStoreImageViewerIndex] = useState(0);
 
   // 商家申请弹窗状态
   const [showMerchantApplyModal, setShowMerchantApplyModal] = useState(false);
@@ -731,6 +736,23 @@ const StoreDetailScreen = () => {
     });
   };
 
+  const handleOpenStoreImageGallery = useCallback(() => {
+    if (!store?.images?.length) return;
+    navigation.navigate("StoreImageGallery", {
+      images: store.images,
+      storeName: store.name,
+    });
+  }, [navigation, store]);
+
+  const handleOpenStoreImageViewer = useCallback((index: number) => {
+    setStoreImageViewerIndex(index);
+    setStoreImageViewerVisible(true);
+  }, []);
+
+  const handleCloseStoreImageViewer = useCallback(() => {
+    setStoreImageViewerVisible(false);
+  }, []);
+
   // 渲染评论项
   const renderCommentItem = ({ item }: { item: StoreComment }) => (
     <VStack mt="$md" mx="$md" pb="$md" borderBottomWidth={StyleSheet.hairlineWidth} style={{ borderBottomColor: theme.colors.gray100 }}>
@@ -1068,19 +1090,56 @@ const StoreDetailScreen = () => {
             {/* ── 店铺图片 ── */}
             {(store.images?.length ?? 0) > 0 && (
               <VStack mt="$md">
-                <Text fontSize={11} style={[styles.textRegular, { color: theme.colors.gray400 }]} mb={8} px="$md" letterSpacing={0.5}>
-                  {t("store.storeImages").toUpperCase()}
-                </Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}>
-                  {store.images!.map((uri, idx) => (
-                    <OptimizedImage
-                      key={idx}
-                      uri={uri}
-                      size={ImageSize.MEDIUM}
-                      style={styles.storeImage}
-                      contentFit="cover"
-                      lazy={true}
+                <HStack
+                  px="$md"
+                  mb={8}
+                  alignItems="center"
+                  justifyContent="space-between"
+                >
+                  <Text
+                    fontSize={11}
+                    style={[styles.textRegular, { color: theme.colors.gray400 }]}
+                    letterSpacing={0.5}
+                  >
+                    {t("store.storeImages").toUpperCase()}
+                  </Text>
+                  <Pressable
+                    onPress={handleOpenStoreImageGallery}
+                    flexDirection="row"
+                    alignItems="center"
+                  >
+                    <Text
+                      fontSize={12}
+                      style={[styles.textRegular, { color: theme.colors.gray400 }]}
+                      mr={2}
+                    >
+                      {t("store.viewAllImages")}
+                    </Text>
+                    <Ionicons
+                      name="chevron-forward"
+                      size={13}
+                      color={theme.colors.gray300}
                     />
+                  </Pressable>
+                </HStack>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}
+                >
+                  {store.images!.map((uri, idx) => (
+                    <Pressable
+                      key={idx}
+                      onPress={() => handleOpenStoreImageViewer(idx)}
+                    >
+                      <OptimizedImage
+                        uri={uri}
+                        size={ImageSize.MEDIUM}
+                        style={styles.storeImage}
+                        contentFit="cover"
+                        lazy={true}
+                      />
+                    </Pressable>
                   ))}
                 </ScrollView>
               </VStack>
@@ -2019,6 +2078,14 @@ const StoreDetailScreen = () => {
         visible={showShareToChat}
         store={store}
         onClose={() => setShowShareToChat(false)}
+      />
+
+      <FullscreenImageViewer
+        visible={storeImageViewerVisible}
+        images={store.images ?? []}
+        currentIndex={storeImageViewerIndex}
+        onClose={handleCloseStoreImageViewer}
+        onIndexChange={setStoreImageViewerIndex}
       />
     </SafeAreaView>
   );

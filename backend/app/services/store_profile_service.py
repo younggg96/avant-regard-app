@@ -24,6 +24,9 @@ from app.schemas.store_product import (
     StoreProductCategory,
     StoreProductCategoryCreate,
     StoreProductCategoryUpdate,
+    StoreBrandCollection,
+    StoreBrandCollectionCreate,
+    StoreBrandCollectionUpdate,
 )
 
 
@@ -364,6 +367,156 @@ class StoreProfileService:
             self.db.table("store_product_categories")
             .select("*")
             .eq("id", category_id)
+            .limit(1)
+            .execute()
+        )
+        return result.data[0] if result.data else None
+
+    # ========================================================================
+    # StoreBrandCollection —— 品牌图集（migration 057）
+    # ========================================================================
+
+    @staticmethod
+    def _format_brand_collection(
+        row: dict, product_count: Optional[int] = None
+    ) -> StoreBrandCollection:
+        return StoreBrandCollection(
+            id=row["id"],
+            storeId=row["store_id"],
+            merchantId=row.get("merchant_id"),
+            brandName=row["brand_name"],
+            coverImage=row["cover_image"],
+            description=row.get("description"),
+            sortOrder=row.get("sort_order", 0),
+            status=row.get("status", "PUBLISHED"),
+            productCount=product_count,
+            createdAt=row.get("created_at"),
+            updatedAt=row.get("updated_at"),
+        )
+
+    def list_brand_collections(
+        self,
+        store_id: str,
+        *,
+        include_hidden: bool = False,
+        with_product_count: bool = True,
+    ) -> List[StoreBrandCollection]:
+        """店铺下的品牌图集卡片，默认回填该品牌下 PUBLISHED 商品数。"""
+        query = (
+            self.db.table("store_brand_collections")
+            .select("*")
+            .eq("store_id", store_id)
+            .order("sort_order")
+            .order("id")
+        )
+        if not include_hidden:
+            query = query.eq("status", "PUBLISHED")
+        result = execute_with_retry(
+            lambda: query.execute(), label="store_brand_collections.list"
+        )
+        rows = result.data or []
+        if not with_product_count or not rows:
+            return [self._format_brand_collection(row) for row in rows]
+
+        # 一次取回该店所有已发布商品的 brand 字段，内存里数每个品牌的数量，
+        # 避免每张品牌卡各打一次 count 请求（N+1）。品牌匹配大小写不敏感。
+        products = (
+            self.db.table("store_products")
+            .select("brand")
+            .eq("store_id", store_id)
+            .eq("status", "PUBLISHED")
+            .not_.is_("brand", "null")
+            .execute()
+        )
+        count_map: dict[str, int] = {}
+        for item in products.data or []:
+            key = (item.get("brand") or "").strip().lower()
+            if key:
+                count_map[key] = count_map.get(key, 0) + 1
+
+        return [
+            self._format_brand_collection(
+                row, count_map.get(row["brand_name"].strip().lower(), 0)
+            )
+            for row in rows
+        ]
+
+    def create_brand_collection(
+        self,
+        store_id: str,
+        merchant_id: int,
+        data: StoreBrandCollectionCreate,
+    ) -> StoreBrandCollection:
+        insert_data = {
+            "store_id": store_id,
+            "merchant_id": merchant_id,
+            "brand_name": data.brandName.strip(),
+            "cover_image": data.coverImage,
+            "description": data.description,
+            "sort_order": data.sortOrder,
+            "status": data.status.value,
+        }
+        result = (
+            self.db_admin.table("store_brand_collections").insert(insert_data).execute()
+        )
+        return self._format_brand_collection(result.data[0])
+
+    def update_brand_collection(
+        self,
+        collection_id: int,
+        merchant_id: int,
+        data: StoreBrandCollectionUpdate,
+    ) -> StoreBrandCollection:
+        patch = data.model_dump(exclude_unset=True)
+        field_map = {
+            "brandName": "brand_name",
+            "coverImage": "cover_image",
+            "description": "description",
+            "sortOrder": "sort_order",
+            "status": "status",
+        }
+        db_patch: dict = {}
+        for k, v in patch.items():
+            if k not in field_map:
+                continue
+            if hasattr(v, "value"):
+                v = v.value
+            if k == "brandName" and isinstance(v, str):
+                v = v.strip()
+            db_patch[field_map[k]] = v
+
+        if not db_patch:
+            existing = self._get_brand_collection_raw(collection_id)
+            if not existing or existing.get("merchant_id") != merchant_id:
+                raise ValueError("品牌图集不存在或无权限")
+            return self._format_brand_collection(existing)
+
+        result = (
+            self.db_admin.table("store_brand_collections")
+            .update(db_patch)
+            .eq("id", collection_id)
+            .eq("merchant_id", merchant_id)
+            .execute()
+        )
+        if not result.data:
+            raise ValueError("品牌图集不存在或无权限")
+        return self._format_brand_collection(result.data[0])
+
+    def delete_brand_collection(self, collection_id: int, merchant_id: int) -> bool:
+        result = (
+            self.db_admin.table("store_brand_collections")
+            .delete()
+            .eq("id", collection_id)
+            .eq("merchant_id", merchant_id)
+            .execute()
+        )
+        return bool(result.data)
+
+    def _get_brand_collection_raw(self, collection_id: int) -> Optional[dict]:
+        result = (
+            self.db.table("store_brand_collections")
+            .select("*")
+            .eq("id", collection_id)
             .limit(1)
             .execute()
         )
