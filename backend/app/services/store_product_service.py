@@ -223,6 +223,7 @@ class StoreProductService:
         category_id: Optional[int] = None,
         is_new: Optional[bool] = None,
         has_discount: Optional[bool] = None,
+        brand: Optional[str] = None,
         status: str = "PUBLISHED",
         search_query: Optional[str] = None,
         page: int = 1,
@@ -248,6 +249,11 @@ class StoreProductService:
             query = query.eq("is_new", True)
         if has_discount is True:
             query = query.eq("has_discount", True)
+        if brand:
+            # 品牌图集展开：精确匹配（大小写不敏感），区别于 searchQuery 的模糊搜索
+            kw = brand.replace("%", "\\%").replace("_", "\\_").strip()
+            if kw:
+                query = query.ilike("brand", kw)
         if search_query:
             # title / brand 模糊搜索
             kw = search_query.replace("%", "\\%").replace("_", "\\_").strip()

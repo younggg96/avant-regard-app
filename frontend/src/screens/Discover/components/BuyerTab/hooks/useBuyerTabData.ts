@@ -29,10 +29,12 @@ import {
   getStoresPaginated,
 } from "../../../../../services/buyerStoreService";
 import {
+  getStoreBrandCollections,
   getStoreEntryCards,
   getStoreProducts,
   getStoreProfileConfig,
   likeStoreProduct,
+  StoreBrandCollection,
   StoreEntryCard,
   StoreProduct,
   StoreProfileConfig,
@@ -250,6 +252,11 @@ export interface UseBuyerTabDataReturn {
    * 由 CategoryCards 侧直接隐藏整段。
    */
   entryCards: StoreEntryCardView[];
+  /**
+   * 所选店铺的品牌图集（migration 057）。商家未配置时为空数组，
+   * BrandCollections 组件直接隐藏整段。
+   */
+  brandCollections: StoreBrandCollection[];
   banner: BuyerStoreFeatureBanner | null;
   products: BuyerStoreProduct[];
   /** 当前选中店铺的店铺帖子（migration 055）。商家未发帖 / 未入驻时为空数组。 */
@@ -329,6 +336,10 @@ export const useBuyerTabData = (
   >({});
   const [entryCardsMap, setEntryCardsMap] = useState<
     Record<string, StoreEntryCard[]>
+  >({});
+  // 品牌图集缓存（migration 057）。三态语义同 productsMap。
+  const [brandCollectionsMap, setBrandCollectionsMap] = useState<
+    Record<string, StoreBrandCollection[]>
   >({});
   // 商品列表缓存。`undefined` = 未拉过；`[]` = 拉过但商家确实没上商品（UI 走空态）；
   // 有值 = 用真实商品。和 profileConfigMap 保持一致的三态语义。
@@ -438,12 +449,15 @@ export const useBuyerTabData = (
         opts?.force || bannersMap[storeId] === undefined;
       const needPosts =
         opts?.force || storePostsMap[storeId] === undefined;
+      const needBrands =
+        opts?.force || brandCollectionsMap[storeId] === undefined;
       if (
         !needProfile &&
         !needCards &&
         !needProducts &&
         !needBanners &&
-        !needPosts
+        !needPosts &&
+        !needBrands
       ) {
         return;
       }
@@ -456,6 +470,7 @@ export const useBuyerTabData = (
           productsResult,
           bannersResult,
           postsResult,
+          brandsResult,
         ] = await Promise.allSettled([
             needProfile
               ? getStoreProfileConfig(storeId)
@@ -476,6 +491,9 @@ export const useBuyerTabData = (
             needPosts
               ? postService.getPostsByStoreId(storeId, { limit: PREVIEW_POST_COUNT })
               : Promise.resolve([] as ApiPost[]),
+            needBrands
+              ? getStoreBrandCollections(storeId)
+              : Promise.resolve([] as StoreBrandCollection[]),
           ]);
 
         if (needProfile) {
@@ -562,11 +580,32 @@ export const useBuyerTabData = (
             setStorePostsMap((prev) => ({ ...prev, [storeId]: [] }));
           }
         }
+        if (needBrands) {
+          if (brandsResult.status === "fulfilled") {
+            setBrandCollectionsMap((prev) => ({
+              ...prev,
+              [storeId]: brandsResult.value ?? [],
+            }));
+          } else {
+            console.warn(
+              "[useBuyerTabData] load brand collections failed:",
+              brandsResult.reason
+            );
+            setBrandCollectionsMap((prev) => ({ ...prev, [storeId]: [] }));
+          }
+        }
       } finally {
         configInFlightRef.current.delete(storeId);
       }
     },
-    [profileConfigMap, entryCardsMap, productsMap, bannersMap, storePostsMap]
+    [
+      profileConfigMap,
+      entryCardsMap,
+      productsMap,
+      bannersMap,
+      storePostsMap,
+      brandCollectionsMap,
+    ]
   );
 
   // 选中店铺变化时 kickoff 一次配置拉取；已有缓存则立即跳过。
@@ -614,6 +653,11 @@ export const useBuyerTabData = (
     if (!selectedStoreId) return [];
     return buildEntryCardsView(entryCardsMap[selectedStoreId]);
   }, [selectedStoreId, entryCardsMap]);
+
+  const brandCollections = useMemo<StoreBrandCollection[]>(() => {
+    if (!selectedStoreId) return [];
+    return brandCollectionsMap[selectedStoreId] ?? [];
+  }, [selectedStoreId, brandCollectionsMap]);
 
   const products = useMemo<BuyerStoreProduct[]>(() => {
     if (!selectedStore) return [];
@@ -785,6 +829,7 @@ export const useBuyerTabData = (
     selectedStore,
     selectedProfile,
     entryCards,
+    brandCollections,
     banner,
     products,
     storePosts,

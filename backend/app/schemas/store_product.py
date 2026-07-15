@@ -157,6 +157,42 @@ class StoreProductCategory(BaseModel):
     updatedAt: Optional[str] = None
 
 
+# ==================== StoreBrandCollection ====================
+
+
+class StoreBrandCollectionCreate(BaseModel):
+    """新建品牌图集卡片"""
+    brandName: str = Field(..., min_length=1, max_length=200)
+    coverImage: str = Field(..., description="品牌封面图 URL")
+    description: Optional[str] = Field(None, description="品牌一句话介绍（可选）")
+    sortOrder: int = Field(default=0)
+    status: EntryCardStatus = Field(default=EntryCardStatus.PUBLISHED)
+
+
+class StoreBrandCollectionUpdate(BaseModel):
+    """更新品牌图集卡片（未传字段不改动）"""
+    brandName: Optional[str] = Field(None, min_length=1, max_length=200)
+    coverImage: Optional[str] = None
+    description: Optional[str] = None
+    sortOrder: Optional[int] = None
+    status: Optional[EntryCardStatus] = None
+
+
+class StoreBrandCollection(BaseModel):
+    """品牌图集卡片"""
+    id: int
+    storeId: str
+    merchantId: Optional[int] = None
+    brandName: str
+    coverImage: str
+    description: Optional[str] = None
+    sortOrder: int = 0
+    status: str = "PUBLISHED"
+    productCount: Optional[int] = None  # 列表接口按 store_products.brand 回填
+    createdAt: Optional[str] = None
+    updatedAt: Optional[str] = None
+
+
 # ==================== StoreProduct ====================
 
 

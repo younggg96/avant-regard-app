@@ -1805,6 +1805,48 @@ const MerchantManageScreen = () => {
           </HStack>
         </Pressable>
 
+        {/* 品牌图集管理快捷入口 —— 同商品管理，走独立屏 MerchantBrandCollections。 */}
+        <Pressable
+          style={[{ backgroundColor: theme.colors.white }, { borderColor: theme.colors.gray100 }]}
+          rounded="$lg"
+          p="$md"
+          borderWidth={1}
+          onPress={() => (navigation as any).navigate("MerchantBrandCollections", { merchantId: merchant.id })}
+        >
+          <HStack alignItems="center" justifyContent="space-between">
+            <HStack alignItems="center" gap="$md" flex={1} mr="$sm">
+              <Box
+                w={40}
+                h={40}
+                style={{ backgroundColor: theme.colors.gray100 }}
+                rounded="$md"
+                justifyContent="center"
+                alignItems="center"
+              >
+                <Ionicons name="images-outline" size={20} color={theme.colors.black} />
+              </Box>
+              <VStack flex={1}>
+                <Text
+                  fontSize="$md"
+                  fontWeight="$semibold"
+                  style={[styles.textBold, { color: theme.colors.black }]}
+                  numberOfLines={1}
+                >
+                  {t("merchant.brandCollections")}
+                </Text>
+                <Text
+                  fontSize="$sm"
+                  style={[styles.textRegular, { color: theme.colors.gray300 }]}
+                  numberOfLines={2}
+                >
+                  {t("merchant.brandCollectionsDesc")}
+                </Text>
+              </VStack>
+            </HStack>
+            <Ionicons name="chevron-forward" size={20} color={theme.colors.gray300} />
+          </HStack>
+        </Pressable>
+
         {/* 店铺信息 */}
         <Box style={[{ backgroundColor: theme.colors.white }, { borderColor: theme.colors.gray100 }]} rounded="$lg" p="$md" borderWidth={1}>
           <HStack justifyContent="space-between" alignItems="center" mb="$md">
