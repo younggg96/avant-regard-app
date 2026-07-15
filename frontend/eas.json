@@ -38,12 +38,14 @@
     "production": {
       "ios": {
         "appleId": "avantregard6@gmail.com",
+        "ascAppId": "6756938671",
         "companyName": "Shanghai Nanteke Industrial Co., Ltd."
       }
     },
     "production-na": {
       "ios": {
         "appleId": "avantregard6@gmail.com",
+        "ascAppId": "6769261192",
         "companyName": "Shanghai Nanteke Industrial Co., Ltd."
       }
     }
