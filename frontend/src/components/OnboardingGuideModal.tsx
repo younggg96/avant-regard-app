@@ -98,7 +98,10 @@ const OnboardingGuideModal: React.FC<OnboardingGuideModalProps> = ({
   const handleScroll = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
       const offsetX = event.nativeEvent.contentOffset.x;
-      const index = Math.round(offsetX / SCREEN_WIDTH);
+      const index = Math.max(
+        0,
+        Math.min(Math.round(offsetX / SCREEN_WIDTH), GUIDE_VIDEOS.length - 1)
+      );
       setCurrentIndex(index);
     },
     []
@@ -108,8 +111,12 @@ const OnboardingGuideModal: React.FC<OnboardingGuideModalProps> = ({
     if (isLastSlide) {
       onComplete();
     } else {
+      // Android 上程序触发的 scrollTo 不会回调 onMomentumScrollEnd，
+      // 必须在这里主动推进索引，否则会一直"卡"在当前页。
+      const nextIndex = currentIndex + 1;
+      setCurrentIndex(nextIndex);
       scrollViewRef.current?.scrollTo({
-        x: (currentIndex + 1) * SCREEN_WIDTH,
+        x: nextIndex * SCREEN_WIDTH,
         animated: true,
       });
     }
@@ -139,13 +146,19 @@ const OnboardingGuideModal: React.FC<OnboardingGuideModalProps> = ({
           scrollEventThrottle={16}
           style={styles.scrollView}
         >
-          {GUIDE_VIDEOS.map((source, index) => (
-            <VideoSlide
-              key={index}
-              source={source}
-              isActive={index === currentIndex}
-            />
-          ))}
+          {GUIDE_VIDEOS.map((source, index) =>
+            // 只挂载当前页及相邻页的播放器（最多 3 个原生实例），
+            // 其余渲染等宽占位，避免 10 个播放器同时解码导致 OOM 崩溃。
+            Math.abs(index - currentIndex) <= 1 ? (
+              <VideoSlide
+                key={index}
+                source={source}
+                isActive={index === currentIndex}
+              />
+            ) : (
+              <View key={index} style={slideStyles.slide} />
+            )
+          )}
         </ScrollView>
 
         <View style={styles.bottomContainer}>
