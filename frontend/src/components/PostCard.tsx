@@ -95,11 +95,10 @@ const PostCardInner = ({
   onPress,
   onAuthorPress,
   onLike,
-  // 默认走原图（ORIGINAL 在 getOptimizedImageUrl 里直通 Storage，不进
-  // proxy）。背景见 PostCoverMedia 的 Quality note：proxy 路径上每隔一段
-  // 时间会有概率把糊掉的字节永久写进 SDImageCache 磁盘，必须卸载重装才
-  // 能复原。直接用原图 + GPU decode 时下采样换掉这条故障路径。
-  coverImageSize = ImageSize.ORIGINAL,
+  // 两列 feed 使用 640px WebP。它覆盖常见设备的 3x 物理像素，同时
+  // 避免直接下载 Storage 原图；缓存版本与 downscaling 防护见
+  // PostCoverMedia 的 Quality note。
+  coverImageSize = ImageSize.FEED_CARD,
   coverImagePriority,
   showCoverPlaceholder = true,
   coverImageTransition,

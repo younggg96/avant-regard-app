@@ -57,6 +57,15 @@ interface OptimizedImageProps extends Omit<ImageProps, 'source' | 'contentFit' |
    */
   priority?: ImagePriority;
   lazy?: boolean;
+  /**
+   * 跨尺寸占位图 URL。全屏查看原图时传入同一张图的小尺寸变体
+   * （通常是列表/详情页已经缓存过的 MEDIUM），expo-image 会先显示
+   * 这个小图、原图到达后淡入替换 —— 用户看到的是"模糊 → 清晰"的
+   * 渐进加载，而不是白屏转圈。
+   *
+   * 提供此 prop 时 spinner 覆盖层被禁用（否则会盖住占位图）。
+   */
+  placeholderUri?: string;
   placeholderColor?: string;
   errorColor?: string;
   contentFit?: 'cover' | 'contain' | 'fill' | 'none' | 'scale-down';
@@ -99,6 +108,7 @@ const OptimizedImageInner = ({
   showPlaceholder = true,
   priority,
   lazy = false,
+  placeholderUri,
   // 之前默认是 `theme.colors.black`,但走 proxy 时:
   // light → #000000 (黑色) / dark → #FFFFFF (白色),会在两边都呈现高对比"硬"色块。
   // 改成 `skeleton` 给一个跟正文区一致的低对比加载底色,深浅模式下都不刺眼。
@@ -125,6 +135,13 @@ const OptimizedImageInner = ({
     if (!optimizedUri) return { uri: '' };
     return { uri: optimizedUri };
   }, [optimizedUri]);
+
+  // 跨尺寸占位：小图变体作为 expo-image 的 placeholder。与主图同为
+  // 网络资源，若之前在列表里显示过则命中磁盘缓存瞬时出现。
+  const placeholderSource: ImageSource | undefined = React.useMemo(
+    () => (placeholderUri ? { uri: placeholderUri } : undefined),
+    [placeholderUri]
+  );
 
   // Explicit `priority` wins; otherwise `lazy` degrades to `low`; default
   // is `normal`. This preserves the old "lazy⇒low" behaviour for callers
@@ -209,7 +226,8 @@ const OptimizedImageInner = ({
     containerHeightRef.current = event.nativeEvent.layout.height;
   }, []);
 
-  const showSpinner = showPlaceholder && !isLoaded && !hasError && !!uri;
+  const showSpinner =
+    showPlaceholder && !isLoaded && !hasError && !!uri && !placeholderSource;
   const showLabel =
     showSpinner && !hideLoadingLabel && containerHeightRef.current >= LOADING_LABEL_MIN_HEIGHT;
 
@@ -226,6 +244,8 @@ const OptimizedImageInner = ({
         source={imageSource}
         style={[StyleSheet.absoluteFill, styles.image]}
         contentFit={contentFit}
+        placeholder={placeholderSource}
+        placeholderContentFit={contentFit}
         transition={150}
         cachePolicy="memory-disk"
         priority={resolvedPriority}

@@ -29,7 +29,10 @@ from typing import Optional
 from urllib.parse import urlparse
 
 import httpx
-from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Query, Header
+from fastapi import (
+    APIRouter, BackgroundTasks, HTTPException, Depends,
+    UploadFile, File, Query, Header,
+)
 from fastapi.responses import FileResponse, Response
 from PIL import Image
 
@@ -63,6 +66,7 @@ def _infer_content_type(filename: str | None, declared: str | None) -> str:
 
 @router.post("/upload-image")
 async def upload_image(
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     current_user_id: int = Depends(get_current_user_id)
 ):
@@ -82,6 +86,10 @@ async def upload_image(
 
     if not url:
         raise HTTPException(status_code=500, detail="图片上传失败")
+
+    # 响应返回后在线程池里预生成各尺寸变体（见 _prewarm_image_variants）。
+    # 上传字节已在内存里，预热连回源 Storage 都不需要。
+    background_tasks.add_task(_prewarm_image_variants, url, content)
     return success({"url": url})
 
 
@@ -184,6 +192,26 @@ def _cache_path(key: str, ext: str) -> str:
     return os.path.join(_IMAGE_CACHE_DIR, f"{key}.{ext}")
 
 
+def _source_cache_path(url: str) -> str:
+    """
+    原图字节的本地缓存路径。
+
+    同一张图会被请求多个尺寸（THUMBNAIL / FEED_CARD / MEDIUM / LARGE），
+    没有这层缓存时每个尺寸的冷启动都要回源 Storage 拉一次几 MB 的原图。
+    落一份盘后，多尺寸转换只回源一次。
+    """
+    digest = hashlib.sha256(url.encode("utf-8")).hexdigest()
+    return os.path.join(_IMAGE_CACHE_DIR, f"{digest}.src")
+
+
+def _atomic_write(path: str, data: bytes) -> None:
+    """先写 tmp 再 rename，避免并发请求读到半个文件。"""
+    tmp = path + ".tmp"
+    with open(tmp, "wb") as f:
+        f.write(data)
+    os.replace(tmp, path)
+
+
 def _transform_bytes(
     src_bytes: bytes,
     width: int,
@@ -233,6 +261,47 @@ def _transform_bytes(
         return out.getvalue()
 
 
+# 上传后只预热最高频的两个尺寸。必须与前端 `imageUtils.ts` 的
+# IMAGE_SIZE_CONFIG 完全一致（w / q / fmt 任一不同都会算出不同 key）：
+#   FEED_CARD 640/80：两列 feed 封面
+#   MEDIUM    800/80：多图详情 / 常规内容图
+#
+# THUMBNAIL 与 LARGE 按需生成，避免每次上传后连续四次 WebP 编码挤占
+# API 进程 CPU。前端统一以 fmt=webp 请求。
+_PREWARM_VARIANTS: list[tuple[int, int]] = [
+    (640, 80),
+    (800, 80),
+]
+
+
+def _prewarm_image_variants(url: str, src_bytes: bytes) -> None:
+    """
+    上传成功后同步预生成各尺寸 WebP 变体（由 BackgroundTasks 在响应
+    返回后跑在线程池里，不阻塞上传请求本身）。
+
+    效果：其他用户刷到这张新图时，代理路由必定命中磁盘缓存，走
+    zero-copy sendfile —— 冷启动的「回源 + Pillow 转换」路径只在
+    这里跑一次，而且用的是上传请求里已经在内存里的字节，连回源
+    都省了。
+    """
+    try:
+        _atomic_write(_source_cache_path(url), src_bytes)
+    except Exception as e:
+        print(f"[image prewarm] source cache write failed: {e}")
+
+    for width, quality in _PREWARM_VARIANTS:
+        key = _cache_key(url, width, 0, quality, "WEBP")
+        cached = _cache_path(key, "webp")
+        if os.path.isfile(cached):
+            continue
+        try:
+            out_bytes = _transform_bytes(src_bytes, width, 0, quality, "WEBP")
+            _atomic_write(cached, out_bytes)
+        except Exception as e:
+            # 预热失败无碍：首个真实请求会走原始的按需转换路径。
+            print(f"[image prewarm] w={width} failed for {url}: {e}")
+
+
 @router.get("/image")
 async def proxy_image(
     url: str = Query(..., description="原始图片 URL（必须属于受信任的 Storage 域名）"),
@@ -261,42 +330,60 @@ async def proxy_image(
     key = _cache_key(url, w, h, q, pil_fmt)
     etag = f'"{key}"'
 
+    # 未显式指定 fmt 时输出内容取决于 Accept 头，必须带 Vary: Accept，
+    # 否则 CDN / 共享缓存会把按 WebP 协商出的响应错发给不支持 WebP 的
+    # 客户端。显式 fmt 时 URL 完全决定内容，不加 Vary 让 CDN 缓存键
+    # 保持干净（客户端现在统一传 fmt=webp 走这条路径）。
+    common_headers = {
+        "ETag": etag,
+        "Cache-Control": _CACHE_CONTROL,
+    }
+    if not fmt:
+        common_headers["Vary"] = "Accept"
+
     # 客户端已经拿过这张图就回 304，省流量。因为我们每次根据
     # (url, w, h, q, fmt) 算出确定性 key，ETag 具有幂等性。
     if if_none_match and if_none_match.strip() == etag:
-        return Response(status_code=304, headers={
-            "ETag": etag,
-            "Cache-Control": _CACHE_CONTROL,
-        })
+        return Response(status_code=304, headers=common_headers)
 
     cached = _cache_path(key, ext)
     if os.path.isfile(cached):
-        return FileResponse(
-            cached,
-            media_type=mime,
-            headers={
-                "Cache-Control": _CACHE_CONTROL,
-                "ETag": etag,
-            },
-        )
+        return FileResponse(cached, media_type=mime, headers=common_headers)
 
-    try:
-        async with httpx.AsyncClient(
-            timeout=_FETCH_TIMEOUT_S, follow_redirects=True
-        ) as client:
-            resp = await client.get(url)
-    except httpx.HTTPError as e:
-        raise HTTPException(status_code=502, detail=f"回源失败: {e}")
+    # 回源前先查原图缓存：同一张图的其它尺寸请求已经拉过原图的话，
+    # 这里零网络成本直接复用。
+    src: Optional[bytes] = None
+    src_cached = _source_cache_path(url)
+    if os.path.isfile(src_cached):
+        try:
+            with open(src_cached, "rb") as f:
+                src = f.read()
+        except OSError:
+            src = None
 
-    if resp.status_code != 200:
-        raise HTTPException(
-            status_code=resp.status_code if resp.status_code >= 400 else 502,
-            detail=f"回源返回 {resp.status_code}",
-        )
+    if src is None:
+        try:
+            async with httpx.AsyncClient(
+                timeout=_FETCH_TIMEOUT_S, follow_redirects=True
+            ) as client:
+                resp = await client.get(url)
+        except httpx.HTTPError as e:
+            raise HTTPException(status_code=502, detail=f"回源失败: {e}")
 
-    src = resp.content
-    if len(src) > _MAX_SOURCE_BYTES:
-        raise HTTPException(status_code=413, detail="源图过大")
+        if resp.status_code != 200:
+            raise HTTPException(
+                status_code=resp.status_code if resp.status_code >= 400 else 502,
+                detail=f"回源返回 {resp.status_code}",
+            )
+
+        src = resp.content
+        if len(src) > _MAX_SOURCE_BYTES:
+            raise HTTPException(status_code=413, detail="源图过大")
+
+        try:
+            _atomic_write(src_cached, src)
+        except Exception as e:
+            print(f"[image proxy] source cache write failed: {e}")
 
     try:
         out_bytes = await asyncio.to_thread(
@@ -309,21 +396,10 @@ async def proxy_image(
         print(f"[image proxy] transform failed: {e}")
         raise HTTPException(status_code=502, detail=f"图片转换失败: {e}")
 
-    # 原子写入缓存：先写 tmp 再 rename，避免并发请求读到半个文件。
     try:
-        tmp = cached + ".tmp"
-        with open(tmp, "wb") as f:
-            f.write(out_bytes)
-        os.replace(tmp, cached)
+        _atomic_write(cached, out_bytes)
     except Exception as e:
         # 缓存写失败不影响本次响应返回，日志记录留着排查磁盘问题。
         print(f"[image proxy] cache write failed: {e}")
 
-    return Response(
-        content=out_bytes,
-        media_type=mime,
-        headers={
-            "Cache-Control": _CACHE_CONTROL,
-            "ETag": etag,
-        },
-    )
+    return Response(content=out_bytes, media_type=mime, headers=common_headers)

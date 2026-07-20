@@ -9,6 +9,8 @@ import {
   FlatList,
   ListRenderItemInfo,
   ActivityIndicator,
+  InteractionManager,
+  ViewToken,
 } from "react-native";
 import { MasonryFlashList, MasonryListRenderItemInfo } from "@shopify/flash-list";
 import { useTranslation } from "react-i18next";
@@ -34,6 +36,7 @@ import type { BuyerStoreProduct } from "./BuyerTab/types";
 import type { BuyerStore } from "../../../services/buyerStoreService";
 import { clampAspectRatio } from "../../../utils/useMediaAspectRatio";
 import { ImageSize } from "../../../utils/imageUtils";
+import { prefetchImages } from "../../../utils/imagePrefetch";
 
 type RenderablePost = Post & { renderKey?: string };
 
@@ -256,6 +259,10 @@ const ESTIMATED_ITEM_SIZE = 320;
 // so the downloader queue doesn't starve the fold on slower networks;
 // expo-image promotes them once they actually scroll into view.
 const ABOVE_FOLD_COUNT = 8;
+// Keep exactly one screen of covers warm. Prefetching the whole page would
+// compete with visible images and waste mobile data; 8 items cover roughly
+// 3-4 rows in the two-column masonry.
+const PREFETCH_AHEAD_COUNT = 8;
 
 // Shared per-card height constants, used for `estimateCardHeight` /
 // `overrideItemLayout` so MasonryFlashList can balance columns. Keep in sync
@@ -357,6 +364,61 @@ const PostsTabContentInner: React.FC<PostsTabContentProps> = ({
     []
   );
 
+  // ---------------------------------------------------------------------
+  // 封面预取 —— 只把当前可见区域之后的一屏提前下到磁盘缓存。
+  //
+  // MasonryFlashList 的 drawDistance 只预渲染约 0.35 屏，用户快速下滑
+  // 时超出这个窗口的卡片仍然要现场发起下载（表现为一片灰块）。不能
+  // 一次预取整页：那会让二十多张低优先级图片与首屏争抢连接和蜂窝流量。
+  //
+  // 调度上挂在 `InteractionManager.runAfterInteractions` 之后：数据
+  // append 的瞬间正是 masonry mount 30 张新卡片、JS 线程最忙的窗口，
+  // 预取请求不该跟首屏解码抢资源。prefetchImages 内部按 URL 会话级
+  // 去重，replay 循环同一批帖子时不会重复请求。
+  //
+  // 尺寸必须与 PostCard 实际显示的一致（FEED_CARD 640px WebP）——
+  // URL 不同则缓存不共享，预取就白做了。
+  // ---------------------------------------------------------------------
+  const currentPostsRef = useRef(currentPosts);
+  currentPostsRef.current = currentPosts;
+
+  useEffect(() => {
+    if (tab === "forum") return; // 论坛列表是小缩略图，windowing 已足够
+    if (currentPosts.length <= ABOVE_FOLD_COUNT) return;
+
+    const handle = InteractionManager.runAfterInteractions(() => {
+      prefetchImages(
+        currentPosts
+          .slice(ABOVE_FOLD_COUNT, ABOVE_FOLD_COUNT + PREFETCH_AHEAD_COUNT)
+          .map((post) => post.image),
+        ImageSize.FEED_CARD
+      );
+    });
+    return () => handle.cancel();
+  }, [currentPosts, tab]);
+
+  const handleViewableItemsChanged = useCallback(
+    ({ viewableItems }: { viewableItems: ViewToken[] }) => {
+      let maxVisibleIndex = -1;
+      for (const token of viewableItems) {
+        if (token.index != null && token.index > maxVisibleIndex) {
+          maxVisibleIndex = token.index;
+        }
+      }
+      if (maxVisibleIndex < 0) return;
+
+      const posts = currentPostsRef.current;
+      const start = maxVisibleIndex + 1;
+      prefetchImages(
+        posts
+          .slice(start, start + PREFETCH_AHEAD_COUNT)
+          .map((post) => post.image),
+        ImageSize.FEED_CARD
+      );
+    },
+    []
+  );
+
   useEffect(() => {
     if (scrollToTopSignal <= 0) return;
 
@@ -401,12 +463,10 @@ const PostsTabContentInner: React.FC<PostsTabContentProps> = ({
             onPress={onPostPress}
             onAuthorPress={onAuthorPress}
             onLike={onLike}
-            // 改为 ORIGINAL = 不走 backend proxy，直接拉 Storage 原图。
-            // 历史上 FEED_CARD(640px) / MEDIUM(800px) 都试过，每隔一段时间就
-            // 会有概率把糊掉的转换字节永久写进 SDImageCache 磁盘 —— 必须
-            // 卸载重装才能洗。原图 + GPU decode 时下采样彻底绕过这条故障
-            // 路径。代价是 4G 首屏多 ~1MB/张，命中本地缓存后无感。
-            coverImageSize={ImageSize.ORIGINAL}
+            // 640px WebP 覆盖两列卡片 @3x；实测样本由 61KB 降到 9.5KB。
+            // URL 带缓存版本、OptimizedImage 禁止瞬态尺寸 downscale，避免
+            // 历史版本的低清位图长期滞留在 SDImageCache。
+            coverImageSize={ImageSize.FEED_CARD}
             coverImagePriority={priority}
             showCoverPlaceholder={false}
             coverImageTransition={0}
@@ -653,6 +713,7 @@ const PostsTabContentInner: React.FC<PostsTabContentProps> = ({
         estimatedListSize={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT }}
         drawDistance={MASONRY_DRAW_DISTANCE}
         overrideItemLayout={overrideItemLayout}
+        onViewableItemsChanged={handleViewableItemsChanged}
         ListHeaderComponent={masonryHeader}
         ListFooterComponent={listFooter}
         onScroll={onScroll}

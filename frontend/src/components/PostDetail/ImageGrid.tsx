@@ -2,7 +2,7 @@ import React from "react";
 import { View, StyleSheet, Dimensions } from "react-native";
 import { Pressable } from "../ui";
 import { OptimizedImage } from "../ui/OptimizedImage";
-import { ImageSize } from "../../utils/imageUtils";
+import { getOptimizedImageUrl, ImageSize } from "../../utils/imageUtils";
 import { isVideoUrl } from "../../services/postService";
 import { theme, useThemedStyles, type AppTheme } from "../../theme";
 import { VideoPlayer } from "./VideoPlayer";
@@ -26,6 +26,15 @@ const MediaItem: React.FC<{
   onOpenFullscreen: (index: number) => void;
   contentFit?: "cover" | "contain";
 }> = ({ uri, wrapperStyle, imageStyle, imageSize, index, onOpenFullscreen, contentFit = "cover" }) => {
+  const placeholderCandidate =
+    imageSize === ImageSize.LARGE
+      ? getOptimizedImageUrl(uri, ImageSize.FEED_CARD)
+      : undefined;
+  const placeholderUri =
+    placeholderCandidate && placeholderCandidate !== uri
+      ? placeholderCandidate
+      : undefined;
+
   if (isVideoUrl(uri)) {
     return (
       <VideoPlayer
@@ -41,6 +50,7 @@ const MediaItem: React.FC<{
       <OptimizedImage
         uri={uri}
         size={imageSize}
+        placeholderUri={placeholderUri}
         style={imageStyle}
         contentFit={contentFit}
         placeholderColor={theme.colors.gray50}
@@ -72,6 +82,8 @@ const SingleMediaItem: React.FC<{
       uri={uri}
       wrapperStyle={wrapperStyle}
       imageStyle={gridStyles.singleImage}
+      // 详情主图使用 1440px LARGE；加载期间先复用 feed 已缓存的
+      // FEED_CARD 作为渐进占位，避免进详情白屏。全屏查看再按需拉原图。
       imageSize={ImageSize.LARGE}
       index={0}
       onOpenFullscreen={onOpenFullscreen}

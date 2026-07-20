@@ -15,8 +15,11 @@
  *
  * ## URL 改写规则
  * - `size === ORIGINAL`、开关关闭、或 URL 不是 Storage 对象 → 原样透传。
- * - 其它 → 改写为 `${API_BASE}/api/files/image?url=<encoded>&w=W&q=Q`。
- *   未传 `fmt` 让后端按客户端 Accept 自动协商 WebP。
+ * - 其它 → 改写为
+ *   `${API_BASE}/api/files/image?url=<encoded>&w=W&q=Q&fmt=webp&v=V`。
+ *   显式固定 `fmt=webp`（expo-image 全平台支持），让 URL 完全决定响应
+ *   内容 —— 这样 CDN / 共享缓存不需要按 `Accept` 头拆分缓存键，也
+ *   杜绝了「CDN 把按 Accept 协商出的 WebP 错发给不支持的客户端」。
  *
  * ## 兼容面
  * 代码不假设 host 是 MemFireDB；只要原 URL 包含 `/storage/v1/object/public/`
@@ -87,6 +90,16 @@ const OBJECT_PUBLIC_PATH = "/storage/v1/object/public/";
 const IMAGE_TRANSFORM_ENABLED = true;
 
 /**
+ * 客户端图片缓存版本。
+ *
+ * expo-image 的磁盘缓存以完整 URL 为 key。历史版本曾把低分辨率位图写入
+ * SDImageCache；只改服务端字节无法让已安装客户端丢弃旧条目。版本号进入
+ * URL 后会自然生成新的缓存 key，同时不影响后端按 url/w/q/fmt 复用变体。
+ * 以后改变编码或尺寸策略时递增此值即可，无需用户卸载 App。
+ */
+const IMAGE_CACHE_VERSION = 2;
+
+/**
  * 代理路由 URL。API_BASE 去掉可能的末尾 `/`，避免拼出 `//api/files/image`
  * 这种双斜杠路径（FastAPI 默认会 308 重定向，多一次 RTT 且破坏
  * CORS preflight 缓存）。
@@ -133,7 +146,7 @@ export function getOptimizedImageUrl(
   // 转码后）、`?token=` 等字符，不 encode 会被后端的 query parser 错
   // 误截断。`encodeURIComponent` 覆盖 RFC3986 里所有 reserved char。
   const encoded = encodeURIComponent(url);
-  return `${IMAGE_PROXY_ENDPOINT}?url=${encoded}&w=${width}&q=${quality}`;
+  return `${IMAGE_PROXY_ENDPOINT}?url=${encoded}&w=${width}&q=${quality}&fmt=webp&v=${IMAGE_CACHE_VERSION}`;
 }
 
 /**

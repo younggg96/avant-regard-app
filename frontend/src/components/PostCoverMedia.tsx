@@ -56,19 +56,14 @@ interface PostCoverMediaProps {
  *   primitives (uri / size / contentFit / priority / transition / showPlaceholder)
  *   so shallow-compare handles them correctly.
  *
- * Quality notes — covers have TWO independent failure paths to "pixelation
- * after using the app for a while", and we have to close BOTH:
+ * Quality notes — the previous proxy rollout exposed two independent stale
+ * low-resolution cache paths. The current implementation closes both while
+ * keeping the bandwidth benefit of the 640px FEED_CARD variant:
  *
- *   1) Backend proxy resize + on-device disk cache (`SDImageCache`).
- *      We tried every shade of "transform-with-cache" first — FEED_CARD/MEDIUM
- *      over a backend Pillow proxy — and every variant eventually started
- *      serving 8x8-macroblock bitmaps to a fraction of users that survived
- *      app restart and only cleared on uninstall, i.e. baked into the
- *      on-device `SDImageCache` disk. Mitigation: default `size` to
- *      `ImageSize.ORIGINAL`, which short-circuits `getOptimizedImageUrl`
- *      and pulls the raw Storage URL directly. Cost: ~50KB → 1–5MB per
- *      cover download (Wi-Fi imperceptible, 4G noticeable on first feed
- *      paint, free on cache hit).
+ *   1) `getOptimizedImageUrl` includes an explicit cache-version query.
+ *      Changing the transform contract bumps that version, so an old bad
+ *      `SDImageCache` disk entry can never survive into the new rollout.
+ *      The URL also includes size/quality/format, preventing cross-size reuse.
  *
  *   2) `expo-image`'s `allowDownscaling=true` + `SDImageCache` *memory* cache.
  *      `expo-image` runs `processImage` (iOS `ImageView.swift`) every time
@@ -83,20 +78,15 @@ interface PostCoverMediaProps {
  *      gradually pixelate the longer the app session runs" bug.
  *      Mitigation: pass `allowDownscaling={false}` to `OptimizedImage`
  *      so the original bitmap is what's cached; the GPU does fit-to-cell
- *      minification with trilinear sampling on every paint (set in
- *      `ImageView.commonInit`), which never leaves a low-res copy behind.
- *      Memory cost is bounded because the original asset is already in
- *      a reasonable resolution from the uploader.
- *
- * Removing EITHER guard reproduces pixelation — they cover different
- * failure modes. (1) is about the *bytes* on disk being wrong; (2) is
- * about a correctly-decoded bitmap getting re-resized and the small
- * version winning eviction races. Both have historically been hit.
+ *      minification with trilinear sampling on every paint, which never
+ *      leaves a transient cell-sized copy behind. FEED_CARD is 640px, enough
+ *      for a two-column card at 3x DPR while remaining much smaller than the
+ *      Storage original.
  */
 const PostCoverMediaInner: React.FC<PostCoverMediaProps> = ({
   uri,
   style,
-  size = ImageSize.ORIGINAL,
+  size = ImageSize.FEED_CARD,
   contentFit = "cover",
   showPlaceholder = true,
   transition,

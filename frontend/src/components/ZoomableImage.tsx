@@ -39,7 +39,7 @@ import Animated, {
   runOnJS,
 } from "react-native-reanimated";
 import { OptimizedImage } from "./ui/OptimizedImage";
-import { ImageSize } from "../utils/imageUtils";
+import { getOptimizedImageUrl, ImageSize } from "../utils/imageUtils";
 
 export interface ZoomableImageProps {
   uri: string;
@@ -219,6 +219,17 @@ const ZoomableImageInner: React.FC<ZoomableImageProps> = ({
     ],
   }));
 
+  // 渐进加载：原图（ORIGINAL，可能几 MB）加载期间先显示 MEDIUM 变体。
+  // 进全屏前用户几乎总是刚在列表 / 详情页看过这张图的小尺寸版本，
+  // MEDIUM 大概率命中磁盘缓存瞬时上屏；即使 miss，~50KB 的 WebP 也
+  // 远快于原图，体感从"黑屏转圈"变成"模糊 → 清晰"。
+  // 非 Storage URL（getOptimizedImageUrl 原样透传）时跳过，避免占位
+  // 图和主图是同一个 URL 的无意义双请求。
+  const placeholderUri = useMemo(() => {
+    const medium = getOptimizedImageUrl(uri, ImageSize.MEDIUM);
+    return medium !== uri ? medium : undefined;
+  }, [uri]);
+
   return (
     <GestureDetector gesture={composed}>
       <Animated.View
@@ -227,6 +238,7 @@ const ZoomableImageInner: React.FC<ZoomableImageProps> = ({
         <OptimizedImage
           uri={uri}
           size={ImageSize.ORIGINAL}
+          placeholderUri={placeholderUri}
           style={styles.image}
           contentFit="contain"
           priority="high"
