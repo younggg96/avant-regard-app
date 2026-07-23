@@ -107,7 +107,7 @@ class RefreshTokenRequest(BaseModel):
 # ==================== API 端点 ====================
 
 @router.post("/sms/send")
-async def send_sms(request: SendSmsRequest):
+def send_sms(request: SendSmsRequest):
     """
     发送短信验证码
     使用 Supabase Phone Auth 发送 OTP
@@ -119,7 +119,7 @@ async def send_sms(request: SendSmsRequest):
 
 
 @router.post("/login-sms")
-async def login_sms(request: VerifySmsRequest):
+def login_sms(request: VerifySmsRequest):
     """
     短信验证码登录/注册
     验证成功后自动登录，如果用户不存在则自动注册
@@ -135,7 +135,7 @@ async def login_sms(request: VerifySmsRequest):
 
 
 @router.post("/login")
-async def login_password(request: LoginPasswordRequest):
+def login_password(request: LoginPasswordRequest):
     """
     密码登录
     需要用户已设置密码
@@ -150,7 +150,7 @@ async def login_password(request: LoginPasswordRequest):
 
 
 @router.post("/register")
-async def register(request: RegisterRequest):
+def register(request: RegisterRequest):
     """
     用户注册
     需要先发送验证码，验证后设置密码
@@ -170,7 +170,7 @@ async def register(request: RegisterRequest):
 
 
 @router.post("/email/send")
-async def send_email_otp(request: SendEmailOtpRequest):
+def send_email_otp(request: SendEmailOtpRequest):
     """发送邮箱验证码"""
     ok, message = auth_service.send_email_otp(request.email)
     if not ok:
@@ -179,7 +179,7 @@ async def send_email_otp(request: SendEmailOtpRequest):
 
 
 @router.post("/login-email")
-async def login_email(request: EmailLoginRequest):
+def login_email(request: EmailLoginRequest):
     """邮箱密码登录"""
     result, err = auth_service.login_with_email_password(
         request.email, request.password
@@ -190,7 +190,7 @@ async def login_email(request: EmailLoginRequest):
 
 
 @router.post("/login-email-otp")
-async def login_email_otp(request: EmailOtpLoginRequest):
+def login_email_otp(request: EmailOtpLoginRequest):
     """邮箱验证码登录（自动注册）"""
     result, err = auth_service.verify_email_otp(
         request.email, request.code, request.username
@@ -201,7 +201,7 @@ async def login_email_otp(request: EmailOtpLoginRequest):
 
 
 @router.post("/register-email")
-async def register_email(request: EmailRegisterRequest):
+def register_email(request: EmailRegisterRequest):
     """邮箱注册"""
     result, err = auth_service.register_with_email(
         request.email, request.username, request.password, request.code
@@ -212,7 +212,7 @@ async def register_email(request: EmailRegisterRequest):
 
 
 @router.post("/forget-password-email")
-async def forget_password_email(request: EmailResetPasswordRequest):
+def forget_password_email(request: EmailResetPasswordRequest):
     """邮箱重置密码"""
     ok, message = auth_service.reset_email_password(
         request.email, request.password, request.code
@@ -223,7 +223,7 @@ async def forget_password_email(request: EmailResetPasswordRequest):
 
 
 @router.post("/login-apple")
-async def login_apple(request: AppleLoginRequest):
+def login_apple(request: AppleLoginRequest):
     """
     Apple 登录
     使用 Apple Identity Token 通过 Supabase 验证并登录/注册
@@ -239,7 +239,7 @@ async def login_apple(request: AppleLoginRequest):
 
 
 @router.post("/forget-password")
-async def forget_password(request: ResetPasswordRequest):
+def forget_password(request: ResetPasswordRequest):
     """
     忘记密码/重置密码
     需要先发送验证码
@@ -255,7 +255,7 @@ async def forget_password(request: ResetPasswordRequest):
 
 
 @router.post("/change-password")
-async def change_password(request: ChangePasswordRequest):
+def change_password(request: ChangePasswordRequest):
     """
     修改密码
     需要验证当前密码
@@ -271,7 +271,7 @@ async def change_password(request: ChangePasswordRequest):
 
 
 @router.post("/refresh")
-async def refresh_token(request: RefreshTokenRequest):
+def refresh_token(request: RefreshTokenRequest):
     """
     刷新令牌
     使用 Supabase refresh token 获取新的 access token
@@ -283,7 +283,7 @@ async def refresh_token(request: RefreshTokenRequest):
 
 
 @router.post("/logout")
-async def logout():
+def logout():
     """登出"""
     auth_service.sign_out()
     return success(message="登出成功")
@@ -316,7 +316,7 @@ def _client_ip(request: Request) -> str:
 
 
 @router.post("/report-issue")
-async def report_auth_issue(payload: AuthIssueReportRequest, request: Request):
+def report_auth_issue(payload: AuthIssueReportRequest, request: Request):
     """
     提交登录/注册问题反馈（公开端点，无需登录）。
     工作人员会通过 contactValue 回访用户。

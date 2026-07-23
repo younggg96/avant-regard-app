@@ -2,6 +2,7 @@
 Chat routes - REST API + WebSocket for real-time messaging
 """
 
+import asyncio
 from typing import Optional, Dict, Set
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, Query
 from app.schemas.chat import (
@@ -63,6 +64,49 @@ class ConnectionManager:
 manager = ConnectionManager()
 
 
+def _get_broadcast_targets(conversation_id: int, sender_id: int) -> list:
+    """查会话参与者并过滤拉黑关系。全是同步 DB 调用，调用方须放线程池执行。"""
+    participants = (
+        get_supabase()
+        .table("conversation_participants")
+        .select("user_id")
+        .eq("conversation_id", conversation_id)
+        .execute()
+    )
+    targets = []
+    for p in participants.data or []:
+        pid = p["user_id"]
+        if pid == sender_id:
+            continue
+        if moderation_service.is_blocked(pid, sender_id) or \
+           moderation_service.is_blocked(sender_id, pid):
+            continue
+        targets.append(pid)
+    return targets
+
+
+def _notify_offline_recipient(
+    pid: int, sender_id: int, conversation_id: int, content: str, message_type: str
+) -> None:
+    """给不在线的接收者发推送通知。同步 DB/HTTP 调用，调用方须放线程池执行。"""
+    sender_brief = chat_service._get_user_brief(sender_id)
+    preview = format_chat_message_preview(content, message_type)
+    notification_service.create_notification(
+        user_id=pid,
+        notification_type=NotificationType.SYSTEM,
+        title=f"{sender_brief['username']} 发来了一条消息",
+        message=preview[:100],
+        action_data={
+            "user_id": sender_id,
+            "navigateTo": "Chat",
+            "navigateParams": {"conversationId": conversation_id},
+            "actor_name": sender_brief["username"],
+            "actor_avatar": sender_brief.get("avatar_url"),
+        },
+        send_push=True,
+    )
+
+
 def _authenticate_ws_token(token: str) -> Optional[int]:
     """Authenticate a WebSocket connection using the same logic as REST deps."""
     try:
@@ -104,7 +148,8 @@ async def websocket_endpoint(websocket: WebSocket, token: str = Query(...)):
       {"type": "pong"}
       {"type": "error", "message": "..."}
     """
-    user_id = _authenticate_ws_token(token)
+    # 鉴权内部是同步 Supabase 调用，放线程池避免阻塞事件循环
+    user_id = await asyncio.to_thread(_authenticate_ws_token, token)
     if not user_id:
         await websocket.close(code=4001, reason="Authentication failed")
         return
@@ -128,7 +173,9 @@ async def websocket_endpoint(websocket: WebSocket, token: str = Query(...)):
                     continue
 
                 try:
-                    msg = chat_service.send_message(conv_id, user_id, content, message_type)
+                    msg = await asyncio.to_thread(
+                        chat_service.send_message, conv_id, user_id, content, message_type
+                    )
                 except BlockedUserError:
                     await websocket.send_json({"type": "error", "message": "无法发送消息", "blocked": True})
                     continue
@@ -144,42 +191,19 @@ async def websocket_endpoint(websocket: WebSocket, token: str = Query(...)):
                 await websocket.send_json({"type": "message_sent", "data": msg_dict})
 
                 try:
-                    participants = (
-                        get_supabase()
-                        .table("conversation_participants")
-                        .select("user_id")
-                        .eq("conversation_id", conv_id)
-                        .execute()
+                    targets = await asyncio.to_thread(
+                        _get_broadcast_targets, conv_id, user_id
                     )
-                    for p in participants.data or []:
-                        pid = p["user_id"]
-                        if pid == user_id:
-                            continue
-                        if moderation_service.is_blocked(pid, user_id) or \
-                           moderation_service.is_blocked(user_id, pid):
-                            continue
-
+                    for pid in targets:
                         outgoing = msg.model_dump()
                         outgoing["isMine"] = False
                         await manager.send_to_user(pid, {"type": "new_message", "data": outgoing})
 
                         if not manager.is_online(pid):
                             try:
-                                sender_brief = chat_service._get_user_brief(user_id)
-                                preview = format_chat_message_preview(content, message_type)
-                                notification_service.create_notification(
-                                    user_id=pid,
-                                    notification_type=NotificationType.SYSTEM,
-                                    title=f"{sender_brief['username']} 发来了一条消息",
-                                    message=preview[:100],
-                                    action_data={
-                                        "user_id": user_id,
-                                        "navigateTo": "Chat",
-                                        "navigateParams": {"conversationId": conv_id},
-                                        "actor_name": sender_brief["username"],
-                                        "actor_avatar": sender_brief.get("avatar_url"),
-                                    },
-                                    send_push=True,
+                                await asyncio.to_thread(
+                                    _notify_offline_recipient,
+                                    pid, user_id, conv_id, content, message_type,
                                 )
                             except Exception as e:
                                 print(f"Failed to send chat push notification: {e}")
@@ -188,7 +212,9 @@ async def websocket_endpoint(websocket: WebSocket, token: str = Query(...)):
 
                 # Auto-reply: if the recipient is admin and hasn't replied yet
                 try:
-                    auto_reply = chat_service.send_auto_reply_if_needed(conv_id, user_id)
+                    auto_reply = await asyncio.to_thread(
+                        chat_service.send_auto_reply_if_needed, conv_id, user_id
+                    )
                     if auto_reply:
                         auto_reply_dict = auto_reply.model_dump()
                         auto_reply_dict["isMine"] = False
@@ -200,7 +226,9 @@ async def websocket_endpoint(websocket: WebSocket, token: str = Query(...)):
                 conv_id = data.get("conversation_id")
                 if conv_id:
                     try:
-                        chat_service.mark_conversation_read(conv_id, user_id)
+                        await asyncio.to_thread(
+                            chat_service.mark_conversation_read, conv_id, user_id
+                        )
                     except Exception:
                         pass
                     await websocket.send_json({"type": "conversation_read", "conversation_id": conv_id})
@@ -215,7 +243,7 @@ async def websocket_endpoint(websocket: WebSocket, token: str = Query(...)):
 # ======================= REST API Endpoints =======================
 
 @router.get("/conversations")
-async def get_conversations(current_user_id: int = Depends(get_current_user_id)):
+def get_conversations(current_user_id: int = Depends(get_current_user_id)):
     """Get all conversations for the current user."""
     try:
         conversations = chat_service.get_conversations(current_user_id)
@@ -226,7 +254,7 @@ async def get_conversations(current_user_id: int = Depends(get_current_user_id))
 
 
 @router.post("/conversations")
-async def create_conversation(
+def create_conversation(
     req: CreateConversationRequest,
     current_user_id: int = Depends(get_current_user_id),
 ):
@@ -247,7 +275,7 @@ async def create_conversation(
 
 
 @router.get("/conversations/{conversation_id}/messages")
-async def get_messages(
+def get_messages(
     conversation_id: int,
     limit: int = Query(50, le=100),
     before_id: Optional[int] = Query(None),
@@ -270,7 +298,10 @@ async def send_message_rest(
 ):
     """Send a message via REST (alternative to WebSocket)."""
     try:
-        msg = chat_service.send_message(conversation_id, current_user_id, req.content, req.message_type.value)
+        msg = await asyncio.to_thread(
+            chat_service.send_message,
+            conversation_id, current_user_id, req.content, req.message_type.value,
+        )
         if not msg:
             return error(message="Failed to send message or not a participant", code=403)
     except BlockedUserError:
@@ -282,20 +313,10 @@ async def send_message_rest(
     msg_dict = msg.model_dump()
 
     try:
-        participants = (
-            get_supabase()
-            .table("conversation_participants")
-            .select("user_id")
-            .eq("conversation_id", conversation_id)
-            .execute()
+        targets = await asyncio.to_thread(
+            _get_broadcast_targets, conversation_id, current_user_id
         )
-        for p in participants.data or []:
-            pid = p["user_id"]
-            if pid == current_user_id:
-                continue
-            if moderation_service.is_blocked(pid, current_user_id) or \
-               moderation_service.is_blocked(current_user_id, pid):
-                continue
+        for pid in targets:
             outgoing = msg.model_dump()
             outgoing["isMine"] = False
             await manager.send_to_user(pid, {"type": "new_message", "data": outgoing})
@@ -304,7 +325,9 @@ async def send_message_rest(
 
     # Auto-reply: if the recipient is admin and hasn't replied yet
     try:
-        auto_reply = chat_service.send_auto_reply_if_needed(conversation_id, current_user_id)
+        auto_reply = await asyncio.to_thread(
+            chat_service.send_auto_reply_if_needed, conversation_id, current_user_id
+        )
         if auto_reply:
             auto_reply_dict = auto_reply.model_dump()
             auto_reply_dict["isMine"] = False
@@ -316,7 +339,7 @@ async def send_message_rest(
 
 
 @router.post("/conversations/{conversation_id}/read")
-async def mark_read(
+def mark_read(
     conversation_id: int,
     current_user_id: int = Depends(get_current_user_id),
 ):
@@ -330,7 +353,7 @@ async def mark_read(
 
 
 @router.post("/conversations/{conversation_id}/unread")
-async def mark_unread(
+def mark_unread(
     conversation_id: int,
     current_user_id: int = Depends(get_current_user_id),
 ):
@@ -344,7 +367,7 @@ async def mark_unread(
 
 
 @router.delete("/conversations/{conversation_id}")
-async def delete_conversation(
+def delete_conversation(
     conversation_id: int,
     current_user_id: int = Depends(get_current_user_id),
 ):
@@ -360,7 +383,7 @@ async def delete_conversation(
 
 
 @router.post("/conversations/batch-delete")
-async def batch_delete_conversations(
+def batch_delete_conversations(
     req: BatchDeleteConversationsRequest,
     current_user_id: int = Depends(get_current_user_id),
 ):
@@ -376,7 +399,7 @@ async def batch_delete_conversations(
 
 
 @router.get("/unread-count")
-async def get_unread_count(current_user_id: int = Depends(get_current_user_id)):
+def get_unread_count(current_user_id: int = Depends(get_current_user_id)):
     """Get total unread message count across all conversations."""
     try:
         count = chat_service.get_total_unread_count(current_user_id)

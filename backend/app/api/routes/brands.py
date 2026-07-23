@@ -16,7 +16,7 @@ router = APIRouter(prefix="/brands", tags=["品牌"])
 
 
 @router.get("")
-async def get_brands(
+def get_brands(
     keyword: Optional[str] = Query(None, description="搜索关键词"),
     category: Optional[str] = Query(None, description="品牌分类"),
     page: int = Query(1, ge=1, description="页码"),
@@ -53,7 +53,7 @@ async def get_brands(
 
 
 @router.get("/categories")
-async def get_brand_categories():
+def get_brand_categories():
     """获取品牌分类列表"""
     # 尝试从缓存获取
     cache_key = cache_service.get_brand_categories_key()
@@ -72,7 +72,7 @@ async def get_brand_categories():
 
 
 @router.post("/submit")
-async def submit_brand(
+def submit_brand(
     request: BrandSubmitRequest,
     current_user_id: int = Depends(get_current_user_id),
 ):
@@ -91,7 +91,7 @@ async def submit_brand(
 
 
 @router.get("/my-submissions")
-async def get_my_submissions(
+def get_my_submissions(
     current_user_id: int = Depends(get_current_user_id),
 ):
     """获取当前用户的品牌提交记录"""
@@ -100,7 +100,7 @@ async def get_my_submissions(
 
 
 @router.delete("/my-submissions/{submission_id}")
-async def delete_my_brand_submission(
+def delete_my_brand_submission(
     submission_id: int,
     current_user_id: int = Depends(get_current_user_id),
 ):
@@ -112,7 +112,7 @@ async def delete_my_brand_submission(
 
 
 @router.get("/user/{target_user_id}/submissions")
-async def get_user_submissions_public(target_user_id: int):
+def get_user_submissions_public(target_user_id: int):
     """获取指定用户已通过审核的品牌提交（公开接口）"""
     submissions = brand_service.get_approved_user_submissions(target_user_id)
     return success([s.model_dump() for s in submissions])
@@ -123,7 +123,7 @@ class UploadBrandImageRequest(BaseModel):
 
 
 @router.post("/{brand_id}/images")
-async def upload_brand_image(
+def upload_brand_image(
     brand_id: int,
     request: UploadBrandImageRequest,
     current_user_id: int = Depends(get_current_user_id),
@@ -139,7 +139,7 @@ async def upload_brand_image(
 
 
 @router.get("/search")
-async def search_brands(
+def search_brands(
     keyword: str = Query(..., min_length=1, description="搜索关键词"),
     limit: int = Query(20, ge=1, le=100, description="返回数量"),
 ):
@@ -153,7 +153,7 @@ async def search_brands(
 
 
 @router.get("/{brand_id}")
-async def get_brand_by_id(brand_id: int):
+def get_brand_by_id(brand_id: int):
     """通过 ID 获取品牌详情"""
     # 尝试从缓存获取
     cache_key = cache_service.get_brand_key(brand_id)
@@ -176,7 +176,7 @@ async def get_brand_by_id(brand_id: int):
 
 
 @router.get("/by-name/{name}")
-async def get_brand_by_name(name: str):
+def get_brand_by_name(name: str):
     """通过名称获取品牌详情"""
     # 尝试从缓存获取
     cache_key = cache_service.get_brand_by_name_key(name)

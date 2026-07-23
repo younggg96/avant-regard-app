@@ -13,21 +13,21 @@ router = APIRouter(tags=["评论"])
 # ==================== 帖子评论 ====================
 
 @router.get("/posts/{post_id}/comments")
-async def get_post_comments(post_id: int, include_replies: bool = True, userId: int = None):
+def get_post_comments(post_id: int, include_replies: bool = True, userId: int = None):
     """获取帖子评论（包含回复），传入 userId 时返回当前用户的点赞状态"""
     result = comment_service.get_post_comments(post_id, include_replies, current_user_id=userId)
     return success([c.model_dump() for c in result])
 
 
 @router.get("/posts/comments/{comment_id}/replies")
-async def get_comment_replies(comment_id: int):
+def get_comment_replies(comment_id: int):
     """获取评论的所有回复"""
     result = comment_service.get_comment_replies(comment_id)
     return success([r.model_dump() for r in result])
 
 
 @router.post("/posts/{post_id}/comments")
-async def create_comment(
+def create_comment(
     post_id: int,
     request: CreateCommentRequest,
     current_user_id: int = Depends(get_current_user_id)
@@ -49,7 +49,7 @@ async def create_comment(
 
 
 @router.post("/posts/comments/{comment_id}/like")
-async def like_comment(
+def like_comment(
     comment_id: int,
     userId: int = Query(...),
     current_user_id: int = Depends(get_current_user_id)
@@ -65,7 +65,7 @@ async def like_comment(
 
 
 @router.delete("/posts/comments/{comment_id}/like")
-async def unlike_comment(
+def unlike_comment(
     comment_id: int,
     userId: int = Query(...),
     current_user_id: int = Depends(get_current_user_id)
@@ -81,7 +81,7 @@ async def unlike_comment(
 
 
 @router.delete("/posts/comments/{comment_id}")
-async def delete_comment(
+def delete_comment(
     comment_id: int,
     userId: int = Query(...),
     current_user_id: int = Depends(get_current_user_id)
@@ -99,14 +99,14 @@ async def delete_comment(
 # ==================== 秀场图片评论 ====================
 
 @router.get("/show-images/{image_id}/reviews")
-async def get_image_reviews(image_id: int):
+def get_image_reviews(image_id: int):
     """获取秀场图片评论"""
     result = comment_service.get_image_reviews(image_id)
     return success([r.model_dump() for r in result])
 
 
 @router.post("/show-images/{image_id}/reviews")
-async def create_image_review(
+def create_image_review(
     image_id: int,
     request: CreateImageReviewRequest,
     current_user_id: int = Depends(get_current_user_id)
@@ -124,14 +124,14 @@ async def create_image_review(
 
 
 @router.get("/show-images/users/{user_id}/image-reviews")
-async def get_user_image_reviews(user_id: int):
+def get_user_image_reviews(user_id: int):
     """获取用户的所有秀场图片评论"""
     result = comment_service.get_user_image_reviews(user_id)
     return success([r.model_dump() for r in result])
 
 
 @router.delete("/show-images/reviews/{review_id}")
-async def delete_image_review(
+def delete_image_review(
     review_id: int,
     current_user_id: int = Depends(get_current_user_id)
 ):
@@ -145,7 +145,7 @@ async def delete_image_review(
 # ==================== 用户评论管理 ====================
 
 @router.get("/users/{user_id}/comments")
-async def get_user_comments(
+def get_user_comments(
     user_id: int,
     current_user_id: int = Depends(get_current_user_id)
 ):
@@ -158,7 +158,7 @@ async def get_user_comments(
 
 
 @router.get("/users/{user_id}/comment-likes")
-async def get_user_comment_likes(
+def get_user_comment_likes(
     user_id: int,
     current_user_id: int = Depends(get_current_user_id)
 ):

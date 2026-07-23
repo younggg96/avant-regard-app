@@ -30,7 +30,7 @@ import { theme, useThemedStyles, type AppTheme, useAppTheme } from "../theme";
 import { useMapLoadingGif } from "../utils/loadingGifs";
 import {
   BuyerStore,
-  getAllStores,
+  getStoresPaginated,
   getAllCities,
   getAllCountries,
   filterStores,
@@ -412,16 +412,60 @@ const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
   }, [filters.country]);
 
   const storesLoadedRef = useRef(false);
+  /** 每页条数（API 上限 200）。首屏只等第一页，其余后台补齐。 */
+  const STORE_PAGE_SIZE = 200;
+  /** 后台补齐的安全阀：最多再拉 99 页，防止后端异常时死循环。 */
+  const STORE_MAX_PAGES = 100;
+
+  /**
+   * 后台补齐剩余页（第 2 页起，串行）。
+   * 任何一页失败只打 log —— 首屏已经有第一页数据可用，剩余 marker
+   * 属于渐进增强，不该把整个地图打成错误态。
+   */
+  const loadRemainingStores = async () => {
+    const extra: BuyerStore[] = [];
+    try {
+      for (let page = 2; page <= STORE_MAX_PAGES; page++) {
+        const result = await getStoresPaginated({
+          page,
+          pageSize: STORE_PAGE_SIZE,
+        });
+        extra.push(...result.stores);
+        if (result.stores.length < STORE_PAGE_SIZE) break;
+      }
+    } catch (error) {
+      console.warn("后台补齐买手店目录失败（首屏不受影响）:", error);
+    }
+    if (extra.length > 0) {
+      syncCountsFromStores(extra);
+      setStores((prev) => {
+        const seen = new Set(prev.map((s) => s.id));
+        return [...prev, ...extra.filter((s) => !seen.has(s.id))];
+      });
+    }
+  };
+
   const loadStores = async () => {
     try {
       setIsLoading(true);
       setLoadError(null);
-      const data = await getAllStores();
-      setStores(data);
-      syncCountsFromStores(data);
+      // 首屏只等第一页：一次请求（~200 家）就足够铺开地图主要城市的
+      // marker。原先的 getAllStores 会串行拉完整张目录（4+ 次请求），
+      // 弱网下任何一页超时都会让整个地图卡在 loading 直至报错。
+      const first = await getStoresPaginated({
+        page: 1,
+        pageSize: STORE_PAGE_SIZE,
+      });
+      setStores(first.stores);
+      syncCountsFromStores(first.stores);
       storesLoadedRef.current = true;
+      setIsLoading(false);
       if (currentMapRegion) {
         fetchVisibleStores(currentMapRegion);
+      }
+      // 剩余页后台静默补齐，不阻塞首屏、失败不报错。
+      if (first.stores.length === STORE_PAGE_SIZE) {
+        loadRemainingStores();
       }
     } catch (error) {
       console.error("Error loading stores:", error);
@@ -430,7 +474,6 @@ const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
           ? error.message || t("store.loadFailed")
           : t("store.loadFailed")
       );
-    } finally {
       setIsLoading(false);
     }
   };

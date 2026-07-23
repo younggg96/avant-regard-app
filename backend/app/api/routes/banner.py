@@ -15,7 +15,7 @@ router = APIRouter(prefix="/banners", tags=["Banner 轮播图"])
 # ==================== 公开接口 ====================
 
 @router.get("/active", response_model=None)
-async def get_active_banners():
+def get_active_banners():
     """获取当前有效的 Banner 列表（前端展示用）"""
     # 尝试从缓存获取
     cache_key = cache_service.get_banners_key()
@@ -36,7 +36,7 @@ async def get_active_banners():
 # ==================== 管理员接口 ====================
 
 @router.get("/admin/list", response_model=None)
-async def get_all_banners(
+def get_all_banners(
     current_user_id: int = Depends(get_current_admin_user)
 ):
     """获取所有 Banner 列表（管理员用）"""
@@ -45,7 +45,7 @@ async def get_all_banners(
 
 
 @router.get("/admin/{banner_id}", response_model=None)
-async def get_banner(
+def get_banner(
     banner_id: int,
     current_user_id: int = Depends(get_current_admin_user)
 ):
@@ -57,7 +57,7 @@ async def get_banner(
 
 
 @router.post("/admin", response_model=None)
-async def create_banner(
+def create_banner(
     data: BannerCreate,
     current_user_id: int = Depends(get_current_admin_user)
 ):
@@ -72,7 +72,7 @@ async def create_banner(
 
 
 @router.put("/admin/{banner_id}", response_model=None)
-async def update_banner(
+def update_banner(
     banner_id: int,
     data: BannerUpdate,
     current_user_id: int = Depends(get_current_admin_user)
@@ -87,7 +87,7 @@ async def update_banner(
 
 
 @router.delete("/admin/{banner_id}", response_model=None)
-async def delete_banner(
+def delete_banner(
     banner_id: int,
     current_user_id: int = Depends(get_current_admin_user)
 ):
@@ -101,7 +101,7 @@ async def delete_banner(
 
 
 @router.post("/admin/{banner_id}/toggle", response_model=None)
-async def toggle_banner_status(
+def toggle_banner_status(
     banner_id: int,
     current_user_id: int = Depends(get_current_admin_user)
 ):
@@ -116,7 +116,7 @@ async def toggle_banner_status(
 
 
 @router.post("/admin/reorder", response_model=None)
-async def reorder_banners(
+def reorder_banners(
     banner_ids: List[int] = Body(..., embed=True),
     current_user_id: int = Depends(get_current_admin_user)
 ):

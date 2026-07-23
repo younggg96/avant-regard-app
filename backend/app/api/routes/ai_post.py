@@ -41,7 +41,7 @@ router = APIRouter(prefix="/ai-post", tags=["AI 发帖助手"])
 # =====================================================
 
 @router.get("/options/styles")
-async def get_styles_options(
+def get_styles_options(
     current_user_id: int = Depends(get_current_user_id),
 ):
     """Q1: 风格大卡 (用户已关注的设计师风格优先)"""
@@ -50,7 +50,7 @@ async def get_styles_options(
 
 
 @router.get("/options/brands")
-async def get_brands_options(
+def get_brands_options(
     style_id: int = Query(..., description="Q1 选定的 style_id"),
     current_user_id: int = Depends(get_current_user_id),
 ):
@@ -61,7 +61,7 @@ async def get_brands_options(
 
 
 @router.get("/options/shows")
-async def get_shows_options(
+def get_shows_options(
     brand_id: int = Query(..., description="Q2 选定的 brand_id"),
     current_user_id: int = Depends(get_current_user_id),
 ):
@@ -71,7 +71,7 @@ async def get_shows_options(
 
 
 @router.get("/options/perspectives")
-async def get_perspectives_options(
+def get_perspectives_options(
     current_user_id: int = Depends(get_current_user_id),
 ):
     """Q4: 帖子角度 5 选 1 (枚举固定,不查 DB)"""
@@ -91,7 +91,7 @@ async def get_perspectives_options(
 # =====================================================
 
 @router.post("/generate")
-async def generate(
+def generate(
     request: GenerateRequest,
     current_user_id: int = Depends(get_current_user_id),
 ):
@@ -101,7 +101,7 @@ async def generate(
 
 
 @router.post("/regenerate")
-async def regenerate(
+def regenerate(
     request: RegenerateRequest,
     current_user_id: int = Depends(get_current_user_id),
 ):
@@ -111,7 +111,7 @@ async def regenerate(
 
 
 @router.get("/quota")
-async def get_quota(
+def get_quota(
     current_user_id: int = Depends(get_current_user_id),
 ):
     """剩余配额。前端 UI 显示「今日剩余 N 次」。"""

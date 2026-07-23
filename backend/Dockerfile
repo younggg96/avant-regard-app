@@ -69,4 +69,7 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD curl -f http://localhost:8080/health || exit 1
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080", "--log-level", "info"]
+# --workers 2：单进程时一次慢查询/一次 Pillow 编码就能拖慢全站；两个
+# 进程互为冗余并利用多核。注意 level_service 的 _USER_LOCKS 只保护单
+# 进程，多进程下抽奖/兑换的防重入依赖后续 DB 原子更新（见该文件注释）。
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080", "--workers", "2", "--log-level", "info"]

@@ -111,7 +111,7 @@ class UpdateAutoReplyRequest(BaseModel):
 # ==================== 帖子审核 ====================
 
 @router.get("/posts/all")
-async def get_all_posts(
+def get_all_posts(
     page: int = Query(1, ge=1),
     pageSize: int = Query(20, ge=1, le=100),
     keyword: Optional[str] = Query(None),
@@ -133,7 +133,7 @@ async def get_all_posts(
 
 
 @router.get("/posts/reported")
-async def get_reported_posts(
+def get_reported_posts(
     page: int = Query(1, ge=1),
     pageSize: int = Query(20, ge=1, le=100),
     current_user_id: int = Depends(get_current_admin_user),
@@ -144,7 +144,7 @@ async def get_reported_posts(
 
 
 @router.get("/posts/pending")
-async def get_pending_posts(
+def get_pending_posts(
     current_user_id: int = Depends(get_current_admin_user)
 ):
     """获取待审核帖子列表"""
@@ -159,7 +159,7 @@ class BatchRegradeRequest(BaseModel):
 
 
 @router.post("/posts/batch-regrade")
-async def batch_regrade_posts(
+def batch_regrade_posts(
     request: BatchRegradeRequest = Body(...),
     current_user_id: int = Depends(get_current_admin_user),
 ):
@@ -173,7 +173,7 @@ async def batch_regrade_posts(
 
 
 @router.post("/posts/{post_id}/approve")
-async def approve_post(
+def approve_post(
     post_id: int,
     remark: str = Query(None),
     current_user_id: int = Depends(get_current_admin_user)
@@ -186,7 +186,7 @@ async def approve_post(
 
 
 @router.post("/posts/{post_id}/reject")
-async def reject_post(
+def reject_post(
     post_id: int,
     remark: str = Query(None),
     current_user_id: int = Depends(get_current_admin_user)
@@ -199,7 +199,7 @@ async def reject_post(
 
 
 @router.delete("/posts/{post_id}")
-async def admin_delete_post(
+def admin_delete_post(
     post_id: int,
     current_user_id: int = Depends(get_current_admin_user)
 ):
@@ -211,7 +211,7 @@ async def admin_delete_post(
 
 
 @router.post("/posts/{post_id}/regrade")
-async def regrade_post(
+def regrade_post(
     post_id: int,
     current_user_id: int = Depends(get_current_admin_user)
 ):
@@ -224,7 +224,7 @@ async def regrade_post(
 # ==================== 评论管理 ====================
 
 @router.get("/comments")
-async def get_all_comments(
+def get_all_comments(
     page: int = Query(1, ge=1),
     pageSize: int = Query(20, ge=1, le=100),
     current_user_id: int = Depends(get_current_admin_user)
@@ -235,7 +235,7 @@ async def get_all_comments(
 
 
 @router.get("/comments/post/{post_id}")
-async def get_comments_by_post(
+def get_comments_by_post(
     post_id: int,
     current_user_id: int = Depends(get_current_admin_user)
 ):
@@ -245,7 +245,7 @@ async def get_comments_by_post(
 
 
 @router.get("/comments/user/{user_id}")
-async def get_comments_by_user(
+def get_comments_by_user(
     user_id: int,
     current_user_id: int = Depends(get_current_admin_user)
 ):
@@ -255,7 +255,7 @@ async def get_comments_by_user(
 
 
 @router.delete("/comments/{comment_id}")
-async def admin_delete_comment(
+def admin_delete_comment(
     comment_id: int,
     current_user_id: int = Depends(get_current_admin_user)
 ):
@@ -273,7 +273,7 @@ admin_user_router = APIRouter(prefix="/auth/admin", tags=["管理员-用户管�
 
 
 @admin_user_router.delete("/users/{user_id}")
-async def delete_user(
+def delete_user(
     user_id: int,
     current_user_id: int = Depends(get_current_admin_user)
 ):
@@ -287,7 +287,7 @@ async def delete_user(
 # ==================== 社区管理 ====================
 
 @router.get("/communities")
-async def get_all_communities(
+def get_all_communities(
     include_inactive: bool = Query(True, description="是否包含未激活的社区"),
     current_user_id: int = Depends(get_current_admin_user)
 ):
@@ -297,7 +297,7 @@ async def get_all_communities(
 
 
 @router.get("/communities/{community_id}")
-async def get_community_detail(
+def get_community_detail(
     community_id: int,
     current_user_id: int = Depends(get_current_admin_user)
 ):
@@ -309,7 +309,7 @@ async def get_community_detail(
 
 
 @router.post("/communities")
-async def create_community(
+def create_community(
     request: CreateCommunityRequest,
     current_user_id: int = Depends(get_current_admin_user)
 ):
@@ -334,7 +334,7 @@ async def create_community(
 
 
 @router.put("/communities/{community_id}")
-async def update_community(
+def update_community(
     community_id: int,
     request: UpdateCommunityRequest,
     current_user_id: int = Depends(get_current_admin_user)
@@ -361,7 +361,7 @@ async def update_community(
 
 
 @router.delete("/communities/{community_id}")
-async def delete_community(
+def delete_community(
     community_id: int,
     current_user_id: int = Depends(get_current_admin_user)
 ):
@@ -379,7 +379,7 @@ async def delete_community(
 # ==================== 社区帖子管理 ====================
 
 @router.get("/communities/{community_id}/posts")
-async def get_community_posts(
+def get_community_posts(
     community_id: int,
     page: int = Query(1, ge=1),
     pageSize: int = Query(20, ge=1, le=100),
@@ -396,7 +396,7 @@ async def get_community_posts(
 
 
 @router.delete("/communities/{community_id}/posts/{post_id}")
-async def delete_community_post(
+def delete_community_post(
     community_id: int,
     post_id: int,
     current_user_id: int = Depends(get_current_admin_user)
@@ -409,7 +409,7 @@ async def delete_community_post(
 
 
 @router.post("/communities/{community_id}/posts/batch-delete")
-async def batch_delete_community_posts(
+def batch_delete_community_posts(
     community_id: int,
     request: BatchDeletePostsRequest,
     current_user_id: int = Depends(get_current_admin_user)
@@ -427,7 +427,7 @@ async def batch_delete_community_posts(
 # ==================== 品牌提交审核 ====================
 
 @router.get("/brand-submissions/pending")
-async def get_pending_brand_submissions(
+def get_pending_brand_submissions(
     current_user_id: int = Depends(get_current_admin_user)
 ):
     """获取待审核品牌提交列表"""
@@ -436,7 +436,7 @@ async def get_pending_brand_submissions(
 
 
 @router.post("/brand-submissions/{submission_id}/approve")
-async def approve_brand_submission(
+def approve_brand_submission(
     submission_id: int,
     current_user_id: int = Depends(get_current_admin_user)
 ):
@@ -451,7 +451,7 @@ async def approve_brand_submission(
 
 
 @router.post("/brand-submissions/{submission_id}/reject")
-async def reject_brand_submission(
+def reject_brand_submission(
     submission_id: int,
     reason: str = Query(None),
     current_user_id: int = Depends(get_current_admin_user)
@@ -466,7 +466,7 @@ async def reject_brand_submission(
 # ==================== 品牌管理 ====================
 
 @router.get("/brands")
-async def get_all_brands_admin(
+def get_all_brands_admin(
     keyword: Optional[str] = Query(None),
     page: int = Query(1, ge=1),
     pageSize: int = Query(50, ge=1, le=200),
@@ -478,7 +478,7 @@ async def get_all_brands_admin(
 
 
 @router.put("/brands/{brand_id}")
-async def update_brand(
+def update_brand(
     brand_id: int,
     request: UpdateBrandRequest,
     current_user_id: int = Depends(get_current_admin_user)
@@ -503,7 +503,7 @@ async def update_brand(
 
 
 @router.delete("/brands/{brand_id}")
-async def delete_brand(
+def delete_brand(
     brand_id: int,
     current_user_id: int = Depends(get_current_admin_user)
 ):
@@ -527,7 +527,7 @@ class ToggleBrandImageSelectedRequest(BaseModel):
 
 
 @router.post("/brand-images/{image_id}/toggle-select")
-async def toggle_brand_image_selected(
+def toggle_brand_image_selected(
     image_id: int,
     request: ToggleBrandImageSelectedRequest,
     current_user_id: int = Depends(get_current_admin_user)
@@ -539,7 +539,7 @@ async def toggle_brand_image_selected(
 
 
 @router.get("/brand-images/pending")
-async def get_pending_brand_images(
+def get_pending_brand_images(
     current_user_id: int = Depends(get_current_admin_user)
 ):
     """获取待审核品牌图片"""
@@ -548,7 +548,7 @@ async def get_pending_brand_images(
 
 
 @router.post("/brand-images/{image_id}/approve")
-async def approve_brand_image(
+def approve_brand_image(
     image_id: int,
     current_user_id: int = Depends(get_current_admin_user)
 ):
@@ -559,7 +559,7 @@ async def approve_brand_image(
 
 
 @router.post("/brand-images/{image_id}/reject")
-async def reject_brand_image(
+def reject_brand_image(
     image_id: int,
     current_user_id: int = Depends(get_current_admin_user)
 ):
@@ -569,7 +569,7 @@ async def reject_brand_image(
 
 
 @router.delete("/brand-images/{image_id}")
-async def delete_brand_image(
+def delete_brand_image(
     image_id: int,
     current_user_id: int = Depends(get_current_admin_user)
 ):
@@ -582,7 +582,7 @@ async def delete_brand_image(
 
 
 @router.post("/brands/{brand_id}/images")
-async def admin_upload_brand_image(
+def admin_upload_brand_image(
     brand_id: int,
     request: AdminUploadBrandImageRequest,
     current_user_id: int = Depends(get_current_admin_user)
@@ -594,7 +594,7 @@ async def admin_upload_brand_image(
 
 
 @router.get("/brands/{brand_id}/images")
-async def get_brand_images_admin(
+def get_brand_images_admin(
     brand_id: int,
     current_user_id: int = Depends(get_current_admin_user)
 ):
@@ -606,7 +606,7 @@ async def get_brand_images_admin(
 # ==================== 广播通知 ====================
 
 @router.post("/notifications/broadcast")
-async def broadcast_notification(
+def broadcast_notification(
     request: BroadcastNotificationRequest,
     current_user_id: int = Depends(get_current_admin_user)
 ):
@@ -630,7 +630,7 @@ async def broadcast_notification(
 # ==================== 用户列表 ====================
 
 @router.get("/users")
-async def get_users(
+def get_users(
     keyword: Optional[str] = Query(None),
     page: int = Query(1, ge=1),
     pageSize: int = Query(20, ge=1, le=100),
@@ -646,7 +646,7 @@ async def get_users(
 # ==================== 举报管理 ====================
 
 @router.get("/reports")
-async def get_reports(
+def get_reports(
     status: Optional[str] = Query(None),
     page: int = Query(1, ge=1),
     pageSize: int = Query(20, ge=1, le=100),
@@ -664,7 +664,7 @@ class UpdateReportStatusRequest(BaseModel):
 
 
 @router.put("/reports/{report_id}")
-async def update_report_status(
+def update_report_status(
     report_id: int,
     request: UpdateReportStatusRequest,
     current_user_id: int = Depends(get_current_admin_user),
@@ -679,7 +679,7 @@ async def update_report_status(
 
 
 @router.delete("/chat/messages/{message_id}")
-async def admin_delete_chat_message(
+def admin_delete_chat_message(
     message_id: int,
     current_user_id: int = Depends(get_current_admin_user),
 ):
@@ -697,7 +697,7 @@ class AddUserTitleRequest(BaseModel):
 
 
 @router.get("/users/{user_id}/titles")
-async def get_user_titles(
+def get_user_titles(
     user_id: int,
     current_user_id: int = Depends(get_current_admin_user),
 ):
@@ -707,7 +707,7 @@ async def get_user_titles(
 
 
 @router.post("/users/{user_id}/titles")
-async def add_user_title(
+def add_user_title(
     user_id: int,
     request: AddUserTitleRequest,
     current_user_id: int = Depends(get_current_admin_user),
@@ -721,7 +721,7 @@ async def add_user_title(
 
 
 @router.delete("/titles/{title_id}")
-async def remove_user_title(
+def remove_user_title(
     title_id: int,
     current_user_id: int = Depends(get_current_admin_user),
 ):
@@ -735,7 +735,7 @@ async def remove_user_title(
 # ==================== 屏蔽关系 ====================
 
 @router.get("/blocks")
-async def get_all_blocks(
+def get_all_blocks(
     page: int = Query(1, ge=1),
     pageSize: int = Query(20, ge=1, le=100),
     current_user_id: int = Depends(get_current_admin_user),
@@ -748,7 +748,7 @@ async def get_all_blocks(
 # ==================== 客服自动回复 ====================
 
 @router.get("/cs-auto-reply")
-async def get_auto_reply_config(
+def get_auto_reply_config(
     current_user_id: int = Depends(get_current_admin_user),
 ):
     """获取客服自动回复配置"""
@@ -758,7 +758,7 @@ async def get_auto_reply_config(
 
 
 @router.put("/cs-auto-reply")
-async def update_auto_reply_config(
+def update_auto_reply_config(
     request: UpdateAutoReplyRequest,
     current_user_id: int = Depends(get_current_admin_user),
 ):
@@ -870,7 +870,7 @@ class MaintenanceConfigRequest(BaseModel):
 
 
 @router.get("/maintenance")
-async def get_maintenance_config(
+def get_maintenance_config(
     current_user_id: int = Depends(get_current_admin_user),
 ):
     """获取维护模式配置（管理员）"""
@@ -878,7 +878,7 @@ async def get_maintenance_config(
 
 
 @router.put("/maintenance")
-async def update_maintenance_config(
+def update_maintenance_config(
     request: MaintenanceConfigRequest,
     current_user_id: int = Depends(get_current_admin_user),
 ):
@@ -904,7 +904,7 @@ class FeatureFlagsRequest(BaseModel):
 
 
 @router.get("/feature-flags")
-async def get_feature_flags(
+def get_feature_flags(
     current_user_id: int = Depends(get_current_admin_user),
 ):
     """获取全站功能开关 (管理员)."""
@@ -912,7 +912,7 @@ async def get_feature_flags(
 
 
 @router.put("/feature-flags")
-async def update_feature_flags(
+def update_feature_flags(
     request: FeatureFlagsRequest,
     current_user_id: int = Depends(get_current_admin_user),
 ):
@@ -924,7 +924,7 @@ async def update_feature_flags(
 
 
 @router.get("/stats/growth")
-async def get_growth_stats(
+def get_growth_stats(
     days: int = Query(default=30, ge=7, le=90),
     current_user_id: int = Depends(get_current_admin_user),
 ):
@@ -934,7 +934,7 @@ async def get_growth_stats(
 
 
 @router.get("/stats/demographics")
-async def get_demographics(
+def get_demographics(
     _admin_id: int = Depends(get_current_admin_user),
 ):
     """用户画像统计：性别 / 年龄段 / 地区分布"""
@@ -942,7 +942,7 @@ async def get_demographics(
 
 
 @router.get("/recommend-config")
-async def get_recommend_config(
+def get_recommend_config(
     current_user_id: int = Depends(get_current_admin_user),
 ):
     """获取推荐算法配置"""
@@ -952,7 +952,7 @@ async def get_recommend_config(
 
 
 @router.put("/recommend-config")
-async def update_recommend_config(
+def update_recommend_config(
     request: RecommendConfigRequest,
     current_user_id: int = Depends(get_current_admin_user),
 ):
@@ -982,7 +982,7 @@ async def update_recommend_config(
 # 047 migration 已 seed 10 个基线,此后通过这一组接口由 admin 手工维护。
 
 @router.get("/styles")
-async def list_styles(
+def list_styles(
     current_user_id: int = Depends(get_current_admin_user),
 ):
     """列出所有风格 (含 inactive),按 sort_order 升序。"""
@@ -990,7 +990,7 @@ async def list_styles(
 
 
 @router.post("/styles")
-async def create_style(
+def create_style(
     request: CreateStyleRequest,
     current_user_id: int = Depends(get_current_admin_user),
 ):
@@ -1009,7 +1009,7 @@ async def create_style(
 
 
 @router.put("/styles/{style_id}")
-async def update_style(
+def update_style(
     style_id: int,
     request: UpdateStyleRequest,
     current_user_id: int = Depends(get_current_admin_user),
@@ -1030,7 +1030,7 @@ async def update_style(
 
 
 @router.delete("/styles/{style_id}")
-async def delete_style(
+def delete_style(
     style_id: int,
     current_user_id: int = Depends(get_current_admin_user),
 ):

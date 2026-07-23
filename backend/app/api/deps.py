@@ -26,7 +26,7 @@ def decode_token_without_expiry(token: str) -> Optional[str]:
         return None
 
 
-async def get_current_user_id(
+def get_current_user_id(
     credentials: HTTPAuthorizationCredentials = Depends(security)
 ) -> int:
     """
@@ -88,7 +88,7 @@ async def get_current_user_id(
         )
 
 
-async def get_current_user_optional(
+def get_current_user_optional(
     credentials: HTTPAuthorizationCredentials = Depends(security)
 ) -> Optional[int]:
     """获取当前用户 ID（可选认证）- 跳过过期验证"""
@@ -122,7 +122,7 @@ async def get_current_user_optional(
         return None
 
 
-async def get_current_admin_user(
+def get_current_admin_user(
     credentials: HTTPAuthorizationCredentials = Depends(security)
 ) -> int:
     """获取当前管理员用户 ID - 跳过过期验证"""

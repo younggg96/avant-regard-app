@@ -13,7 +13,7 @@ router = APIRouter(prefix="/follow", tags=["关注"])
 # ==================== 用户关注 ====================
 
 @router.post("/user")
-async def follow_user(
+def follow_user(
     request: FollowUserRequest,
     current_user_id: int = Depends(get_current_user_id)
 ):
@@ -28,7 +28,7 @@ async def follow_user(
 
 
 @router.delete("/user")
-async def unfollow_user(
+def unfollow_user(
     request: FollowUserRequest,
     current_user_id: int = Depends(get_current_user_id)
 ):
@@ -43,7 +43,7 @@ async def unfollow_user(
 
 
 @router.get("/users/{user_id}/following-users")
-async def get_following_users(user_id: int):
+def get_following_users(user_id: int):
     """获取用户关注的用户列表"""
     try:
         result = follow_service.get_following_users(user_id)
@@ -54,7 +54,7 @@ async def get_following_users(user_id: int):
 
 
 @router.get("/users/{user_id}/followers")
-async def get_followers(user_id: int):
+def get_followers(user_id: int):
     """获取用户的粉丝列表"""
     try:
         result = follow_service.get_followers(user_id)
@@ -65,28 +65,28 @@ async def get_followers(user_id: int):
 
 
 @router.get("/user/{user_id}/following/count")
-async def get_following_count(user_id: int):
+def get_following_count(user_id: int):
     """获取用户关注的用户数量"""
     count = follow_service.get_following_count(user_id)
     return success(count)
 
 
 @router.get("/user/{user_id}/followers/count")
-async def get_followers_count(user_id: int):
+def get_followers_count(user_id: int):
     """获取用户的粉丝数量"""
     count = follow_service.get_followers_count(user_id)
     return success(count)
 
 
 @router.get("/user/{follower_id}/is-following/{target_user_id}")
-async def is_following_user(follower_id: int, target_user_id: int):
+def is_following_user(follower_id: int, target_user_id: int):
     """检查是否关注了某个用户"""
     is_following = follow_service.is_following_user(follower_id, target_user_id)
     return success(is_following)
 
 
 @router.get("/users/{user_id}/mutual-follows")
-async def get_mutual_follows(user_id: int):
+def get_mutual_follows(user_id: int):
     """获取互相关注的用户列表"""
     try:
         result = follow_service.get_mutual_follows(user_id)
@@ -97,14 +97,14 @@ async def get_mutual_follows(user_id: int):
 
 
 @router.get("/user/{user_id}/mutual-follows/count")
-async def get_mutual_follows_count(user_id: int):
+def get_mutual_follows_count(user_id: int):
     """获取互相关注的用户数量"""
     count = follow_service.get_mutual_follows_count(user_id)
     return success(count)
 
 
 @router.get("/user/{user_id}/is-mutual/{target_user_id}")
-async def is_mutual_follow(user_id: int, target_user_id: int):
+def is_mutual_follow(user_id: int, target_user_id: int):
     """检查两个用户是否互相关注"""
     result = follow_service.is_mutual_follow(user_id, target_user_id)
     return success(result)
@@ -113,7 +113,7 @@ async def is_mutual_follow(user_id: int, target_user_id: int):
 # ==================== 品牌关注 ====================
 
 @router.post("/brand")
-async def follow_brand(
+def follow_brand(
     request: FollowBrandRequest,
     current_user_id: int = Depends(get_current_user_id)
 ):
@@ -128,7 +128,7 @@ async def follow_brand(
 
 
 @router.delete("/brand")
-async def unfollow_brand(
+def unfollow_brand(
     request: FollowBrandRequest,
     current_user_id: int = Depends(get_current_user_id)
 ):
@@ -143,7 +143,7 @@ async def unfollow_brand(
 
 
 @router.post("/brand/batch")
-async def batch_follow_brands(
+def batch_follow_brands(
     request: BatchFollowBrandsRequest,
     current_user_id: int = Depends(get_current_user_id)
 ):
@@ -156,7 +156,7 @@ async def batch_follow_brands(
 
 
 @router.get("/users/{user_id}/following-brands")
-async def get_following_brands(user_id: int):
+def get_following_brands(user_id: int):
     """获取用户关注的品牌列表"""
     try:
         result = follow_service.get_following_brands(user_id)
@@ -167,7 +167,7 @@ async def get_following_brands(user_id: int):
 
 
 @router.get("/brand/{brand_id}/followers")
-async def get_brand_followers(brand_id: int):
+def get_brand_followers(brand_id: int):
     """获取品牌的关注者列表"""
     try:
         result = follow_service.get_brand_followers(brand_id)
@@ -178,21 +178,21 @@ async def get_brand_followers(brand_id: int):
 
 
 @router.get("/brand/{brand_id}/followers/count")
-async def get_brand_followers_count(brand_id: int):
+def get_brand_followers_count(brand_id: int):
     """获取品牌的关注者数量"""
     count = follow_service.get_brand_followers_count(brand_id)
     return success(count)
 
 
 @router.get("/user/{user_id}/is-following-brand/{brand_id}")
-async def is_following_brand(user_id: int, brand_id: int):
+def is_following_brand(user_id: int, brand_id: int):
     """检查用户是否关注了某个品牌"""
     is_following = follow_service.is_following_brand(user_id, brand_id)
     return success(is_following)
 
 
 @router.get("/user/{user_id}/following-brand-ids")
-async def get_following_brand_ids(user_id: int):
+def get_following_brand_ids(user_id: int):
     """获取用户关注的品牌 ID 列表"""
     brand_ids = follow_service.get_following_brand_ids(user_id)
     return success(brand_ids)
