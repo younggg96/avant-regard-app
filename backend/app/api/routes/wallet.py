@@ -61,18 +61,18 @@ identity_bridge_router = APIRouter(prefix="/identity", tags=["实名认证 / 跳
 
 
 @wallet_router.get("/me")
-async def get_my_wallet(user_id: int = Depends(get_current_user)):
+def get_my_wallet(user_id: int = Depends(get_current_user)):
     return success(wallet_service.summary(user_id).dict())
 
 
 @wallet_router.get("/me/pending")
-async def list_my_pending(user_id: int = Depends(get_current_user)):
+def list_my_pending(user_id: int = Depends(get_current_user)):
     items = wallet_service.list_pending(user_id)
     return success({"items": [it.dict() for it in items]})
 
 
 @wallet_router.get("/me/ledger")
-async def list_my_ledger(
+def list_my_ledger(
     page: int = 1,
     pageSize: int = 30,
     user_id: int = Depends(get_current_user),
@@ -89,7 +89,7 @@ async def list_my_ledger(
 
 
 @wallet_router.get("/me/withdrawals")
-async def list_my_withdrawals(
+def list_my_withdrawals(
     page: int = 1,
     pageSize: int = 30,
     user_id: int = Depends(get_current_user),
@@ -108,7 +108,7 @@ async def list_my_withdrawals(
 
 
 @wallet_router.post("/me/withdrawals")
-async def create_withdrawal(
+def create_withdrawal(
     body: WithdrawCreateRequest, user_id: int = Depends(get_current_user)
 ):
     try:
@@ -164,7 +164,7 @@ def _connect_status_payload(row: Optional[dict]) -> dict:
 
 
 @wallet_router.get("/me/connect")
-async def get_my_connect(user_id: int = Depends(get_current_user)):
+def get_my_connect(user_id: int = Depends(get_current_user)):
     """返回当前用户的 Stripe Connect 账号状态。
     没创建过返回 exists=False, 前端展示"接入"入口。"""
     row = stripe_connect_service.get_account_row(user_id)
@@ -172,7 +172,7 @@ async def get_my_connect(user_id: int = Depends(get_current_user)):
 
 
 @wallet_router.post("/me/connect/onboard")
-async def connect_onboard(
+def connect_onboard(
     body: ConnectOnboardRequest, user_id: int = Depends(get_current_user)
 ):
     """幂等创建 Connect 账号 + 签发 Onboarding URL。
@@ -194,7 +194,7 @@ async def connect_onboard(
 
 
 @wallet_router.post("/me/connect/refresh")
-async def connect_refresh(user_id: int = Depends(get_current_user)):
+def connect_refresh(user_id: int = Depends(get_current_user)):
     """主动从 Stripe 拉账号状态。前端从 onboarding 跳回 App 时建议立刻调,
     防止 webhook 还没到就让用户看到 stale 状态。"""
     try:
@@ -210,13 +210,13 @@ async def connect_refresh(user_id: int = Depends(get_current_user)):
 
 
 @kyc_router.get("/me")
-async def get_my_kyc(user_id: int = Depends(get_current_user)):
+def get_my_kyc(user_id: int = Depends(get_current_user)):
     rec = kyc_service.get(user_id)
     return success(rec.dict() if rec else {"userId": user_id, "status": "none"})
 
 
 @kyc_router.post("/me")
-async def submit_kyc(
+def submit_kyc(
     body: KYCSubmitRequest, user_id: int = Depends(get_current_user)
 ):
     rec = kyc_service.submit(user_id, body)
@@ -224,7 +224,7 @@ async def submit_kyc(
 
 
 @kyc_router.post("/me/verify-identity")
-async def verify_identity_auto(
+def verify_identity_auto(
     body: VerifyIdentityRequest,
     user_id: int = Depends(get_current_user),
 ):
@@ -246,7 +246,7 @@ async def verify_identity_auto(
 
 
 @kyc_router.post("/me/identity-session")
-async def start_identity_session(
+def start_identity_session(
     body: IdentitySessionRequest,
     user_id: int = Depends(get_current_user),
 ):
@@ -271,7 +271,7 @@ async def start_identity_session(
 
 
 @kyc_router.post("/me/identity-session/refresh")
-async def refresh_identity_session(user_id: int = Depends(get_current_user)):
+def refresh_identity_session(user_id: int = Depends(get_current_user)):
     """主动从第三方拉一次会话状态。前端从托管页跳回 App 时调一次,
     防止 webhook 还没到就让用户看到 stale 状态。"""
     try:
@@ -284,7 +284,7 @@ async def refresh_identity_session(user_id: int = Depends(get_current_user)):
 
 
 @kyc_router.post("/me/verify-bank-card")
-async def verify_bank_card(
+def verify_bank_card(
     body: VerifyBankCardRequest,
     user_id: int = Depends(get_current_user),
 ):
@@ -303,13 +303,13 @@ async def verify_bank_card(
 
 
 @kyc_router.get("/me/payout-accounts")
-async def list_my_accounts(user_id: int = Depends(get_current_user)):
+def list_my_accounts(user_id: int = Depends(get_current_user)):
     items = kyc_service.list_payout_accounts(user_id)
     return success({"items": [it.dict() for it in items]})
 
 
 @kyc_router.post("/me/payout-accounts")
-async def create_payout_account(
+def create_payout_account(
     body: PayoutAccountCreate, user_id: int = Depends(get_current_user)
 ):
     try:
@@ -320,7 +320,7 @@ async def create_payout_account(
 
 
 @kyc_router.post("/me/payout-accounts/{account_id}/default")
-async def set_default_account(
+def set_default_account(
     account_id: int, user_id: int = Depends(get_current_user)
 ):
     try:
@@ -331,7 +331,7 @@ async def set_default_account(
 
 
 @kyc_router.delete("/me/payout-accounts/{account_id}")
-async def delete_payout_account(
+def delete_payout_account(
     account_id: int, user_id: int = Depends(get_current_user)
 ):
     try:
@@ -345,7 +345,7 @@ async def delete_payout_account(
 
 
 @admin_kyc_router.get("/pending")
-async def admin_list_pending_kyc(
+def admin_list_pending_kyc(
     page: int = 1,
     pageSize: int = 30,
     _admin=Depends(get_current_admin_user),
@@ -362,7 +362,7 @@ async def admin_list_pending_kyc(
 
 
 @admin_kyc_router.post("/{target_user_id}/review")
-async def admin_review_kyc(
+def admin_review_kyc(
     target_user_id: int,
     body: KYCAdminDecision,
     admin_user_id: int = Depends(get_current_admin_user),
@@ -377,7 +377,7 @@ async def admin_review_kyc(
 
 
 @admin_wallet_router.get("/withdrawals/pending")
-async def admin_list_pending_withdrawals(
+def admin_list_pending_withdrawals(
     page: int = 1,
     pageSize: int = 30,
     _admin=Depends(get_current_admin_user),
@@ -409,7 +409,7 @@ async def admin_list_pending_withdrawals(
 
 
 @admin_wallet_router.post("/withdrawals/{withdrawal_id}")
-async def admin_update_withdrawal(
+def admin_update_withdrawal(
     withdrawal_id: int,
     body: WithdrawalAdminUpdate,
     admin_user_id: int = Depends(get_current_admin_user),
@@ -534,7 +534,7 @@ def _bridge_html(*, title: str, message: str, cta: str, deep_link: str, footer: 
 
 
 @connect_bridge_router.get("/return", response_class=HTMLResponse)
-async def connect_return_bridge(scheme: Optional[str] = None) -> HTMLResponse:
+def connect_return_bridge(scheme: Optional[str] = None) -> HTMLResponse:
     """Stripe onboarding 完成后跳板页。
     用户完成 KYC → Stripe 跳到这里 → JS 自动跳 App。
     `?scheme=` 由 stripe_connect_service 在创建 AccountLink 时附带,
@@ -552,7 +552,7 @@ async def connect_return_bridge(scheme: Optional[str] = None) -> HTMLResponse:
 
 
 @connect_bridge_router.get("/refresh", response_class=HTMLResponse)
-async def connect_refresh_bridge(scheme: Optional[str] = None) -> HTMLResponse:
+def connect_refresh_bridge(scheme: Optional[str] = None) -> HTMLResponse:
     """Stripe onboarding URL 过期或用户中途取消时的跳板。"""
     s = _resolve_scheme(scheme)
     return HTMLResponse(
@@ -567,7 +567,7 @@ async def connect_refresh_bridge(scheme: Optional[str] = None) -> HTMLResponse:
 
 
 @identity_bridge_router.get("/return", response_class=HTMLResponse)
-async def identity_return_bridge(scheme: Optional[str] = None) -> HTMLResponse:
+def identity_return_bridge(scheme: Optional[str] = None) -> HTMLResponse:
     """Stripe Identity 托管页完成后跳板页。
     用户完成证件 + 自拍 → Stripe 跳到这里 → JS 自动跳回 App,
     App 再调 /api/kyc/me/identity-session/refresh 同步状态。"""

@@ -28,7 +28,7 @@ plus_router = APIRouter(prefix="/plus", tags=["交易系统 / Plus 订阅"])
 
 
 @archive_router.get("/items")
-async def list_archive(
+def list_archive(
     page: int = 1, pageSize: int = 30, user_id: int = Depends(get_current_user)
 ):
     items, total = archive_service.list_for_user(
@@ -38,7 +38,7 @@ async def list_archive(
 
 
 @archive_router.get("/analytics")
-async def archive_analytics(user_id: int = Depends(get_current_user)):
+def archive_analytics(user_id: int = Depends(get_current_user)):
     """PRD 模块 8 数据画像面板。Plus 用户独占。"""
     if not plus_service.is_user_plus(user_id):
         raise HTTPException(status_code=403, detail="数据画像面板需要 Plus 订阅")
@@ -46,7 +46,7 @@ async def archive_analytics(user_id: int = Depends(get_current_user)):
 
 
 @archive_router.get("/analytics-preview")
-async def archive_analytics_preview(user_id: int = Depends(get_current_user)):
+def archive_analytics_preview(user_id: int = Depends(get_current_user)):
     """非 Plus 用户的预览，仅返回 totalItems / brandBreakdown 关键字段。"""
     a = archive_service.analytics(user_id)
     return success(
@@ -60,7 +60,7 @@ async def archive_analytics_preview(user_id: int = Depends(get_current_user)):
 
 # ----- PDF p.21 · 独立上传 -----
 @archive_router.post("/items")
-async def create_archive_item(
+def create_archive_item(
     body: ArchiveItemManualCreate, user_id: int = Depends(get_current_user)
 ):
     item = archive_service.manual_create(user_id, body)
@@ -69,7 +69,7 @@ async def create_archive_item(
 
 # ----- 将已购入订单转入 MY ARCHIVE -----
 @archive_router.get("/from-order/{order_id}")
-async def archive_from_order_status(
+def archive_from_order_status(
     order_id: int, user_id: int = Depends(get_current_user)
 ):
     """查询某订单是否已转入当前用户的藏品，供前端决定入口按钮文案。"""
@@ -78,7 +78,7 @@ async def archive_from_order_status(
 
 
 @archive_router.post("/from-order/{order_id}")
-async def archive_transfer_from_order(
+def archive_transfer_from_order(
     order_id: int, user_id: int = Depends(get_current_user)
 ):
     """把买家已购入 / 卖家已售出的商品转入 MY ARCHIVE（幂等）。"""
@@ -93,13 +93,13 @@ async def archive_transfer_from_order(
 
 # ----- PDF p.22 · 持有记录 -----
 @archive_router.get("/items/{archive_id}/holdings")
-async def list_holdings(archive_id: int, user_id: int = Depends(get_current_user)):
+def list_holdings(archive_id: int, user_id: int = Depends(get_current_user)):
     items = archive_service.list_holdings(archive_id, user_id)
     return success([i.dict() for i in items])
 
 
 @archive_router.post("/items/{archive_id}/holdings")
-async def create_holding(
+def create_holding(
     archive_id: int,
     body: ArchiveHoldingCreate,
     user_id: int = Depends(get_current_user),
@@ -114,7 +114,7 @@ async def create_holding(
 
 
 @archive_router.post("/items/{archive_id}/resell")
-async def resell_archive(
+def resell_archive(
     archive_id: int,
     body: dict | None = None,
     user_id: int = Depends(get_current_user),
@@ -162,12 +162,12 @@ async def resell_archive(
 
 
 @plus_router.get("/status")
-async def plus_status(user_id: int = Depends(get_current_user)):
+def plus_status(user_id: int = Depends(get_current_user)):
     return success(plus_service.status_for(user_id).dict())
 
 
 @plus_router.post("/subscribe")
-async def plus_subscribe(body: PlusSubscribeRequest, user_id: int = Depends(get_current_user)):
+def plus_subscribe(body: PlusSubscribeRequest, user_id: int = Depends(get_current_user)):
     try:
         sub = plus_service.subscribe(user_id, body.plan)
     except ValueError as e:
@@ -176,7 +176,7 @@ async def plus_subscribe(body: PlusSubscribeRequest, user_id: int = Depends(get_
 
 
 @plus_router.post("/subscriptions/{sub_id}/confirm-mock")
-async def plus_confirm_mock(sub_id: int, user_id: int = Depends(get_current_user)):
+def plus_confirm_mock(sub_id: int, user_id: int = Depends(get_current_user)):
     """开发用：直接置 active。生产环境(`DEBUG=False`)一律 404,
     真实付款由 stripe webhook → plus_service.confirm_by_intent 推动。"""
     from app.core.config import settings
@@ -192,7 +192,7 @@ async def plus_confirm_mock(sub_id: int, user_id: int = Depends(get_current_user
 
 
 @plus_router.post("/subscriptions/{sub_id}/cancel")
-async def plus_cancel(sub_id: int, user_id: int = Depends(get_current_user)):
+def plus_cancel(sub_id: int, user_id: int = Depends(get_current_user)):
     try:
         sub = plus_service.cancel(sub_id, user_id)
     except PermissionError as e:
@@ -203,5 +203,5 @@ async def plus_cancel(sub_id: int, user_id: int = Depends(get_current_user)):
 
 
 @plus_router.get("/subscriptions")
-async def plus_list(user_id: int = Depends(get_current_user)):
+def plus_list(user_id: int = Depends(get_current_user)):
     return success([s.dict() for s in plus_service.list_for_user(user_id)])

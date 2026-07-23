@@ -27,7 +27,7 @@ VALID_REPORT_TYPES = {"POST", "COMMENT", "MESSAGE", "USER"}
 
 
 @router.post("/report")
-async def report_content(
+def report_content(
     request: ReportContentRequest,
     current_user_id: int = Depends(get_current_user_id),
 ):
@@ -56,7 +56,7 @@ async def report_content(
 
 
 @router.post("/block")
-async def block_user(
+def block_user(
     request: BlockUserRequest,
     current_user_id: int = Depends(get_current_user_id),
 ):
@@ -69,7 +69,7 @@ async def block_user(
 
 
 @router.delete("/block/{blocked_user_id}")
-async def unblock_user(
+def unblock_user(
     blocked_user_id: int,
     current_user_id: int = Depends(get_current_user_id),
 ):
@@ -79,7 +79,7 @@ async def unblock_user(
 
 
 @router.get("/blocked-users")
-async def get_blocked_users(
+def get_blocked_users(
     current_user_id: int = Depends(get_current_user_id),
 ):
     """Get list of blocked users"""
@@ -88,7 +88,7 @@ async def get_blocked_users(
 
 
 @router.get("/my-reports")
-async def get_my_reports(
+def get_my_reports(
     page: int = Query(1, ge=1),
     pageSize: int = Query(20, ge=1, le=100),
     current_user_id: int = Depends(get_current_user_id),

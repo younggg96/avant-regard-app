@@ -76,7 +76,7 @@ def _split_csv_int(value: Optional[str]) -> Optional[list]:
 
 
 @marketplace_router.get("/listings")
-async def marketplace_listings(
+def marketplace_listings(
     q: Optional[str] = Query(None, description="关键词"),
     brand: Optional[str] = Query(None, description="单值或 CSV: nike,adidas"),
     categoryId: Optional[str] = Query(None, description="单值或 CSV 整数 ID 列表"),
@@ -133,7 +133,7 @@ async def marketplace_listings(
 
 
 @marketplace_router.get("/search-suggestions")
-async def marketplace_search_suggestions(
+def marketplace_search_suggestions(
     q: str = Query(..., min_length=1, description="搜索关键词（支持品牌/单品/秀场模糊匹配）"),
     limit: int = Query(8, ge=1, le=20, description="建议条数"),
 ):
@@ -149,7 +149,7 @@ async def marketplace_search_suggestions(
 
 
 @marketplace_router.get("/popular-brands")
-async def marketplace_popular_brands(
+def marketplace_popular_brands(
     limit: int = Query(6, ge=1, le=20, description="返回品牌数量"),
     rotate: bool = Query(
         True,
@@ -168,7 +168,7 @@ async def marketplace_popular_brands(
 
 
 @marketplace_router.get("/curated")
-async def marketplace_curated(
+def marketplace_curated(
     limit: int = Query(10, ge=1, le=20, description="返回单品数量"),
     current_user_id: Optional[int] = Depends(get_current_user_optional),
 ):
@@ -189,7 +189,7 @@ async def marketplace_curated(
 
 
 @marketplace_router.get("/brand-price-range")
-async def brand_price_range(
+def brand_price_range(
     brand: str = Query(..., description="品牌名"),
     condition: Optional[str] = Query(
         None,
@@ -209,14 +209,14 @@ async def brand_price_range(
 
 
 @marketplace_router.get("/support-contact")
-async def get_support_contact():
+def get_support_contact():
     """找不到品牌 / 秀场时引导联系小客服。"""
     info = store_product_service.get_support_contact()
     return success(info.model_dump())
 
 
 @marketplace_router.get("/all-brands")
-async def marketplace_all_brands(
+def marketplace_all_brands(
     keyword: Optional[str] = Query(None, description="关键词（品牌名/创始人/国家）"),
     page: int = Query(1, ge=1),
     pageSize: int = Query(50, ge=1, le=200),
@@ -259,7 +259,7 @@ def _resolve_seller_context(user_id: int, requested_kind: SellerKind):
 
 
 @router.post("")
-async def create_listing(
+def create_listing(
     data: StoreProductCreate,
     current_user_id: int = Depends(get_current_user),
 ):
@@ -282,7 +282,7 @@ async def create_listing(
 
 
 @router.patch("/{product_id}")
-async def patch_listing(
+def patch_listing(
     product_id: int,
     data: StoreProductUpdate,
     current_user_id: int = Depends(get_current_user),
@@ -308,7 +308,7 @@ async def patch_listing(
 
 
 @router.post("/{product_id}/submit")
-async def submit_listing(
+def submit_listing(
     product_id: int,
     current_user_id: int = Depends(get_current_user),
 ):
@@ -353,7 +353,7 @@ async def submit_listing(
 
 
 @router.post("/{product_id}/transition")
-async def transition_listing(
+def transition_listing(
     product_id: int,
     payload: ProductTransition,
     current_user_id: int = Depends(get_current_user),
@@ -384,7 +384,7 @@ async def transition_listing(
 
 
 @router.post("/batch/offline")
-async def batch_offline(
+def batch_offline(
     payload: BatchListingAction,
     current_user_id: int = Depends(get_current_user),
 ):
@@ -410,7 +410,7 @@ async def batch_offline(
 
 
 @router.post("/batch/delete")
-async def batch_delete(
+def batch_delete(
     payload: BatchListingAction,
     current_user_id: int = Depends(get_current_user),
 ):
@@ -436,7 +436,7 @@ async def batch_delete(
 
 
 @sellers_router.get("/me/listings/summary")
-async def my_listings_summary(
+def my_listings_summary(
     current_user_id: int = Depends(get_current_user),
 ):
     """当前用户各 listing 状态的数量汇总（卖家管理后台顶部统计卡片）。"""
@@ -454,7 +454,7 @@ async def my_listings_summary(
 
 
 @sellers_router.get("/me/listings")
-async def list_my_listings(
+def list_my_listings(
     status: Optional[str] = Query(None, description="active / draft / reviewing / sold / offline / rejected"),
     sellerKind: Optional[str] = Query(None, description="merchant / individual；不传则返回该用户的所有身份"),
     page: int = Query(1, ge=1),
@@ -496,7 +496,7 @@ async def list_my_listings(
 
 
 @sellers_router.get("/{user_id}/listings")
-async def list_user_public_listings(
+def list_user_public_listings(
     user_id: int,
     status: str = Query("active", description="active / sold —— 他人主页仅公开这两种"),
     page: int = Query(1, ge=1),
@@ -543,7 +543,7 @@ async def list_user_public_listings(
 
 
 @sellers_router.get("/me/drafts/count")
-async def my_draft_count(
+def my_draft_count(
     current_user_id: int = Depends(get_current_user),
 ):
     """返回当前用户的 individual 草稿数量 + 上限。
@@ -555,7 +555,7 @@ async def my_draft_count(
 
 
 @sellers_router.get("/me/profile")
-async def get_my_seller_profile(
+def get_my_seller_profile(
     current_user_id: int = Depends(get_current_user),
 ):
     profile = seller_profile_service.get(current_user_id)
@@ -563,7 +563,7 @@ async def get_my_seller_profile(
 
 
 @sellers_router.put("/me/profile")
-async def upsert_my_seller_profile(
+def upsert_my_seller_profile(
     data: SellerProfileUpsert,
     current_user_id: int = Depends(get_current_user),
 ):
@@ -572,7 +572,7 @@ async def upsert_my_seller_profile(
 
 
 @sellers_router.get("/{user_id}/profile")
-async def get_seller_profile_public(
+def get_seller_profile_public(
     user_id: int,
     current_user_id: Optional[int] = Depends(get_current_user_optional),
 ):
@@ -587,7 +587,7 @@ async def get_seller_profile_public(
 
 
 @admin_router.get("")
-async def admin_list_all_products(
+def admin_list_all_products(
     status: Optional[str] = Query(None, description="按状态过滤"),
     q: Optional[str] = Query(None, description="搜索关键词（标题/品牌）"),
     sellerKind: Optional[str] = Query(None, description="merchant / individual"),
@@ -614,7 +614,7 @@ async def admin_list_all_products(
 
 
 @admin_router.post("")
-async def admin_create_product(
+def admin_create_product(
     data: StoreProductCreate,
     admin_id: int = Depends(get_current_admin_user),
 ):
@@ -627,7 +627,7 @@ async def admin_create_product(
 
 
 @admin_router.put("/{product_id}")
-async def admin_update_product(
+def admin_update_product(
     product_id: int,
     data: StoreProductUpdate,
     admin_id: int = Depends(get_current_admin_user),
@@ -641,7 +641,7 @@ async def admin_update_product(
 
 
 @admin_router.delete("/{product_id}")
-async def admin_delete_product(
+def admin_delete_product(
     product_id: int,
     admin_id: int = Depends(get_current_admin_user),
 ):
@@ -653,7 +653,7 @@ async def admin_delete_product(
 
 
 @admin_router.get("/reviewing")
-async def admin_list_reviewing(
+def admin_list_reviewing(
     page: int = Query(1, ge=1),
     pageSize: int = Query(50, ge=1, le=200),
     _admin_id: int = Depends(get_current_admin_user),
@@ -670,7 +670,7 @@ async def admin_list_reviewing(
 
 
 @admin_router.post("/{product_id}/review")
-async def admin_review(
+def admin_review(
     product_id: int,
     decision: ProductReviewDecision,
     admin_id: int = Depends(get_current_admin_user),
@@ -701,7 +701,7 @@ class _CuratedSetBody(BaseModel):
 
 
 @admin_router.put("/{product_id}/curated")
-async def admin_set_curated(
+def admin_set_curated(
     product_id: int,
     payload: _CuratedSetBody,
     _admin_id: int = Depends(get_current_admin_user),

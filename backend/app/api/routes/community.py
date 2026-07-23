@@ -14,7 +14,7 @@ router = APIRouter(prefix="/communities", tags=["社区"])
 
 
 @router.get("")
-async def get_communities(
+def get_communities(
     current_user_id: Optional[int] = Depends(get_current_user_optional),
 ):
     """获取社区列表（热门、关注、全部）"""
@@ -40,7 +40,7 @@ async def get_communities(
 
 
 @router.get("/popular")
-async def get_popular_communities(
+def get_popular_communities(
     limit: int = Query(5, description="返回数量限制"),
     current_user_id: Optional[int] = Depends(get_current_user_optional),
 ):
@@ -50,7 +50,7 @@ async def get_popular_communities(
 
 
 @router.get("/following")
-async def get_following_communities(
+def get_following_communities(
     current_user_id: int = Depends(get_current_user_id),
 ):
     """获取我关注的社区"""
@@ -59,7 +59,7 @@ async def get_following_communities(
 
 
 @router.get("/search")
-async def search_communities(
+def search_communities(
     keyword: str = Query(..., description="搜索关键词"),
     limit: int = Query(20, description="返回数量限制"),
     current_user_id: Optional[int] = Depends(get_current_user_optional),
@@ -70,7 +70,7 @@ async def search_communities(
 
 
 @router.get("/{community_id}")
-async def get_community_by_id(
+def get_community_by_id(
     community_id: int,
     current_user_id: Optional[int] = Depends(get_current_user_optional),
 ):
@@ -82,7 +82,7 @@ async def get_community_by_id(
 
 
 @router.get("/slug/{slug}")
-async def get_community_by_slug(
+def get_community_by_slug(
     slug: str,
     current_user_id: Optional[int] = Depends(get_current_user_optional),
 ):
@@ -94,7 +94,7 @@ async def get_community_by_slug(
 
 
 @router.get("/{community_id}/stats")
-async def get_community_stats(
+def get_community_stats(
     community_id: int,
 ):
     """获取社区统计信息"""
@@ -108,7 +108,7 @@ async def get_community_stats(
 
 
 @router.post("/{community_id}/follow")
-async def follow_community(
+def follow_community(
     community_id: int,
     current_user_id: int = Depends(get_current_user_id),
 ):
@@ -127,7 +127,7 @@ async def follow_community(
 
 
 @router.delete("/{community_id}/follow")
-async def unfollow_community(
+def unfollow_community(
     community_id: int,
     current_user_id: int = Depends(get_current_user_id),
 ):
@@ -142,7 +142,7 @@ async def unfollow_community(
 
 
 @router.post("")
-async def create_community(
+def create_community(
     request: CreateCommunityRequest,
     current_user_id: int = Depends(get_current_user_id),
 ):
@@ -168,7 +168,7 @@ async def create_community(
 
 
 @router.put("/{community_id}")
-async def update_community(
+def update_community(
     community_id: int,
     request: UpdateCommunityRequest,
     current_user_id: int = Depends(get_current_user_id),
@@ -196,7 +196,7 @@ async def update_community(
 
 
 @router.delete("/{community_id}")
-async def delete_community(
+def delete_community(
     community_id: int,
     current_user_id: int = Depends(get_current_user_id),
 ):

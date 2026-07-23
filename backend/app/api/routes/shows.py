@@ -15,7 +15,7 @@ router = APIRouter(prefix="/shows", tags=["秀场"])
 
 
 @router.get("")
-async def get_shows(
+def get_shows(
     keyword: Optional[str] = Query(None, description="搜索关键词"),
     brand: Optional[str] = Query(None, description="品牌名称"),
     year: Optional[int] = Query(None, description="年份"),
@@ -57,7 +57,7 @@ async def get_shows(
 
 
 @router.get("/categories")
-async def get_show_categories():
+def get_show_categories():
     """获取秀场类别列表"""
     # 尝试从缓存获取
     cache_key = cache_service.get_show_categories_key()
@@ -76,7 +76,7 @@ async def get_show_categories():
 
 
 @router.get("/years")
-async def get_show_years():
+def get_show_years():
     """获取秀场年份列表"""
     # 尝试从缓存获取
     cache_key = cache_service.get_show_years_key()
@@ -95,7 +95,7 @@ async def get_show_years():
 
 
 @router.get("/search")
-async def search_shows(
+def search_shows(
     keyword: str = Query(..., min_length=1, description="搜索关键词"),
     limit: int = Query(50, ge=1, le=200, description="返回数量"),
 ):
@@ -109,7 +109,7 @@ async def search_shows(
 
 
 @router.get("/by-brand/{brand_name}")
-async def get_shows_by_brand(brand_name: str):
+def get_shows_by_brand(brand_name: str):
     """获取某品牌的所有秀场"""
     # 尝试从缓存获取
     cache_key = cache_service.get_shows_by_brand_key(brand_name)
@@ -131,7 +131,7 @@ async def get_shows_by_brand(brand_name: str):
 
 
 @router.post("")
-async def create_show(
+def create_show(
     data: CreateShowRequest,
     user_id: int = Depends(get_current_user_id),
 ):
@@ -141,7 +141,7 @@ async def create_show(
 
 
 @router.get("/admin/all")
-async def admin_get_all_shows(
+def admin_get_all_shows(
     keyword: Optional[str] = Query(None, description="搜索关键词"),
     status: Optional[str] = Query(None, description="状态筛选"),
     page: int = Query(1, ge=1, description="页码"),
@@ -161,7 +161,7 @@ async def admin_get_all_shows(
 
 
 @router.post("/admin/create")
-async def admin_create_show(
+def admin_create_show(
     data: CreateShowRequest,
     _admin_id: int = Depends(get_current_admin_user),
 ):
@@ -171,7 +171,7 @@ async def admin_create_show(
 
 
 @router.get("/admin/pending")
-async def get_pending_shows(
+def get_pending_shows(
     _admin_id: int = Depends(get_current_admin_user),
 ):
     """获取待审核秀场列表（管理员）"""
@@ -183,7 +183,7 @@ async def get_pending_shows(
 
 
 @router.post("/admin/{show_id}/approve")
-async def approve_show(
+def approve_show(
     show_id: str,
     _admin_id: int = Depends(get_current_admin_user),
 ):
@@ -196,7 +196,7 @@ async def approve_show(
 
 
 @router.post("/admin/{show_id}/reject")
-async def reject_show(
+def reject_show(
     show_id: str,
     reason: Optional[str] = Query(None, description="拒绝原因"),
     _admin_id: int = Depends(get_current_admin_user),
@@ -207,7 +207,7 @@ async def reject_show(
 
 
 @router.put("/admin/{show_id}")
-async def admin_update_show(
+def admin_update_show(
     show_id: str,
     data: UpdateShowRequest,
     _admin_id: int = Depends(get_current_admin_user),
@@ -220,7 +220,7 @@ async def admin_update_show(
 
 
 @router.delete("/admin/{show_id}")
-async def admin_delete_show(
+def admin_delete_show(
     show_id: str,
     _admin_id: int = Depends(get_current_admin_user),
 ):
@@ -234,7 +234,7 @@ async def admin_delete_show(
 
 
 @router.get("/my-shows")
-async def get_my_shows(
+def get_my_shows(
     user_id: int = Depends(get_current_user_id),
 ):
     """获取当前用户创建的秀场"""
@@ -246,7 +246,7 @@ async def get_my_shows(
 
 
 @router.delete("/my-shows/{show_id}")
-async def delete_my_show(
+def delete_my_show(
     show_id: int,
     user_id: int = Depends(get_current_user_id),
 ):
@@ -258,7 +258,7 @@ async def delete_my_show(
 
 
 @router.get("/user/{target_user_id}")
-async def get_shows_by_user(target_user_id: int):
+def get_shows_by_user(target_user_id: int):
     """获取指定用户已通过审核的秀场（公开接口）"""
     shows = show_service.get_approved_shows_by_user(target_user_id)
     return success({
@@ -268,7 +268,7 @@ async def get_shows_by_user(target_user_id: int):
 
 
 @router.get("/by-url")
-async def get_show_by_url(url: str = Query(..., description="秀场链接")):
+def get_show_by_url(url: str = Query(..., description="秀场链接")):
     """通过 URL 获取秀场详情"""
     show = show_service.get_show_by_url(url)
 
@@ -279,7 +279,7 @@ async def get_show_by_url(url: str = Query(..., description="秀场链接")):
 
 
 @router.get("/{show_id}")
-async def get_show_by_id(show_id: str):
+def get_show_by_id(show_id: str):
     """通过 ID 获取秀场详情"""
     cache_key = cache_service.get_show_key(show_id)
     cached = cache_service.get(cache_key)

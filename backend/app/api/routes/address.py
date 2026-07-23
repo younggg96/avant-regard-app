@@ -21,19 +21,19 @@ router = APIRouter(prefix="/me/addresses", tags=["交易系统 / 地址"])
 
 
 @router.get("")
-async def list_my_addresses(user_id: int = Depends(get_current_user)):
+def list_my_addresses(user_id: int = Depends(get_current_user)):
     items = address_service.list_for_user(user_id)
     return success({"items": [it.dict() for it in items]})
 
 
 @router.get("/default")
-async def get_my_default_address(user_id: int = Depends(get_current_user)):
+def get_my_default_address(user_id: int = Depends(get_current_user)):
     item = address_service.get_default(user_id)
     return success(item.dict() if item else None)
 
 
 @router.post("")
-async def create_address(
+def create_address(
     payload: UserAddressCreate,
     user_id: int = Depends(get_current_user),
 ):
@@ -45,7 +45,7 @@ async def create_address(
 
 
 @router.put("/{address_id}")
-async def update_address(
+def update_address(
     address_id: int,
     payload: UserAddressUpdate,
     user_id: int = Depends(get_current_user),
@@ -58,7 +58,7 @@ async def update_address(
 
 
 @router.post("/{address_id}/default")
-async def set_default_address(
+def set_default_address(
     address_id: int,
     user_id: int = Depends(get_current_user),
 ):
@@ -70,7 +70,7 @@ async def set_default_address(
 
 
 @router.delete("/{address_id}")
-async def delete_address(
+def delete_address(
     address_id: int,
     user_id: int = Depends(get_current_user),
 ):

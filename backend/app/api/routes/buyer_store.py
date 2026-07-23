@@ -50,7 +50,7 @@ def _enrich_dicts_with_favorite_count(store_dicts: list) -> list:
 
 
 @router.get("")
-async def get_stores(
+def get_stores(
     country: Optional[str] = Query(None, description="国家筛选"),
     city: Optional[str] = Query(None, description="城市筛选"),
     brand: Optional[str] = Query(None, description="品牌筛选"),
@@ -107,7 +107,7 @@ async def get_stores(
 
 
 @router.get("/all")
-async def get_all_buyer_stores(
+def get_all_buyer_stores(
     country: Optional[str] = Query(None),
     city: Optional[str] = Query(None),
     brand: Optional[str] = Query(None),
@@ -137,14 +137,14 @@ async def get_all_buyer_stores(
 
 
 @router.get("/countries")
-async def get_countries():
+def get_countries():
     """获取所有国家列表"""
     countries = buyer_store_service.get_all_countries()
     return success({"countries": countries})
 
 
 @router.get("/cities")
-async def get_cities(
+def get_cities(
     country: Optional[str] = Query(None, description="按国家筛选城市"),
 ):
     """获取所有城市列表"""
@@ -153,14 +153,14 @@ async def get_cities(
 
 
 @router.get("/styles")
-async def get_styles():
+def get_styles():
     """获取所有风格列表"""
     styles = buyer_store_service.get_all_styles()
     return success({"styles": styles})
 
 
 @router.get("/search")
-async def search_stores(
+def search_stores(
     keyword: str = Query(..., min_length=1, description="搜索关键词"),
     limit: int = Query(20, ge=1, le=100, description="返回数量"),
 ):
@@ -173,7 +173,7 @@ async def search_stores(
 
 
 @router.get("/by-brand/{brand}")
-async def get_stores_by_brand(brand: str):
+def get_stores_by_brand(brand: str):
     """根据品牌获取买手店"""
     stores = buyer_store_service.get_stores_by_brand(brand)
     return success({
@@ -183,7 +183,7 @@ async def get_stores_by_brand(brand: str):
 
 
 @router.get("/brand-recommendations/{brand}")
-async def get_brand_recommendations(brand: str):
+def get_brand_recommendations(brand: str):
     """获取品牌推荐（包含相关品牌）"""
     recommendation = buyer_store_service.get_brand_recommendations(brand)
     return success({
@@ -193,7 +193,7 @@ async def get_brand_recommendations(brand: str):
 
 
 @router.post("/viewport")
-async def get_stores_in_viewport(params: ViewportStoreParams):
+def get_stores_in_viewport(params: ViewportStoreParams):
     """获取地图视口范围内的买手店"""
     stores = buyer_store_service.get_stores_in_viewport(
         ne_lat=params.ne_lat,
@@ -216,7 +216,7 @@ async def get_stores_in_viewport(params: ViewportStoreParams):
 
 
 @router.post("/nearby")
-async def get_nearby_stores(params: NearbyStoreParams):
+def get_nearby_stores(params: NearbyStoreParams):
     """获取附近的买手店"""
     stores = buyer_store_service.get_nearby_stores(
         latitude=params.latitude,
@@ -241,7 +241,7 @@ async def get_nearby_stores(params: NearbyStoreParams):
 
 
 @router.get("/user/activity")
-async def get_user_store_activity(
+def get_user_store_activity(
     current_user_id: int = Depends(get_current_user),
 ):
     """获取当前用户的买手店动态（收藏、评论、评分）"""
@@ -250,7 +250,7 @@ async def get_user_store_activity(
 
 
 @router.get("/{store_id}")
-async def get_store_by_id(store_id: str):
+def get_store_by_id(store_id: str):
     """通过 ID 获取买手店详情.
 
     回填 `hasMerchant`（是否有 APPROVED 商家入驻）给消费者详情页判断要不要展示
@@ -272,7 +272,7 @@ async def get_store_by_id(store_id: str):
 
 
 @router.post("")
-async def create_store(
+def create_store(
     store: BuyerStoreCreate,
     current_user_id: int = Depends(get_current_admin_user),
 ):
@@ -285,7 +285,7 @@ async def create_store(
 
 
 @router.put("/{store_id}")
-async def update_store(
+def update_store(
     store_id: str,
     store: BuyerStoreUpdate,
     current_user_id: int = Depends(get_current_admin_user),
@@ -300,7 +300,7 @@ async def update_store(
 
 
 @router.delete("/{store_id}")
-async def delete_store(
+def delete_store(
     store_id: str,
     current_user_id: int = Depends(get_current_admin_user),
 ):
@@ -314,7 +314,7 @@ async def delete_store(
 
 
 @router.post("/batch")
-async def batch_create_stores(
+def batch_create_stores(
     stores: List[BuyerStoreCreate],
     current_user_id: int = Depends(get_current_admin_user),
 ):
@@ -330,7 +330,7 @@ async def batch_create_stores(
 
 
 @router.get("/comment-suggestions")
-async def get_comment_suggestions():
+def get_comment_suggestions():
     """获取评论提示建议"""
     return success({
         "suggestions": COMMENT_SUGGESTIONS
@@ -338,7 +338,7 @@ async def get_comment_suggestions():
 
 
 @router.post("/submit")
-async def submit_store(
+def submit_store(
     data: UserSubmittedStoreCreate,
     current_user_id: int = Depends(get_current_user),
 ):
@@ -351,7 +351,7 @@ async def submit_store(
 
 
 @router.get("/submissions/my")
-async def get_my_submissions(
+def get_my_submissions(
     page: int = Query(1, ge=1),
     pageSize: int = Query(20, ge=1),
     current_user_id: int = Depends(get_current_user),
@@ -369,7 +369,7 @@ async def get_my_submissions(
 
 
 @router.delete("/submissions/{submission_id}")
-async def delete_my_submission(
+def delete_my_submission(
     submission_id: int,
     current_user_id: int = Depends(get_current_user),
 ):
@@ -383,7 +383,7 @@ async def delete_my_submission(
 
 
 @router.get("/submissions/user/{target_user_id}")
-async def get_user_submissions_public(
+def get_user_submissions_public(
     target_user_id: int,
     page: int = Query(1, ge=1),
     pageSize: int = Query(20, ge=1),
@@ -401,7 +401,7 @@ async def get_user_submissions_public(
 
 
 @router.get("/submissions/pending")
-async def get_pending_submissions(
+def get_pending_submissions(
     page: int = Query(1, ge=1),
     pageSize: int = Query(20, ge=1, le=100),
     current_user_id: int = Depends(get_current_admin_user),
@@ -417,7 +417,7 @@ async def get_pending_submissions(
 
 
 @router.put("/submissions/batch-review")
-async def batch_review_submissions(
+def batch_review_submissions(
     data: BatchReviewRequest,
     current_user_id: int = Depends(get_current_admin_user),
 ):
@@ -432,7 +432,7 @@ async def batch_review_submissions(
 
 
 @router.put("/submissions/{submission_id}/review")
-async def review_submission(
+def review_submission(
     submission_id: int,
     data: ReviewSubmissionRequest,
     current_user_id: int = Depends(get_current_admin_user),
@@ -451,7 +451,7 @@ async def review_submission(
 
 
 @router.get("/{store_id}/comments")
-async def get_store_comments(
+def get_store_comments(
     store_id: str,
     page: int = Query(1, ge=1),
     pageSize: int = Query(20, ge=1, le=100),
@@ -469,7 +469,7 @@ async def get_store_comments(
 
 
 @router.post("/{store_id}/comments")
-async def create_store_comment(
+def create_store_comment(
     store_id: str,
     data: BuyerStoreCommentCreate,
     current_user_id: int = Depends(get_current_user),
@@ -487,7 +487,7 @@ async def create_store_comment(
 
 
 @router.delete("/comments/{comment_id}")
-async def delete_store_comment(
+def delete_store_comment(
     comment_id: int,
     userId: int = Query(...),
     current_user_id: int = Depends(get_current_user),
@@ -504,7 +504,7 @@ async def delete_store_comment(
 
 
 @router.post("/comments/{comment_id}/like")
-async def like_store_comment(
+def like_store_comment(
     comment_id: int,
     userId: int = Query(...),
     current_user_id: int = Depends(get_current_user),
@@ -518,7 +518,7 @@ async def like_store_comment(
 
 
 @router.delete("/comments/{comment_id}/like")
-async def unlike_store_comment(
+def unlike_store_comment(
     comment_id: int,
     userId: int = Query(...),
     current_user_id: int = Depends(get_current_user),
@@ -532,7 +532,7 @@ async def unlike_store_comment(
 
 
 @router.get("/comments/{comment_id}/replies")
-async def get_comment_replies(comment_id: int):
+def get_comment_replies(comment_id: int):
     """获取评论的所有回复"""
     replies = buyer_store_community_service.get_all_replies(comment_id)
     return success({
@@ -545,7 +545,7 @@ async def get_comment_replies(comment_id: int):
 
 
 @router.post("/{store_id}/rate")
-async def rate_store(
+def rate_store(
     store_id: str,
     data: BuyerStoreRatingCreate,
     current_user_id: int = Depends(get_current_user),
@@ -562,14 +562,14 @@ async def rate_store(
 
 
 @router.get("/{store_id}/rating")
-async def get_store_rating_stats(store_id: str):
+def get_store_rating_stats(store_id: str):
     """获取买手店评分统计"""
     stats = buyer_store_community_service.get_rating_stats(store_id)
     return success(stats.model_dump())
 
 
 @router.get("/{store_id}/rating/user")
-async def get_user_store_rating(
+def get_user_store_rating(
     store_id: str,
     userId: int = Query(...),
 ):
@@ -584,7 +584,7 @@ async def get_user_store_rating(
 
 
 @router.post("/{store_id}/favorite")
-async def favorite_store(
+def favorite_store(
     store_id: str,
     userId: int = Query(...),
     current_user_id: int = Depends(get_current_user),
@@ -598,7 +598,7 @@ async def favorite_store(
 
 
 @router.delete("/{store_id}/favorite")
-async def unfavorite_store(
+def unfavorite_store(
     store_id: str,
     userId: int = Query(...),
     current_user_id: int = Depends(get_current_user),
@@ -612,7 +612,7 @@ async def unfavorite_store(
 
 
 @router.get("/{store_id}/favorite/check")
-async def check_favorite_status(
+def check_favorite_status(
     store_id: str,
     userId: int = Query(...),
 ):
@@ -622,7 +622,7 @@ async def check_favorite_status(
 
 
 @router.get("/favorites/user")
-async def get_user_favorites(
+def get_user_favorites(
     userId: int = Query(...),
     page: int = Query(1, ge=1),
     pageSize: int = Query(20, ge=1, le=500),
@@ -647,7 +647,7 @@ async def get_user_favorites(
 
 
 @router.get("/{store_id}/detail")
-async def get_store_detail(
+def get_store_detail(
     store_id: str,
     userId: Optional[int] = Query(None),
 ):

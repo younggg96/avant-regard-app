@@ -2,6 +2,8 @@
 用户路由
 """
 
+import asyncio
+
 from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Query
 from app.schemas.user import (
     UserInfo,
@@ -24,7 +26,7 @@ router = APIRouter(prefix="/user-info", tags=["用户信息"])
 
 
 @router.get("/search")
-async def search_users(
+def search_users(
     keyword: str = Query(..., description="搜索关键词（用户名或用户ID）"),
     limit: int = Query(20, description="返回数量限制"),
 ):
@@ -34,7 +36,7 @@ async def search_users(
 
 
 @router.get("/contribution-leaderboard")
-async def get_contribution_leaderboard(
+def get_contribution_leaderboard(
     limit: int = Query(20, description="返回数量限制"),
 ):
     """获取 Archive 贡献榜"""
@@ -43,7 +45,7 @@ async def get_contribution_leaderboard(
 
 
 @router.get("/{user_id}")
-async def get_user_info(user_id: int):
+def get_user_info(user_id: int):
     """获取用户信息"""
     result = user_service.get_user_info(user_id)
     if not result:
@@ -52,7 +54,7 @@ async def get_user_info(user_id: int):
 
 
 @router.put("/{user_id}")
-async def update_user_info(
+def update_user_info(
     user_id: int,
     request: UpdateUserInfoRequest,
     current_user_id: int = Depends(get_current_user_id),
@@ -88,15 +90,17 @@ async def upload_avatar(
     if not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="只能上传图片文件")
 
-    # 上传图片
+    # 上传图片（同步 HTTP 调用，放线程池避免阻塞事件循环）
     content = await file.read()
-    avatar_url = file_service.upload_image(content, file.filename, file.content_type)
+    avatar_url = await asyncio.to_thread(
+        file_service.upload_image, content, file.filename, file.content_type
+    )
 
     if not avatar_url:
         raise HTTPException(status_code=500, detail="头像上传失败")
 
     # 更新用户头像
-    result = user_service.upload_avatar(user_id, avatar_url)
+    result = await asyncio.to_thread(user_service.upload_avatar, user_id, avatar_url)
     if not result:
         raise HTTPException(status_code=404, detail="用户不存在")
     return success(result.model_dump())
@@ -130,7 +134,9 @@ async def upload_cover(
     if len(content) == 0:
         raise HTTPException(status_code=400, detail="文件内容为空")
 
-    cover_url = file_service.upload_image(content, file.filename, file.content_type)
+    cover_url = await asyncio.to_thread(
+        file_service.upload_image, content, file.filename, file.content_type
+    )
 
     if not cover_url:
         raise HTTPException(
@@ -140,14 +146,14 @@ async def upload_cover(
     print(f"[Upload Cover] cover_url: {cover_url}")
 
     # 更新用户封面
-    result = user_service.upload_cover(user_id, cover_url)
+    result = await asyncio.to_thread(user_service.upload_cover, user_id, cover_url)
     if not result:
         raise HTTPException(status_code=404, detail="用户不存在")
     return success(result.model_dump())
 
 
 @router.get("/{user_id}/profile")
-async def get_user_profile(user_id: int):
+def get_user_profile(user_id: int):
     """获取用户完整资料"""
     result = user_service.get_user_profile(user_id)
     if not result:
@@ -156,7 +162,7 @@ async def get_user_profile(user_id: int):
 
 
 @router.get("/{user_id}/user-type")
-async def get_user_type(user_id: int):
+def get_user_type(user_id: int):
     """获取用户类型（轻量接口，仅查 users 表）"""
     result = user_service.get_user_type(user_id)
     if not result:
@@ -165,7 +171,7 @@ async def get_user_type(user_id: int):
 
 
 @router.put("/{user_id}/profile")
-async def update_user_profile(
+def update_user_profile(
     user_id: int,
     request: UpdateUserProfileRequest,
     current_user_id: int = Depends(get_current_user_id),
@@ -193,7 +199,7 @@ async def update_user_profile(
 
 
 @router.get("/{user_id}/privacy")
-async def get_privacy_settings(user_id: int):
+def get_privacy_settings(user_id: int):
     """获取用户隐私设置"""
     result = user_service.get_privacy_settings(user_id)
     if not result:
@@ -202,7 +208,7 @@ async def get_privacy_settings(user_id: int):
 
 
 @router.put("/{user_id}/privacy")
-async def update_privacy_settings(
+def update_privacy_settings(
     user_id: int,
     request: UpdatePrivacySettingsRequest,
     current_user_id: int = Depends(get_current_user_id),
@@ -225,7 +231,7 @@ async def update_privacy_settings(
 
 
 @router.put("/{user_id}/language")
-async def update_language_preference(
+def update_language_preference(
     user_id: int,
     request: UpdateLanguageRequest,
     current_user_id: int = Depends(get_current_user_id),
@@ -241,7 +247,7 @@ async def update_language_preference(
 
 
 @router.put("/{user_id}/theme")
-async def update_theme_preference(
+def update_theme_preference(
     user_id: int,
     request: UpdateThemeRequest,
     current_user_id: int = Depends(get_current_user_id),
@@ -257,7 +263,7 @@ async def update_theme_preference(
 
 
 @router.put("/{user_id}/currency")
-async def update_currency_preference(
+def update_currency_preference(
     user_id: int,
     request: UpdateCurrencyRequest,
     current_user_id: int = Depends(get_current_user_id),
@@ -273,7 +279,7 @@ async def update_currency_preference(
 
 
 @router.delete("/{user_id}/account")
-async def delete_account(
+def delete_account(
     user_id: int,
     current_user_id: int = Depends(get_current_user_id),
 ):
@@ -290,7 +296,7 @@ async def delete_account(
 # ==================== 用户头衔 ====================
 
 @router.get("/{user_id}/titles")
-async def get_user_titles(user_id: int):
+def get_user_titles(user_id: int):
     """获取用户的所有头衔（公开接口）"""
     # user_titles is RLS-protected; the anon client cannot read/write it
     # reliably (writes are rejected with 42501). Use the service-role client.
@@ -317,7 +323,7 @@ async def get_user_titles(user_id: int):
 
 
 @router.put("/{user_id}/titles/{title_id}/set-primary")
-async def set_primary_title(
+def set_primary_title(
     user_id: int,
     title_id: int,
     current_user_id: int = Depends(get_current_user_id),
@@ -350,7 +356,7 @@ async def set_primary_title(
 
 
 @router.put("/{user_id}/titles/clear-primary")
-async def clear_primary_title(
+def clear_primary_title(
     user_id: int,
     current_user_id: int = Depends(get_current_user_id),
 ):

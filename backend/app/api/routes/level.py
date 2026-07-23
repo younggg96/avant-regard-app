@@ -34,20 +34,20 @@ router = APIRouter(prefix="/levels", tags=["用户等级"])
 
 
 @router.get("/rules")
-async def get_level_rules():
+def get_level_rules():
     """静态的等级规则表, 前端 `我的等级` 页面用于渲染全链路说明."""
     return success([s.model_dump() for s in LEVEL_RULES])
 
 
 @router.get("/me")
-async def get_my_level(current_user_id: int = Depends(get_current_user_id)):
+def get_my_level(current_user_id: int = Depends(get_current_user_id)):
     """当前用户等级 + 下一级任务进度 + 已解锁权益."""
     status = level_service.get_status(current_user_id)
     return success(status.model_dump())
 
 
 @router.get("/users/{user_id}/summary")
-async def get_user_level_summary(user_id: int):
+def get_user_level_summary(user_id: int):
     """公开接口: 仅暴露 current_level, 用于他人主页展示徽章."""
     return success({
         "userId": user_id,
@@ -63,7 +63,7 @@ lottery_router = APIRouter(prefix="/lottery", tags=["月度抽奖"])
 
 
 @lottery_router.get("/current")
-async def get_current_lottery(
+def get_current_lottery(
     current_user_id: int = Depends(get_current_user_id),
 ):
     """当月抽奖概况 + 当前用户的参与/中奖状态. Lv3+ 才能看到 `entered=True`.
@@ -90,7 +90,7 @@ async def get_current_lottery(
 
 
 @lottery_router.get("/history")
-async def list_lottery_history(
+def list_lottery_history(
     limit: int = Query(12, ge=1, le=24),
     _: int = Depends(get_current_user_id),
 ):
@@ -109,14 +109,14 @@ benefit_router = APIRouter(prefix="/benefits", tags=["等级权益"])
 
 
 @benefit_router.get("/me")
-async def list_my_benefits(current_user_id: int = Depends(get_current_user_id)):
+def list_my_benefits(current_user_id: int = Depends(get_current_user_id)):
     """当前用户持有的全部权益 (配额 + 已用量)."""
     benefits = level_service.list_user_benefits(current_user_id)
     return success([b.model_dump() for b in benefits])
 
 
 @benefit_router.post("/free-ticket/redeem")
-async def redeem_free_ticket(
+def redeem_free_ticket(
     request: RedeemTicketRequest,
     current_user_id: int = Depends(get_current_user_id),
 ):
@@ -145,14 +145,14 @@ admin_level_router = APIRouter(prefix="/admin/levels", tags=["管理员-等级"]
 
 
 @admin_level_router.get("/upgrade-requests")
-async def list_upgrade_requests(_admin: int = Depends(get_current_admin_user)):
+def list_upgrade_requests(_admin: int = Depends(get_current_admin_user)):
     """待审核的 Lv4 升级申请列表."""
     items = level_service.list_pending_requests()
     return success([i.model_dump() for i in items])
 
 
 @admin_level_router.post("/upgrade-requests/{request_id}/review")
-async def review_upgrade_request(
+def review_upgrade_request(
     request_id: int,
     request: AdminReviewUpgradeRequest,
     admin_id: int = Depends(get_current_admin_user),
@@ -170,7 +170,7 @@ async def review_upgrade_request(
 
 
 @admin_level_router.post("/backfill")
-async def admin_backfill_levels(
+def admin_backfill_levels(
     request: AdminBackfillRequest,
     _admin: int = Depends(get_current_admin_user),
 ):
@@ -199,7 +199,7 @@ async def admin_backfill_levels(
 
 
 @admin_level_router.get("/users")
-async def list_users_by_level(
+def list_users_by_level(
     page: int = Query(1, ge=1),
     pageSize: int = Query(20, ge=1, le=100),
     level: Optional[int] = Query(None, ge=0, le=5),
@@ -218,7 +218,7 @@ async def list_users_by_level(
 
 
 @admin_level_router.post("/users/{user_id}/grant")
-async def admin_grant_level(
+def admin_grant_level(
     user_id: int,
     request: AdminGrantLevelRequest,
     admin_id: int = Depends(get_current_admin_user),
@@ -238,7 +238,7 @@ admin_lottery_router = APIRouter(prefix="/admin/lottery", tags=["管理员-抽�
 
 
 @admin_lottery_router.get("/rounds")
-async def list_rounds(
+def list_rounds(
     limit: int = Query(24, ge=1, le=60),
     _admin: int = Depends(get_current_admin_user),
 ):
@@ -247,7 +247,7 @@ async def list_rounds(
 
 
 @admin_lottery_router.post("/rounds")
-async def upsert_round(
+def upsert_round(
     request: AdminCreateRoundRequest,
     _admin: int = Depends(get_current_admin_user),
 ):
@@ -263,7 +263,7 @@ async def upsert_round(
 
 
 @admin_lottery_router.post("/rounds/{round_id}/sync-entries")
-async def sync_entries(
+def sync_entries(
     round_id: int,
     _admin: int = Depends(get_current_admin_user),
 ):
@@ -273,7 +273,7 @@ async def sync_entries(
 
 
 @admin_lottery_router.post("/rounds/{round_id}/draw")
-async def draw_round(
+def draw_round(
     round_id: int,
     request: AdminDrawLotteryRequest,
     admin_id: int = Depends(get_current_admin_user),

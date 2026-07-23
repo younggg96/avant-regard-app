@@ -15,6 +15,6 @@ router = APIRouter(prefix="/feature-flags", tags=["功能开关"])
 
 
 @router.get("")
-async def get_public_feature_flags():
+def get_public_feature_flags():
     """公开的功能开关查询接口."""
     return success(feature_flags_service.get_config())

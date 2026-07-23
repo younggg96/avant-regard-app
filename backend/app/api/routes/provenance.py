@@ -23,7 +23,7 @@ price_router = APIRouter(prefix="/listings/price-history", tags=["交易系统 /
 
 
 @router.get("/{product_id}/provenance")
-async def list_provenance(
+def list_provenance(
     product_id: int,
     _user_id: Optional[int] = Depends(get_current_user_optional),
 ):
@@ -35,7 +35,7 @@ async def list_provenance(
 
 
 @price_router.get("")
-async def price_history_summary(
+def price_history_summary(
     brand: str = Query(...),
     categoryId: Optional[int] = Query(None),
     size: Optional[str] = Query(None),
@@ -57,7 +57,7 @@ async def price_history_summary(
 
 
 @collections_router.get("")
-async def list_my_collections(
+def list_my_collections(
     current_user_id: int = Depends(get_current_user),
 ):
     cols = provenance_service.list_my_collections(current_user_id)
@@ -65,7 +65,7 @@ async def list_my_collections(
 
 
 @collections_router.post("")
-async def create_collection(
+def create_collection(
     data: UserCollectionCreate,
     current_user_id: int = Depends(get_current_user),
 ):
@@ -79,7 +79,7 @@ async def create_collection(
 
 
 @collections_router.put("/{collection_id}")
-async def update_collection(
+def update_collection(
     collection_id: int,
     data: UserCollectionUpdate,
     current_user_id: int = Depends(get_current_user),
@@ -92,7 +92,7 @@ async def update_collection(
 
 
 @collections_router.delete("/{collection_id}")
-async def delete_collection(
+def delete_collection(
     collection_id: int,
     current_user_id: int = Depends(get_current_user),
 ):
@@ -102,7 +102,7 @@ async def delete_collection(
 
 
 @collections_router.get("/{collection_id}")
-async def get_collection_meta(
+def get_collection_meta(
     collection_id: int,
     current_user_id: int = Depends(get_current_user),
 ):
@@ -114,7 +114,7 @@ async def get_collection_meta(
 
 
 @collections_router.get("/{collection_id}/items")
-async def list_collection_items(
+def list_collection_items(
     collection_id: int,
     page: int = Query(1, ge=1),
     pageSize: int = Query(20, ge=1, le=100),
@@ -142,7 +142,7 @@ async def list_collection_items(
 
 
 @collections_router.post("/{collection_id}/items/{product_id}")
-async def add_to_collection(
+def add_to_collection(
     collection_id: int,
     product_id: int,
     current_user_id: int = Depends(get_current_user),
@@ -159,7 +159,7 @@ async def add_to_collection(
 
 
 @collections_router.delete("/{collection_id}/items/{product_id}")
-async def remove_from_collection(
+def remove_from_collection(
     collection_id: int,
     product_id: int,
     current_user_id: int = Depends(get_current_user),

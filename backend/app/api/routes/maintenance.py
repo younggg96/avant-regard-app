@@ -10,6 +10,6 @@ router = APIRouter(prefix="/maintenance", tags=["维护模式"])
 
 
 @router.get("/status")
-async def get_maintenance_status():
+def get_maintenance_status():
     """公开的维护模式状态查询接口。"""
     return success(maintenance_service.get_config())

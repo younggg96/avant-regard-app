@@ -25,7 +25,7 @@ admin_support_router = APIRouter(
 
 
 @support_router.post("/contact-order/{order_id}")
-async def contact_for_order(order_id: int, user_id: int = Depends(get_current_user)):
+def contact_for_order(order_id: int, user_id: int = Depends(get_current_user)):
     try:
         res = trading_support_service.contact_for_order(user_id, order_id)
     except PermissionError as e:
@@ -44,7 +44,7 @@ class AftersalesRequest(BaseModel):
 
 
 @support_router.post("/contact-order/{order_id}/aftersales")
-async def contact_for_order_aftersales(
+def contact_for_order_aftersales(
     order_id: int,
     body: AftersalesRequest,
     user_id: int = Depends(get_current_user),
@@ -67,7 +67,7 @@ async def contact_for_order_aftersales(
 
 
 @support_router.post("/contact-listing/{product_id}")
-async def contact_for_listing(product_id: int, user_id: int = Depends(get_current_user)):
+def contact_for_listing(product_id: int, user_id: int = Depends(get_current_user)):
     try:
         res = trading_support_service.contact_for_listing(user_id, product_id)
     except ValueError as e:
@@ -78,7 +78,7 @@ async def contact_for_listing(product_id: int, user_id: int = Depends(get_curren
 
 
 @support_router.post("/contact")
-async def contact_general(user_id: int = Depends(get_current_user)):
+def contact_general(user_id: int = Depends(get_current_user)):
     try:
         res = trading_support_service.contact_general(user_id)
     except RuntimeError as e:
@@ -91,7 +91,7 @@ class SetCsUserRequest(BaseModel):
 
 
 @admin_support_router.put("/cs-user")
-async def set_cs_user(body: SetCsUserRequest, admin_id: int = Depends(get_current_admin_user)):
+def set_cs_user(body: SetCsUserRequest, admin_id: int = Depends(get_current_admin_user)):
     db = get_supabase_admin()
     db.table("app_config").upsert(
         {
@@ -105,7 +105,7 @@ async def set_cs_user(body: SetCsUserRequest, admin_id: int = Depends(get_curren
 
 
 @admin_support_router.get("/cs-user")
-async def get_cs_user(_admin=Depends(get_current_admin_user)):
+def get_cs_user(_admin=Depends(get_current_admin_user)):
     return success(
         {"csUserId": trading_support_service._config_cs_user_id()}
     )

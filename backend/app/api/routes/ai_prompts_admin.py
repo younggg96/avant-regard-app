@@ -194,7 +194,7 @@ def _build_item(db, key: str) -> PromptItem:
 # =====================================================
 
 @router.get("")
-async def list_prompts(
+def list_prompts(
     current_user_id: int = Depends(get_current_admin_user),
 ):
     """列出所有可被覆盖的 prompt + 各自 default / current / 审计信息。"""
@@ -205,7 +205,7 @@ async def list_prompts(
 
 
 @router.put("/{key}")
-async def update_prompt(
+def update_prompt(
     request: UpdatePromptRequest,
     key: str = Path(..., description="qa_system | image_brief_system"),
     current_user_id: int = Depends(get_current_admin_user),
@@ -239,7 +239,7 @@ async def update_prompt(
 
 
 @router.delete("/{key}")
-async def reset_prompt(
+def reset_prompt(
     key: str = Path(..., description="qa_system | image_brief_system"),
     current_user_id: int = Depends(get_current_admin_user),
 ):
@@ -252,7 +252,7 @@ async def reset_prompt(
 
 
 @router.post("/preview")
-async def preview_prompts(
+def preview_prompts(
     request: PreviewRequest,
     current_user_id: int = Depends(get_current_admin_user),
 ):

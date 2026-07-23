@@ -34,7 +34,7 @@ admin_auth_router = APIRouter(prefix="/admin/authentication", tags=["交易系�
 
 
 @disputes_router.post("")
-async def open_dispute(body: DisputeCreate, user_id: int = Depends(get_current_user)):
+def open_dispute(body: DisputeCreate, user_id: int = Depends(get_current_user)):
     try:
         d = dispute_service.open_dispute(
             order_id=body.orderId,
@@ -51,7 +51,7 @@ async def open_dispute(body: DisputeCreate, user_id: int = Depends(get_current_u
 
 
 @disputes_router.post("/{dispute_id}/withdraw")
-async def withdraw_dispute(dispute_id: int, user_id: int = Depends(get_current_user)):
+def withdraw_dispute(dispute_id: int, user_id: int = Depends(get_current_user)):
     try:
         d = dispute_service.withdraw(dispute_id, user_id)
     except PermissionError as e:
@@ -62,12 +62,12 @@ async def withdraw_dispute(dispute_id: int, user_id: int = Depends(get_current_u
 
 
 @disputes_router.get("/orders/{order_id}")
-async def list_dispute_for_order(order_id: int, _user=Depends(get_current_user)):
+def list_dispute_for_order(order_id: int, _user=Depends(get_current_user)):
     return success([d.dict() for d in dispute_service.list_for_order(order_id)])
 
 
 @disputes_router.get("/seller")
-async def list_seller_disputes(
+def list_seller_disputes(
     status: Optional[str] = None,
     page: int = 1,
     pageSize: int = 20,
@@ -81,7 +81,7 @@ async def list_seller_disputes(
 
 
 @disputes_router.post("/{dispute_id}/seller-respond")
-async def seller_respond_dispute(
+def seller_respond_dispute(
     dispute_id: int,
     body: DisputeSellerRespond,
     user_id: int = Depends(get_current_user),
@@ -103,7 +103,7 @@ async def seller_respond_dispute(
 
 
 @admin_disputes_router.get("/queue")
-async def admin_dispute_queue(
+def admin_dispute_queue(
     page: int = 1, pageSize: int = 30, _admin=Depends(get_current_admin_user)
 ):
     items, total = dispute_service.list_pending(page=page, page_size=pageSize)
@@ -111,7 +111,7 @@ async def admin_dispute_queue(
 
 
 @admin_disputes_router.post("/{dispute_id}/take")
-async def admin_take_dispute(dispute_id: int, admin_id: int = Depends(get_current_admin_user)):
+def admin_take_dispute(dispute_id: int, admin_id: int = Depends(get_current_admin_user)):
     try:
         d = dispute_service.take(dispute_id, admin_id)
     except ValueError as e:
@@ -120,7 +120,7 @@ async def admin_take_dispute(dispute_id: int, admin_id: int = Depends(get_curren
 
 
 @admin_disputes_router.post("/{dispute_id}/resolve")
-async def admin_resolve_dispute(
+def admin_resolve_dispute(
     dispute_id: int, body: DisputeResolve, admin_id: int = Depends(get_current_admin_user)
 ):
     try:
@@ -141,13 +141,13 @@ async def admin_resolve_dispute(
 
 
 @authentication_router.get("/packages")
-async def list_packages():
+def list_packages():
     pkgs = authentication_service.list_packages()
     return success([p.dict() for p in pkgs])
 
 
 @authentication_router.post("/orders")
-async def create_auth_order(
+def create_auth_order(
     body: AuthenticationOrderCreate, user_id: int = Depends(get_current_user)
 ):
     try:
@@ -165,7 +165,7 @@ async def create_auth_order(
 
 
 @authentication_router.post("/orders/{order_id}/pay-mock")
-async def pay_auth_order_mock(order_id: int, user_id: int = Depends(get_current_user)):
+def pay_auth_order_mock(order_id: int, user_id: int = Depends(get_current_user)):
     """开发联调用,生产环境一律 404。真实付款由 stripe webhook → 
     authentication_service.confirm_by_intent 推动。"""
     from app.core.config import settings
@@ -181,7 +181,7 @@ async def pay_auth_order_mock(order_id: int, user_id: int = Depends(get_current_
 
 
 @authentication_router.get("/orders/me")
-async def list_my_auth_orders(
+def list_my_auth_orders(
     page: int = 1, pageSize: int = 20, user_id: int = Depends(get_current_user)
 ):
     items, total = authentication_service.list_for_user(
@@ -191,7 +191,7 @@ async def list_my_auth_orders(
 
 
 @admin_auth_router.get("/orders")
-async def admin_list_auth_orders(
+def admin_list_auth_orders(
     status: Optional[str] = None,
     page: int = 1,
     pageSize: int = 30,
@@ -204,7 +204,7 @@ async def admin_list_auth_orders(
 
 
 @admin_auth_router.post("/orders/{order_id}/decision")
-async def admin_submit_auth_decision(
+def admin_submit_auth_decision(
     order_id: int, body: AuthenticationDecision, admin_id: int = Depends(get_current_admin_user)
 ):
     try:
@@ -226,7 +226,7 @@ async def admin_submit_auth_decision(
 
 
 @reviews_router.post("")
-async def submit_review(body: TradeReviewCreate, user_id: int = Depends(get_current_user)):
+def submit_review(body: TradeReviewCreate, user_id: int = Depends(get_current_user)):
     try:
         r = trade_review_service.submit(
             order_id=body.orderId,
@@ -244,7 +244,7 @@ async def submit_review(body: TradeReviewCreate, user_id: int = Depends(get_curr
 
 
 @reviews_router.get("/users/{user_id}")
-async def list_user_reviews(
+def list_user_reviews(
     user_id: int, page: int = 1, pageSize: int = 20
 ):
     # 卖家历史评价页：只返回真实买家对该卖家（target=user_id）的评价
@@ -259,7 +259,7 @@ async def list_user_reviews(
 
 
 @reviews_router.get("/orders/{order_id}/status")
-async def get_order_review_status(order_id: int, user_id: int = Depends(get_current_user)):
+def get_order_review_status(order_id: int, user_id: int = Depends(get_current_user)):
     try:
         status = trade_review_service.get_order_review_status(order_id, viewer_user_id=user_id)
     except PermissionError as e:
@@ -270,7 +270,7 @@ async def get_order_review_status(order_id: int, user_id: int = Depends(get_curr
 
 
 @reviews_router.post("/status/batch")
-async def batch_order_review_status(
+def batch_order_review_status(
     body: TradeReviewStatusBatchRequest, user_id: int = Depends(get_current_user)
 ):
     items = trade_review_service.batch_order_review_status(
@@ -280,7 +280,7 @@ async def batch_order_review_status(
 
 
 @reviews_router.get("/orders/{order_id}")
-async def list_order_reviews(order_id: int, user_id: int = Depends(get_current_user)):
+def list_order_reviews(order_id: int, user_id: int = Depends(get_current_user)):
     try:
         items = trade_review_service.list_for_order(order_id, viewer_user_id=user_id)
     except PermissionError as e:

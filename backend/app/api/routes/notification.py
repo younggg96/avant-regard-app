@@ -13,7 +13,7 @@ router = APIRouter(prefix="/notifications", tags=["通知"])
 
 
 @router.get("")
-async def get_notifications(
+def get_notifications(
     unreadOnly: bool = Query(False, description="是否只获取未读通知"),
     category: Optional[str] = Query(
         None,
@@ -32,7 +32,7 @@ async def get_notifications(
 
 
 @router.get("/unread-count")
-async def get_unread_count(
+def get_unread_count(
     current_user_id: int = Depends(get_current_user_id),
 ):
     """获取未读通知数量"""
@@ -41,7 +41,7 @@ async def get_unread_count(
 
 
 @router.get("/category-counts")
-async def get_category_counts(
+def get_category_counts(
     current_user_id: int = Depends(get_current_user_id),
 ):
     """获取各交易分类的未读数量（供互动页「交易」tab 角标）"""
@@ -50,7 +50,7 @@ async def get_category_counts(
 
 
 @router.post("/{notification_id}/read")
-async def mark_as_read(
+def mark_as_read(
     notification_id: int,
     current_user_id: int = Depends(get_current_user_id),
 ):
@@ -62,7 +62,7 @@ async def mark_as_read(
 
 
 @router.post("/read-all")
-async def mark_all_as_read(
+def mark_all_as_read(
     current_user_id: int = Depends(get_current_user_id),
 ):
     """标记所有通知为已读"""
@@ -71,7 +71,7 @@ async def mark_all_as_read(
 
 
 @router.delete("/{notification_id}")
-async def delete_notification(
+def delete_notification(
     notification_id: int,
     current_user_id: int = Depends(get_current_user_id),
 ):
@@ -83,7 +83,7 @@ async def delete_notification(
 
 
 @router.delete("/clear-all")
-async def clear_all_notifications(
+def clear_all_notifications(
     current_user_id: int = Depends(get_current_user_id),
 ):
     """清空所有通知"""
@@ -95,7 +95,7 @@ async def clear_all_notifications(
 
 
 @router.post("/push-token")
-async def register_push_token(
+def register_push_token(
     request: RegisterPushTokenRequest,
     current_user_id: int = Depends(get_current_user_id),
 ):
@@ -109,7 +109,7 @@ async def register_push_token(
 
 
 @router.delete("/push-token")
-async def remove_push_token(
+def remove_push_token(
     current_user_id: int = Depends(get_current_user_id),
 ):
     """移除推送 Token"""

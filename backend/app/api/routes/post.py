@@ -15,7 +15,7 @@ router = APIRouter(prefix="/posts", tags=["帖子"])
 
 
 @router.get("/search")
-async def search_posts(
+def search_posts(
     keyword: str = Query(..., description="搜索关键词"),
     limit: int = Query(20, ge=1, le=50, description="每页数量"),
     offset: int = Query(0, ge=0, description="偏移量"),
@@ -32,7 +32,7 @@ async def search_posts(
 
 
 @router.get("")
-async def get_posts(
+def get_posts(
     limit: int = Query(50, ge=1, le=200, description="返回数量限制"),
     current_user_id: Optional[int] = Depends(get_current_user_optional),
 ):
@@ -55,7 +55,7 @@ async def get_posts(
 
 
 @router.get("/recommend")
-async def get_recommend_posts(
+def get_recommend_posts(
     limit: int = Query(50, ge=1, le=200, description="返回数量限制"),
     current_user_id: Optional[int] = Depends(get_current_user_optional),
 ):
@@ -65,7 +65,7 @@ async def get_recommend_posts(
 
 
 @router.get("/feed")
-async def get_feed(
+def get_feed(
     limit: int = Query(30, ge=1, le=100, description="每页帖子数量"),
     exclude_ids: Optional[str] = Query(None, description="已曝光帖子ID，逗号分隔（负数ID表示已看过的秀场卡）"),
     boost_brand_id: Optional[int] = Query(None, description="会话级品牌提权ID（发现惯性）"),
@@ -117,7 +117,7 @@ async def get_feed(
 
 
 @router.get("/following")
-async def get_following_posts(
+def get_following_posts(
     limit: int = Query(50, ge=1, le=200, description="返回数量限制"),
     current_user_id: int = Depends(get_current_user_id),
 ):
@@ -127,7 +127,7 @@ async def get_following_posts(
 
 
 @router.get("/{post_id}")
-async def get_post_by_id(
+def get_post_by_id(
     post_id: int, current_user_id: Optional[int] = Depends(get_current_user_optional)
 ):
     """获取单个帖子详情"""
@@ -138,7 +138,7 @@ async def get_post_by_id(
 
 
 @router.post("")
-async def create_post(
+def create_post(
     request: CreatePostRequest, current_user_id: int = Depends(get_current_user_id)
 ):
     """创建帖子"""
@@ -182,7 +182,7 @@ async def create_post(
 
 
 @router.put("/{post_id}")
-async def update_post(
+def update_post(
     post_id: int,
     request: UpdatePostRequest,
     current_user_id: int = Depends(get_current_user_id),
@@ -237,7 +237,7 @@ async def update_post(
 
 
 @router.delete("/{post_id}")
-async def delete_post(
+def delete_post(
     post_id: int,
     userId: int = Query(...),
     current_user_id: int = Depends(get_current_user_id),
@@ -260,7 +260,7 @@ async def delete_post(
 
 
 @router.post("/{post_id}/like")
-async def like_post(
+def like_post(
     post_id: int,
     userId: int = Query(...),
     current_user_id: int = Depends(get_current_user_id),
@@ -276,7 +276,7 @@ async def like_post(
 
 
 @router.delete("/{post_id}/like")
-async def unlike_post(
+def unlike_post(
     post_id: int,
     userId: int = Query(...),
     current_user_id: int = Depends(get_current_user_id),
@@ -295,7 +295,7 @@ async def unlike_post(
 
 
 @router.post("/{post_id}/favorite")
-async def favorite_post(
+def favorite_post(
     post_id: int,
     userId: int = Query(...),
     current_user_id: int = Depends(get_current_user_id),
@@ -311,7 +311,7 @@ async def favorite_post(
 
 
 @router.delete("/{post_id}/favorite")
-async def unfavorite_post(
+def unfavorite_post(
     post_id: int,
     userId: int = Query(...),
     current_user_id: int = Depends(get_current_user_id),
@@ -330,7 +330,7 @@ async def unfavorite_post(
 
 
 @router.post("/{post_id}/want")
-async def want_post(
+def want_post(
     post_id: int,
     userId: int = Query(...),
     current_user_id: int = Depends(get_current_user_id),
@@ -346,7 +346,7 @@ async def want_post(
 
 
 @router.delete("/{post_id}/want")
-async def unwant_post(
+def unwant_post(
     post_id: int,
     userId: int = Query(...),
     current_user_id: int = Depends(get_current_user_id),
@@ -365,7 +365,7 @@ async def unwant_post(
 
 
 @router.get("/user/{user_id}")
-async def get_posts_by_user_id(
+def get_posts_by_user_id(
     user_id: int,
     status: Optional[str] = Query(None),
     current_user_id: Optional[int] = Depends(get_current_user_optional),
@@ -376,7 +376,7 @@ async def get_posts_by_user_id(
 
 
 @router.get("/user/{user_id}/stats")
-async def get_user_post_stats(user_id: int):
+def get_user_post_stats(user_id: int):
     """获取用户帖子的聚合统计（累计获赞、收藏、评论数）。
 
     前台个人主页 "获赞与收藏" 数据来源，避免客户端按已加载帖子做二次累加
@@ -386,7 +386,7 @@ async def get_user_post_stats(user_id: int):
 
 
 @router.get("/user/{user_id}/liked")
-async def get_liked_posts_by_user_id(
+def get_liked_posts_by_user_id(
     user_id: int, current_user_id: Optional[int] = Depends(get_current_user_optional)
 ):
     """获取用户点赞的帖子列表"""
@@ -395,7 +395,7 @@ async def get_liked_posts_by_user_id(
 
 
 @router.get("/user/{user_id}/favorites")
-async def get_favorite_posts_by_user_id(
+def get_favorite_posts_by_user_id(
     user_id: int, current_user_id: Optional[int] = Depends(get_current_user_optional)
 ):
     """获取用户收藏的帖子列表"""
@@ -404,7 +404,7 @@ async def get_favorite_posts_by_user_id(
 
 
 @router.get("/user/{user_id}/wanted")
-async def get_wanted_posts_by_user_id(
+def get_wanted_posts_by_user_id(
     user_id: int, current_user_id: Optional[int] = Depends(get_current_user_optional)
 ):
     """获取用户愿望单（标记想要的帖子列表）"""
@@ -416,7 +416,7 @@ async def get_wanted_posts_by_user_id(
 
 
 @router.get("/show/{show_id}")
-async def get_posts_by_show_id(
+def get_posts_by_show_id(
     show_id: str, current_user_id: Optional[int] = Depends(get_current_user_optional)
 ):
     """获取某个秀场关联的帖子"""
@@ -429,7 +429,7 @@ async def get_posts_by_show_id(
 
 
 @router.get("/brand/id/{brand_id}")
-async def get_posts_by_brand_id(
+def get_posts_by_brand_id(
     brand_id: int,
     limit: int = Query(50, ge=1, le=200, description="返回数量限制"),
     current_user_id: Optional[int] = Depends(get_current_user_optional),
@@ -440,7 +440,7 @@ async def get_posts_by_brand_id(
 
 
 @router.get("/brand/{brand_name}")
-async def get_posts_by_brand_name(
+def get_posts_by_brand_name(
     brand_name: str,
     limit: int = Query(50, ge=1, le=200, description="返回数量限制"),
     current_user_id: Optional[int] = Depends(get_current_user_optional),
@@ -454,7 +454,7 @@ async def get_posts_by_brand_name(
 
 
 @router.get("/community/{community_id}")
-async def get_posts_by_community_id(
+def get_posts_by_community_id(
     community_id: int, current_user_id: Optional[int] = Depends(get_current_user_optional)
 ):
     """获取某个社区的帖子"""
@@ -466,7 +466,7 @@ async def get_posts_by_community_id(
 
 
 @router.get("/store/{store_id}")
-async def get_posts_by_store_id(
+def get_posts_by_store_id(
     store_id: str,
     limit: int = Query(50, ge=1, le=200, description="返回数量限制"),
     includeUnpublished: bool = Query(
@@ -502,7 +502,7 @@ async def get_posts_by_store_id(
 
 
 @router.get("/forum/all")
-async def get_forum_posts(
+def get_forum_posts(
     limit: int = Query(50, ge=1, le=200, description="返回数量限制"),
     current_user_id: Optional[int] = Depends(get_current_user_optional),
 ):

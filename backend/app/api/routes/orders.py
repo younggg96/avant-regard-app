@@ -59,7 +59,7 @@ admin_orders_router = APIRouter(prefix="/admin/orders", tags=["交易系统 / �
 
 
 @orders_router.post("/buy-now")
-async def buy_now(body: BuyNowRequest, user_id: int = Depends(get_current_user)):
+def buy_now(body: BuyNowRequest, user_id: int = Depends(get_current_user)):
     try:
         order, hold = order_service.create_order_from_listing(
             product_id=body.productId,
@@ -72,7 +72,7 @@ async def buy_now(body: BuyNowRequest, user_id: int = Depends(get_current_user))
 
 
 @orders_router.post("/{order_id}/pay-mock")
-async def pay_mock(order_id: int, user_id: int = Depends(get_current_user)):
+def pay_mock(order_id: int, user_id: int = Depends(get_current_user)):
     """开发用:绕过真实通道直接将订单置为 paid。
     生产环境(`DEBUG=False`)一律 404,避免被人当作免费付款入口。
     真实付款由 Stripe / 支付宝 / 微信 webhook → handle_payment_event 推进。"""
@@ -95,7 +95,7 @@ async def pay_mock(order_id: int, user_id: int = Depends(get_current_user)):
 
 
 @orders_router.post("/{order_id}/shipping-address")
-async def set_shipping_address(
+def set_shipping_address(
     order_id: int,
     body: ShippingAddressUpdate,
     user_id: int = Depends(get_current_user),
@@ -128,7 +128,7 @@ _PROVIDER_DISPLAY = {
 
 
 @orders_router.get("/{order_id}/payment-options")
-async def list_payment_options(
+def list_payment_options(
     order_id: int, user_id: int = Depends(get_current_user)
 ):
     """返回当前订单可用的支付方式，PaymentScreen 展示用。"""
@@ -153,7 +153,7 @@ async def list_payment_options(
 
 
 @orders_router.post("/{order_id}/pay")
-async def start_payment(
+def start_payment(
     order_id: int,
     body: PaymentStartRequest,
     user_id: int = Depends(get_current_user),
@@ -172,7 +172,7 @@ async def start_payment(
 
 
 @orders_router.post("/{order_id}/pay/confirm")
-async def confirm_payment(order_id: int, user_id: int = Depends(get_current_user)):
+def confirm_payment(order_id: int, user_id: int = Depends(get_current_user)):
     """前端 SDK 收到 success 回执后调用：触发后端走 provider.confirm，
     成功则将订单推到 paid。生产环境也应让 webhook 调同样的 service 方法。"""
     try:
@@ -185,7 +185,7 @@ async def confirm_payment(order_id: int, user_id: int = Depends(get_current_user
 
 
 @orders_router.post("/{order_id}/ship")
-async def ship_order(
+def ship_order(
     order_id: int, body: ShipmentCreate, user_id: int = Depends(get_current_user)
 ):
     order = order_service.get_order(order_id)
@@ -208,7 +208,7 @@ async def ship_order(
 
 
 @orders_router.get("/{order_id}/shipment")
-async def get_order_shipment(
+def get_order_shipment(
     order_id: int, user_id: int = Depends(get_current_user)
 ):
     """查询订单的物流凭证（买卖双方都可读）。无凭证时返回 null。"""
@@ -227,7 +227,7 @@ async def get_order_shipment(
 
 
 @orders_router.get("/{order_id}/tracking-events")
-async def list_tracking_events(
+def list_tracking_events(
     order_id: int, user_id: int = Depends(get_current_user)
 ):
     """订单详情时间轴拉数据。仅买卖双方可读。"""
@@ -246,7 +246,7 @@ async def list_tracking_events(
 
 
 @orders_router.post("/{order_id}/sign")
-async def buyer_sign(order_id: int, user_id: int = Depends(get_current_user)):
+def buyer_sign(order_id: int, user_id: int = Depends(get_current_user)):
     """买家主动确认签收 (shipped → delivered)。
 
     上线对接快递回调后此入口仍保留作为兜底，
@@ -262,7 +262,7 @@ async def buyer_sign(order_id: int, user_id: int = Depends(get_current_user)):
 
 
 @orders_router.post("/{order_id}/deliver")
-async def mark_delivered(order_id: int, _admin=Depends(get_current_admin_user)):
+def mark_delivered(order_id: int, _admin=Depends(get_current_admin_user)):
     """物流签收。MVP 阶段由 admin 标记；上线后接快递回调。"""
     try:
         updated = order_service.transition_status(
@@ -274,7 +274,7 @@ async def mark_delivered(order_id: int, _admin=Depends(get_current_admin_user)):
 
 
 @orders_router.post("/{order_id}/confirm")
-async def buyer_confirm(order_id: int, user_id: int = Depends(get_current_user)):
+def buyer_confirm(order_id: int, user_id: int = Depends(get_current_user)):
     """买家确认收货 → completed。
 
     与单纯的状态机推进相比，本接口额外返回结算明细
@@ -305,7 +305,7 @@ async def buyer_confirm(order_id: int, user_id: int = Depends(get_current_user))
 
 
 @orders_router.post("/{order_id}/inspection")
-async def submit_inspection(
+def submit_inspection(
     order_id: int, body: InspectionSubmit, user_id: int = Depends(get_current_user)
 ):
     order = order_service.get_order(order_id)
@@ -365,7 +365,7 @@ def _enrich_orders_with_product(orders) -> list:
 
 
 @orders_router.get("/me")
-async def list_my_orders(
+def list_my_orders(
     status: Optional[str] = None,
     page: int = 1,
     pageSize: int = 20,
@@ -383,7 +383,7 @@ async def list_my_orders(
 
 
 @orders_router.get("/me/summary")
-async def my_orders_summary(user_id: int = Depends(get_current_user)):
+def my_orders_summary(user_id: int = Depends(get_current_user)):
     """买家「我的购物」首页顶部状态卡片用。
 
     返回当前用户作为买家在每个 ``OrderStatus`` 下的订单数量，
@@ -396,7 +396,7 @@ async def my_orders_summary(user_id: int = Depends(get_current_user)):
 
 
 @orders_router.get("/me/sales/summary")
-async def my_sales_summary(user_id: int = Depends(get_current_user)):
+def my_sales_summary(user_id: int = Depends(get_current_user)):
     """卖家中心首页顶部状态卡片用。
 
     把「个人卖家身份 + 关联买手店身份」两边的订单数量合并返回，
@@ -415,7 +415,7 @@ async def my_sales_summary(user_id: int = Depends(get_current_user)):
 
 
 @orders_router.get("/me/sales")
-async def list_my_sales(
+def list_my_sales(
     status: Optional[str] = None,
     page: int = 1,
     pageSize: int = 20,
@@ -448,7 +448,7 @@ async def list_my_sales(
 
 
 @orders_router.get("/with/{counterpart_user_id}")
-async def list_orders_with_user(
+def list_orders_with_user(
     counterpart_user_id: int,
     user_id: int = Depends(get_current_user),
 ):
@@ -462,7 +462,7 @@ async def list_orders_with_user(
 
 
 @orders_router.get("/{order_id}")
-async def get_order_detail(order_id: int, user_id: int = Depends(get_current_user)):
+def get_order_detail(order_id: int, user_id: int = Depends(get_current_user)):
     order = order_service.get_order(order_id)
     if not order:
         raise HTTPException(status_code=404, detail="订单不存在")
@@ -481,7 +481,7 @@ async def get_order_detail(order_id: int, user_id: int = Depends(get_current_use
 
 
 @offers_router.post("")
-async def create_offer(body: OfferCreate, user_id: int = Depends(get_current_user)):
+def create_offer(body: OfferCreate, user_id: int = Depends(get_current_user)):
     try:
         offer = offer_service.create(
             product_id=body.productId,
@@ -495,7 +495,7 @@ async def create_offer(body: OfferCreate, user_id: int = Depends(get_current_use
 
 
 @offers_router.post("/{offer_id}/accept")
-async def accept_offer(offer_id: int, user_id: int = Depends(get_current_user)):
+def accept_offer(offer_id: int, user_id: int = Depends(get_current_user)):
     try:
         order, hold, offer = offer_service.accept(offer_id, user_id)
     except PermissionError as e:
@@ -506,7 +506,7 @@ async def accept_offer(offer_id: int, user_id: int = Depends(get_current_user)):
 
 
 @offers_router.post("/{offer_id}/reject")
-async def reject_offer(offer_id: int, user_id: int = Depends(get_current_user)):
+def reject_offer(offer_id: int, user_id: int = Depends(get_current_user)):
     try:
         offer = offer_service.reject(offer_id, user_id)
     except PermissionError as e:
@@ -517,7 +517,7 @@ async def reject_offer(offer_id: int, user_id: int = Depends(get_current_user)):
 
 
 @offers_router.post("/{offer_id}/counter")
-async def counter_offer(
+def counter_offer(
     offer_id: int, body: OfferCounter, user_id: int = Depends(get_current_user)
 ):
     try:
@@ -535,7 +535,7 @@ async def counter_offer(
 
 
 @offers_router.post("/{offer_id}/withdraw")
-async def withdraw_offer(offer_id: int, user_id: int = Depends(get_current_user)):
+def withdraw_offer(offer_id: int, user_id: int = Depends(get_current_user)):
     try:
         offer = offer_service.withdraw(offer_id, user_id)
     except PermissionError as e:
@@ -546,7 +546,7 @@ async def withdraw_offer(offer_id: int, user_id: int = Depends(get_current_user)
 
 
 @offers_router.get("/me")
-async def list_my_offers(
+def list_my_offers(
     status: Optional[str] = None,
     page: int = 1,
     pageSize: int = 20,
@@ -559,7 +559,7 @@ async def list_my_offers(
 
 
 @offers_router.get("/product/{product_id}")
-async def list_product_offers(
+def list_product_offers(
     product_id: int, user_id: int = Depends(get_current_user)
 ):
     """买家在商品详情页查看自己与该商品的整条议价记录。
@@ -572,7 +572,7 @@ async def list_product_offers(
 
 
 @offers_router.get("/me/incoming")
-async def list_incoming_offers(
+def list_incoming_offers(
     status: Optional[str] = None,
     page: int = 1,
     pageSize: int = 20,
@@ -588,7 +588,7 @@ async def list_incoming_offers(
 
 
 @admin_orders_router.get("")
-async def admin_list_orders(
+def admin_list_orders(
     page: int = Query(1, ge=1),
     pageSize: int = Query(20, ge=1, le=100),
     status: Optional[str] = Query(None, description="订单状态精确匹配"),
@@ -612,7 +612,7 @@ async def admin_list_orders(
 
 
 @admin_orders_router.get("/stats")
-async def admin_orders_stats(
+def admin_orders_stats(
     days: int = Query(30, ge=0, le=365, description="0 表示全量"),
     _admin=Depends(get_current_admin_user),
 ):
@@ -621,7 +621,7 @@ async def admin_orders_stats(
 
 
 @admin_orders_router.get("/{order_id}/detail")
-async def admin_order_detail(
+def admin_order_detail(
     order_id: int,
     _admin=Depends(get_current_admin_user),
 ):
@@ -636,7 +636,7 @@ async def admin_order_detail(
 
 
 @admin_orders_router.post("/scheduler/run")
-async def run_scheduler(_admin=Depends(get_current_admin_user)):
+def run_scheduler(_admin=Depends(get_current_admin_user)):
     """单次执行所有 cron 任务。
 
     生产环境主入口已经是 lifespan 内的 AsyncIOScheduler(参见
@@ -670,7 +670,7 @@ class AdminRefundRequest(BaseModel):
 
 
 @admin_orders_router.post("/{order_id}/refund")
-async def admin_refund_order(
+def admin_refund_order(
     order_id: int,
     body: AdminRefundRequest,
     admin_user_id: int = Depends(get_current_admin_user),
@@ -700,7 +700,7 @@ async def admin_refund_order(
 
 
 @admin_orders_router.post("/{order_id}/tracking-events")
-async def admin_inject_tracking_event(
+def admin_inject_tracking_event(
     order_id: int,
     payload: TrackingEventCreate,
     _admin=Depends(get_current_admin_user),

@@ -64,14 +64,14 @@ def _resolve_merchant_by_product(product_id: int, user_id: int):
 
 
 @router.get("/store/{store_id}/profile-config")
-async def get_profile_config(store_id: str):
+def get_profile_config(store_id: str):
     """公开：获取店铺主页卡片的可配置数据。未配置时返回 null，前端走 Mock 兜底。"""
     config = store_profile_service.get_profile_config(store_id)
     return success(config.model_dump() if config else None)
 
 
 @router.put("/{merchant_id}/profile-config")
-async def upsert_profile_config(
+def upsert_profile_config(
     merchant_id: int,
     data: StoreProfileConfigUpsert,
     current_user_id: int = Depends(get_current_user),
@@ -93,14 +93,14 @@ async def upsert_profile_config(
 
 
 @router.get("/store/{store_id}/entry-cards")
-async def list_entry_cards_public(store_id: str):
+def list_entry_cards_public(store_id: str):
     """公开：列出 PUBLISHED 的入口卡片（按 sort_order）。"""
     cards = store_profile_service.list_entry_cards(store_id)
     return success({"cards": [c.model_dump() for c in cards], "total": len(cards)})
 
 
 @router.get("/{merchant_id}/entry-cards")
-async def list_entry_cards_for_merchant(
+def list_entry_cards_for_merchant(
     merchant_id: int,
     current_user_id: int = Depends(get_current_user),
 ):
@@ -111,7 +111,7 @@ async def list_entry_cards_for_merchant(
 
 
 @router.post("/{merchant_id}/entry-cards")
-async def create_entry_card(
+def create_entry_card(
     merchant_id: int,
     data: StoreEntryCardCreate,
     current_user_id: int = Depends(get_current_user),
@@ -125,7 +125,7 @@ async def create_entry_card(
 
 
 @router.put("/entry-cards/{card_id}")
-async def update_entry_card(
+def update_entry_card(
     card_id: int,
     data: StoreEntryCardUpdate,
     current_user_id: int = Depends(get_current_user),
@@ -141,7 +141,7 @@ async def update_entry_card(
 
 
 @router.delete("/entry-cards/{card_id}")
-async def delete_entry_card(
+def delete_entry_card(
     card_id: int,
     current_user_id: int = Depends(get_current_user),
 ):
@@ -159,7 +159,7 @@ async def delete_entry_card(
 
 
 @router.get("/store/{store_id}/product-categories")
-async def list_categories_public(
+def list_categories_public(
     store_id: str,
     withCount: bool = Query(False, description="是否回填 productCount"),
 ):
@@ -171,7 +171,7 @@ async def list_categories_public(
 
 
 @router.post("/{merchant_id}/product-categories")
-async def create_category(
+def create_category(
     merchant_id: int,
     data: StoreProductCategoryCreate,
     current_user_id: int = Depends(get_current_user),
@@ -190,7 +190,7 @@ async def create_category(
 
 
 @router.put("/product-categories/{category_id}")
-async def update_category(
+def update_category(
     category_id: int,
     data: StoreProductCategoryUpdate,
     current_user_id: int = Depends(get_current_user),
@@ -206,7 +206,7 @@ async def update_category(
 
 
 @router.delete("/product-categories/{category_id}")
-async def delete_category(
+def delete_category(
     category_id: int,
     current_user_id: int = Depends(get_current_user),
 ):
@@ -224,7 +224,7 @@ async def delete_category(
 
 
 @router.post("/{merchant_id}/products")
-async def create_product(
+def create_product(
     merchant_id: int,
     data: StoreProductCreate,
     current_user_id: int = Depends(get_current_user),
@@ -238,7 +238,7 @@ async def create_product(
 
 
 @router.put("/products/{product_id}")
-async def update_product(
+def update_product(
     product_id: int,
     data: StoreProductUpdate,
     current_user_id: int = Depends(get_current_user),
@@ -252,7 +252,7 @@ async def update_product(
 
 
 @router.delete("/products/{product_id}")
-async def delete_product(
+def delete_product(
     product_id: int,
     current_user_id: int = Depends(get_current_user),
 ):
@@ -263,7 +263,7 @@ async def delete_product(
 
 
 @router.get("/products/search")
-async def search_products_global(
+def search_products_global(
     q: str = Query(..., min_length=1, description="搜索关键词"),
     page: int = Query(1, ge=1),
     pageSize: int = Query(20, ge=1, le=100),
@@ -285,7 +285,7 @@ async def search_products_global(
 
 
 @router.get("/products/{product_id}")
-async def get_product_detail(
+def get_product_detail(
     product_id: int,
     current_user_id: Optional[int] = Depends(get_current_user_optional),
 ):
@@ -296,7 +296,7 @@ async def get_product_detail(
 
 
 @router.get("/products/{product_id}/rich-detail")
-async def get_product_rich_detail(
+def get_product_rich_detail(
     product_id: int,
     current_user_id: Optional[int] = Depends(get_current_user_optional),
 ):
@@ -311,7 +311,7 @@ async def get_product_rich_detail(
 
 
 @router.get("/store/{store_id}/products")
-async def list_store_products(
+def list_store_products(
     store_id: str,
     categoryId: Optional[int] = Query(None, description="分类 ID"),
     isNew: Optional[bool] = Query(None, description="仅查看新品"),
@@ -340,7 +340,7 @@ async def list_store_products(
 
 
 @router.get("/{merchant_id}/products")
-async def list_merchant_products(
+def list_merchant_products(
     merchant_id: int,
     status: Optional[str] = Query(None, description="筛选状态；不传则返回全部"),
     categoryId: Optional[int] = Query(None),
@@ -371,7 +371,7 @@ async def list_merchant_products(
 
 
 @router.post("/products/{product_id}/like")
-async def like_product(
+def like_product(
     product_id: int,
     current_user_id: int = Depends(get_current_user),
 ):
@@ -380,7 +380,7 @@ async def like_product(
 
 
 @router.delete("/products/{product_id}/like")
-async def unlike_product(
+def unlike_product(
     product_id: int,
     current_user_id: int = Depends(get_current_user),
 ):
@@ -389,7 +389,7 @@ async def unlike_product(
 
 
 @router.get("/products/{product_id}/like/check")
-async def check_product_like(
+def check_product_like(
     product_id: int,
     current_user_id: int = Depends(get_current_user),
 ):
@@ -398,7 +398,7 @@ async def check_product_like(
 
 
 @router.get("/user/liked-products")
-async def list_my_liked_products(
+def list_my_liked_products(
     page: int = Query(1, ge=1),
     pageSize: int = Query(20, ge=1, le=100),
     current_user_id: int = Depends(get_current_user),
@@ -426,7 +426,7 @@ async def list_my_liked_products(
 
 
 @router.post("/products/{product_id}/favorite")
-async def favorite_product(
+def favorite_product(
     product_id: int,
     current_user_id: int = Depends(get_current_user),
 ):
@@ -444,7 +444,7 @@ async def favorite_product(
 
 
 @router.delete("/products/{product_id}/favorite")
-async def unfavorite_product(
+def unfavorite_product(
     product_id: int,
     current_user_id: int = Depends(get_current_user),
 ):
@@ -453,7 +453,7 @@ async def unfavorite_product(
 
 
 @router.get("/products/{product_id}/favorite/check")
-async def check_product_favorited(
+def check_product_favorited(
     product_id: int,
     current_user_id: int = Depends(get_current_user),
 ):
@@ -464,7 +464,7 @@ async def check_product_favorited(
 
 
 @router.get("/user/favorited-products")
-async def list_my_favorited_products(
+def list_my_favorited_products(
     page: int = Query(1, ge=1),
     pageSize: int = Query(20, ge=1, le=100),
     collectionId: Optional[int] = Query(
@@ -501,7 +501,7 @@ async def list_my_favorited_products(
 
 
 @router.post("/products/{product_id}/view-history")
-async def record_browsing_history(
+def record_browsing_history(
     product_id: int,
     current_user_id: int = Depends(get_current_user),
 ):
@@ -510,7 +510,7 @@ async def record_browsing_history(
 
 
 @router.get("/user/browsing-history")
-async def list_my_browsing_history(
+def list_my_browsing_history(
     page: int = Query(1, ge=1),
     pageSize: int = Query(20, ge=1, le=100),
     current_user_id: int = Depends(get_current_user),
@@ -529,7 +529,7 @@ async def list_my_browsing_history(
 
 
 @router.delete("/products/{product_id}/view-history")
-async def remove_browsing_history_item(
+def remove_browsing_history_item(
     product_id: int,
     current_user_id: int = Depends(get_current_user),
 ):
@@ -538,7 +538,7 @@ async def remove_browsing_history_item(
 
 
 @router.delete("/user/browsing-history")
-async def clear_my_browsing_history(
+def clear_my_browsing_history(
     current_user_id: int = Depends(get_current_user),
 ):
     deleted = store_product_service.clear_browsing_history(current_user_id)
@@ -557,7 +557,7 @@ async def clear_my_browsing_history(
 
 
 @router.post("/products/{product_id}/want")
-async def want_product(
+def want_product(
     product_id: int,
     current_user_id: int = Depends(get_current_user),
 ):
@@ -575,7 +575,7 @@ async def want_product(
 
 
 @router.delete("/products/{product_id}/want")
-async def unwant_product(
+def unwant_product(
     product_id: int,
     current_user_id: int = Depends(get_current_user),
 ):
@@ -584,7 +584,7 @@ async def unwant_product(
 
 
 @router.get("/products/{product_id}/want/check")
-async def check_product_wanted(
+def check_product_wanted(
     product_id: int,
     current_user_id: int = Depends(get_current_user),
 ):
@@ -593,7 +593,7 @@ async def check_product_wanted(
 
 
 @router.get("/user/wanted-products")
-async def list_my_wanted_products(
+def list_my_wanted_products(
     page: int = Query(1, ge=1),
     pageSize: int = Query(20, ge=1, le=100),
     current_user_id: int = Depends(get_current_user),
@@ -615,7 +615,7 @@ async def list_my_wanted_products(
 
 
 @router.get("/products/{product_id}/comments")
-async def list_product_comments(
+def list_product_comments(
     product_id: int,
     page: int = Query(1, ge=1),
     pageSize: int = Query(20, ge=1, le=100),
@@ -633,7 +633,7 @@ async def list_product_comments(
 
 
 @router.post("/products/{product_id}/comments")
-async def create_product_comment(
+def create_product_comment(
     product_id: int,
     data: ProductCommentCreate,
     current_user_id: int = Depends(get_current_user),
@@ -646,7 +646,7 @@ async def create_product_comment(
 
 
 @router.delete("/product-comments/{comment_id}")
-async def delete_product_comment(
+def delete_product_comment(
     comment_id: int,
     current_user_id: int = Depends(get_current_user),
 ):
@@ -656,13 +656,13 @@ async def delete_product_comment(
 
 
 @router.get("/product-comments/{comment_id}/replies")
-async def list_product_comment_replies(comment_id: int):
+def list_product_comment_replies(comment_id: int):
     replies = store_product_service.list_comment_replies(comment_id)
     return success({"replies": [r.model_dump() for r in replies]})
 
 
 @router.post("/product-comments/{comment_id}/like")
-async def like_product_comment(
+def like_product_comment(
     comment_id: int,
     current_user_id: int = Depends(get_current_user),
 ):
@@ -671,7 +671,7 @@ async def like_product_comment(
 
 
 @router.delete("/product-comments/{comment_id}/like")
-async def unlike_product_comment(
+def unlike_product_comment(
     comment_id: int,
     current_user_id: int = Depends(get_current_user),
 ):

@@ -78,7 +78,10 @@ async def upload_image(
         raise HTTPException(status_code=400, detail="图片大小不能超过10MB")
 
     print(f"Uploading image: {len(content)} bytes, type: {content_type}")
-    url = file_service.upload_image(content, file.filename, content_type)
+    # 同步 HTTP 上传放线程池，避免阻塞事件循环
+    url = await asyncio.to_thread(
+        file_service.upload_image, content, file.filename, content_type
+    )
 
     if not url:
         raise HTTPException(status_code=500, detail="图片上传失败")
@@ -103,7 +106,9 @@ async def upload_video(
         raise HTTPException(status_code=400, detail="视频大小不能超过100MB")
 
     print(f"Uploading video: {len(content)} bytes, type: {content_type}")
-    url = file_service.upload_video(content, file.filename, content_type)
+    url = await asyncio.to_thread(
+        file_service.upload_video, content, file.filename, content_type
+    )
 
     if not url:
         raise HTTPException(status_code=500, detail="视频上传失败")

@@ -34,7 +34,7 @@ router = APIRouter(prefix="/store-merchants", tags=["商家入驻"])
 
 
 @router.post("/apply")
-async def apply_merchant(
+def apply_merchant(
     data: StoreMerchantCreate,
     current_user_id: int = Depends(get_current_user),
 ):
@@ -47,7 +47,7 @@ async def apply_merchant(
 
 
 @router.get("/my")
-async def get_my_merchants(
+def get_my_merchants(
     page: int = Query(1, ge=1),
     pageSize: int = Query(20, ge=1, le=100),
     current_user_id: int = Depends(get_current_user),
@@ -65,7 +65,7 @@ async def get_my_merchants(
 
 
 @router.get("/by-store/{store_id}")
-async def get_merchant_by_store(store_id: str):
+def get_merchant_by_store(store_id: str):
     """通过店铺ID获取商家信息"""
     merchant = store_merchant_service.get_merchant_by_store(store_id)
     if merchant:
@@ -74,7 +74,7 @@ async def get_merchant_by_store(store_id: str):
 
 
 @router.put("/{merchant_id}")
-async def update_merchant(
+def update_merchant(
     merchant_id: int,
     data: StoreMerchantUpdate,
     current_user_id: int = Depends(get_current_user),
@@ -90,7 +90,7 @@ async def update_merchant(
 
 
 @router.get("/pending")
-async def get_pending_merchants(
+def get_pending_merchants(
     page: int = Query(1, ge=1),
     pageSize: int = Query(20, ge=1, le=100),
     current_user_id: int = Depends(get_current_admin_user),
@@ -106,7 +106,7 @@ async def get_pending_merchants(
 
 
 @router.put("/{merchant_id}/review")
-async def review_merchant(
+def review_merchant(
     merchant_id: int,
     data: StoreMerchantReview,
     current_user_id: int = Depends(get_current_admin_user),
@@ -164,7 +164,7 @@ async def review_merchant(
 
 
 @router.get("/all")
-async def get_all_merchants(
+def get_all_merchants(
     status: Optional[str] = Query(None, description="商家状态筛选"),
     page: int = Query(1, ge=1),
     pageSize: int = Query(20, ge=1, le=100),
@@ -181,7 +181,7 @@ async def get_all_merchants(
 
 
 @router.put("/{merchant_id}/admin-update")
-async def admin_update_merchant(
+def admin_update_merchant(
     merchant_id: int,
     data: StoreMerchantAdminUpdate,
     current_user_id: int = Depends(get_current_admin_user),
@@ -200,7 +200,7 @@ async def admin_update_merchant(
 
 
 @router.post("/{merchant_id}/announcements")
-async def create_announcement(
+def create_announcement(
     merchant_id: int,
     data: StoreAnnouncementCreate,
     current_user_id: int = Depends(get_current_user),
@@ -225,7 +225,7 @@ async def create_announcement(
 
 
 @router.put("/announcements/{announcement_id}")
-async def update_announcement(
+def update_announcement(
     announcement_id: int,
     data: StoreAnnouncementUpdate,
     current_user_id: int = Depends(get_current_user),
@@ -246,7 +246,7 @@ async def update_announcement(
 
 
 @router.delete("/announcements/{announcement_id}")
-async def delete_announcement(
+def delete_announcement(
     announcement_id: int,
     current_user_id: int = Depends(get_current_user),
 ):
@@ -261,7 +261,7 @@ async def delete_announcement(
 
 
 @router.get("/{merchant_id}/announcements")
-async def get_merchant_announcements(
+def get_merchant_announcements(
     merchant_id: int,
     page: int = Query(1, ge=1),
     pageSize: int = Query(20, ge=1, le=100),
@@ -288,7 +288,7 @@ async def get_merchant_announcements(
 
 
 @router.post("/{merchant_id}/banners")
-async def create_banner(
+def create_banner(
     merchant_id: int,
     data: StoreBannerCreate,
     current_user_id: int = Depends(get_current_user),
@@ -312,7 +312,7 @@ async def create_banner(
 
 
 @router.put("/banners/{banner_id}")
-async def update_banner(
+def update_banner(
     banner_id: int,
     data: StoreBannerUpdate,
     current_user_id: int = Depends(get_current_user),
@@ -330,7 +330,7 @@ async def update_banner(
 
 
 @router.delete("/banners/{banner_id}")
-async def delete_banner(
+def delete_banner(
     banner_id: int,
     current_user_id: int = Depends(get_current_user),
 ):
@@ -345,7 +345,7 @@ async def delete_banner(
 
 
 @router.get("/{merchant_id}/banners")
-async def get_merchant_banners(
+def get_merchant_banners(
     merchant_id: int,
     page: int = Query(1, ge=1),
     pageSize: int = Query(20, ge=1, le=100),
@@ -368,7 +368,7 @@ async def get_merchant_banners(
 
 
 @router.post("/banners/{banner_id}/click")
-async def record_banner_click(banner_id: int):
+def record_banner_click(banner_id: int):
     """记录 Banner 点击（fire-and-forget，失败不影响用户体验）"""
     try:
         store_merchant_service.increment_banner_click(banner_id)
@@ -381,7 +381,7 @@ async def record_banner_click(banner_id: int):
 
 
 @router.post("/{merchant_id}/activities")
-async def create_activity(
+def create_activity(
     merchant_id: int,
     data: StoreActivityCreate,
     current_user_id: int = Depends(get_current_user),
@@ -405,7 +405,7 @@ async def create_activity(
 
 
 @router.put("/activities/{activity_id}")
-async def update_activity(
+def update_activity(
     activity_id: int,
     data: StoreActivityUpdate,
     current_user_id: int = Depends(get_current_user),
@@ -425,7 +425,7 @@ async def update_activity(
 
 
 @router.delete("/activities/{activity_id}")
-async def delete_activity(
+def delete_activity(
     activity_id: int,
     current_user_id: int = Depends(get_current_user),
 ):
@@ -440,7 +440,7 @@ async def delete_activity(
 
 
 @router.get("/{merchant_id}/activities")
-async def get_merchant_activities(
+def get_merchant_activities(
     merchant_id: int,
     page: int = Query(1, ge=1),
     pageSize: int = Query(20, ge=1, le=100),
@@ -463,7 +463,7 @@ async def get_merchant_activities(
 
 
 @router.get("/activities/{activity_id}")
-async def get_activity_detail(activity_id: int):
+def get_activity_detail(activity_id: int):
     """获取活动详情"""
     activity = store_merchant_service.get_activity_by_id(activity_id)
     if not activity:
@@ -472,7 +472,7 @@ async def get_activity_detail(activity_id: int):
 
 
 @router.post("/activities/{activity_id}/register")
-async def register_activity(
+def register_activity(
     activity_id: int,
     data: ActivityRegistrationCreate,
     current_user_id: int = Depends(get_current_user),
@@ -488,7 +488,7 @@ async def register_activity(
 
 
 @router.delete("/activities/{activity_id}/register")
-async def cancel_activity_registration(
+def cancel_activity_registration(
     activity_id: int,
     current_user_id: int = Depends(get_current_user),
 ):
@@ -499,7 +499,7 @@ async def cancel_activity_registration(
 
 
 @router.get("/activities/{activity_id}/registrations")
-async def get_activity_registrations(
+def get_activity_registrations(
     activity_id: int,
     page: int = Query(1, ge=1),
     pageSize: int = Query(20, ge=1, le=100),
@@ -527,7 +527,7 @@ async def get_activity_registrations(
 
 
 @router.get("/activities/{activity_id}/check-registration")
-async def check_activity_registration(
+def check_activity_registration(
     activity_id: int,
     current_user_id: int = Depends(get_current_user),
 ):
@@ -542,7 +542,7 @@ async def check_activity_registration(
 
 
 @router.post("/{merchant_id}/discounts")
-async def create_discount(
+def create_discount(
     merchant_id: int,
     data: StoreDiscountCreate,
     current_user_id: int = Depends(get_current_user),
@@ -566,7 +566,7 @@ async def create_discount(
 
 
 @router.put("/discounts/{discount_id}")
-async def update_discount(
+def update_discount(
     discount_id: int,
     data: StoreDiscountUpdate,
     current_user_id: int = Depends(get_current_user),
@@ -586,7 +586,7 @@ async def update_discount(
 
 
 @router.delete("/discounts/{discount_id}")
-async def delete_discount(
+def delete_discount(
     discount_id: int,
     current_user_id: int = Depends(get_current_user),
 ):
@@ -601,7 +601,7 @@ async def delete_discount(
 
 
 @router.get("/{merchant_id}/discounts")
-async def get_merchant_discounts(
+def get_merchant_discounts(
     merchant_id: int,
     page: int = Query(1, ge=1),
     pageSize: int = Query(20, ge=1, le=100),
@@ -645,7 +645,7 @@ def _ensure_merchant_owner(merchant_id: int, current_user_id: int):
 
 
 @router.get("/{merchant_id}/insights/overview")
-async def get_merchant_insights_overview(
+def get_merchant_insights_overview(
     merchant_id: int,
     current_user_id: int = Depends(get_current_user),
 ):
@@ -655,7 +655,7 @@ async def get_merchant_insights_overview(
 
 
 @router.get("/{merchant_id}/insights/fans")
-async def get_merchant_insights_fans(
+def get_merchant_insights_fans(
     merchant_id: int,
     current_user_id: int = Depends(get_current_user),
 ):
@@ -665,7 +665,7 @@ async def get_merchant_insights_fans(
 
 
 @router.get("/{merchant_id}/insights/promotion")
-async def get_merchant_insights_promotion(
+def get_merchant_insights_promotion(
     merchant_id: int,
     current_user_id: int = Depends(get_current_user),
 ):
@@ -675,7 +675,7 @@ async def get_merchant_insights_promotion(
 
 
 @router.get("/{merchant_id}/insights/visit-comments")
-async def get_merchant_visit_comments(
+def get_merchant_visit_comments(
     merchant_id: int,
     page: int = Query(1, ge=1),
     pageSize: int = Query(20, ge=1, le=100),
@@ -697,7 +697,7 @@ async def get_merchant_visit_comments(
 
 
 @router.get("/{merchant_id}/insights/brand-stats")
-async def get_merchant_brand_stats(
+def get_merchant_brand_stats(
     merchant_id: int,
     window: int = Query(
         7,
@@ -721,7 +721,7 @@ async def get_merchant_brand_stats(
 
 
 @router.get("/{merchant_id}/insights/top-products")
-async def get_merchant_top_products(
+def get_merchant_top_products(
     merchant_id: int,
     limit: int = Query(10, ge=1, le=50),
     current_user_id: int = Depends(get_current_user),
@@ -736,14 +736,14 @@ async def get_merchant_top_products(
 
 
 @router.get("/store/{store_id}/content")
-async def get_store_merchant_content(store_id: str):
+def get_store_merchant_content(store_id: str):
     """获取店铺的所有商家发布内容（公开接口）"""
     content = store_merchant_service.get_store_merchant_content(store_id)
     return success(content.model_dump())
 
 
 @router.get("/store/{store_id}/banners")
-async def get_store_banners(store_id: str):
+def get_store_banners(store_id: str):
     """获取店铺的 Banner 列表（公开接口）"""
     banners = store_merchant_service.get_store_banners(store_id)
     return success({
@@ -753,7 +753,7 @@ async def get_store_banners(store_id: str):
 
 
 @router.get("/store/{store_id}/announcements")
-async def get_store_announcements(store_id: str):
+def get_store_announcements(store_id: str):
     """获取店铺的公告列表（公开接口）"""
     announcements = store_merchant_service.get_store_announcements(store_id)
     return success({
@@ -763,7 +763,7 @@ async def get_store_announcements(store_id: str):
 
 
 @router.get("/store/{store_id}/activities")
-async def get_store_activities(
+def get_store_activities(
     store_id: str,
     includeEnded: bool = Query(False, description="是否包含已结束的活动"),
 ):
@@ -778,7 +778,7 @@ async def get_store_activities(
 
 
 @router.get("/store/{store_id}/discounts")
-async def get_store_discounts(
+def get_store_discounts(
     store_id: str,
     includeEnded: bool = Query(False, description="是否包含已结束的折扣"),
 ):
@@ -796,7 +796,7 @@ async def get_store_discounts(
 
 
 @router.get("/buyer-store/{store_id}")
-async def get_buyer_store(store_id: str):
+def get_buyer_store(store_id: str):
     """获取店铺详情"""
     store = store_merchant_service.get_buyer_store(store_id)
     if not store:
@@ -805,7 +805,7 @@ async def get_buyer_store(store_id: str):
 
 
 @router.put("/buyer-store/{store_id}")
-async def update_buyer_store(
+def update_buyer_store(
     store_id: str,
     data: BuyerStoreUpdate,
     current_user_id: int = Depends(get_current_user),

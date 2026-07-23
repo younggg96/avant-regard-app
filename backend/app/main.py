@@ -1,8 +1,10 @@
 """
 Avant Regard API - FastAPI 应用入口
 """
+import asyncio
 import sys
 print(f"[BOOT] Python {sys.version}, loading app...", flush=True)
+import anyio.to_thread
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
@@ -98,7 +100,12 @@ async def lifespan(app: FastAPI):
     """应用生命周期管理"""
     # 启动时执行
     print("🚀 Avant Regard API starting...")
-    
+
+    # 同步路由（def 处理函数）全部跑在 anyio 线程池里，默认容量 40。
+    # 数据库往返占大头（I/O 等待、不吃 CPU），提高到 100 避免高峰期
+    # 线程池先于数据库成为瓶颈。
+    anyio.to_thread.current_default_thread_limiter().total_tokens = 100
+
     # 连接 Redis
     cache_service.connect()
 
@@ -172,7 +179,9 @@ async def maintenance_mode_middleware(request: Request, call_next):
     if path == "/" or any(path.startswith(p) for p in _MAINTENANCE_ALLOWLIST_PREFIXES):
         return await call_next(request)
 
-    config = maintenance_service.get_config()
+    # get_config 内部有 5s 内存缓存，但缓存过期时会同步查库——放线程池，
+    # 避免那一次查询把事件循环上所有并发请求卡住。
+    config = await asyncio.to_thread(maintenance_service.get_config)
     if config.get("enabled"):
         return JSONResponse(
             status_code=503,
