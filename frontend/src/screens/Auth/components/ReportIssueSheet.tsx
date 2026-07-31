@@ -26,7 +26,7 @@ import {
   AuthIssueType,
   AuthContactType,
 } from "../../../services/authReportService";
-import { clearLocalCache } from "../../../utils/cacheUtils";
+import { clearLocalCacheKeepingPreferences } from "../../../utils/cacheUtils";
 import { LoginMethod } from "../types";
 
 interface ReportIssueSheetProps {
@@ -130,8 +130,15 @@ export const ReportIssueSheet: React.FC<ReportIssueSheetProps> = ({
   const performClearCache = async () => {
     setClearingCache(true);
     try {
-      const { removed } = await clearLocalCache();
-      Alert.show(t("auth.clearCacheSuccess", { count: removed }), "", 1500);
+      const { removedKeys, imageCacheCleared } =
+        await clearLocalCacheKeepingPreferences();
+      Alert.show(
+        imageCacheCleared
+          ? t("auth.clearCacheSuccess", { count: removedKeys })
+          : t("auth.clearCacheSuccessPartial", { count: removedKeys }),
+        "",
+        1500,
+      );
     } catch (error) {
       const message =
         error instanceof Error ? error.message : String(error);

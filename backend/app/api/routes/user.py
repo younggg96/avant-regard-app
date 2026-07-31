@@ -86,7 +86,7 @@ async def upload_avatar(
         raise HTTPException(status_code=403, detail="无权修改其他用户头像")
 
     # 验证文件类型
-    if not file.content_type.startswith("image/"):
+    if not file.content_type or not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="只能上传图片文件")
 
     # 上传图片（同步 HTTP 调用，放线程池避免阻塞事件循环）

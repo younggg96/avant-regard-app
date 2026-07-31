@@ -64,6 +64,7 @@ import {
 } from "../services/followService";
 import {
   userInfoService,
+  getUserInfoErrorMessage,
   UserInfo,
   UserProfileInfo,
   UserPrivacySettings,
@@ -629,7 +630,7 @@ const UserProfileScreen = () => {
     } catch (error) {
       console.error("Cover upload error:", error);
       setCoverImage(previousCover);
-      Alert.show(t("common.uploadFailed"));
+      Alert.show(getUserInfoErrorMessage(error, t, "common.uploadFailed"));
     } finally {
       setUploadingCover(false);
     }

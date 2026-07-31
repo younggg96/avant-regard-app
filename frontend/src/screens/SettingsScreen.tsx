@@ -1,10 +1,14 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { Switch, StyleSheet, useColorScheme } from "react-native";
+import {
+  Switch,
+  StyleSheet,
+  useColorScheme,
+  Alert as RNAlert,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
-import { Image as ExpoImage } from "expo-image";
 import {
   theme,
   resolveThemeMode,
@@ -18,6 +22,7 @@ import ScreenHeader from "../components/ScreenHeader";
 import { Alert } from "../utils/Alert";
 import {
   userInfoService,
+  getUserInfoErrorMessage,
   UserPrivacySettings,
 } from "../services/userInfoService";
 import {
@@ -27,6 +32,7 @@ import {
   MinorProtectionContent,
 } from "./Auth/components";
 import { setStoredLanguage, type SupportedLanguage } from "../i18n";
+import { clearContentCache, resetToFactoryState } from "../utils/cacheUtils";
 import {
   Box,
   Text,
@@ -207,37 +213,61 @@ const SettingsScreen = () => {
     setShowDeleteAccountModal(true);
   };
 
-  // 图片缓存清理
+  // 缓存清理
   // ----------------
-  // expo-image 在 iOS 底层走 SDWebImage，磁盘缓存默认落在 app sandbox 里
-  // (`Library/Caches/com.hackemist.SDImageCache/`)。这部分目录会跨 app
-  // 进程共存活，只在「卸载重装」时才会被系统清掉，与用户报告的现象
-  //   1. 用一段时间后帖子封面出现 8x8 马赛克
-  //   2. 退到桌面再重新打开 app，糊的封面依然糊
-  //   3. 卸载重装后立刻恢复清晰
-  // 一一对应。我们把入口暴露在设置里，既是给用户的应急止血按钮（点
-  // 一下就能让所有糊掉的封面重新拉一份干净的字节），也是我们诊断
-  // 「问题就在 SDImageCache 磁盘缓存」这条假设最直接的检验工具。
+  // 本地缓存分两层，对应这里两个入口：
+  //
+  // 1. 「清除缓存」= 各 Tab 首屏缓存 + expo-image 内存/磁盘缓存。图片缓存
+  //    在 iOS 上走 SDWebImage，落在 `Library/Caches/com.hackemist.SDImageCache/`，
+  //    平时只有卸载重装才会被系统回收，也是占空间最大的一块 —— 用户报告的
+  //    「用久了封面变马赛克、退到桌面重进依然糊、卸载重装立刻恢复」就是它。
+  //    这一档不碰登录态和草稿，点完不用重新登录。
+  //
+  // 2. 「恢复出厂设置」= 清空整个 AsyncStorage + 图片缓存 + logout。等同刚装完
+  //    app；聊天/通知等未持久化的内存 store 清不掉，所以完成态仍提示手动杀进程
+  //    重开（项目没装 expo-updates，代码没法自己重启）。
   const [showClearCacheModal, setShowClearCacheModal] = useState(false);
   const [clearingCache, setClearingCache] = useState(false);
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [resetting, setResetting] = useState(false);
 
-  const handleClearImageCache = useCallback(async () => {
+  const handleClearCache = useCallback(async () => {
     if (clearingCache) return;
     setClearingCache(true);
     try {
-      // 内存缓存先清，避免 disk 清完后 UI 仍展示老的解码 bitmap，
-      // 让用户「按下按钮 -> 立即看到效果」的体感更强（也方便调试）。
-      await ExpoImage.clearMemoryCache();
-      await ExpoImage.clearDiskCache();
-      Alert.show(t("settings.imageCacheCleared"));
+      const { imageCacheCleared } = await clearContentCache();
+      Alert.show(
+        imageCacheCleared
+          ? t("settings.cacheCleared")
+          : t("settings.cacheClearedPartial")
+      );
+      setShowClearCacheModal(false);
     } catch (error) {
-      console.warn("[Settings] clear image cache failed:", error);
-      Alert.show(t("settings.imageCacheClearFailed"));
+      console.warn("[Settings] clear cache failed:", error);
+      Alert.show(t("settings.cacheClearFailed"));
     } finally {
       setClearingCache(false);
-      setShowClearCacheModal(false);
     }
   }, [clearingCache, t]);
+
+  const handleResetToFactory = useCallback(async () => {
+    if (resetting) return;
+    setResetting(true);
+    try {
+      // resetToFactoryState 内部会 logout → App 立刻切到 AuthNavigator，
+      // 本屏随之卸载。完成提示必须用原生 Alert，才能在导航切换后仍然可见。
+      await resetToFactoryState();
+      RNAlert.alert(
+        t("settings.resetAppDoneTitle"),
+        t("settings.resetAppDoneMessage"),
+      );
+    } catch (error) {
+      console.warn("[Settings] reset to factory failed:", error);
+      Alert.show(t("settings.resetAppFailed"));
+      setShowResetModal(false);
+      setResetting(false);
+    }
+  }, [resetting, t]);
 
   const confirmDeleteAccount = async () => {
     if (!user?.userId || deletingAccount) return;
@@ -250,9 +280,9 @@ const SettingsScreen = () => {
         logout();
       }, 1000);
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : t("deleteAccount.failed");
-      Alert.show(message);
+      Alert.show(
+        getUserInfoErrorMessage(error, t, "deleteAccount.failed")
+      );
     } finally {
       setDeletingAccount(false);
     }
@@ -403,12 +433,20 @@ const SettingsScreen = () => {
       title: t("settings.storage"),
       items: [
         {
-          id: "clearImageCache",
-          label: t("settings.clearImageCache"),
+          id: "clearCache",
+          label: t("settings.clearCache"),
           icon: "images-outline",
           onPress: () => setShowClearCacheModal(true),
-          rightText: t("settings.clearImageCacheHint"),
+          rightText: t("settings.clearCacheHint"),
           rightColor: activeTheme.colors.gray300,
+        },
+        {
+          id: "resetApp",
+          label: t("settings.resetApp"),
+          icon: "refresh-circle-outline",
+          onPress: () => setShowResetModal(true),
+          rightText: t("settings.resetAppHint"),
+          rightColor: activeTheme.colors.error,
         },
       ],
     },
@@ -559,7 +597,7 @@ const SettingsScreen = () => {
         </VStack>
       </ScrollView>
 
-      {/* Clear image cache confirmation */}
+      {/* Clear cache confirmation */}
       <ActionSheet
         visible={showClearCacheModal}
         onClose={() => !clearingCache && setShowClearCacheModal(false)}
@@ -572,18 +610,51 @@ const SettingsScreen = () => {
             style={{ marginBottom: 12 }}
           />
           <Text style={[styles.dialogTitle, { color: activeTheme.colors.text }]}>
-            {t("settings.clearImageCacheTitle")}
+            {t("settings.clearCacheTitle")}
           </Text>
           <Text style={[styles.dialogMessage, { color: activeTheme.colors.gray400 }]}>
-            {t("settings.clearImageCacheMessage")}
+            {t("settings.clearCacheMessage")}
           </Text>
           <Button
-            onPress={handleClearImageCache}
+            onPress={handleClearCache}
             isLoading={clearingCache}
             disabled={clearingCache}
             style={{ width: "100%" }}
           >
-            {t("settings.clearImageCacheConfirm")}
+            {t("settings.clearCacheConfirm")}
+          </Button>
+        </VStack>
+      </ActionSheet>
+
+      {/* Reset to factory state confirmation */}
+      <ActionSheet
+        visible={showResetModal}
+        onClose={() => {
+          if (resetting) return;
+          setShowResetModal(false);
+        }}
+      >
+        <VStack alignItems="center" style={{ padding: 24 }}>
+          <Ionicons
+            name="warning-outline"
+            size={48}
+            color={activeTheme.colors.error}
+            style={{ marginBottom: 12 }}
+          />
+          <Text style={[styles.dialogTitle, { color: activeTheme.colors.text }]}>
+            {t("settings.resetAppTitle")}
+          </Text>
+          <Text style={[styles.dialogMessage, { color: activeTheme.colors.gray400 }]}>
+            {t("settings.resetAppMessage")}
+          </Text>
+          <Button
+            colorScheme="error"
+            onPress={handleResetToFactory}
+            isLoading={resetting}
+            disabled={resetting}
+            style={{ width: "100%" }}
+          >
+            {t("settings.resetAppConfirm")}
           </Button>
         </VStack>
       </ActionSheet>

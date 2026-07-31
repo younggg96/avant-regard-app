@@ -4,8 +4,55 @@
 
 import { useAuthStore } from "../store/authStore";
 import { config } from "../config/env";
+import { compressBeforeUpload } from "../utils/imageCompression";
 
 const EXPO_PUBLIC_API_BASE_URL = config.EXPO_PUBLIC_API_BASE_URL;
+
+/** 头像/封面上传超时。压缩后通常几秒内完成；给足余量避免弱网误杀。 */
+const UPLOAD_TIMEOUT_MS = 60_000;
+
+/**
+ * Client-generated failure codes. UI should map these via
+ * `getUserInfoErrorMessage` — never show the raw code to users.
+ * Server-returned `message` strings pass through unchanged.
+ */
+export const UserInfoErrorCode = {
+  NETWORK: "USER_INFO/NETWORK",
+  REQUEST_FAILED: "USER_INFO/REQUEST_FAILED",
+  UPLOAD_FAILED: "USER_INFO/UPLOAD_FAILED",
+  UPLOAD_TIMEOUT: "USER_INFO/UPLOAD_TIMEOUT",
+} as const;
+
+const LEGACY_CLIENT_ERROR_KEYS: Record<string, string> = {
+  [UserInfoErrorCode.NETWORK]: "common.networkError",
+  [UserInfoErrorCode.REQUEST_FAILED]: "common.requestFailed",
+  [UserInfoErrorCode.UPLOAD_FAILED]: "common.uploadFailed",
+  [UserInfoErrorCode.UPLOAD_TIMEOUT]: "common.uploadTimeout",
+  // Pre-i18n Chinese fallbacks still in older builds / in-flight requests
+  "网络请求失败，请检查网络连接": "common.networkError",
+  "网络错误，请重试": "common.networkError",
+  "请求失败": "common.requestFailed",
+  "上传失败": "common.uploadFailed",
+  "上传超时，请重试": "common.uploadTimeout",
+};
+
+/**
+ * Resolve a userInfoService error into a localized alert string.
+ * Known client codes (and legacy Chinese fallbacks) map to `common.*`;
+ * anything else (typically a server message) is shown as-is.
+ */
+export function getUserInfoErrorMessage(
+  error: unknown,
+  t: (key: string) => string,
+  fallbackKey: string
+): string {
+  if (!(error instanceof Error) || !error.message.trim()) {
+    return t(fallbackKey);
+  }
+  const i18nKey = LEGACY_CLIENT_ERROR_KEYS[error.message];
+  if (i18nKey) return t(i18nKey);
+  return error.message;
+}
 
 // API 响应包装类型
 interface ApiResponse<T> {
@@ -116,7 +163,7 @@ async function request<T>(
     const contentType = response.headers.get("content-type");
 
     if (!response.ok) {
-      let errorMessage = "请求失败";
+      let errorMessage: string = UserInfoErrorCode.REQUEST_FAILED;
       if (contentType?.includes("application/json")) {
         const errorData = await response.json();
         errorMessage = errorData.message || errorData.error || errorMessage;
@@ -139,7 +186,9 @@ async function request<T>(
         const apiResponse = jsonResponse as ApiResponse<T>;
 
         if (apiResponse.code !== 0) {
-          throw new Error(apiResponse.message || "请求失败");
+          throw new Error(
+            apiResponse.message || UserInfoErrorCode.REQUEST_FAILED
+          );
         }
 
         if ("data" in apiResponse) {
@@ -156,14 +205,15 @@ async function request<T>(
     if (error instanceof Error) {
       throw error;
     }
-    throw new Error("网络请求失败，请检查网络连接");
+    throw new Error(UserInfoErrorCode.NETWORK);
   }
 }
 
-// 文件上传请求方法
+// 文件上传请求方法（带超时 abort，避免沙漏永久卡住）
 async function uploadRequest<T>(
   endpoint: string,
-  formData: FormData
+  formData: FormData,
+  timeoutMs: number = UPLOAD_TIMEOUT_MS
 ): Promise<T> {
   const url = `${EXPO_PUBLIC_API_BASE_URL}${endpoint}`;
 
@@ -176,18 +226,20 @@ async function uploadRequest<T>(
     headers["Authorization"] = `Bearer ${token}`;
   }
 
-  const config: RequestInit = {
-    method: "POST",
-    headers,
-    body: formData,
-  };
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    const response = await fetch(url, config);
+    const response = await fetch(url, {
+      method: "POST",
+      headers,
+      body: formData,
+      signal: controller.signal,
+    });
     const contentType = response.headers.get("content-type");
 
     if (!response.ok) {
-      let errorMessage = "上传失败";
+      let errorMessage: string = UserInfoErrorCode.UPLOAD_FAILED;
       if (contentType?.includes("application/json")) {
         const errorData = await response.json();
         errorMessage = errorData.message || errorData.error || errorMessage;
@@ -209,7 +261,9 @@ async function uploadRequest<T>(
         const apiResponse = jsonResponse as ApiResponse<T>;
 
         if (apiResponse.code !== 0) {
-          throw new Error(apiResponse.message || "上传失败");
+          throw new Error(
+            apiResponse.message || UserInfoErrorCode.UPLOAD_FAILED
+          );
         }
 
         if ("data" in apiResponse) {
@@ -224,9 +278,14 @@ async function uploadRequest<T>(
     return text as unknown as T;
   } catch (error) {
     if (error instanceof Error) {
+      if (error.name === "AbortError") {
+        throw new Error(UserInfoErrorCode.UPLOAD_TIMEOUT);
+      }
       throw error;
     }
-    throw new Error("网络请求失败，请检查网络连接");
+    throw new Error(UserInfoErrorCode.NETWORK);
+  } finally {
+    clearTimeout(timeoutId);
   }
 }
 
@@ -264,17 +323,13 @@ export async function uploadAvatar(
   userId: number,
   imageUri: string
 ): Promise<UserInfo> {
+  const prepared = await compressBeforeUpload(imageUri);
   const formData = new FormData();
 
-  // 处理图片文件
-  const filename = imageUri.split("/").pop() || "avatar.jpg";
-  const match = /\.(\w+)$/.exec(filename);
-  const type = match ? `image/${match[1]}` : "image/jpeg";
-
   formData.append("file", {
-    uri: imageUri,
-    name: filename,
-    type,
+    uri: prepared.uri,
+    name: prepared.filename,
+    type: prepared.mimeType,
   } as any);
 
   return uploadRequest<UserInfo>(`/api/user-info/${userId}/avatar`, formData);
@@ -290,17 +345,13 @@ export async function uploadCover(
   userId: number,
   imageUri: string
 ): Promise<UserInfo> {
+  const prepared = await compressBeforeUpload(imageUri);
   const formData = new FormData();
 
-  // 处理图片文件
-  const filename = imageUri.split("/").pop() || "cover.jpg";
-  const match = /\.(\w+)$/.exec(filename);
-  const type = match ? `image/${match[1]}` : "image/jpeg";
-
   formData.append("file", {
-    uri: imageUri,
-    name: filename,
-    type,
+    uri: prepared.uri,
+    name: prepared.filename,
+    type: prepared.mimeType,
   } as any);
 
   return uploadRequest<UserInfo>(`/api/user-info/${userId}/cover`, formData);

@@ -22,7 +22,11 @@ import * as ImagePicker from "expo-image-picker";
 import { theme, useThemedStyles, type AppTheme } from "../theme";
 import { useAuthStore } from "../store/authStore";
 import ScreenHeader from "../components/ScreenHeader";
-import { userInfoService, Gender } from "../services/userInfoService";
+import {
+  userInfoService,
+  getUserInfoErrorMessage,
+  Gender,
+} from "../services/userInfoService";
 import { brandService, Brand } from "../services/brandService";
 import { OptimizedImage } from "../components/ui/OptimizedImage";
 import { ImageSize } from "../utils/imageUtils";
@@ -47,6 +51,10 @@ interface BrandOption {
  */
 const isPersistableRemoteUrl = (url: string): boolean =>
   /^https?:\/\//i.test(url.trim());
+
+/** 跨页面实例的上传序号，离开编辑页再回来也不会丢弃进行中的上传结果 */
+let avatarUploadSeq = 0;
+let coverUploadSeq = 0;
 
 // 性别选项
 const GENDER_KEYS: { value: Gender; key: string }[] = [
@@ -135,6 +143,21 @@ const EditProfileScreen = () => {
   // ScrollView 引用和输入框位置跟踪
   const scrollViewRef = useRef<ScrollView>(null);
   const inputPositions = useRef<{ [key: string]: number }>({});
+
+  // 后台上传：页面可继续编辑/返回；用 generation 丢弃被覆盖的旧上传结果
+  const mountedRef = useRef(true);
+  const latestAvatarUploadIdRef = useRef(0);
+  const latestCoverUploadIdRef = useRef(0);
+  // 仅当头像/封面相对进入页面时发生变化才随「保存」提交，避免覆盖后台上传结果
+  const initialAvatarRef = useRef("");
+  const initialCoverRef = useRef("");
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   // 记录输入框位置
   const handleInputLayout = (key: string) => (event: LayoutChangeEvent) => {
@@ -233,8 +256,12 @@ const EditProfileScreen = () => {
         setUsername(userProfile.username || user.username || "");
         setBio(userProfile.bio || "");
         setLocation(userProfile.location || "");
-        setAvatar(userProfile.avatarUrl || user.avatar || "");
-        setCover(userProfile.coverUrl || "");
+        const nextAvatar = userProfile.avatarUrl || user.avatar || "";
+        const nextCover = userProfile.coverUrl || "";
+        initialAvatarRef.current = nextAvatar;
+        initialCoverRef.current = nextCover;
+        setAvatar(nextAvatar);
+        setCover(nextCover);
         setGender(userProfile.gender || "OTHER");
         setAge(userProfile.age ? String(userProfile.age) : "");
         setPreference(userProfile.preference || "");
@@ -248,15 +275,22 @@ const EditProfileScreen = () => {
           setUsername(userInfo.username || user.username || "");
           setBio(userInfo.bio || "");
           setLocation(userInfo.location || "");
-          setAvatar(userInfo.avatarUrl || user.avatar || "");
-          setCover(userInfo.coverUrl || "");
+          const nextAvatar = userInfo.avatarUrl || user.avatar || "";
+          const nextCover = userInfo.coverUrl || "";
+          initialAvatarRef.current = nextAvatar;
+          initialCoverRef.current = nextCover;
+          setAvatar(nextAvatar);
+          setCover(nextCover);
         } catch (fallbackError) {
           console.warn("加载基本用户信息也失败，使用本地数据:", fallbackError);
           // 使用本地数据作为后备
           setUsername(user.username || "");
           setBio(user.bio || "");
           setLocation(user.location || "");
-          setAvatar(user.avatar || "");
+          const nextAvatar = user.avatar || "";
+          initialAvatarRef.current = nextAvatar;
+          initialCoverRef.current = "";
+          setAvatar(nextAvatar);
           setCover("");
         }
       }
@@ -296,13 +330,17 @@ const EditProfileScreen = () => {
 
     setLoading(true);
     try {
-      // Only persist avatar / cover if they are real CDN URLs. If the state
-      // still holds a local `file://` URI (e.g. upload failed earlier), skip
-      // the field entirely — backend treats the absence as "no change".
-      const avatarUrlForSave = isPersistableRemoteUrl(avatar)
-        ? avatar
-        : undefined;
-      const coverUrlForSave = isPersistableRemoteUrl(cover) ? cover : undefined;
+      // Only persist avatar / cover if they are real CDN URLs that changed
+      // this session. Upload endpoints already write to DB; skipping unchanged
+      // / local `file://` URIs avoids overwriting a newer background upload.
+      const avatarUrlForSave =
+        isPersistableRemoteUrl(avatar) && avatar !== initialAvatarRef.current
+          ? avatar
+          : undefined;
+      const coverUrlForSave =
+        isPersistableRemoteUrl(cover) && cover !== initialCoverRef.current
+          ? cover
+          : undefined;
 
       // 尝试调用 API 更新用户完整资料
       const updatedInfo = await userInfoService.updateUserProfile(user.userId, {
@@ -351,18 +389,20 @@ const EditProfileScreen = () => {
         Alert.show(t("editProfile.saveSuccess"), "", 1000);
         setTimeout(() => navigation.goBack(), 1000);
       } catch (fallbackError) {
-        const message =
-          fallbackError instanceof Error
-            ? fallbackError.message
-            : t("editProfile.saveFailed");
-        Alert.show(message);
+        Alert.show(
+          getUserInfoErrorMessage(
+            fallbackError,
+            t,
+            "editProfile.saveFailed"
+          )
+        );
       }
     } finally {
       setLoading(false);
     }
   };
 
-  // 选择并上传头像
+  // 选择头像后立刻回页面，上传在后台进行（不锁表单/导航）
   const handlePickImage = async () => {
     if (!user?.userId) {
       Alert.show(t("editProfile.loginRequired"));
@@ -384,37 +424,50 @@ const EditProfileScreen = () => {
 
     if (result.canceled) return;
 
+    const userId = user.userId;
     const imageUri = result.assets[0].uri;
     const previousAvatar = avatar;
+    const uploadId = ++avatarUploadSeq;
+    latestAvatarUploadIdRef.current = uploadId;
 
-    // 先显示本地图片
+    // 乐观预览；上传不阻塞交互
     setAvatar(imageUri);
     setUploadingAvatar(true);
 
-    try {
-      // 上传到服务器
-      const updatedInfo = await userInfoService.uploadAvatar(
-        user.userId,
-        imageUri
-      );
+    void (async () => {
+      try {
+        const updatedInfo = await userInfoService.uploadAvatar(userId, imageUri);
+        if (uploadId !== avatarUploadSeq) return;
 
-      if (updatedInfo.avatarUrl) {
-        setAvatar(updatedInfo.avatarUrl);
-        // 更新本地存储
-        updateProfile({ avatar: updatedInfo.avatarUrl });
-        Alert.show(t("editProfile.avatarUploadSuccess"));
+        if (updatedInfo.avatarUrl) {
+          // 即使离开本页也写入 store，保证个人页/设置能看到新头像
+          updateProfile({ avatar: updatedInfo.avatarUrl });
+          if (mountedRef.current && latestAvatarUploadIdRef.current === uploadId) {
+            initialAvatarRef.current = updatedInfo.avatarUrl;
+            setAvatar(updatedInfo.avatarUrl);
+            setUploadingAvatar(false);
+            Alert.show(t("editProfile.avatarUploadSuccess"));
+          }
+        } else if (
+          mountedRef.current &&
+          latestAvatarUploadIdRef.current === uploadId
+        ) {
+          setUploadingAvatar(false);
+        }
+      } catch (error) {
+        if (uploadId !== avatarUploadSeq) return;
+        if (mountedRef.current && latestAvatarUploadIdRef.current === uploadId) {
+          Alert.show(
+            getUserInfoErrorMessage(error, t, "common.uploadFailed")
+          );
+          setAvatar(previousAvatar);
+          setUploadingAvatar(false);
+        }
       }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : t("common.uploadFailed");
-      Alert.show(message);
-      // 恢复原来的头像
-      setAvatar(previousAvatar);
-    } finally {
-      setUploadingAvatar(false);
-    }
+    })();
   };
 
-  // 选择并上传封面图片
+  // 选择封面后立刻回页面，上传在后台进行
   const handlePickCoverImage = async () => {
     if (!user?.userId) {
       Alert.show(t("editProfile.loginRequired"));
@@ -436,32 +489,44 @@ const EditProfileScreen = () => {
 
     if (result.canceled) return;
 
+    const userId = user.userId;
     const imageUri = result.assets[0].uri;
     const previousCover = cover;
+    const uploadId = ++coverUploadSeq;
+    latestCoverUploadIdRef.current = uploadId;
 
-    // 先显示本地图片
     setCover(imageUri);
     setUploadingCover(true);
 
-    try {
-      // 上传到服务器
-      const updatedInfo = await userInfoService.uploadCover(
-        user.userId,
-        imageUri
-      );
+    void (async () => {
+      try {
+        const updatedInfo = await userInfoService.uploadCover(userId, imageUri);
+        if (uploadId !== coverUploadSeq) return;
 
-      if (updatedInfo.coverUrl) {
-        setCover(updatedInfo.coverUrl);
-        Alert.show(t("editProfile.coverUploadSuccess"));
+        if (updatedInfo.coverUrl) {
+          if (mountedRef.current && latestCoverUploadIdRef.current === uploadId) {
+            initialCoverRef.current = updatedInfo.coverUrl;
+            setCover(updatedInfo.coverUrl);
+            setUploadingCover(false);
+            Alert.show(t("editProfile.coverUploadSuccess"));
+          }
+        } else if (
+          mountedRef.current &&
+          latestCoverUploadIdRef.current === uploadId
+        ) {
+          setUploadingCover(false);
+        }
+      } catch (error) {
+        if (uploadId !== coverUploadSeq) return;
+        if (mountedRef.current && latestCoverUploadIdRef.current === uploadId) {
+          Alert.show(
+            getUserInfoErrorMessage(error, t, "common.uploadFailed")
+          );
+          setCover(previousCover);
+          setUploadingCover(false);
+        }
       }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : t("common.uploadFailed");
-      Alert.show(message);
-      // 恢复原来的封面
-      setCover(previousCover);
-    } finally {
-      setUploadingCover(false);
-    }
+    })();
   };
 
   // 选择省份
@@ -525,10 +590,8 @@ const EditProfileScreen = () => {
         showBack={true}
         rightActions={[
           {
-            icon:
-              loading || uploadingAvatar || uploadingCover
-                ? "hourglass-outline"
-                : "checkmark",
+            // 仅保存中显示沙漏；头像/封面后台上传不锁右上角
+            icon: loading ? "hourglass-outline" : "checkmark",
             onPress: handleSave,
           },
         ]}
@@ -550,7 +613,6 @@ const EditProfileScreen = () => {
             <TouchableOpacity
               style={styles.avatarContainer}
               onPress={handlePickImage}
-              disabled={uploadingAvatar}
             >
               <OptimizedImage
                 uri={
@@ -585,7 +647,6 @@ const EditProfileScreen = () => {
             <TouchableOpacity
               style={styles.coverContainer}
               onPress={handlePickCoverImage}
-              disabled={uploadingCover}
             >
               {cover ? (
                 <OptimizedImage
