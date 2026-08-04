@@ -191,7 +191,14 @@ async function request<T>(
         errorMessage = `HTTP ${response.status}`;
       }
     }
-    const isTransient = TRANSIENT_HTTP_STATUSES.has(response.status);
+    // Some older backend builds mapped upstream 503 into HTTP 401 with the
+    // 503 text in `detail`. Treat that as transient so we retry instead of
+    // logging the user out.
+    const isTransient =
+      TRANSIENT_HTTP_STATUSES.has(response.status) ||
+      /503|502|504|temporarily unavailable|service unavailable|bad gateway|gateway timeout/i.test(
+        errorMessage
+      );
     throw new AuthRequestError(errorMessage, response.status, isTransient);
   }
 

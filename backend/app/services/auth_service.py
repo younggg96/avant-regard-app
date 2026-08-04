@@ -643,17 +643,52 @@ class AuthService:
 
         return None
 
+    @staticmethod
+    def _is_transient_refresh_failure(message: str, status: Optional[int] = None) -> bool:
+        """Upstream / network blips that must NOT be reported as 401.
+
+        Clients treat HTTP 401 on /refresh as "refresh token dead → log out".
+        MemFireDB/Supabase 503s (and generic transport errors) used to get
+        wrapped into a 401 detail string, which kicked users back to login
+        every time auth was briefly unavailable.
+        """
+        if status in (502, 503, 504) or (status is not None and status >= 500):
+            return True
+        lowered = (message or "").lower()
+        needles = (
+            "502",
+            "503",
+            "504",
+            "temporarily unavailable",
+            "service unavailable",
+            "bad gateway",
+            "gateway timeout",
+            "timeout",
+            "timed out",
+            "connection reset",
+            "connection refused",
+            "connecterror",
+            "network error",
+            "server disconnected",
+        )
+        return any(n in lowered for n in needles)
+
     def refresh_session(
         self, refresh_token: str
-    ) -> Tuple[Optional[dict], Optional[str]]:
+    ) -> Tuple[Optional[dict], Optional[str], int]:
         """
-        刷新 session
+        刷新 session.
+
+        Returns (data, error_message, http_status).
+        `http_status` is only meaningful when `error_message` is set:
+          - 401: refresh token really invalid / expired / user missing
+          - 503: auth provider or network temporarily unavailable
         """
         try:
             response = self.db.auth.refresh_session(refresh_token)
 
             if not response.session:
-                return None, "刷新令牌无效或已过期"
+                return None, "刷新令牌无效或已过期", 401
 
             # 获取应用用户 (users 表受 RLS 保护, anon 读不到, 必须用 service_role)
             result = (
@@ -664,7 +699,7 @@ class AuthService:
             )
 
             if not result.data:
-                return None, "用户不存在"
+                return None, "用户不存在", 401
 
             app_user = result.data[0]
 
@@ -677,12 +712,25 @@ class AuthService:
                 "accessToken": response.session.access_token,
                 "refreshToken": response.session.refresh_token,
                 "expiresAt": response.session.expires_at,
-            }, None
+            }, None, 200
 
         except AuthApiError as e:
-            return None, f"刷新失败: {str(e)}"
+            raw_status = getattr(e, "status", None) or getattr(e, "code", None)
+            try:
+                status_int = int(raw_status) if raw_status is not None else None
+            except (TypeError, ValueError):
+                status_int = None
+            message = f"刷新失败: {str(e)}"
+            if self._is_transient_refresh_failure(message, status_int):
+                return None, message, 503
+            return None, message, 401
+        except (httpx.TimeoutException, httpx.TransportError) as e:
+            return None, f"刷新失败: {str(e)}", 503
         except Exception as e:
-            return None, f"刷新失败: {str(e)}"
+            message = f"刷新失败: {str(e)}"
+            if self._is_transient_refresh_failure(message):
+                return None, message, 503
+            return None, message, 401
 
     def reset_password(
         self, phone: str, new_password: str, code: str

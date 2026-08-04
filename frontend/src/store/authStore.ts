@@ -327,20 +327,23 @@ export const useAuthStore = create<AuthStore>()(
             console.error("Token refresh failed:", error);
             set({ isRefreshing: false });
 
-            // 关键修复：只有在 refresh token 真的被服务端拒绝时才登出用户。
-            // 网络层错误 (status=0)、网关 5xx、超时 都是瞬时故障——用户隔几
-            // 天打开 app 时，无线唤醒慢、后端冷启动、临时 502 都很常见，原先
-            // 一刀切地 logout() 是用户被反复要求重新登录的主因。
+            // 只有 refresh token 真的被拒绝时才登出。瞬时故障（网络/5xx/
+            // 上游 MemFireDB 503）必须保留会话，否则服务抖一下用户就被踢回
+            // 登录页。
             //
-            // 真正的"refresh 失效"信号：
-            //   - 401 Unauthorized (Supabase 拒绝 refresh token)
-            //   - 403 Forbidden
-            //   - 400 + 后端的 "invalid grant" / "刷新令牌无效或已过期" 类
-            //     消息（FastAPI 路由对失败也会返回 401，所以 400 这里更多是
-            //     兜底）
+            // 注意：旧后端曾把上游 503 错误文案塞进 HTTP 401 的 detail，
+            // 所以不能只看 status===401，还要认 isTransient / 文案里的 5xx。
             let shouldLogout = false;
             if (error instanceof AuthRequestError) {
-              if (error.status === 401 || error.status === 403) {
+              const looksTransient =
+                error.isTransient ||
+                /503|502|504|temporarily unavailable|service unavailable|bad gateway|gateway timeout|timeout|timed out|暂不可用/i.test(
+                  error.message
+                );
+
+              if (looksTransient) {
+                shouldLogout = false;
+              } else if (error.status === 401 || error.status === 403) {
                 shouldLogout = true;
               } else if (
                 error.status === 400 &&

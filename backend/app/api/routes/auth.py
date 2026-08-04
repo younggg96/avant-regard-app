@@ -275,10 +275,14 @@ def refresh_token(request: RefreshTokenRequest):
     """
     刷新令牌
     使用 Supabase refresh token 获取新的 access token
+
+    状态码约定（客户端依赖这个区分是否踢登录）：
+      - 401: refresh token 真正失效，客户端应登出
+      - 503: 上游鉴权/网络短暂不可用，客户端应保留会话并稍后重试
     """
-    result, err = auth_service.refresh_session(request.refreshToken)
+    result, err, status = auth_service.refresh_session(request.refreshToken)
     if err:
-        raise HTTPException(status_code=401, detail=err)
+        raise HTTPException(status_code=status or 401, detail=err)
     return success(result)
 
 
