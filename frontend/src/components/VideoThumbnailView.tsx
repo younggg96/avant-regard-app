@@ -7,10 +7,7 @@ import {
   peekMediaAspectRatio,
   rememberMediaAspectRatio,
 } from "../utils/useMediaAspectRatio";
-
-function cleanVideoUri(uri: string): string {
-  return uri.endsWith("?") ? uri.slice(0, -1) : uri;
-}
+import { cleanVideoUri, ensureCachedVideo } from "../utils/videoCache";
 
 function getCacheKey(uri: string): string {
   return uri.replace(/[^a-zA-Z0-9]/g, "_").slice(-80);
@@ -72,24 +69,13 @@ export const VideoThumbnailView: React.FC<VideoThumbnailViewProps> = ({
         // Try generating thumbnail directly from the URL (works on iOS)
         let thumb = await getVideoThumbnail(cleanUri);
 
-        // If direct URL fails, download the video first then try
+        // If direct URL fails, download with the original extension
+        // (.mov / .mp4 / …) — never force .mp4 or AVPlayer may reject it.
         if (!thumb) {
-          const cacheDir = FileSystem.cacheDirectory + "video_cache/";
-          const vDirInfo = await FileSystem.getInfoAsync(cacheDir);
-          if (!vDirInfo.exists) {
-            await FileSystem.makeDirectoryAsync(cacheDir, { intermediates: true });
-          }
-          const dest = cacheDir + getCacheKey(cleanUri) + ".mp4";
-          const fileInfo = await FileSystem.getInfoAsync(dest);
-
-          let localPath = dest;
-          if (!fileInfo.exists) {
-            const result = await FileSystem.downloadAsync(cleanUri, dest);
-            if (result.status !== 200) {
-              if (!cancelled) setLoading(false);
-              return;
-            }
-            localPath = result.uri;
+          const localPath = await ensureCachedVideo(cleanUri);
+          if (!localPath) {
+            if (!cancelled) setLoading(false);
+            return;
           }
           thumb = await getVideoThumbnail(localPath);
         }

@@ -10,22 +10,15 @@ import {
   Animated,
   GestureResponderEvent,
   LayoutChangeEvent,
+  Text,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useVideoPlayer, VideoView } from "expo-video";
 import type { VideoContentFit, VideoPlayerStatus } from "expo-video";
-import * as FileSystem from "expo-file-system";
 import { Pressable } from "../ui";
 import { getVideoThumbnail } from "../../utils/videoThumbnail";
 import { rememberMediaAspectRatio } from "../../utils/useMediaAspectRatio";
-
-function cleanVideoUri(uri: string): string {
-  return uri.endsWith("?") ? uri.slice(0, -1) : uri;
-}
-
-function getCacheKey(uri: string): string {
-  return uri.replace(/[^a-zA-Z0-9]/g, "_").slice(-80);
-}
+import { cleanVideoUri, ensureCachedVideo } from "../../utils/videoCache";
 
 function formatTime(seconds: number): string {
   if (!isFinite(seconds) || seconds < 0) return "0:00";
@@ -70,24 +63,24 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
   useEffect(() => {
     let cancelled = false;
+    setLocalUri(null);
+    setLoadError(false);
+    setStatus("idle");
+    setIsPlaying(false);
+    setCurrentTime(0);
+    setDuration(0);
+    setThumbnail(null);
+
     (async () => {
       try {
-        const cacheDir = FileSystem.cacheDirectory + "video_cache/";
-        const dirInfo = await FileSystem.getInfoAsync(cacheDir);
-        if (!dirInfo.exists) {
-          await FileSystem.makeDirectoryAsync(cacheDir, { intermediates: true });
-        }
-        const dest = cacheDir + getCacheKey(cleanUri) + ".mp4";
-        const fileInfo = await FileSystem.getInfoAsync(dest);
-        if (fileInfo.exists) {
-          if (!cancelled) setLocalUri(dest);
-          return;
-        }
-        const result = await FileSystem.downloadAsync(cleanUri, dest);
-        if (!cancelled && result.status === 200) {
-          setLocalUri(result.uri);
-        } else if (!cancelled) {
-          console.warn("Video download failed, status:", result.status);
+        // Keeps the original container extension (.mov / .mp4 / .m4v / …).
+        // Forcing ".mp4" for QuickTime uploads breaks AVPlayer on real devices.
+        const cached = await ensureCachedVideo(cleanUri);
+        if (cancelled) return;
+        if (cached) {
+          setLocalUri(cached);
+        } else {
+          console.warn("Video download failed for:", cleanUri);
           setLoadError(true);
         }
       } catch (e) {
@@ -95,7 +88,10 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         if (!cancelled) setLoadError(true);
       }
     })();
-    return () => { cancelled = true; };
+
+    return () => {
+      cancelled = true;
+    };
   }, [cleanUri]);
 
   const player = useVideoPlayer(localUri, (p) => {
@@ -107,21 +103,26 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     if (!player) return;
     const statusSub = player.addListener(
       "statusChange",
-      (newStatus: VideoPlayerStatus, _oldStatus: VideoPlayerStatus, error?: { message: string }) => {
+      (
+        newStatus: VideoPlayerStatus,
+        _oldStatus: VideoPlayerStatus,
+        error?: { message: string },
+      ) => {
         setStatus(newStatus);
         if (newStatus === "readyToPlay" && player.duration > 0) {
           setDuration(player.duration);
         }
         if (newStatus === "error") {
           console.warn("Video error:", error?.message);
+          setLoadError(true);
         }
-      }
+      },
     );
     const playingSub = player.addListener(
       "playingChange",
       (newIsPlaying: boolean) => {
         setIsPlaying(newIsPlaying);
-      }
+      },
     );
     return () => {
       statusSub.remove();
@@ -153,13 +154,12 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     getVideoThumbnail(localUri).then((thumb) => {
       if (cancelled || !thumb) return;
       setThumbnail(thumb.uri);
-      // Surface the natural size for aspect-ratio-aware containers (feed
-      // card, content block, lookbook slide) so they refresh if they were
-      // still showing the fallback ratio.
       rememberMediaAspectRatio(cleanUri, thumb.width, thumb.height);
     });
-    return () => { cancelled = true; };
-  }, [localUri]);
+    return () => {
+      cancelled = true;
+    };
+  }, [localUri, cleanUri]);
 
   const showControlsBar = useCallback(() => {
     setControlsVisible(true);
@@ -179,7 +179,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   }, [controlsOpacity]);
 
   const handlePress = useCallback(() => {
-    if (!player) return;
+    if (!player || loadError) return;
     if (player.playing) {
       player.pause();
       showControlsBar();
@@ -187,7 +187,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       player.play();
       showControlsBar();
     }
-  }, [player, showControlsBar]);
+  }, [player, loadError, showControlsBar]);
 
   const handleMuteToggle = useCallback(() => {
     if (!player) return;
@@ -207,7 +207,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       setCurrentTime(seekTo);
       showControlsBar();
     },
-    [player, progressBarWidth, duration, showControlsBar]
+    [player, progressBarWidth, duration, showControlsBar],
   );
 
   const handleSeekStart = useCallback(() => setIsSeeking(true), []);
@@ -217,7 +217,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       setIsSeeking(false);
       handleSeek(evt);
     },
-    [handleSeek]
+    [handleSeek],
   );
 
   const handleProgressLayout = useCallback((e: LayoutChangeEvent) => {
@@ -231,7 +231,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
   return (
     <Pressable style={style} onPress={handlePress}>
-      {localUri && player && (
+      {localUri && player && !loadError && (
         <VideoView
           player={player}
           style={videoStyle}
@@ -253,7 +253,18 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         </View>
       )}
 
-      {!isPlaying && !isDownloading && (
+      {loadError && (
+        <View style={playerStyles.centerOverlay}>
+          <Ionicons
+            name="alert-circle-outline"
+            size={playIconSize}
+            color="rgba(255,255,255,0.85)"
+          />
+          <Text style={playerStyles.errorLabel}>无法播放</Text>
+        </View>
+      )}
+
+      {!isPlaying && !isDownloading && !loadError && (
         <View style={playerStyles.centerOverlay}>
           <Ionicons
             name="play-circle"
@@ -263,7 +274,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         </View>
       )}
 
-      {enableControls && isPlaying && (
+      {enableControls && isPlaying && !loadError && (
         <Animated.View
           style={[playerStyles.controlsBar, { opacity: controlsOpacity }]}
           pointerEvents={controlsVisible ? "auto" : "none"}
@@ -338,6 +349,11 @@ const playerStyles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "rgba(0,0,0,0.15)",
+  },
+  errorLabel: {
+    marginTop: 8,
+    color: "rgba(255,255,255,0.85)",
+    fontSize: 13,
   },
   controlsBar: {
     position: "absolute",

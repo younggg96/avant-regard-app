@@ -28,8 +28,14 @@ import { usePushNotifications } from "./src/hooks/usePushNotifications";
 // Deep Linking
 import { LINKING_CONFIG, setNavigationRef, initDeepLinking } from "./src/utils/deepLinking";
 
-// Splash Video
-import SplashVideo from "./src/components/SplashVideo";
+// Splash / onboarding guide — switch enabled vs disabled in startupMedia.ts
+// so unused .mp4 / .mov assets stay out of the IPA.
+import {
+  ENABLE_SPLASH_VIDEO,
+  ENABLE_ONBOARDING_GUIDE,
+  SplashVideoSlot,
+  OnboardingGuideSlot,
+} from "./src/bootstrap/startupMedia";
 
 // Maintenance
 import {
@@ -131,7 +137,6 @@ import TabBarIcon from "./src/components/TabBarIcon";
 // V1 PublishTabButton 文件保留作为历史回退入口；当前 Tab 中央「+」走 V2 流程。
 import PublishTabButtonV2 from "./src/components/PublishTabButtonV2";
 import UploadProgressBanner from "./src/components/UploadProgressBanner";
-import OnboardingGuideModal from "./src/components/OnboardingGuideModal";
 import CustomAlert from "./src/components/CustomAlert";
 
 // Theme
@@ -427,7 +432,7 @@ function AppNavigator({
 
   // Check if onboarding guide needs to be shown
   useEffect(() => {
-    if (!isAuthenticated || !user?.userId) {
+    if (!ENABLE_ONBOARDING_GUIDE || !isAuthenticated || !user?.userId) {
       setGuideChecked(true);
       return;
     }
@@ -983,11 +988,13 @@ function AppNavigator({
         />
       </Stack.Navigator>
 
-      {/* 新用户引导 Modal */}
-      <OnboardingGuideModal
-        visible={showOnboardingGuide}
-        onComplete={handleGuideComplete}
-      />
+      {/* 新用户引导 Modal（当前走 startupMedia.disabled，不打包 guide-mov） */}
+      {ENABLE_ONBOARDING_GUIDE && (
+        <OnboardingGuideSlot
+          visible={showOnboardingGuide}
+          onComplete={handleGuideComplete}
+        />
+      )}
 
       {/* 资料填写提醒 Modal */}
       <ProfileReminderModal
@@ -1050,7 +1057,7 @@ function AppNavigator({
 export default function App() {
   const [fontsLoaded, setFontsLoaded] = useState(false);
   const [appIsReady, setAppIsReady] = useState(false);
-  const [showSplashVideo, setShowSplashVideo] = useState(true);
+  const [showSplashVideo, setShowSplashVideo] = useState(ENABLE_SPLASH_VIDEO);
   const navigationRef = useRef<NavigationContainerRef<any>>(null);
   const lastRouteNameRef = useRef<string | undefined>(undefined);
   const [engagementBehaviorSignal, setEngagementBehaviorSignal] = useState(0);
@@ -1257,8 +1264,8 @@ export default function App() {
                   />
                   <StatusBar style={resolvedThemeMode === "dark" ? "light" : "dark"} />
                 </NavigationContainer>
-                {showSplashVideo && (
-                  <SplashVideo onFinish={handleSplashVideoFinish} />
+                {ENABLE_SPLASH_VIDEO && showSplashVideo && (
+                  <SplashVideoSlot onFinish={handleSplashVideoFinish} />
                 )}
                 <MaintenanceOverlay />
               </View>
