@@ -46,9 +46,12 @@ WORKDIR /app
 # Runtime-only system deps (no gcc / build-essential here):
 #   - libpq5: PostgreSQL client lib (needed by postgrest/supabase stack)
 #   - curl:   used by HEALTHCHECK below
+#   - ffmpeg: 视频上传转码 (ffmpeg + ffprobe)，把 iPhone 的 HEVC/MOV
+#             统一转成 H.264/AAC MP4 (+faststart)，保证 App/Android/Web 全端可播
 RUN apt-get update && apt-get install -y --no-install-recommends \
         libpq5 \
         curl \
+        ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
 # Install prebuilt wheels from the builder stage (no compilation here).

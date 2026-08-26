@@ -37,6 +37,8 @@ from fastapi.responses import FileResponse, Response
 from PIL import Image
 
 from app.services.file_service import file_service, FileService
+from app.services import video_service
+from app.services.video_service import VideoTranscodeError
 from app.api.deps import get_current_user_id
 from app.core.response import success
 from app.core.config import settings
@@ -113,9 +115,29 @@ async def upload_video(
     if len(content) > max_video_size:
         raise HTTPException(status_code=400, detail="视频大小不能超过100MB")
 
+    # 归一化：把 iPhone 的 HEVC/MOV 等统一转成 H.264/AAC MP4 (+faststart)，
+    # 否则 Web `<video>` 和部分 Android 无法播放。转码在线程池里跑，避免
+    # 阻塞事件循环。ffmpeg 不可用时降级为原样存储（至少不阻断上传）。
+    upload_filename = file.filename or "video.mov"
+    if video_service.is_ffmpeg_available():
+        try:
+            transcoded = await asyncio.to_thread(
+                video_service.transcode_to_mp4, content, file.filename
+            )
+            content = transcoded
+            content_type = video_service.OUTPUT_CONTENT_TYPE
+            base = upload_filename.rsplit(".", 1)[0] if "." in upload_filename else upload_filename
+            upload_filename = f"{base}.{video_service.OUTPUT_EXT}"
+            print(f"Video transcoded to mp4: {len(content)} bytes")
+        except VideoTranscodeError as e:
+            # 转码失败不直接 500：退回原始字节原样存储，保留可播的机会。
+            print(f"[upload-video] transcode failed, storing original: {e}")
+    else:
+        print("[upload-video] ffmpeg not available, storing original bytes")
+
     print(f"Uploading video: {len(content)} bytes, type: {content_type}")
     url = await asyncio.to_thread(
-        file_service.upload_video, content, file.filename, content_type
+        file_service.upload_video, content, upload_filename, content_type
     )
 
     if not url:
