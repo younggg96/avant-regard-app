@@ -14,6 +14,7 @@ export function SiteHeader() {
     { href: "/communities", label: t("nav.forum") },
     { href: "/archive/brands", label: t("nav.archive") },
     { href: "/stores", label: t("nav.stores") },
+    { href: "/marketplace", label: t("nav.marketplace") },
     { href: "/atlas", label: t("nav.atlas") },
     { href: "/download", label: t("nav.download") },
   ];
