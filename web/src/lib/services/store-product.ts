@@ -23,7 +23,53 @@ import { apiClient } from "../api-client";
 // 枚举
 // ============================================================================
 
-export type ProductStatus = "DRAFT" | "PUBLISHED" | "HIDDEN" | "SOLD_OUT";
+/**
+ * 单品交易态。
+ *
+ * 后端自 migration 057 起改成小写枚举（draft → reviewing → active → frozen →
+ * sold，外加 rejected / offline 两个辅助态），API 返回的就是这些值。大写值是
+ * 迁移前的旧词汇，DB 上还留着 normalize_store_product_status trigger 兜底，
+ * 所以这里保留成可接受的别名，读到之后一律先 normalizeProductStatus。
+ */
+export type CanonicalProductStatus =
+  | "draft"
+  | "reviewing"
+  | "active"
+  | "frozen"
+  | "sold"
+  | "rejected"
+  | "offline";
+
+/** @deprecated 迁移前的状态词汇，仅用于兼容存量数据。 */
+export type LegacyProductStatus = "DRAFT" | "PUBLISHED" | "HIDDEN" | "SOLD_OUT";
+
+export type ProductStatus = CanonicalProductStatus | LegacyProductStatus;
+
+const LEGACY_STATUS_MAP: Record<LegacyProductStatus, CanonicalProductStatus> = {
+  DRAFT: "draft",
+  PUBLISHED: "active",
+  HIDDEN: "offline",
+  SOLD_OUT: "sold",
+};
+
+export function normalizeProductStatus(
+  status: ProductStatus | null | undefined,
+): CanonicalProductStatus {
+  if (!status) return "draft";
+  return (
+    LEGACY_STATUS_MAP[status as LegacyProductStatus] ??
+    (status as CanonicalProductStatus)
+  );
+}
+
+/**
+ * 只有 active 的单品能下单或出价——与后端 `acquire_hold` 的校验保持一致，
+ * 否则用户点了「立即购买」才收到「商品当前不可购买」。
+ */
+export function isProductPurchasable(status: ProductStatus): boolean {
+  return normalizeProductStatus(status) === "active";
+}
+
 export type EntryCardType =
   | "CLASSIFICATION"
   | "DISCOUNT"
@@ -119,6 +165,12 @@ export interface StoreProduct {
   id: number;
   storeId: string;
   merchantId?: number | null;
+  /** 买手店商品为 "merchant"，C2C 个人卖家单品为 "individual"。 */
+  sellerKind?: "merchant" | "individual";
+  /** 个人卖家的 userId；买手店商品为空，此时卖家要经 merchantId 反查。 */
+  sellerUserId?: number | null;
+  /** 卖家是否接受议价；false 时商品详情只出「立即购买」。 */
+  acceptOffer?: boolean;
   categoryId?: number | null;
   categoryName?: string | null;
   title: string;
@@ -411,11 +463,14 @@ export const storeProductService = {
 // 展示常量
 // ============================================================================
 
-export const PRODUCT_STATUS_LABEL: Record<ProductStatus, string> = {
-  DRAFT: "草稿",
-  PUBLISHED: "已上架",
-  HIDDEN: "已下架",
-  SOLD_OUT: "已售罄",
+export const PRODUCT_STATUS_LABEL: Record<CanonicalProductStatus, string> = {
+  draft: "草稿",
+  reviewing: "审核中",
+  active: "已上架",
+  frozen: "已锁定",
+  sold: "已售出",
+  rejected: "已驳回",
+  offline: "已下架",
 };
 
 export const ENTRY_CARD_TYPE_LABEL: Record<EntryCardType, string> = {

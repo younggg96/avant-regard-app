@@ -48,19 +48,23 @@ import {
 import {
   storeProductService,
   formatPriceCents,
+  normalizeProductStatus,
   parsePriceInputToCents,
-  type ProductStatus,
+  type CanonicalProductStatus,
   type StoreProduct,
   type StoreProductCreateParams,
   type StoreProductUpdateParams,
 } from "@/lib/services/store-product";
 import { storeMerchantService } from "@/lib/services/store-merchant";
 
-const STATUS_I18N_KEY: Record<ProductStatus, string> = {
-  PUBLISHED: "merchant.statusPublished",
-  DRAFT: "merchant.statusDraft",
-  HIDDEN: "merchant.statusHidden",
-  SOLD_OUT: "merchant.statusSoldOut",
+const STATUS_I18N_KEY: Record<CanonicalProductStatus, string> = {
+  active: "merchant.statusPublished",
+  draft: "merchant.statusDraft",
+  reviewing: "merchant.statusReviewing",
+  frozen: "merchant.statusFrozen",
+  offline: "merchant.statusHidden",
+  sold: "merchant.statusSoldOut",
+  rejected: "merchant.statusRejected",
 };
 
 function useStatusOptions() {
@@ -68,19 +72,20 @@ function useStatusOptions() {
   const filterOptions = useMemo(
     () => [
       { value: "ALL" as const, label: t("common.all") },
-      { value: "PUBLISHED" as const, label: t("merchant.statusPublished") },
-      { value: "DRAFT" as const, label: t("merchant.statusDraft") },
-      { value: "HIDDEN" as const, label: t("merchant.statusHidden") },
-      { value: "SOLD_OUT" as const, label: t("merchant.statusSoldOut") },
+      { value: "active" as const, label: t("merchant.statusPublished") },
+      { value: "draft" as const, label: t("merchant.statusDraft") },
+      { value: "reviewing" as const, label: t("merchant.statusReviewing") },
+      { value: "offline" as const, label: t("merchant.statusHidden") },
+      { value: "sold" as const, label: t("merchant.statusSoldOut") },
     ],
     [t],
   );
   const formOptions = useMemo(
     () => [
-      { value: "PUBLISHED" as const, label: t("merchant.statusPublished") },
-      { value: "DRAFT" as const, label: t("merchant.statusDraft") },
-      { value: "HIDDEN" as const, label: t("merchant.statusHidden") },
-      { value: "SOLD_OUT" as const, label: t("merchant.statusSoldOut") },
+      { value: "active" as const, label: t("merchant.statusPublished") },
+      { value: "draft" as const, label: t("merchant.statusDraft") },
+      { value: "offline" as const, label: t("merchant.statusHidden") },
+      { value: "sold" as const, label: t("merchant.statusSoldOut") },
     ],
     [t],
   );
@@ -101,7 +106,7 @@ interface ProductForm {
   categoryId: number | null;
   isNew: boolean;
   tags: string[];
-  status: ProductStatus;
+  status: CanonicalProductStatus;
 }
 
 const EMPTY_FORM: ProductForm = {
@@ -115,7 +120,7 @@ const EMPTY_FORM: ProductForm = {
   categoryId: null,
   isNew: false,
   tags: [],
-  status: "PUBLISHED",
+  status: "active",
 };
 
 export default function MerchantProductsPage() {
@@ -138,7 +143,7 @@ export default function MerchantProductsPage() {
 
   // 过滤器 state
   const [statusFilter, setStatusFilter] =
-    useState<ProductStatus | "ALL">("ALL");
+    useState<CanonicalProductStatus | "ALL">("ALL");
   const [categoryFilter, setCategoryFilter] = useState<number | "ALL">("ALL");
   const [keyword, setKeyword] = useState("");
   const [page, setPage] = useState(1);
@@ -222,7 +227,7 @@ export default function MerchantProductsPage() {
       categoryId: p.categoryId ?? null,
       isNew: p.isNew,
       tags: p.tags ?? [],
-      status: p.status,
+      status: normalizeProductStatus(p.status),
     });
     setTagDraft("");
     setErr(null);
@@ -313,9 +318,11 @@ export default function MerchantProductsPage() {
   };
 
   const onQuickToggleStatus = async (p: StoreProduct) => {
-    // 只做 PUBLISHED <-> HIDDEN 两态切换，其他状态需进编辑弹窗.
-    if (p.status !== "PUBLISHED" && p.status !== "HIDDEN") return;
-    const nextStatus: ProductStatus = p.status === "PUBLISHED" ? "HIDDEN" : "PUBLISHED";
+    // 只做 active <-> offline 两态切换，其他状态需进编辑弹窗.
+    const current = normalizeProductStatus(p.status);
+    if (current !== "active" && current !== "offline") return;
+    const nextStatus: CanonicalProductStatus =
+      current === "active" ? "offline" : "active";
     // 乐观更新.
     const optimistic = productsAll.map((x) =>
       x.id === p.id ? { ...x, status: nextStatus } : x,
@@ -605,8 +612,8 @@ function ProductCard({
 }) {
   const { t } = useTranslation();
   const cover = product.images[0];
-  const canQuickToggle =
-    product.status === "PUBLISHED" || product.status === "HIDDEN";
+  const status = normalizeProductStatus(product.status);
+  const canQuickToggle = status === "active" || status === "offline";
 
   return (
     <div className="group relative overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--canvas-soft)]">
@@ -641,8 +648,8 @@ function ProductCard({
           <span className="truncate font-serif text-[14px] text-[var(--ink)]">
             {product.title}
           </span>
-          <StatusBadge active={product.status === "PUBLISHED"}>
-            {t(STATUS_I18N_KEY[product.status])}
+          <StatusBadge active={status === "active"}>
+            {t(STATUS_I18N_KEY[status])}
           </StatusBadge>
         </div>
         <div className="mt-0.5 truncate text-[11px] text-[color:var(--ink-muted)]">
@@ -690,7 +697,7 @@ function ProductCard({
               onClick={onQuickToggle}
               className="rounded border border-[var(--border)] px-2 py-0.5 text-[color:var(--ink-muted)] transition-colors hover:border-[var(--ink-muted)] hover:text-[var(--ink)]"
             >
-              {product.status === "PUBLISHED" ? t("merchant.unpublishProduct") : t("merchant.publishProduct")}
+              {status === "active" ? t("merchant.unpublishProduct") : t("merchant.publishProduct")}
             </button>
           )}
           <button
