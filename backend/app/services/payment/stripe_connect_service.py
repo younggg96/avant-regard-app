@@ -50,6 +50,16 @@ except Exception:  # pragma: no cover
 _STRIPE_API_VERSION = "2026-04-22.dahlia"
 
 
+def is_available() -> bool:
+    """当前部署是否具备走 Stripe Connect 的条件。
+
+    国内(CN)部署不接 Stripe,放款走 payout_accounts 的 bank/alipay/wechat
+    类型 + 平台手动打款,因此这里会返回 False。路由层据此把 Connect 入口
+    降级成"当前区域不可用",而不是等调用时抛 RuntimeError 再 503。
+    """
+    return _HAS_STRIPE and bool(os.getenv("STRIPE_API_KEY"))
+
+
 def _ensure_live() -> None:
     if not _HAS_STRIPE:
         raise RuntimeError("stripe SDK 未安装,无法使用 Connect")

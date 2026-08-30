@@ -85,6 +85,12 @@ export type ConnectStatus =
   | "disabled";
 
 export interface ConnectAccountStatus {
+  /**
+   * 本次部署是否接了 Stripe。国内后端未配 STRIPE_API_KEY，返回 false，
+   * 放款走银行卡/支付宝/微信 + 平台手动打款，前端应隐藏 Connect 入口。
+   * 老后端不返回该字段，按 true 处理以保持既有行为。
+   */
+  available?: boolean;
   exists: boolean;
   status: ConnectStatus;
   stripeAccountId?: string | null;

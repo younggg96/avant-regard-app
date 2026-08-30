@@ -31,7 +31,10 @@ from app.core.response import success
 from app.api.deps import get_current_user, get_current_admin_user
 from app.services.wallet_service import wallet_service
 from app.services.kyc_service import kyc_service
-from app.services.payment.stripe_connect_service import stripe_connect_service
+from app.services.payment.stripe_connect_service import (
+    stripe_connect_service,
+    is_available as stripe_connect_available,
+)
 from app.schemas.wallet import (
     KYCSubmitRequest,
     KYCAdminDecision,
@@ -134,10 +137,19 @@ class ConnectOnboardRequest(BaseModel):
     appScheme: Optional[str] = None
 
 
+CONNECT_UNAVAILABLE_DETAIL = "当前区域不支持 Stripe Connect 放款,请绑定银行卡/支付宝/微信收款账户"
+
+
 def _connect_status_payload(row: Optional[dict]) -> dict:
-    """统一前端要的字段。row 为 None 表示用户尚未创建 Connect 账号。"""
+    """统一前端要的字段。row 为 None 表示用户尚未创建 Connect 账号。
+
+    `available` 表示本次部署是否接了 Stripe(国内为 False),前端据此决定
+    是否渲染 Connect 入口。
+    """
+    available = stripe_connect_available()
     if not row:
         return {
+            "available": available,
             "exists": False,
             "status": "none",
             "stripeAccountId": None,
@@ -150,6 +162,7 @@ def _connect_status_payload(row: Optional[dict]) -> dict:
             "requirementsDisabledReason": None,
         }
     return {
+        "available": available,
         "exists": True,
         "status": row.get("status"),
         "stripeAccountId": row.get("stripe_account_id"),
@@ -166,7 +179,12 @@ def _connect_status_payload(row: Optional[dict]) -> dict:
 @wallet_router.get("/me/connect")
 def get_my_connect(user_id: int = Depends(get_current_user)):
     """返回当前用户的 Stripe Connect 账号状态。
-    没创建过返回 exists=False, 前端展示"接入"入口。"""
+    没创建过返回 exists=False, 前端展示"接入"入口。
+
+    未接 Stripe 的部署(国内)直接返回 available=False, 不查库 —— 前端
+    应据此隐藏 Connect 入口, 而不是让用户点进去再报错。"""
+    if not stripe_connect_available():
+        return success(_connect_status_payload(None))
     row = stripe_connect_service.get_account_row(user_id)
     return success(_connect_status_payload(row))
 
@@ -178,6 +196,8 @@ def connect_onboard(
     """幂等创建 Connect 账号 + 签发 Onboarding URL。
     前端拿到 url 后用 WebBrowser.openAuthSessionAsync 打开;
     用户在 stripe.com 完成 KYC 后回到 return_url。"""
+    if not stripe_connect_available():
+        raise HTTPException(status_code=503, detail=CONNECT_UNAVAILABLE_DETAIL)
     try:
         stripe_connect_service.create_or_get_account(
             user_id, country=body.country, email=body.email
@@ -197,6 +217,8 @@ def connect_onboard(
 def connect_refresh(user_id: int = Depends(get_current_user)):
     """主动从 Stripe 拉账号状态。前端从 onboarding 跳回 App 时建议立刻调,
     防止 webhook 还没到就让用户看到 stale 状态。"""
+    if not stripe_connect_available():
+        raise HTTPException(status_code=503, detail=CONNECT_UNAVAILABLE_DETAIL)
     try:
         row = stripe_connect_service.refresh_account(user_id)
     except RuntimeError as e:

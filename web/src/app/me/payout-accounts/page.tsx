@@ -177,8 +177,12 @@ function ConnectSection() {
     walletService.getConnectStatus(),
   );
 
+  // 国内后端没接 Stripe，refresh 会 503，别去轮询。
+  const available = status ? status.available !== false : false;
+
   // 用户在新标签页完成 Stripe 托管流程后回到这里，主动同步一次状态。
   useEffect(() => {
+    if (!available) return;
     const onFocus = () => {
       walletService
         .refreshConnectStatus()
@@ -187,7 +191,7 @@ function ConnectSection() {
     };
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
-  }, [mutate]);
+  }, [available, mutate]);
 
   const startOnboarding = async () => {
     setStarting(true);
@@ -202,6 +206,9 @@ function ConnectSection() {
       setStarting(false);
     }
   };
+
+  // 状态未知或该区域不支持时不渲染入口，避免用户点进去才拿到 503。
+  if (!available) return null;
 
   return (
     <section className="mt-8 rounded border border-[var(--border)] p-5">

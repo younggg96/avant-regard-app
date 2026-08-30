@@ -3,6 +3,7 @@
 
 设计：
   - 默认 provider 由 PAYMENT_PROVIDER 决定（开发用 mock）。
+  - PAYMENT_PROVIDER=mock 是"全局 mock"开关：区域路由被短路，只剩 mock。
   - 业务侧可以根据 region/currency 调 `resolve_provider(region/currency/preferred)` 拿到真实通道。
   - 区域路由：中国（CN / currency=CNY）→ 微信 + 支付宝；其它（默认 US）→ Stripe。
   - 单例缓存避免重复初始化 SDK。
@@ -63,14 +64,21 @@ def list_provider_options(
         Stripe 支持 CNY 直接收单,海外用户买国内商品需要这个;
         本地用户依然会优先选支付宝/微信(列在前面)。
       - 其它 → Stripe (覆盖 US/EU 等海外区主通道)
-      - 开发环境 PAYMENT_PROVIDER=mock 或 PAYMENT_ENABLE_MOCK=1 时额外
-        追加 mock 选项,方便联调。
+      - PAYMENT_PROVIDER=mock → 只返回 ["mock"]。这是"整个部署都跑 mock
+        支付"的语义(国内当前如此:没有支付宝/微信商户号,也不接 Stripe)。
+        不能只是追加 mock —— 否则 resolve_provider 拿 options[0] 会选到
+        没配密钥的支付宝,下单直接报错。
+      - PAYMENT_ENABLE_MOCK=1 → 真实通道之外再追加 mock,用于真实通道
+        已配好、但想顺带留个 mock 入口联调的环境。
       - Stripe 选项只有在配置了 STRIPE_API_KEY 时才会展示, 避免没配 key
         却让用户能选 Stripe 然后拉起 PaymentSheet 时才报错。
     """
     region = (region or "").upper()
     currency = (currency or "").upper()
     options: List[str] = []
+
+    if (os.getenv("PAYMENT_PROVIDER") or "").lower() == "mock":
+        return ["mock"]
 
     stripe_configured = bool(os.getenv("STRIPE_API_KEY"))
 
@@ -84,9 +92,7 @@ def list_provider_options(
         else:
             options = []
 
-    if (os.getenv("PAYMENT_PROVIDER") or "").lower() == "mock":
-        options = options + ["mock"]
-    elif os.getenv("PAYMENT_ENABLE_MOCK") == "1":
+    if os.getenv("PAYMENT_ENABLE_MOCK") == "1":
         options = options + ["mock"]
 
     # 去重保持顺序
