@@ -88,8 +88,19 @@ class FileService:
                 f"content_type: {content_type}, size: {len(file_content)} bytes"
             )
 
+            # cache-control 必须显式给, 否则存储默认回 `no-cache`, 浏览器和
+            # Next 图片优化器都无法缓存, 每次浏览都要重新回源(实测单图 TTFB
+            # 约 0.5s)。文件名带 uuid, 内容不会原地变更, 可以放心长缓存。
+            #
+            # 注意: storage3 会把这个值拼成 `max-age={value}`, 所以这里只能
+            # 填秒数, 不能填完整的 Cache-Control 串。
             result = self.db.storage.from_(bucket).upload(
-                unique_filename, file_content, {"content-type": content_type}
+                unique_filename,
+                file_content,
+                {
+                    "content-type": content_type,
+                    "cache-control": "31536000",  # 1 年
+                },
             )
 
             print(f"[FileService] Upload result type: {type(result)}")

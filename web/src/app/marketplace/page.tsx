@@ -18,6 +18,7 @@
  */
 
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslation } from "react-i18next";
@@ -176,10 +177,11 @@ function MarketplacePageInner() {
                 >
                   <span className="block size-[68px] overflow-hidden rounded-full border border-[var(--border)] bg-[var(--canvas-raised)]">
                     {b.imageUrl && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
+                      <Image
                         src={b.imageUrl}
                         alt={b.name}
+                        width={68}
+                        height={68}
                         className="size-full object-cover"
                       />
                     )}
@@ -411,10 +413,11 @@ function SearchBox({
                 className="flex w-full items-center gap-2.5 px-3 py-2 text-left transition-colors hover:bg-[var(--canvas-raised)]"
               >
                 {s.imageUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
+                  <Image
                     src={s.imageUrl}
                     alt=""
+                    width={32}
+                    height={32}
                     className="size-8 shrink-0 rounded object-cover"
                   />
                 ) : (
@@ -495,10 +498,11 @@ function AllBrandsModal({
                 >
                   <span className="block aspect-square overflow-hidden rounded-full border border-[var(--border)] bg-[var(--canvas-raised)]">
                     {b.imageUrl && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
+                      <Image
                         src={b.imageUrl}
                         alt={b.name}
+                        width={96}
+                        height={96}
                         className="size-full object-cover"
                       />
                     )}

@@ -15,6 +15,7 @@
  */
 
 import { useCallback, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import { Eye, Heart, MessageCircle, Star } from "lucide-react";
@@ -130,11 +131,14 @@ export function ListingDetailView({
         <div>
           <div className="relative aspect-[3/4] overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--canvas-raised)]">
             {currentImage ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
+              // 本页的 LCP 元素，priority 让它跳过懒加载、直接进预加载队列。
+              <Image
                 src={currentImage}
                 alt={listing.title}
-                className="size-full object-cover"
+                fill
+                priority
+                sizes="(min-width: 768px) 55vw, 100vw"
+                className="object-cover"
               />
             ) : (
               <div className="grid h-full place-items-center font-label text-[12px] text-[color:var(--ink-muted)]">
@@ -178,8 +182,13 @@ export function ListingDetailView({
                       : "border-[var(--border)] hover:border-[var(--ink-muted)]"
                   }`}
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={src} alt="" className="size-full object-cover" />
+                  <Image
+                    src={src}
+                    alt=""
+                    fill
+                    sizes="(min-width: 768px) 10vw, 17vw"
+                    className="object-cover"
+                  />
                 </button>
               ))}
             </div>
@@ -294,10 +303,11 @@ export function ListingDetailView({
               className="flex items-center gap-3 rounded border border-[var(--border)] p-3 transition-colors hover:border-[var(--ink)]"
             >
               {rich.show.coverImage && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
+                <Image
                   src={rich.show.coverImage}
                   alt=""
+                  width={56}
+                  height={56}
                   className="size-14 shrink-0 rounded object-cover"
                 />
               )}
@@ -441,8 +451,13 @@ function SellerCard({ seller }: { seller: ProductDetailSeller }) {
     >
       <span className="size-11 shrink-0 overflow-hidden rounded-full bg-[var(--canvas-raised)]">
         {seller.avatarUrl && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={seller.avatarUrl} alt="" className="size-full object-cover" />
+          <Image
+            src={seller.avatarUrl}
+            alt=""
+            width={44}
+            height={44}
+            className="size-full object-cover"
+          />
         )}
       </span>
       <span className="min-w-0 flex-1">
@@ -485,10 +500,11 @@ function ReviewRow({ review }: { review: ProductDetailReviewItem }) {
     <li className="flex gap-3 py-4">
       <span className="size-8 shrink-0 overflow-hidden rounded-full bg-[var(--canvas-raised)]">
         {review.reviewerAvatar && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <Image
             src={review.reviewerAvatar}
             alt=""
+            width={32}
+            height={32}
             className="size-full object-cover"
           />
         )}
