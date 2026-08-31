@@ -17,6 +17,7 @@
  */
 
 import { Suspense, useCallback, useMemo, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -310,13 +311,14 @@ function StorePostsTab({ storeId }: { storeId: string }) {
               href={`/posts/${p.id}`}
               className="group block overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--canvas-soft)] transition-shadow hover:shadow-md"
             >
-              <div className="aspect-[3/4] w-full overflow-hidden bg-[var(--canvas)]">
+              <div className="relative aspect-[3/4] w-full overflow-hidden bg-[var(--canvas)]">
                 {cover ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
+                  <Image
                     src={cover}
                     alt={p.title}
-                    className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                    fill
+                    sizes="(min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw"
+                    className="object-cover transition-transform group-hover:scale-105"
                   />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center font-label text-[11px] text-[color:var(--ink-muted)]">

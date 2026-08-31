@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { BuyerStore } from "@/lib/services/buyer-store";
@@ -42,11 +43,14 @@ export function StoreProfileBlock({ store, profile }: Props) {
       {/* Hero cover banner */}
       <div className="relative aspect-[21/9] w-full overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--canvas-raised)]">
         {cover ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          // 店铺页的首屏 banner，是 LCP 元素。
+          <Image
             src={cover}
             alt={store.name}
-            className="h-full w-full object-cover"
+            fill
+            priority
+            sizes="100vw"
+            className="object-cover"
           />
         ) : (
           <div className="grid h-full w-full place-items-center font-label text-[12px] uppercase tracking-widest text-[color:var(--ink-muted)]">
@@ -60,11 +64,12 @@ export function StoreProfileBlock({ store, profile }: Props) {
         {/* Logo */}
         <div className="-mt-10 relative h-[88px] w-[88px] shrink-0 overflow-hidden rounded-full border-[3px] border-[var(--canvas)] bg-[var(--canvas-raised)] shadow-sm md:h-[100px] md:w-[100px]">
           {logo ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <Image
               src={logo}
               alt={store.name}
-              className="h-full w-full object-cover"
+              fill
+              sizes="100px"
+              className="object-cover"
             />
           ) : (
             <div className="grid h-full w-full place-items-center font-serif text-[18px] text-[var(--ink)]">

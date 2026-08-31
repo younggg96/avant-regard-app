@@ -14,6 +14,7 @@
  * SWR 里可以跨页面共享一份缓存（同一个 key）.
  */
 
+import Image from "next/image";
 import Link from "next/link";
 import useSWR from "swr";
 import { getAllBuyerStores, type BuyerStore } from "@/lib/services/buyer-store";
@@ -75,10 +76,11 @@ export function StoreTopSwitcher({ currentStoreId, limit = 12 }: Props) {
                   }`}
                 >
                   {logo ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
+                    <Image
                       src={logo}
                       alt={s.name}
+                      width={56}
+                      height={56}
                       className="h-full w-full object-cover"
                     />
                   ) : (

@@ -22,6 +22,7 @@
  */
 
 import { useMemo, useState } from "react";
+import Image from "next/image";
 import { Eye, Heart, MessageCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useParams } from "next/navigation";
@@ -619,11 +620,12 @@ function ProductCard({
     <div className="group relative overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--canvas-soft)]">
       <div className="relative aspect-[4/5] bg-[var(--canvas-raised)]">
         {cover ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <Image
             src={cover}
             alt={product.title}
-            className="h-full w-full object-cover"
+            fill
+            sizes="(min-width: 1280px) 33vw, (min-width: 640px) 50vw, 100vw"
+            className="object-cover"
           />
         ) : (
           <div className="flex h-full items-center justify-center font-label text-[11px] text-[color:var(--ink-muted)]">

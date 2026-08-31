@@ -13,6 +13,7 @@
  */
 
 import { useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import useSWR from "swr";
@@ -132,13 +133,14 @@ export default function ArchivePage() {
               href={`/me/archive/${item.id}`}
               className="group block"
             >
-              <div className="aspect-square overflow-hidden rounded bg-[var(--canvas-raised)]">
+              <div className="relative aspect-square overflow-hidden rounded bg-[var(--canvas-raised)]">
                 {item.photos?.[0] && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
+                  <Image
                     src={item.photos[0]}
                     alt={item.title ?? ""}
-                    className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    fill
+                    sizes="(min-width: 1024px) 25vw, (min-width: 640px) 33vw, 50vw"
+                    className="object-cover transition-transform duration-300 group-hover:scale-105"
                   />
                 )}
               </div>

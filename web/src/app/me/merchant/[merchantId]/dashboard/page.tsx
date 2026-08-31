@@ -21,6 +21,7 @@
  */
 
 import { useMemo, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import { useParams } from "next/navigation";
@@ -957,10 +958,11 @@ function UserAvatar({
   const size = small ? "h-7 w-7 text-[11px]" : "h-9 w-9 text-[13px]";
   if (url && (url.startsWith("http://") || url.startsWith("https://"))) {
     return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
+      <Image
         src={url}
         alt={name}
+        width={36}
+        height={36}
         className={`shrink-0 rounded-full object-cover ${size}`}
       />
     );
@@ -1336,10 +1338,11 @@ function TopProductsTable({ items }: { items: TopProductItem[] }) {
 function ProductThumb({ url, alt }: { url?: string | null; alt: string }) {
   if (url && (url.startsWith("http://") || url.startsWith("https://"))) {
     return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
+      <Image
         src={url}
         alt={alt}
+        width={32}
+        height={32}
         className="h-8 w-8 shrink-0 rounded object-cover"
       />
     );

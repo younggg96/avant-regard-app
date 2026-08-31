@@ -11,6 +11,7 @@
  */
 
 import { useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslation } from "react-i18next";
@@ -107,10 +108,11 @@ export default function MyOffersPage() {
                 <div className="flex gap-3">
                   <div className="size-16 shrink-0 overflow-hidden rounded bg-[var(--canvas-raised)]">
                     {offer.product?.coverImage && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
+                      <Image
                         src={offer.product.coverImage}
                         alt={offer.product.title ?? ""}
+                        width={64}
+                        height={64}
                         className="size-full object-cover"
                       />
                     )}

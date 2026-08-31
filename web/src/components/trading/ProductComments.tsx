@@ -11,6 +11,7 @@
  * 计数，避免等一轮 SWR。
  */
 
+import Image from "next/image";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -229,10 +230,11 @@ function CommentRow({
     <li className="flex gap-3 py-4">
       <div className="h-8 w-8 shrink-0 overflow-hidden rounded-full bg-[var(--canvas-raised)]">
         {comment.userAvatar ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <Image
             src={comment.userAvatar}
             alt=""
+            width={32}
+            height={32}
             className="h-full w-full object-cover"
           />
         ) : (

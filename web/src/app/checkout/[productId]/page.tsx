@@ -9,6 +9,7 @@
  */
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import useSWR from "swr";
@@ -137,10 +138,11 @@ export default function CheckoutPage() {
         <div className="mt-2 flex gap-4 rounded border border-[var(--border)] bg-[var(--canvas-soft)] p-4">
           <div className="size-20 shrink-0 overflow-hidden rounded bg-[var(--canvas-raised)]">
             {product.images?.[0] && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
+              <Image
                 src={product.images[0]}
                 alt={product.title}
+                width={80}
+                height={80}
                 className="size-full object-cover"
               />
             )}

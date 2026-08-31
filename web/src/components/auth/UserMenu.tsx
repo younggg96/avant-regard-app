@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -85,10 +86,11 @@ export function UserMenu() {
         className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full border border-[var(--border)] bg-[var(--canvas-soft)] font-label text-[12px] font-medium text-[var(--ink)] transition-colors hover:border-[var(--ink)]"
       >
         {user.avatar ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <Image
             src={user.avatar}
             alt={user.username}
+            width={32}
+            height={32}
             className="h-full w-full object-cover"
           />
         ) : (

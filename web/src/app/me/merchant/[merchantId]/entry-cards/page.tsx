@@ -24,6 +24,7 @@
  */
 
 import { useMemo, useState } from "react";
+import Image from "next/image";
 import { useTranslation } from "react-i18next";
 import { useParams } from "next/navigation";
 import useSWR from "swr";
@@ -241,10 +242,11 @@ export default function EntryCardsPage() {
               key={c.id}
               className="flex items-center gap-4 rounded-lg border border-[var(--border)] bg-[var(--canvas-soft)] p-3"
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              <Image
                 src={c.imageUrl}
                 alt={c.label}
+                width={112}
+                height={64}
                 className="h-16 w-28 shrink-0 rounded object-cover"
               />
               <div className="min-w-0 flex-1 font-label">

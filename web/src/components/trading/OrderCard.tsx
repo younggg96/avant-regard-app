@@ -8,6 +8,7 @@
  * （买家待付款 → 去支付；买家已签收 → 确认收货；卖家待发货 → 发货）。
  */
 
+import Image from "next/image";
 import Link from "next/link";
 import { useTranslation } from "react-i18next";
 
@@ -39,10 +40,11 @@ export function OrderCard({ order }: { order: Order }) {
         <div className="mt-3 flex gap-3">
           <div className="size-16 shrink-0 overflow-hidden rounded bg-[var(--canvas-raised)]">
             {cover && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
+              <Image
                 src={cover}
                 alt={order.product?.title ?? ""}
+                width={64}
+                height={64}
                 className="size-full object-cover"
               />
             )}

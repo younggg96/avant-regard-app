@@ -19,6 +19,7 @@
  *   - hasMore: 来自后端 total，用来决定是否显示"加载更多"按钮.
  */
 
+import Image from "next/image";
 import Link from "next/link";
 import { Heart } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -171,12 +172,12 @@ function StoreCard({
       >
         <div className="relative aspect-[4/3] overflow-hidden bg-[var(--canvas-raised)]">
           {cover ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <Image
               src={cover}
               alt={store.name}
-              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
-              loading="lazy"
+              fill
+              sizes="(min-width: 1280px) 25vw, (min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+              className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
             />
           ) : (
             <div className="flex h-full items-center justify-center font-label text-[11px] uppercase tracking-widest text-[color:var(--ink-muted)]">

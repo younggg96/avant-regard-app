@@ -13,6 +13,7 @@
  */
 
 import { useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import useSWR from "swr";
@@ -126,10 +127,11 @@ function DisputeCard({
       <div className="flex gap-4">
         <div className="size-16 shrink-0 overflow-hidden rounded bg-[var(--canvas-raised)]">
           {dispute.productImage && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <Image
               src={dispute.productImage}
               alt={dispute.productTitle ?? ""}
+              width={64}
+              height={64}
               className="size-full object-cover"
             />
           )}
@@ -179,11 +181,12 @@ function DisputeCard({
       {dispute.evidencePhotos.length > 0 && (
         <div className="mt-3 flex flex-wrap gap-2">
           {dispute.evidencePhotos.map((url) => (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <Image
               key={url}
               src={url}
               alt=""
+              width={56}
+              height={56}
               className="size-14 rounded object-cover"
             />
           ))}

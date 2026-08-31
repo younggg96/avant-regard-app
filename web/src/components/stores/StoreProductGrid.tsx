@@ -17,6 +17,7 @@
  * 再造一个；用 `preview` 属性控制"是否显示加载更多"和右上角的"查看全部 →".
  */
 
+import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -186,12 +187,13 @@ function ProductCard({
       >
         <div className="relative aspect-[3/4] overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--canvas-raised)]">
           {cover ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            // sizes 对应上面的列数：手机 2 列、md 3–4 列、xl 4 列。
+            <Image
               src={cover}
               alt={product.title}
-              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
-              loading="lazy"
+              fill
+              sizes="(min-width: 1280px) 25vw, (min-width: 768px) 33vw, 50vw"
+              className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
             />
           ) : (
             <div className="grid h-full place-items-center font-label text-[11px] text-[color:var(--ink-muted)]">

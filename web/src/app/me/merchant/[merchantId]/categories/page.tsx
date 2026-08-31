@@ -22,6 +22,7 @@
  */
 
 import { useMemo, useState } from "react";
+import Image from "next/image";
 import { useTranslation } from "react-i18next";
 import { useParams } from "next/navigation";
 import useSWR from "swr";
@@ -197,10 +198,11 @@ export default function ProductCategoriesPage() {
               className="flex items-center gap-4 rounded-lg border border-[var(--border)] bg-[var(--canvas-soft)] p-3"
             >
               {c.coverImage ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
+                <Image
                   src={c.coverImage}
                   alt={c.name}
+                  width={80}
+                  height={56}
                   className="h-14 w-20 shrink-0 rounded object-cover"
                 />
               ) : (

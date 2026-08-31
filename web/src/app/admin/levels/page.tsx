@@ -12,6 +12,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Image from "next/image";
 import { useTranslation } from "react-i18next";
 import {
   adminLevelApi,
@@ -406,10 +407,11 @@ export default function AdminLevelsPage() {
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2.5">
                           {u.avatarUrl ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
+                            <Image
                               src={u.avatarUrl}
                               alt={u.username}
+                              width={28}
+                              height={28}
                               className="h-7 w-7 rounded-full object-cover"
                             />
                           ) : (

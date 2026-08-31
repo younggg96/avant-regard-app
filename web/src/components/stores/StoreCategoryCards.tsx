@@ -15,6 +15,7 @@
  *   - 和移动端"mock 兜底"思路一致，让用户在"商家还没配置"阶段也有基本导航.
  */
 
+import Image from "next/image";
 import useSWR from "swr";
 import { useTranslation } from "react-i18next";
 import {
@@ -80,12 +81,12 @@ export function StoreCategoryCards({ storeId, onNavigate }: Props) {
             className="group relative block h-[120px] overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--canvas-soft)] text-left transition-transform hover:-translate-y-[1px]"
           >
             {c.imageUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
+              <Image
                 src={c.imageUrl}
                 alt={c.label}
-                className="absolute inset-0 h-full w-full object-cover opacity-85 transition-opacity group-hover:opacity-100"
-                loading="lazy"
+                fill
+                sizes="(min-width: 768px) 33vw, (min-width: 640px) 50vw, 100vw"
+                className="object-cover opacity-85 transition-opacity group-hover:opacity-100"
               />
             ) : (
               <div

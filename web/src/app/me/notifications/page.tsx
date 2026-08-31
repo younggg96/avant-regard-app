@@ -166,10 +166,11 @@ export default function NotificationsPage() {
                 </div>
 
                 {n.image && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
+                  <Image
                     src={n.image}
                     alt=""
+                    width={48}
+                    height={48}
                     className="h-12 w-12 shrink-0 rounded object-cover"
                   />
                 )}

@@ -17,6 +17,7 @@
 
 import { useCallback, useState } from "react";
 import { Eye, Heart, MessageCircle } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import useSWR, { mutate as globalMutate } from "swr";
@@ -123,11 +124,14 @@ export function ProductDetailView({ storeId, initialProduct }: Props) {
         <div>
           <div className="relative aspect-[3/4] overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--canvas-raised)]">
             {currentImage ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
+              // 本页的 LCP 元素。
+              <Image
                 src={currentImage}
                 alt={product.title}
-                className="h-full w-full object-cover"
+                fill
+                priority
+                sizes="(min-width: 768px) 55vw, 100vw"
+                className="object-cover"
               />
             ) : (
               <div className="grid h-full place-items-center font-label text-[12px] text-[color:var(--ink-muted)]">
@@ -186,8 +190,13 @@ export function ProductDetailView({ storeId, initialProduct }: Props) {
                       : "border-[var(--border)] hover:border-[var(--ink-muted)]"
                   }`}
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={src} alt="" className="h-full w-full object-cover" />
+                  <Image
+                    src={src}
+                    alt=""
+                    fill
+                    sizes="(min-width: 768px) 10vw, 17vw"
+                    className="object-cover"
+                  />
                 </button>
               ))}
             </div>

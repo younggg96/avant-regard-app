@@ -14,6 +14,7 @@
  *     单独写清楚。
  */
 
+import Image from "next/image";
 import { useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { uploadImage } from "@/lib/services/admin";
@@ -64,15 +65,16 @@ export function ImagePicker({
     <div>
       <div
         onClick={handleClick}
-        className="flex cursor-pointer items-center justify-center overflow-hidden rounded border border-dashed border-[var(--border)] bg-[var(--canvas)] hover:border-[var(--ink-muted)]"
+        className="relative flex cursor-pointer items-center justify-center overflow-hidden rounded border border-dashed border-[var(--border)] bg-[var(--canvas)] hover:border-[var(--ink-muted)]"
         style={{ height }}
       >
         {value ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <Image
             src={value}
             alt=""
-            className="h-full w-full object-cover"
+            fill
+            sizes="(min-width: 768px) 50vw, 100vw"
+            className="object-cover"
           />
         ) : (
           <div className="font-label text-[12px] text-[color:var(--ink-muted)]">
@@ -187,8 +189,13 @@ export function MultiImagePicker({
             className="relative overflow-hidden rounded border border-[var(--border)] bg-[var(--canvas)]"
             style={{ height }}
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={url} alt="" className="h-full w-full object-cover" />
+            <Image
+              src={url}
+              alt=""
+              fill
+              sizes="(min-width: 768px) 33vw, 50vw"
+              className="object-cover"
+            />
             {/* 顺序控制 —— 第 1 张默认作封面，设计上需要让用户明显感知"顺序=展示顺序" */}
             <div className="absolute left-1 top-1 rounded bg-black/60 px-1.5 py-0.5 font-label text-[10px] text-white">
               {idx === 0 ? t("common.cover") : idx + 1}

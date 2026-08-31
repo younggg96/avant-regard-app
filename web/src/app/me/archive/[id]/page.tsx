@@ -11,6 +11,7 @@
  */
 
 import { useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useTranslation } from "react-i18next";
@@ -86,11 +87,13 @@ export default function ArchiveDetailPage() {
       {data.photos.length > 0 && (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {data.photos.map((url) => (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <Image
               key={url}
               src={url}
               alt=""
+              width={400}
+              height={400}
+              sizes="(min-width: 640px) 25vw, 50vw"
               className="aspect-square w-full rounded object-cover"
             />
           ))}

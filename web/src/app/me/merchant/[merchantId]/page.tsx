@@ -27,6 +27,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import { useParams } from "next/navigation";
@@ -96,8 +97,17 @@ function MerchantThumb({
 }) {
   const { t } = useTranslation();
   if (isDisplayableUrl(url)) {
-    // eslint-disable-next-line @next/next/no-img-element
-    return <img src={url!} alt={alt} className={className} />;
+    // 实际显示尺寸由调用方的 className 决定(最大 112×80)，这里的
+    // width/height 只用来给优化器生成 srcset。
+    return (
+      <Image
+        src={url!}
+        alt={alt}
+        width={112}
+        height={80}
+        className={className}
+      />
+    );
   }
   return (
     <div
@@ -1980,8 +1990,13 @@ function PostImageList({
             key={`${url}-${idx}`}
             className="relative h-24 overflow-hidden rounded border border-[var(--border)] bg-[var(--canvas)]"
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={url} alt="" className="h-full w-full object-cover" />
+            <Image
+              src={url}
+              alt=""
+              fill
+              sizes="(min-width: 768px) 25vw, 50vw"
+              className="object-cover"
+            />
             <div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-black/60 px-1 py-0.5 font-label text-[10px] text-white">
               <button onClick={() => moveLeft(idx)} disabled={idx === 0} className="disabled:opacity-30">
                 ←
