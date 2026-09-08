@@ -331,6 +331,63 @@ class ArchiveService:
         res = execute_with_retry(lambda: q.execute(), label="archive.list")
         return [self._format(r) for r in (res.data or [])], (res.count or 0)
 
+    def _authors_brief(self, user_ids: List[int]) -> Dict[int, Dict[str, Any]]:
+        """批量取作者 username + 头像，供「世界」档案 feed 附带作者信息。"""
+        out: Dict[int, Dict[str, Any]] = {}
+        ids = list({u for u in user_ids if u})
+        if not ids:
+            return out
+        users = (
+            self.db.table("users").select("id, username").in_("id", ids).execute().data
+            or []
+        )
+        infos = (
+            self.db.table("user_info")
+            .select("user_id, avatar_url")
+            .in_("user_id", ids)
+            .execute()
+            .data
+            or []
+        )
+        avatar_map = {i["user_id"]: i.get("avatar_url") for i in infos}
+        for u in users:
+            out[u["id"]] = {
+                "id": u["id"],
+                "username": u.get("username") or "",
+                "avatarUrl": avatar_map.get(u["id"]),
+            }
+        return out
+
+    def list_world(
+        self,
+        viewer_user_id: int,
+        *,
+        page: int = 1,
+        page_size: int = 30,
+    ) -> Tuple[List[Dict[str, Any]], int]:
+        """「世界」二级 Tab：浏览其他用户的档案条目（排除本人）。
+
+        返回 dict 列表（基础 archive 字段 + `author` 作者简介），
+        按创建时间倒序分页。
+        """
+        offset = (page - 1) * page_size
+        q = (
+            self.db.table("user_archive_items")
+            .select("*", count="exact")
+            .neq("user_id", viewer_user_id)
+            .order("created_at", desc=True)
+            .range(offset, offset + page_size - 1)
+        )
+        res = execute_with_retry(lambda: q.execute(), label="archive.world")
+        rows = res.data or []
+        author_map = self._authors_brief([r.get("user_id") for r in rows])
+        items: List[Dict[str, Any]] = []
+        for r in rows:
+            data = self._format(r).dict()
+            data["author"] = author_map.get(r.get("user_id"))
+            items.append(data)
+        return items, (res.count or 0)
+
     def get(self, archive_id: int) -> Optional[ArchiveItem]:
         res = (
             self.db.table("user_archive_items")

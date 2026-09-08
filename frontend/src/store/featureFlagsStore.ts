@@ -25,10 +25,18 @@ export interface FeatureFlags {
    * "未拉到/拉取失败" 时按关闭处理, 不让未确认的抽奖入口闪一下.
    */
   lotteryEnabled: boolean;
+  /**
+   * 交易系统总开关. 关闭时 App 内所有交易相关内容一律不展示:
+   * Discover「交易」Tab、发布单品 / 转入、商品详情购买·出价栏、订单 / 钱包 /
+   * 卖家中心 / Plus / 转卖入口、消息页「交易」子 Tab、个人页 购买 / 售出 Tab 等.
+   * 默认 false, 与后端 `feature_flags_service._default_config` 对齐.
+   */
+  tradingEnabled: boolean;
 }
 
 const DEFAULT_FLAGS: FeatureFlags = {
   lotteryEnabled: false,
+  tradingEnabled: false,
 };
 
 interface FeatureFlagsState {
@@ -68,6 +76,7 @@ async function fetchFeatureFlags(): Promise<void> {
     if (body.code !== 0 || !body.data) return;
     useFeatureFlagsStore.getState().setFlags({
       lotteryEnabled: body.data.lotteryEnabled ?? false,
+      tradingEnabled: body.data.tradingEnabled ?? false,
     });
   } catch {
     // 静默失败: 默认值 (关闭) 不暴露入口, 后续轮询会重试
@@ -94,3 +103,7 @@ export function stopFeatureFlagsPolling(): void {
 
 /** 管理员改完设置后立刻刷一次, 当前设备不必等下一轮轮询. */
 export const refreshFeatureFlags = fetchFeatureFlags;
+
+/** 便捷 hook: 交易系统是否对用户展示. */
+export const useTradingEnabled = (): boolean =>
+  useFeatureFlagsStore((s) => s.flags.tradingEnabled);

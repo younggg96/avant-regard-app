@@ -146,6 +146,26 @@ def _register_jobs(sched: AsyncIOScheduler) -> None:
         replace_existing=True,
     )
 
+    # 活动日历（PRD 论坛改造 M1）
+    from app.services.event_service import event_service
+
+    sched.add_job(
+        _safe("events_mark_ended")(event_service.mark_ended_due),
+        trigger=IntervalTrigger(seconds=settings.SCHEDULER_EVENTS_INTERVAL_SECONDS),
+        id="events_mark_ended",
+        coalesce=True,
+        max_instances=1,
+        replace_existing=True,
+    )
+    sched.add_job(
+        _safe("events_reservation_reminders")(event_service.send_reservation_reminders),
+        trigger=IntervalTrigger(seconds=settings.SCHEDULER_EVENTS_INTERVAL_SECONDS),
+        id="events_reservation_reminders",
+        coalesce=True,
+        max_instances=1,
+        replace_existing=True,
+    )
+
 
 def start_scheduler() -> Optional[AsyncIOScheduler]:
     """lifespan 调用入口。返回 None 表示未启用,调用方无需特别处理。"""

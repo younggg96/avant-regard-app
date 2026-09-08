@@ -87,6 +87,7 @@ import {
   FullscreenImageViewer,
 } from "../components/PostDetail";
 import TradingActionBar from "../components/TradingActionBar";
+import { useTradingEnabled } from "../store/featureFlagsStore";
 import OfferModal from "./Trading/OfferModal";
 import OfferHistorySheet from "./Trading/OfferHistorySheet";
 import { getColorDisplayText } from "./PublishListing/publishListingPresets";
@@ -236,6 +237,7 @@ const StoreProductDetailScreen: React.FC = () => {
 
   // ---------------------- Trading -----------------------------------------
   const [offerModalVisible, setOfferModalVisible] = useState(false);
+  const tradingEnabled = useTradingEnabled();
   const [tradingBusy, setTradingBusy] = useState(false);
   // 买家与该商品的整条议价记录（含卖家 counter）。详情页用来把展示价更新为
   // 「收到的 offer 价」并展开「出价记录」。卖家看自己的商品时为空。
@@ -1549,7 +1551,8 @@ const StoreProductDetailScreen: React.FC = () => {
           <Pressable onPress={handleOverlayPress} style={styles.contentOverlay} />
         )}
 
-        {product ? (
+        {/* 交易系统总开关：关闭时不展示 出价 / 立即购买 底栏及出价弹窗 */}
+        {product && tradingEnabled ? (
           <TradingActionBar
             product={product}
             isOwner={
@@ -1588,7 +1591,7 @@ const StoreProductDetailScreen: React.FC = () => {
           />
         ) : null}
 
-        {product ? (
+        {product && tradingEnabled ? (
           <OfferModal
             visible={offerModalVisible}
             productId={product.id}

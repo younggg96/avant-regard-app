@@ -62,6 +62,7 @@ import { MonthlyLotteryEntry } from "../../components/level";
 import { useLevelStore } from "../../store/levelStore";
 import { useChatStore } from "../../store/chatStore";
 import { useNotificationStore } from "../../store/notificationStore";
+import { useTradingEnabled } from "../../store/featureFlagsStore";
 
 const AnimatedScrollView = Animated.createAnimatedComponent(RNScrollView);
 
@@ -93,9 +94,36 @@ const ProfileScreen = () => {
   // 「在售」时由 TradingContent 自己懒加载对应订单列表, 不影响首屏。
   // 设置页等外部入口可通过 route.params.initialTopTab 跳过来时预选「购买」
   // 或「在售」一级 tab, 避免用户再手动点一下。
-  const [topTab, setTopTab] = useState<TopTabType>(
-    route.params?.initialTopTab ?? "notes",
+  // 交易系统总开关：关闭时「购买 / 在售」一级 Tab 不展示，只剩 笔记 / 收藏
+  const tradingEnabled = useTradingEnabled();
+  const isTradingTab = (tab: TopTabType) => tab === "buying" || tab === "selling";
+  const [topTab, setTopTabRaw] = useState<TopTabType>(() => {
+    const initial = route.params?.initialTopTab ?? "notes";
+    return !tradingEnabled && isTradingTab(initial) ? "notes" : initial;
+  });
+  const setTopTab = useCallback(
+    (tab: TopTabType) => {
+      if (!tradingEnabled && isTradingTab(tab)) return;
+      setTopTabRaw(tab);
+    },
+    [tradingEnabled],
   );
+  const topTabs = React.useMemo(
+    () =>
+      (
+        [
+          { id: "notes" as TopTabType, label: t("profile.tabNotes") },
+          { id: "buying" as TopTabType, label: t("profile.tabBuying") },
+          { id: "selling" as TopTabType, label: t("profile.tabSaleStatus") },
+          { id: "collections" as TopTabType, label: t("profile.tabCollections") },
+        ]
+      ).filter((tab) => tradingEnabled || !isTradingTab(tab.id)),
+    [t, tradingEnabled],
+  );
+  // 开关运行时关闭且当前停在交易 Tab 上 → 回到笔记
+  useEffect(() => {
+    if (!tradingEnabled && isTradingTab(topTab)) setTopTabRaw("notes");
+  }, [tradingEnabled, topTab]);
 
   useEffect(() => {
     const next = route.params?.initialTopTab;
@@ -103,7 +131,7 @@ const ProfileScreen = () => {
       setTopTab(next);
       navigation.setParams({ initialTopTab: undefined } as never);
     }
-  }, [route.params?.initialTopTab, navigation]);
+  }, [route.params?.initialTopTab, navigation, setTopTab]);
   const [buyingFilter, setBuyingFilter] = useState<BuyingFilterType>("all");
   const [sellingFilter, setSellingFilter] = useState<SellingFilterType>("all");
   const [refreshing, setRefreshing] = useState(false);
@@ -598,12 +626,7 @@ const ProfileScreen = () => {
         <View style={{ backgroundColor: appTheme.colors.card }}>
           <View style={styles.tabBarContainer}>
             <TopTabBar
-              tabs={[
-                { id: "notes", label: t("profile.tabNotes") },
-                { id: "buying", label: t("profile.tabBuying") },
-                { id: "selling", label: t("profile.tabSaleStatus") },
-                { id: "collections", label: t("profile.tabCollections") },
-              ]}
+              tabs={topTabs}
               activeTab={topTab}
               onTabPress={setTopTab}
             />
@@ -678,8 +701,8 @@ const ProfileScreen = () => {
               我的收藏 / 浏览记录 / MY ARCHIVE */}
           <ProfilePreviewRow />
 
-          {/* 核心快捷入口：我买到的 / 我的钱包 / 我的在售 / offer出价 */}
-          <QuickEntriesGrid onOrdersPress={handleQuickOrdersPress} />
+          {/* 核心快捷入口：我买到的 / 我的钱包 / 我的在售 / offer出价（全部属于交易系统，随开关隐藏） */}
+          {tradingEnabled ? <QuickEntriesGrid onOrdersPress={handleQuickOrdersPress} /> : null}
 
           <MonthlyLotteryEntry isOwnProfile currentLevel={ownLevel} stacked />
 
@@ -700,12 +723,7 @@ const ProfileScreen = () => {
           }}
         >
           <TopTabBar
-            tabs={[
-              { id: "notes", label: t("profile.tabNotes") },
-              { id: "buying", label: t("profile.tabBuying") },
-              { id: "selling", label: t("profile.tabSaleStatus") },
-              { id: "collections", label: t("profile.tabCollections") },
-            ]}
+            tabs={topTabs}
             activeTab={topTab}
             onTabPress={setTopTab}
           />

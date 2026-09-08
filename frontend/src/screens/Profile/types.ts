@@ -20,7 +20,8 @@ export type TopTabType = "notes" | "buying" | "selling" | "collections";
  *  - stores   = 买手店收藏 (buyer_store_favorites)
  *  - products = 产品收藏 (store_product_favorites + user_collections 收藏夹)
  */
-export type CollectionsSubTab = "posts" | "stores" | "products";
+//  - events   = 活动收藏 (event_favorites) —— PRD 3.3 收藏夹新增「活动」Tab
+export type CollectionsSubTab = "posts" | "stores" | "products" | "events";
 
 /** 「笔记」一级 tab 下的二级 chip —— 历史叫法为 TabType, 保留兼容。 */
 export type TabType = "published" | "pending" | "draft" | "saved" | "liked" | "forum" | "archive" | "wishlist" | "storeActivity";

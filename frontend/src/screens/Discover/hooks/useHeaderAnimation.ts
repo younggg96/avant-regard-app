@@ -5,12 +5,16 @@ import {
   useAnimatedStyle,
   withTiming,
   Easing,
+  interpolate,
+  Extrapolation,
 } from "react-native-reanimated";
 import {
   HEADER_ANIMATION_DURATION,
   SCROLL_THRESHOLD,
   TOP_EXPAND_THRESHOLD,
   HEADER_HEIGHT,
+  SEARCH_BAR_HEIGHT,
+  SEARCH_ICON_SLOT,
 } from "../constants";
 
 // After a refresh ends, suppress header collapse for this window to let
@@ -27,6 +31,10 @@ interface UseHeaderAnimationReturn {
    * scroll handler and image decoding on the first downward scroll.
    */
   headerAnimatedStyle: ReturnType<typeof useAnimatedStyle>;
+  /** 下滑时整行搜索条收起（高度 / 透明度随 Logo 同步）。 */
+  searchBarAnimatedStyle: ReturnType<typeof useAnimatedStyle>;
+  /** 下滑时 Tab 右侧搜索图标展开。 */
+  searchIconAnimatedStyle: ReturnType<typeof useAnimatedStyle>;
   handleVerticalScroll: (event: NativeSyntheticEvent<NativeScrollEvent>) => void;
   /**
    * Sync the parent's `refreshing` state so the animation can suppress
@@ -94,6 +102,21 @@ export const useHeaderAnimation = (): UseHeaderAnimationReturn => {
     opacity: progress.value,
   }));
 
+  // 展开：整行搜索条；收起：高度归零，图标在 Tab 右侧出现。
+  const searchBarAnimatedStyle = useAnimatedStyle(() => ({
+    height: progress.value * SEARCH_BAR_HEIGHT,
+    opacity: interpolate(progress.value, [0.35, 1], [0, 1], Extrapolation.CLAMP),
+    overflow: "hidden" as const,
+    pointerEvents: progress.value > 0.5 ? ("auto" as const) : ("none" as const),
+  }));
+
+  const searchIconAnimatedStyle = useAnimatedStyle(() => ({
+    width: (1 - progress.value) * SEARCH_ICON_SLOT,
+    opacity: interpolate(progress.value, [0, 0.4], [1, 0], Extrapolation.CLAMP),
+    overflow: "hidden" as const,
+    pointerEvents: progress.value < 0.5 ? ("auto" as const) : ("none" as const),
+  }));
+
   const notifyRefreshing = useCallback(
     (refreshing: boolean) => {
       const wasRefreshing = isRefreshingRef.current;
@@ -154,6 +177,8 @@ export const useHeaderAnimation = (): UseHeaderAnimationReturn => {
 
   return {
     headerAnimatedStyle,
+    searchBarAnimatedStyle,
+    searchIconAnimatedStyle,
     handleVerticalScroll,
     notifyRefreshing,
   };

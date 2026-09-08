@@ -44,12 +44,35 @@ export interface DisplayPost {
   storeName?: string;
 }
 
+/**
+ * 数据层 / 发布分流用的细粒度 Tab 标识。
+ *
+ * 说明：`recommend` / `following` 现在是「帖子」顶部 Tab 内部的二级切换，
+ * `myArchive` 是新的「My Archive」顶部 Tab。这些值仍写进 `discoverTabStore`
+ * 供底部「+」发布按钮判断当前语境；`trading` 保留仅用于兼容（顶部不再展示）。
+ */
 export type TabType =
   | "forum"
   | "recommend"
   | "trading"
   | "buyer"
-  | "following";
+  | "following"
+  | "myArchive";
+
+/**
+ * 顶部一级 Tab（信息架构重构后）：论坛 / 帖子 / My Archive / 买手店。
+ * 「交易」隐藏；「推荐 / 关注」下沉为「帖子」内部二级 Tab。
+ */
+export type TopTab = "forum" | "posts" | "myArchive" | "buyer";
+
+/** 「帖子」Tab 内部二级切换 */
+export type PostsSubTab = "recommend" | "following";
+
+/** 「My Archive」Tab 内部二级切换 */
+export type ArchiveSubTab = "mine" | "world";
+
+/** 「买手店」Tab 内部二级切换：地图 / 详情 */
+export type BuyerSubTab = "map" | "detail";
 
 // 用户信息缓存类型
 export type UserInfoCache = Map<number, UserInfo>;

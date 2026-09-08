@@ -3,8 +3,7 @@ import { StyleSheet } from "react-native";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { Image as ExpoImage } from "expo-image";
-import { Box, Text, Pressable, HStack, VStack, NotificationBadge } from "../../../components/ui";
-import { UserAvatar } from "../../../components/ui/UserAvatar";
+import { Box, Text, Pressable, HStack } from "../../../components/ui";
 import { useAppTheme, useThemedStyles, type AppTheme } from "../../../theme";
 
 const headerLogoDark = require("../../../../assets/gif/header-logo-dark.gif");
@@ -23,88 +22,64 @@ const DiscoverLogo: React.FC = () => {
     );
 };
 
-interface DiscoverHeaderProps {
-    avatar?: string;
-    username?: string | null;
-    totalInteractionUnread?: number;
-    onAvatarPress: () => void;
+export const DiscoverHeader: React.FC = () => {
+    const theme = useAppTheme();
+
+    return (
+        <Box style={{ backgroundColor: theme.colors.background }} px="$md" pt={2} pb={0}>
+            <DiscoverLogo />
+        </Box>
+    );
+};
+
+interface DiscoverSearchBarProps {
     onSearchPress: () => void;
-    onInteractionPress: () => void;
 }
 
-export const DiscoverHeader: React.FC<DiscoverHeaderProps> = ({
-    avatar,
-    username,
-    totalInteractionUnread = 0,
-    onAvatarPress,
+/** 一级 Tab 下方的搜索入口；与 Logo 行拆开，方便夹在 Tab 与内容之间。 */
+export const DiscoverSearchBar: React.FC<DiscoverSearchBarProps> = ({
     onSearchPress,
-    onInteractionPress,
 }) => {
     const { t } = useTranslation();
     const theme = useAppTheme();
     const styles = useThemedStyles(makeStyles);
 
     return (
-        <Box style={{ backgroundColor: theme.colors.background }} px="$md" pt="$xs">
-            <VStack space="sm">
-                <HStack alignItems="center" justifyContent="space-between">
-                    <DiscoverLogo />
-
-                    <HStack alignItems="center" space="md">
-                        <Pressable
-                            onPress={onInteractionPress}
-                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                            style={styles.interactionButton}
-                        >
-                            <Ionicons name="notifications-outline" size={22} color={theme.colors.text} />
-                            <NotificationBadge count={totalInteractionUnread} size="sm" showBorder />
-                        </Pressable>
-                        <Pressable
-                            onPress={onAvatarPress}
-                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                        >
-                            <UserAvatar
-                                uri={avatar}
-                                name={username}
-                                size={32}
-                                style={styles.avatar}
-                            />
-                        </Pressable>
-                    </HStack>
+        <Box
+            px="$md"
+            style={{
+                backgroundColor: theme.colors.background,
+                paddingTop: 2,
+                paddingBottom: 4,
+            }}
+        >
+            <Pressable onPress={onSearchPress} style={styles.searchContainer}>
+                <HStack alignItems="center" flex={1}>
+                    <Ionicons
+                        name="search"
+                        size={16}
+                        color={theme.colors.gray400}
+                        style={styles.searchIcon}
+                    />
+                    <Text style={styles.searchText} numberOfLines={1}>
+                        {t("discover.searchPlaceholder")}
+                    </Text>
                 </HStack>
-
-                <Pressable onPress={onSearchPress} style={styles.searchContainer}>
-                    <HStack alignItems="center" flex={1}>
-                        <Ionicons
-                            name="search"
-                            size={20}
-                            color={theme.colors.gray400}
-                            style={styles.searchIcon}
-                        />
-                        <Text style={styles.searchText} numberOfLines={1}>
-                            {t("discover.searchPlaceholder")}
-                        </Text>
-                    </HStack>
-                </Pressable>
-            </VStack>
+            </Pressable>
         </Box>
     );
 };
 
 const makeStyles = (t: AppTheme) => StyleSheet.create({
     logoImage: {
-        width: 100,
-        height: 36,
-    },
-    avatar: {
-        borderWidth: 1,
-        borderColor: t.colors.border,
+        width: 92,
+        height: 30,
     },
     searchContainer: {
-        height: 40,
+        height: 32,
         backgroundColor: t.colors.gray50,
         borderRadius: t.borderRadius.sm,
-        paddingHorizontal: 12,
+        paddingHorizontal: 10,
         justifyContent: "center",
     },
     searchIcon: {
@@ -112,16 +87,8 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
     },
     searchText: {
         flex: 1,
-        fontSize: 16,
-        fontFamily: "PlayfairDisplay-Regular",
+        fontSize: 13,
         color: t.colors.gray400,
-    },
-    interactionButton: {
-        position: "relative",
-        width: 32,
-        height: 32,
-        justifyContent: "center",
-        alignItems: "center",
     },
 });
 

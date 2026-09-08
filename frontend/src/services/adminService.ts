@@ -982,10 +982,15 @@ export async function updateMaintenanceConfig(
 
 export interface FeatureFlagsConfig {
   lotteryEnabled: boolean;
+  listingAutoApprove?: boolean;
+  /** 交易系统总开关 */
+  tradingEnabled: boolean;
 }
 
 export interface UpdateFeatureFlagsParams {
   lotteryEnabled?: boolean;
+  listingAutoApprove?: boolean;
+  tradingEnabled?: boolean;
 }
 
 export async function getFeatureFlagsAdmin(): Promise<FeatureFlagsConfig> {

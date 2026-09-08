@@ -29,6 +29,7 @@ import {
   getBrandFollowersCount,
 } from "../services/followService";
 import { useAuthStore } from "../store/authStore";
+import { useTradingEnabled } from "../store/featureFlagsStore";
 import CreateShowModal from "../components/CreateShowModal";
 import ImagePreviewModal from "../components/ImagePreviewModal";
 import { ShareToChatModal } from "../components/ShareToChatModal";
@@ -86,7 +87,14 @@ const BrandDetailScreen = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingPosts, setIsLoadingPosts] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<TabType>(params.initialTab || "posts");
+  const tradingEnabled = useTradingEnabled();
+  const [activeTab, setActiveTab] = useState<TabType>(
+    !tradingEnabled && params.initialTab === "onsale" ? "posts" : params.initialTab || "posts",
+  );
+  // 开关运行时关闭且正停在「在售」→ 回到帖子
+  useEffect(() => {
+    if (!tradingEnabled && activeTab === "onsale") setActiveTab("posts");
+  }, [tradingEnabled, activeTab]);
   const [createShowVisible, setCreateShowVisible] = useState(false);
   const [heroImageIndex, setHeroImageIndex] = useState(0);
   const [imagePreviewVisible, setImagePreviewVisible] = useState(false);
@@ -652,20 +660,23 @@ const BrandDetailScreen = () => {
             </Text>
             <Text style={styles.tabCount}>{brandShows.length}</Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === "onsale" && styles.tabActive]}
-            onPress={() => setActiveTab("onsale")}
-          >
-            <Text
-              style={[
-                styles.tabText,
-                activeTab === "onsale" && styles.tabTextActive,
-              ]}
+          {/* 交易系统总开关：关闭时不展示「在售」Tab */}
+          {tradingEnabled ? (
+            <TouchableOpacity
+              style={[styles.tab, activeTab === "onsale" && styles.tabActive]}
+              onPress={() => setActiveTab("onsale")}
             >
-              {t("brand.onSale")}
-            </Text>
-            <Text style={styles.tabCount}>{brandListings.length}</Text>
-          </TouchableOpacity>
+              <Text
+                style={[
+                  styles.tabText,
+                  activeTab === "onsale" && styles.tabTextActive,
+                ]}
+              >
+                {t("brand.onSale")}
+              </Text>
+              <Text style={styles.tabCount}>{brandListings.length}</Text>
+            </TouchableOpacity>
+          ) : null}
         </View>
 
         {/* Posts Section */}
@@ -818,7 +829,7 @@ const BrandDetailScreen = () => {
         )}
 
         {/* PRD 模块二 · 该品牌当前在售单品 */}
-        {activeTab === "onsale" && (
+        {activeTab === "onsale" && tradingEnabled && (
           <View style={styles.postsSection}>
             {/* 筛选入口 —— 进入此屏视为已选中此品牌 */}
             <View style={styles.onsaleFilterRow}>

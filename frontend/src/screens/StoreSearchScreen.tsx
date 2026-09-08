@@ -29,8 +29,8 @@ const StoreSearchScreen = () => {
   const styles = useThemedStyles(makeStyles);
   const navigation = useNavigation();
   const route = useRoute<any>();
-  // mode === "locate": 由"买手店地图"屏入口打开，点击结果 → 把"待聚焦"信号
-  // 写进 mapFocusStore 并 navigate 回 Interaction 的 map 子 Tab，让地图定位过去。
+  // mode === "locate": 由首页「买手店」地图形态入口打开，点击结果 → 把"待聚焦"
+  // 信号写进 mapFocusStore 并 goBack，让嵌入的 BuyerMapScreen 定位过去。
   // mode 缺省（如从 AllBuyerStoresScreen 入口）：保留原本行为，点击结果跳 StoreDetail。
   const mode = route.params?.mode as "locate" | undefined;
   const { isFavorited, toggleFavorite, getFavoriteCount, syncCountsFromStores } = useStoreFavorites();
@@ -116,8 +116,7 @@ const StoreSearchScreen = () => {
       if (mode === "locate") {
         // 走"定位到地图 marker"路径。先把目标 store 写入跨屏信号通道，再 goBack。
         // BuyerMapScreen 订阅了这个 store，pending 非空时会 animateToRegion +
-        // showCallout。goBack 而非 navigate("Interaction") 是为了保留用户在
-        // Interaction 里原本的子 Tab 状态（即停留在「买手店地图」子 Tab）。
+        // showCallout。goBack 是为了保留用户在「买手店」Tab 的地图形态。
         useMapFocusStore.getState().requestFocus(store);
         navigation.goBack();
         return;

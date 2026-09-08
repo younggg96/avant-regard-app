@@ -33,6 +33,7 @@ import {
   ArchiveItem,
   ArchiveAnalyticsPreview,
 } from "../../services/archivePlusService";
+import { useTradingEnabled } from "../../store/featureFlagsStore";
 import { useFormatPrice } from "../../utils/currency";
 
 const MyArchiveScreen: React.FC = () => {
@@ -40,6 +41,7 @@ const MyArchiveScreen: React.FC = () => {
   const styles = useThemedStyles(makeStyles);
   const navigation = useNavigation<any>();
   const { t } = useTranslation();
+  const tradingEnabled = useTradingEnabled();
   const formatPrice = useFormatPrice();
 
   const [items, setItems] = useState<ArchiveItem[]>([]);
@@ -112,16 +114,19 @@ const MyArchiveScreen: React.FC = () => {
                     {analytics.totalItems}
                   </Text>
                 </VStack>
-                <Pressable
-                  style={styles.unlockBtn}
-                  onPress={() => navigation.navigate("PlusSubscribe")}
-                >
-                  <Text style={styles.unlockBtnText}>
-                    {analytics.locked
-                      ? t("trading.archive.unlockAnalytics")
-                      : t("trading.archive.viewAnalytics")}
-                  </Text>
-                </Pressable>
+                {/* Plus 订阅属于交易系统，开关关闭时不展示解锁入口 */}
+                {tradingEnabled ? (
+                  <Pressable
+                    style={styles.unlockBtn}
+                    onPress={() => navigation.navigate("PlusSubscribe")}
+                  >
+                    <Text style={styles.unlockBtnText}>
+                      {analytics.locked
+                        ? t("trading.archive.unlockAnalytics")
+                        : t("trading.archive.viewAnalytics")}
+                    </Text>
+                  </Pressable>
+                ) : null}
               </HStack>
               <Text style={styles.analyticsLabel}>
                 {t("trading.archive.brandBreakdown")}

@@ -3,26 +3,23 @@ import type { TradingCategory } from "../../services/notificationService";
 
 export { CS_USER_ID } from "../../constants/customerService";
 
-export type SubTab = "messages" | "trading" | "map";
+export type SubTab = "messages" | "trading";
 
 export const SUB_TAB_KEYS: Record<SubTab, string> = {
   messages: "interaction.messages",
   trading: "interaction.trading",
-  map: "map.title",
 };
 
 export const SUB_TABS: { id: SubTab; label: string }[] = [
-  { id: "messages", label: "消息" },
+  { id: "messages", label: "私信" },
   { id: "trading", label: "交易" },
-  { id: "map", label: "地图" },
 ];
 
 export const TAB_INDEX: Record<SubTab, number> = {
   messages: 0,
   trading: 1,
-  map: 2,
 };
-export const INDEX_TAB: SubTab[] = ["messages", "trading", "map"];
+export const INDEX_TAB: SubTab[] = ["messages", "trading"];
 
 /**
  * 「交易」tab 三个分类的展示元数据（图标 / 主题色 / i18n key）。

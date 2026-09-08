@@ -57,6 +57,7 @@ import MaintenanceOverlay from "./src/components/MaintenanceOverlay";
 import {
   startFeatureFlagsPolling,
   stopFeatureFlagsPolling,
+  useTradingEnabled,
 } from "./src/store/featureFlagsStore";
 
 // Share SDK
@@ -142,6 +143,9 @@ import UserReviewsScreen from "./src/screens/Trading/UserReviewsScreen";
 import MyArchiveScreen from "./src/screens/Trading/MyArchiveScreen";
 import ArchiveDetailScreen from "./src/screens/Trading/ArchiveDetailScreen";
 import UploadArchiveItemScreen from "./src/screens/Trading/UploadArchiveItemScreen";
+import EventDetailScreen from "./src/screens/Events/EventDetailScreen";
+import EventListScreen from "./src/screens/Events/EventListScreen";
+import AdminEventEditorScreen from "./src/screens/Events/AdminEventEditorScreen";
 import PlusSubscribeScreen from "./src/screens/Trading/PlusSubscribeScreen";
 // AI Post Assistant Screens
 import AIPostEntryScreen from "./src/screens/AIPost/AIPostEntryScreen";
@@ -428,7 +432,7 @@ function TabNavigator() {
         }}
         listeners={{
           // 底部「消息」Tab：点它永远回到「私信」子 Tab，
-          // 即便互动页此刻停在「交易 / 地图」上。
+          // 即便互动页此刻停在「交易」上。
           tabPress: () => {
             useMainBottomTabStore.getState().requestMessagesJump();
           },
@@ -465,6 +469,7 @@ function AppNavigator({
   const [guideChecked, setGuideChecked] = useState(false);
   const [engagementNudgeState, setEngagementNudgeState] = useState<EngagementNudgeState | null>(null);
   const [activeEngagementNudge, setActiveEngagementNudge] = useState<EngagementNudgeStage | null>(null);
+  const tradingEnabled = useTradingEnabled();
   const appStateRef = useRef<AppStateStatus>(AppState.currentState);
   const lastBehaviorSignalRef = useRef(engagementBehaviorSignal);
   // 避免定时器/订阅每次状态对象引用变化都重建，靠 ref 读最新值。
@@ -1156,6 +1161,22 @@ function AppNavigator({
           component={PlusSubscribeScreen}
           options={{ headerShown: false }}
         />
+        {/* 活动日历（PRD 论坛改造 M1） */}
+        <Stack.Screen
+          name="EventDetail"
+          component={EventDetailScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="EventList"
+          component={EventListScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="AdminEventEditor"
+          component={AdminEventEditorScreen}
+          options={{ headerShown: false }}
+        />
         {/* AI 发帖助手 (V3 #25) */}
         <Stack.Screen
           name="AIPostEntry"
@@ -1326,8 +1347,8 @@ function AppNavigator({
       {/* 后台上传进度条 */}
       <UploadProgressBanner />
 
-      {/* offer 成交后「填写收货地址」顶部提示 */}
-      <OrderAddressPromptBanner />
+      {/* offer 成交后「填写收货地址」顶部提示（交易系统关闭时不挂载） */}
+      {tradingEnabled ? <OrderAddressPromptBanner /> : null}
 
       {/* 等级升级全屏庆祝 (黑白 2s 动画, 订阅 useLevelStore.celebrateLevel) */}
       <LevelUpgradeModal />

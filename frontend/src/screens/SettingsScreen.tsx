@@ -44,6 +44,7 @@ import {
 } from "../components/ui";
 import { Modal } from "../components/ui/modal";
 import { getCustomerServiceChatParams } from "../utils/chatNavigationUtils";
+import { useTradingEnabled } from "../store/featureFlagsStore";
 
 interface SettingItem {
   id: string;
@@ -60,10 +61,22 @@ interface SettingSection {
   items: SettingItem[];
 }
 
+/** 属于交易系统的设置条目 id，`tradingEnabled=false` 时隐藏 */
+const TRADING_SETTING_ITEM_IDS = new Set<string>([
+  "myOrders",
+  "myOffers",
+  "authentication",
+  "sellerListings",
+  "myWallet",
+  "addressBook",
+  "plusSubscribe",
+]);
+
 const SettingsScreen = () => {
   const navigation = useNavigation();
   const { t, i18n } = useTranslation();
   const { user, logout, updateUser } = useAuthStore();
+  const tradingEnabled = useTradingEnabled();
   const systemColorScheme = useColorScheme();
   const styles = useThemedStyles(makeStyles);
   const [themePreference, setThemePreference] = useState<ThemePreference>(
@@ -497,6 +510,17 @@ const SettingsScreen = () => {
     },
   ];
 
+  // 交易系统总开关：关闭时隐藏所有交易相关条目（订单 / 出价 / 鉴定 / 在售 / 钱包 / 地址簿 / Plus），
+  // 条目清空的分组整体不显示。货币、店铺、档案、客服不属于交易系统，保留。
+  const visibleBaseSections: SettingSection[] = tradingEnabled
+    ? baseSections
+    : baseSections
+        .map((section) => ({
+          ...section,
+          items: section.items.filter((item) => !TRADING_SETTING_ITEM_IDS.has(item.id)),
+        }))
+        .filter((section) => section.items.length > 0);
+
   const settingSections: SettingSection[] = user?.is_admin
     ? [
       {
@@ -513,9 +537,9 @@ const SettingsScreen = () => {
           },
         ],
       },
-      ...baseSections,
+      ...visibleBaseSections,
     ]
-    : baseSections;
+    : visibleBaseSections;
 
   return (
     <SafeAreaView

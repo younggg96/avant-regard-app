@@ -1498,7 +1498,11 @@ const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
               borderWidth={selectedStore?.id === store.id ? 2 : 0}
 
               sx={styles.cardShadow}
-              onPress={() => handleCardPress(store)}
+              // 整张卡片（除关注 / 电话 / 导航按钮外）点击直接进入店铺详情页
+              onPress={() => {
+                handleCardPress(store);
+                (navigation.navigate as any)("StoreDetail", { storeId: store.id });
+              }}
               onLongPress={() => handleStoreDetailPress(store)}
             >
               {/* 店铺头部 */}
@@ -1569,17 +1573,6 @@ const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
                     >
                       {isFavorited(store.id) ? t("store.followed") : t("store.follow")}
                     </Text>
-                  </Pressable>
-                  <Pressable
-                    w={36}
-                    h={36}
-                    rounded="$sm"
-                    style={{ backgroundColor: theme.colors.gray100 }}
-                    justifyContent="center"
-                    alignItems="center"
-                    onPress={() => (navigation.navigate as any)("StoreDetail", { storeId: store.id })}
-                  >
-                    <Ionicons name="information-circle-outline" size={20} color={theme.colors.black} />
                   </Pressable>
                 </HStack>
                 <HStack gap="$sm">

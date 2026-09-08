@@ -62,6 +62,8 @@ import {
 } from "../../../services/tradingExtrasService";
 import { PF } from "../styles";
 import { CollectionsTabSkeleton } from "./CollectionsTabSkeleton";
+import FavoriteEventsList from "../../Events/FavoriteEventsList";
+import { getMyFavoriteEvents } from "../../../services/eventService";
 
 interface CollectionsContentProps {
   /** 当前激活的 sub-chip */
@@ -126,6 +128,18 @@ export const CollectionsContent: React.FC<CollectionsContentProps> = ({
     return defaultCollectionTotal + folderTotal;
   }, [collectionFolders, defaultCollectionTotal]);
 
+  // 活动收藏数：首屏轻量取一次 total 供 chip 计数；进入分支后由 FavoriteEventsList 回传（PRD 3.3）
+  const [eventsCount, setEventsCount] = useState(0);
+  useEffect(() => {
+    let alive = true;
+    getMyFavoriteEvents({ page: 1, pageSize: 1 })
+      .then((r) => alive && setEventsCount(r.total))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
+
   const subTabs: { id: CollectionsSubTab; label: string; count: number }[] = [
     { id: "posts", label: t("profileCollections.posts"), count: postsCount },
     { id: "stores", label: t("profileCollections.stores"), count: storesCount },
@@ -134,6 +148,7 @@ export const CollectionsContent: React.FC<CollectionsContentProps> = ({
       label: t("profileCollections.products"),
       count: productsCount,
     },
+    { id: "events", label: t("profileCollections.events"), count: eventsCount },
   ];
 
   // ===== Posts 子分支 =====
@@ -422,7 +437,9 @@ export const CollectionsContent: React.FC<CollectionsContentProps> = ({
         ? renderPosts()
         : collectionsSubTab === "stores"
           ? renderStores()
-          : renderProducts()}
+          : collectionsSubTab === "events"
+            ? <FavoriteEventsList onCount={setEventsCount} />
+            : renderProducts()}
 
       {/* 长按收藏夹 ActionSheet —— 重命名 / 删除 */}
       <ActionSheet

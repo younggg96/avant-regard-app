@@ -46,6 +46,10 @@ class FeatureFlagsService:
             # 交易系统 Phase 1: 卖家提交审核后是否自动通过. dev / 内测环境打开可以
             # 跳过人工审核, 加速 listing 全链路自测; 生产应保持 False.
             "listingAutoApprove": False,
+            # 交易系统总开关: 是否在 App 中展示所有交易相关内容
+            # (Discover 交易 Tab / 发布单品 / 购买·出价 / 订单 / 钱包 / 卖家中心 / Plus / 转卖 ...).
+            # 默认关闭: 未配置的环境不会把尚未开放的交易功能暴露给用户.
+            "tradingEnabled": False,
         }
 
     def _invalidate_cache(self) -> None:
@@ -100,11 +104,19 @@ class FeatureFlagsService:
         except Exception:
             return False
 
+    def is_trading_enabled(self) -> bool:
+        """便捷接口: 交易系统是否对用户开放展示."""
+        try:
+            return bool(self.get_config().get("tradingEnabled", False))
+        except Exception:
+            return False
+
     def set_config(
         self,
         *,
         lottery_enabled: Optional[bool] = None,
         listing_auto_approve: Optional[bool] = None,
+        trading_enabled: Optional[bool] = None,
     ) -> dict:
         """更新功能开关. 仅传入需要修改的字段, None 字段保留原值.
 
@@ -116,6 +128,8 @@ class FeatureFlagsService:
             payload["lotteryEnabled"] = bool(lottery_enabled)
         if listing_auto_approve is not None:
             payload["listingAutoApprove"] = bool(listing_auto_approve)
+        if trading_enabled is not None:
+            payload["tradingEnabled"] = bool(trading_enabled)
 
         self.db.table("app_config").upsert(
             {"key": CONFIG_KEY, "value": payload},

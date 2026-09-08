@@ -1032,6 +1032,10 @@ class FeatureFlagsRequest(BaseModel):
         None,
         description="是否对新提交的交易单品自动通过审核（dev / 内测）",
     )
+    tradingEnabled: Optional[bool] = Field(
+        None,
+        description="交易系统总开关：是否在 App 中展示所有交易相关内容",
+    )
 
 
 @router.get("/feature-flags")
@@ -1051,6 +1055,7 @@ def update_feature_flags(
     config = feature_flags_service.set_config(
         lottery_enabled=request.lotteryEnabled,
         listing_auto_approve=request.listingAutoApprove,
+        trading_enabled=request.tradingEnabled,
     )
     return success(config)
 

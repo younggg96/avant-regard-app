@@ -18,6 +18,7 @@ import { useDiscoverTabStore } from "../store/discoverTabStore";
 import { useMainBottomTabStore } from "../store/mainBottomTabStore";
 import { useAuthStore } from "../store/authStore";
 import { usePublishListingStore } from "../store/publishListingStore";
+import { useTradingEnabled } from "../store/featureFlagsStore";
 
 /** 从底部 Tab 的「+」按钮跳到根 Stack 上的发布相关页面 */
 type PublishButtonNav = {
@@ -34,7 +35,7 @@ function navigateFromPublishButton(
   rootNav.navigate(screen, params);
 }
 
-type PublishSheetMode = "trading" | "all";
+type PublishSheetMode = "trading" | "all" | "forumAdmin";
 
 type PublishSheetItemDef = {
   id: string;
@@ -42,6 +43,9 @@ type PublishSheetItemDef = {
   titleKey: string;
   subtitleKey: string;
 };
+
+/** 属于交易系统的发布入口 id，`tradingEnabled=false` 时从任何 Sheet 中隐藏 */
+const TRADING_ITEM_IDS = new Set<string>(["listing", "repost"]);
 
 const TRADING_SHEET_ITEMS: PublishSheetItemDef[] = [
   {
@@ -55,6 +59,25 @@ const TRADING_SHEET_ITEMS: PublishSheetItemDef[] = [
     icon: "copy-outline",
     titleKey: "trading.publishSheetTrading.repostTitle",
     subtitleKey: "trading.publishSheetTrading.repostSubtitle",
+  },
+];
+
+/**
+ * 论坛 Tab · 管理员专属双选：发帖 / 发布活动（PRD 3 节 P0：活动仅管理员可发布）。
+ * 普通用户在论坛 Tab 仍直接进入 PublishV2ForumMode，不弹 Sheet。
+ */
+const FORUM_ADMIN_SHEET_ITEMS: PublishSheetItemDef[] = [
+  {
+    id: "forum",
+    icon: "chatbubbles-outline",
+    titleKey: "publish.publishSheetAll.forumTitle",
+    subtitleKey: "publish.publishSheetAll.forumSubtitle",
+  },
+  {
+    id: "event",
+    icon: "calendar-number-outline",
+    titleKey: "publish.publishSheetAll.eventTitle",
+    subtitleKey: "publish.publishSheetAll.eventSubtitle",
   },
 ];
 
@@ -112,8 +135,9 @@ const ALL_SHEET_ITEMS: PublishSheetItemDef[] = [
  *       · Archive Tab → `SubmitBrand`（上传品牌全屏，对齐 Archive 业务）
  *       · Discover·论坛 → `PublishV2ForumMode`
  *       · Discover·买手店 → `SubmitStore`
- *       · Discover·推荐 / 关注 → `PublishV2Composer`（直接写笔记 / Lookbook）
- *       · Discover·交易 → 双选 Sheet（发布单品 / 从以往帖子转入）
+ *       · Discover·帖子（推荐 / 关注） → `PublishV2Composer`（直接写笔记 / Lookbook）
+ *       · Discover·My Archive → `UploadArchiveItem`
+ *       · Discover·交易（已从顶部隐藏，仅兼容残留 store 值）→ 双选 Sheet
  *       · 未知子 Tab → 全量 Sheet（上述全部入口 + 品牌 + AI 发帖）
  *
  * V2 完全独立于 V1 流程，原 `PublishTypeScreen` 等屏仍然保留并可被
@@ -128,6 +152,7 @@ const PublishTabButtonV2: React.FC<{ onPress?: (event: unknown) => void }> = () 
   const [sheetVisible, setSheetVisible] = useState(false);
   const [sheetMode, setSheetMode] = useState<PublishSheetMode>("trading");
   const discoverActiveTab = useDiscoverTabStore((s) => s.activeTab);
+  const tradingEnabled = useTradingEnabled();
 
   const openSheet = (mode: PublishSheetMode) => {
     setSheetMode(mode);
@@ -169,6 +194,11 @@ const PublishTabButtonV2: React.FC<{ onPress?: (event: unknown) => void }> = () 
         Alert.alert(t("common.hint"), t("publish.loginRequired"));
         return;
       }
+      // 管理员：发帖 / 发布活动 双选；普通用户直接发帖
+      if (user.is_admin) {
+        openSheet("forumAdmin");
+        return;
+      }
       navigateFromPublishButton(navigation, "PublishV2ForumMode");
       return;
     }
@@ -181,7 +211,19 @@ const PublishTabButtonV2: React.FC<{ onPress?: (event: unknown) => void }> = () 
       navigateFromPublishButton(navigation, "PublishV2Composer");
       return;
     }
+    if (activeTab === "myArchive") {
+      // My Archive Tab：「+」直接进入独立上传藏品流程
+      if (!ensureLoggedIn("publish.loginRequired")) return;
+      navigateFromPublishButton(navigation, "UploadArchiveItem");
+      return;
+    }
     if (activeTab === "trading") {
+      // 交易系统关闭时不应停留在交易 Tab；若仍读到该值，按普通发帖处理
+      if (!tradingEnabled) {
+        if (!ensureLoggedIn("publish.loginRequired")) return;
+        navigateFromPublishButton(navigation, "PublishV2Composer");
+        return;
+      }
       openSheet("trading");
       return;
     }
@@ -220,13 +262,22 @@ const PublishTabButtonV2: React.FC<{ onPress?: (event: unknown) => void }> = () 
         if (!ensureLoggedIn("publish.loginRequired")) return;
         navigateFromPublishButton(navigation, "AIPostEntry");
         break;
+      case "event":
+        if (!ensureLoggedIn("publish.loginRequired")) return;
+        navigateFromPublishButton(navigation, "AdminEventEditor");
+        break;
       default:
         break;
     }
   };
 
   const sheetItems =
-    sheetMode === "trading" ? TRADING_SHEET_ITEMS : ALL_SHEET_ITEMS;
+    sheetMode === "trading"
+      ? TRADING_SHEET_ITEMS
+      : sheetMode === "forumAdmin"
+        ? FORUM_ADMIN_SHEET_ITEMS
+        : // 交易系统关闭时，全量 Sheet 里的「发布单品 / 从以往帖子转入」一并隐藏
+          ALL_SHEET_ITEMS.filter((item) => tradingEnabled || !TRADING_ITEM_IDS.has(item.id));
 
   return (
     <>

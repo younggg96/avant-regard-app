@@ -37,6 +37,15 @@ def list_archive(
     return success({"items": [i.dict() for i in items], "total": total})
 
 
+@archive_router.get("/world")
+def list_world_archive(
+    page: int = 1, pageSize: int = 30, user_id: int = Depends(get_current_user)
+):
+    """「世界」二级 Tab：浏览其他用户的档案条目（排除本人）。"""
+    items, total = archive_service.list_world(user_id, page=page, page_size=pageSize)
+    return success({"items": items, "total": total})
+
+
 @archive_router.get("/analytics")
 def archive_analytics(user_id: int = Depends(get_current_user)):
     """PRD 模块 8 数据画像面板。Plus 用户独占。"""

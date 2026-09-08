@@ -44,6 +44,7 @@ import {
   createArchiveHolding,
 } from "../../services/archivePlusService";
 import { parsePriceInputToCents } from "../../services/storeProductService";
+import { useTradingEnabled } from "../../store/featureFlagsStore";
 import { useFormatPrice } from "../../utils/currency";
 
 type HoldingStatus = "owned" | "lent" | "transferred" | "resold" | "returned";
@@ -56,6 +57,7 @@ const ArchiveDetailScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const route = useRoute<RouteProp<RouteParams, "ArchiveDetail">>();
   const { t } = useTranslation();
+  const tradingEnabled = useTradingEnabled();
   const formatPrice = useFormatPrice();
   const { archiveId } = route.params;
 
@@ -296,8 +298,8 @@ const ArchiveDetailScreen: React.FC = () => {
             </Pressable>
           </Box>
 
-          {/* 一键转卖 */}
-          {item.relistedProductId ? (
+          {/* 一键转卖（属于交易系统，随开关隐藏） */}
+          {!tradingEnabled ? null : item.relistedProductId ? (
             <Box style={styles.banner}>
               <Text style={styles.bannerText}>
                 {t("trading.archiveDetail.relistedBanner", {
@@ -339,7 +341,7 @@ const ArchiveDetailScreen: React.FC = () => {
           <Box style={{ height: 24 }} />
         </KeyboardFriendScrollView>
 
-        {!item.relistedProductId ? (
+        {tradingEnabled && !item.relistedProductId ? (
           <Box style={styles.footer}>
             <Pressable
               style={[styles.primary, submitting && styles.primaryDisabled]}

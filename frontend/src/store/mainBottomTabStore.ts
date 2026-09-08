@@ -13,7 +13,7 @@ interface MainBottomTabState {
   setActiveMainTab: (tab: MainBottomTabId) => void;
   /**
    * 「私信」跳转信号。底部「消息」Tab 对应 Interaction 页，页内还有
-   * 消息 / 交易 / 地图 三个子 Tab。用户点底部消息图标时，无论当前停在哪个
+   * 私信 / 交易 两个子 Tab。用户点底部消息图标时，无论当前停在哪个
    * 子 Tab，都应直接跳到私信。靠 initialParams 只在首次挂载生效，无法满足
    * 「每次点都回到私信」；这里用一个自增 nonce 作为信号，InteractionScreen 订阅它，
    * 每次变化就切到 messages 子 Tab。

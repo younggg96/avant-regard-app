@@ -5,7 +5,7 @@ import type { TabType } from "../screens/Discover/types";
 /**
  * Discover Tab store
  * ------------------------------------------------------------------
- * 记录 Discover (推荐 / 论坛 / 买手店 / 关注) 当前所在子 Tab。
+ * 记录 Discover（论坛 / 帖子·推荐|关注 / My Archive / 买手店）当前所在数据层 Tab。
  *
  * 唯一消费方是底部 Tab 中央的 `PublishTabButtonV2`：它需要在用户
  * 点击「+」时知道用户当前停在 Discover 的哪个子 Tab，从而决定走

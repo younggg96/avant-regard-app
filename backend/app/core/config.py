@@ -130,6 +130,7 @@ class Settings(BaseSettings):
     SCHEDULER_TRACKING_INTERVAL_SECONDS: int = 600    # 物流轨迹拉取
     SCHEDULER_REMINDERS_INTERVAL_SECONDS: int = 1800  # 自动确认 3/5 天提醒(Batch 5)
     SCHEDULER_REVIEW_AUTO_INTERVAL_SECONDS: int = 3600  # 7 天自动好评 / 15 天单方公开(Batch 6)
+    SCHEDULER_EVENTS_INTERVAL_SECONDS: int = 600  # 活动到期转回顾 + 预约前 2 小时提醒（窗口 30 分钟 > 间隔）
 
     # =====================================================
     # 实名认证 / 银行卡四要素 (阿里云 实人认证 / 银联四要素)

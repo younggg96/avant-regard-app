@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect, useLayoutEffect } from "react";
+import React, { useState, useCallback, useRef, useEffect, useLayoutEffect, useMemo } from "react";
 import {
   Animated,
   Linking,
@@ -15,41 +15,81 @@ import { useNavigation, useFocusEffect, useRoute } from "@react-navigation/nativ
 import { Box, ScrollView, VStack, HStack } from "../../components/ui";
 import { Post } from "../../components/PostCard";
 import { Banner } from "../../services/bannerService";
-import { useAuthStore } from "../../store/authStore";
 import { useDiscoverTabStore } from "../../store/discoverTabStore";
 import { useMainBottomTabStore } from "../../store/mainBottomTabStore";
-import { getUnreadCount } from "../../services/notificationService";
-import { getUnreadCount as getChatUnreadCount } from "../../services/chatService";
-import { userInfoService, UserInfo } from "../../services/userInfoService";
-import { TabType } from "./types";
-import { TAB_INDEX_MAP } from "./constants";
+import {
+  TabType,
+  TopTab,
+  PostsSubTab,
+  ArchiveSubTab,
+  BuyerSubTab,
+} from "./types";
+import {
+  TOP_TAB_PAGES,
+  TOP_TAB_INDEX,
+  DEFAULT_TOP_TAB_INDEX,
+} from "./constants";
 import { useDiscoverStyles } from "./styles";
 import { useAppTheme } from "../../theme";
 import { SkeletonPostCard, useSkeletonAnimation } from "./components/SkeletonPostCard";
 import { DiscoverHeader } from "./components/DiscoverHeader";
 import { DiscoverTabBar } from "./components/DiscoverTabBar";
 import { TabContent } from "./components/TabContent";
+import { PostsPage } from "./components/PostsPage";
+import { MyArchivePage } from "./components/MyArchivePage";
+import { BuyerPage } from "./components/BuyerPage";
 import { useDiscoverData } from "./hooks/useDiscoverData";
 import { useHeaderAnimation } from "./hooks/useHeaderAnimation";
-
-/** 横向页顺序必须与 `TAB_INDEX_MAP` 一致（论坛 / 推荐 / 交易 / 买手店 / 关注）。 */
-const TAB_PAGES = [
-  "forum",
-  "recommend",
-  "trading",
-  "buyer",
-  "following",
-] as const satisfies readonly TabType[];
+import { useTradingEnabled } from "../../store/featureFlagsStore";
 
 const RECOMMEND_TAB_DOUBLE_TAP_MS = 700;
 
 /** 稳定在「当前 ±1」页的 React 挂载量，卸载远处 Tab 的重列表。 */
-const neighborMountSet = (center: number): Set<number> => {
+const neighborMountSet = (center: number, pageCount: number = TOP_TAB_PAGES.length): Set<number> => {
   const n = new Set<number>();
   for (let i = center - 1; i <= center + 1; i++) {
-    if (i >= 0 && i < TAB_PAGES.length) n.add(i);
+    if (i >= 0 && i < pageCount) n.add(i);
   }
   return n;
+};
+
+/**
+ * 顶部一级 Tab + 内部二级 Tab → 写进 `discoverTabStore` 的数据层 Tab 标识。
+ * 供底部「+」发布按钮判断当前发帖语境（论坛 / 帖子 / 买手店 / My Archive）。
+ */
+const resolveDataTab = (top: TopTab, postsSub: PostsSubTab): TabType => {
+  switch (top) {
+    case "forum":
+      return "forum";
+    case "posts":
+      return postsSub === "following" ? "following" : "recommend";
+    case "myArchive":
+      return "myArchive";
+    case "buyer":
+      return "buyer";
+    default:
+      return "recommend";
+  }
+};
+
+/** 深链 / 路由参数里的数据层 Tab → 顶部一级 Tab + 二级 Tab。 */
+const targetToTopTab = (
+  tab: TabType,
+): { top: TopTab; postsSub?: PostsSubTab } => {
+  switch (tab) {
+    case "forum":
+      return { top: "forum" };
+    case "recommend":
+      return { top: "posts", postsSub: "recommend" };
+    case "following":
+      return { top: "posts", postsSub: "following" };
+    case "buyer":
+      return { top: "buyer" };
+    case "myArchive":
+      return { top: "myArchive" };
+    default:
+      return { top: "posts", postsSub: "recommend" };
+  }
 };
 
 const SkeletonTabBar: React.FC<{
@@ -57,10 +97,10 @@ const SkeletonTabBar: React.FC<{
   surfaceColor: string;
   borderColor: string;
   blockColor: string;
-}> = ({ opacity, surfaceColor, borderColor, blockColor }) => (
-  <Box style={{ backgroundColor: surfaceColor, borderBottomWidth: 1, borderBottomColor: borderColor }}>
+}> = ({ opacity, surfaceColor, blockColor }) => (
+  <Box style={{ backgroundColor: surfaceColor }}>
     <HStack justifyContent="center" alignItems="center" py="$xs">
-      {[0, 1, 2, 3, 4].map((i) => (
+      {[0, 1, 2, 3].map((i) => (
         <Animated.View
           key={i}
           style={{
@@ -82,84 +122,107 @@ const SkeletonHeader: React.FC<{
   surfaceColor: string;
   blockColor: string;
 }> = ({ opacity, surfaceColor, blockColor }) => (
-  <Box style={{ backgroundColor: surfaceColor }} px="$md" pt="$sm" pb="$md">
-    <VStack space="sm">
-      <HStack alignItems="center" justifyContent="space-between">
-        <Animated.View
-          style={{
-            width: 140,
-            height: 36,
-            borderRadius: 4,
-            backgroundColor: blockColor,
-            opacity,
-          }}
-        />
-        <HStack alignItems="center" space="md">
-          <Animated.View
-            style={{
-              width: 32,
-              height: 32,
-              borderRadius: 16,
-              backgroundColor: blockColor,
-              opacity,
-            }}
-          />
-          <Animated.View
-            style={{
-              width: 32,
-              height: 32,
-              borderRadius: 4,
-              backgroundColor: blockColor,
-              opacity,
-            }}
-          />
-        </HStack>
-      </HStack>
-      <Animated.View
-        style={{
-          height: 40,
-          borderRadius: 4,
-          backgroundColor: blockColor,
-          opacity,
-        }}
-      />
-    </VStack>
+  <Box style={{ backgroundColor: surfaceColor }} px="$md" pt={2} pb={0}>
+    <Animated.View
+      style={{
+        width: 92,
+        height: 30,
+        borderRadius: 4,
+        backgroundColor: blockColor,
+        opacity,
+      }}
+    />
+  </Box>
+);
+
+const SkeletonSearchBar: React.FC<{
+  opacity: Animated.AnimatedInterpolation<number>;
+  surfaceColor: string;
+  blockColor: string;
+  borderColor: string;
+}> = ({ opacity, surfaceColor, blockColor, borderColor }) => (
+  <Box
+    style={{
+      backgroundColor: surfaceColor,
+      paddingTop: 2,
+      paddingBottom: 4,
+      borderBottomWidth: 1,
+      borderBottomColor: borderColor,
+    }}
+    px="$md"
+  >
+    <Animated.View
+      style={{
+        height: 32,
+        borderRadius: 4,
+        backgroundColor: blockColor,
+        opacity,
+      }}
+    />
   </Box>
 );
 
 /**
- * 首页：DiscoverHeader（Logo + 搜索）+ 四 Tab；横向分页用 `react-native-pager-view`。
+ * 首页（发现）—— Logo + 顶部四 Tab（论坛 / 帖子 / My Archive / 买手店）
+ * + 搜索 + 横向分页（`react-native-pager-view`）。
  *
- * 性能：`mountedPages` 仅挂载当前 Tab ±1。更换/安装本依赖后需重新 `expo run:ios` /
- * `expo run:android` 以链接原生 RNCViewPager。
+ * 信息架构（重构后）：
+ *   - 论坛：banner + 论坛选择 + 日历 + 论坛帖子
+ *   - 帖子：推荐 / 关注 二级切换
+ *   - My Archive：我的 / 世界 二级切换
+ *   - 买手店：地图 / 详情 二级切换
+ *   - 交易：隐藏（仍可从底部「消息」/ Marketplace 到达）
+ *
+ * 性能：`mountedPages` 仅挂载当前 Tab ±1。
  */
 const DiscoverScreen: React.FC = () => {
   const navigation = useNavigation();
   const route = useRoute<any>();
-  const { user } = useAuthStore();
   const t = useAppTheme();
   const styles = useDiscoverStyles();
   const isDark = t.mode === "dark";
   const skeletonColor = isDark ? "#1F1F1F" : "#e5e5e5";
-  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
-  const [unreadChatCount, setUnreadChatCount] = useState(0);
-  const totalInteractionUnread = unreadNotificationCount + unreadChatCount;
-  const [currentUserInfo, setCurrentUserInfo] = useState<UserInfo | null>(null);
 
-  const [pageIndex, setPageIndex] = useState<number>(TAB_INDEX_MAP.recommend);
-  const [mountedPages, setMountedPages] = useState(() => neighborMountSet(TAB_INDEX_MAP.recommend));
+  // 交易系统总开关：底部「消息」跳转是否带「交易」子 Tab（顶部不再有交易 Tab）
+  const tradingEnabled = useTradingEnabled();
+
+  const [pageIndex, setPageIndex] = useState<number>(DEFAULT_TOP_TAB_INDEX);
+  const [mountedPages, setMountedPages] = useState(() => neighborMountSet(DEFAULT_TOP_TAB_INDEX));
   const [recommendScrollToTopSignal, setRecommendScrollToTopSignal] = useState(0);
 
-  const lastRecommendTabPressAt = useRef(0);
+  // 二级 Tab 状态
+  const [postsSubTab, setPostsSubTab] = useState<PostsSubTab>("recommend");
+  const [archiveSubTab, setArchiveSubTab] = useState<ArchiveSubTab>("mine");
+  const [buyerSubTab, setBuyerSubTab] = useState<BuyerSubTab>("map");
+
+  const lastPostsTabPressAt = useRef(0);
   const pagerRef = useRef<PagerView>(null);
+  const pageIndexRef = useRef(pageIndex);
+  pageIndexRef.current = pageIndex;
+  const pendingPagerIndexRef = useRef<number | null>(null);
 
-  const activeTab = TAB_PAGES[pageIndex];
+  const activeTopTab: TopTab = TOP_TAB_PAGES[pageIndex] ?? "posts";
 
-  // V2 发帖入口：底部「+」按钮通过 discoverTabStore 读取当前子 Tab，
-  // 来决定跳「图片优先」流程还是「论坛模式选择」流程。
+  const syncPagerToIndex = useCallback((idx: number) => {
+    pagerRef.current?.setPageWithoutAnimation(idx);
+  }, []);
+
+  /** 点 Tab 后等买手店页挂上再 setPage，避免跳到尚未 mount 的页。 */
+  useLayoutEffect(() => {
+    const idx = pendingPagerIndexRef.current;
+    if (idx == null) return;
+    pendingPagerIndexRef.current = null;
+    pagerRef.current?.setPage(idx);
+  }, [pageIndex, mountedPages]);
+
+  const handleChromeLayout = useCallback(() => {
+    syncPagerToIndex(pageIndexRef.current);
+  }, [syncPagerToIndex]);
+
+  // 顶部 / 二级 Tab 变化 → 同步 discoverTabStore，供「+」发布按钮分流
   useEffect(() => {
-    useDiscoverTabStore.getState().setActiveTab(activeTab);
-  }, [activeTab]);
+    useDiscoverTabStore.getState().setActiveTab(resolveDataTab(activeTopTab, postsSubTab));
+  }, [activeTopTab, postsSubTab]);
 
   useFocusEffect(
     useCallback(() => {
@@ -190,7 +253,7 @@ const DiscoverScreen: React.FC = () => {
     recommendLoadingMore,
   } = useDiscoverData();
 
-  const { headerAnimatedStyle, handleVerticalScroll, notifyRefreshing } = useHeaderAnimation();
+  const { headerAnimatedStyle, searchBarAnimatedStyle, searchIconAnimatedStyle, handleVerticalScroll, notifyRefreshing } = useHeaderAnimation();
 
   useLayoutEffect(() => {
     notifyRefreshing(refreshing);
@@ -198,60 +261,23 @@ const DiscoverScreen: React.FC = () => {
 
   const { skeletonOpacity } = useSkeletonAnimation();
 
-  useEffect(() => {
-    if (!user?.userId) return;
-    const currentUserId = user.userId;
-    let cancelled = false;
-    const timer = setTimeout(async () => {
-      try {
-        const info = await userInfoService.getUserInfo(currentUserId);
-        if (cancelled) return;
-        setCurrentUserInfo(info);
-      } catch (err) {
-        if (cancelled) return;
-        console.warn("获取当前用户信息失败:", err);
+  /** 顶部一级 Tab 对应的数据层懒加载。 */
+  const loadDataForTop = useCallback(
+    (top: TopTab, postsSub: PostsSubTab) => {
+      if (top === "forum") {
+        loadTabData("forum");
+      } else if (top === "posts") {
+        loadTabData(postsSub === "following" ? "following" : "recommend");
       }
-    }, 2000);
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-  }, [user?.userId]);
-
-  const fetchUnreadCount = useCallback(async () => {
-    try {
-      const count = await getUnreadCount();
-      setUnreadNotificationCount(count);
-    } catch (err) {
-      console.warn("获取未读消息数量失败:", err);
-    }
-    try {
-      const chatCount = await getChatUnreadCount();
-      setUnreadChatCount(chatCount);
-    } catch (err) {
-      console.warn("获取未读聊天数量失败:", err);
-    }
-  }, []);
-
-  const hasUnreadBootstrappedRef = useRef(false);
-  useFocusEffect(
-    useCallback(() => {
-      if (hasUnreadBootstrappedRef.current) {
-        fetchUnreadCount();
-        return;
-      }
-      const kickoff = setTimeout(() => {
-        hasUnreadBootstrappedRef.current = true;
-        fetchUnreadCount();
-      }, 2000);
-      return () => clearTimeout(kickoff);
-    }, [fetchUnreadCount])
+      // buyer / myArchive 由各自组件按 isActive 自取数据
+    },
+    [loadTabData]
   );
 
   const augmentMountFromScrollFraction = useCallback((position: number, offset: number) => {
     const p = position + offset;
-    const lo = Math.max(0, Math.min(TAB_PAGES.length - 1, Math.floor(p)));
-    const hi = Math.max(0, Math.min(TAB_PAGES.length - 1, Math.ceil(p)));
+    const lo = Math.max(0, Math.min(TOP_TAB_PAGES.length - 1, Math.floor(p)));
+    const hi = Math.max(0, Math.min(TOP_TAB_PAGES.length - 1, Math.ceil(p)));
     setMountedPages((prev) => {
       if (prev.has(lo) && prev.has(hi)) return prev;
       const n = new Set(prev);
@@ -271,71 +297,84 @@ const DiscoverScreen: React.FC = () => {
   const onPageSelected = useCallback(
     (e: PagerViewOnPageSelectedEvent) => {
       const idx = Math.round(Number(e.nativeEvent.position));
-      if (idx < 0 || idx >= TAB_PAGES.length) return;
-      const tab = TAB_PAGES[idx];
-      useDiscoverTabStore.getState().setActiveTab(tab);
+      if (idx < 0 || idx >= TOP_TAB_PAGES.length) return;
+      const top = TOP_TAB_PAGES[idx];
       setPageIndex(idx);
-      setMountedPages(neighborMountSet(idx));
-      loadTabData(TAB_PAGES[idx]);
+      setMountedPages(neighborMountSet(idx, TOP_TAB_PAGES.length));
+      loadDataForTop(top, postsSubTab);
     },
-    [loadTabData]
+    [loadDataForTop, postsSubTab]
   );
 
   const refreshRecommendAndScrollToTop = useCallback(() => {
-    pagerRef.current?.setPage(TAB_INDEX_MAP.recommend);
-    setPageIndex(TAB_INDEX_MAP.recommend);
-    setMountedPages(neighborMountSet(TAB_INDEX_MAP.recommend));
     setRecommendScrollToTopSignal((v) => v + 1);
     void handleRefresh("recommend").finally(() => {
       setRecommendScrollToTopSignal((v) => v + 1);
     });
   }, [handleRefresh]);
 
-  const handleTabChange = useCallback(
-    (tab: TabType) => {
+  const handleTopTabChange = useCallback(
+    (top: TopTab) => {
       const now = Date.now();
-      const isRecommendTab = tab === "recommend";
-      const isRecommendDoubleTap =
-        isRecommendTab && now - lastRecommendTabPressAt.current <= RECOMMEND_TAB_DOUBLE_TAP_MS;
-      const isActiveRecommendRetap = isRecommendTab && activeTab === "recommend";
+      const isPostsTab = top === "posts";
+      const isPostsReTap = isPostsTab && activeTopTab === "posts";
+      const isPostsDoubleTap =
+        isPostsTab && now - lastPostsTabPressAt.current <= RECOMMEND_TAB_DOUBLE_TAP_MS;
+      lastPostsTabPressAt.current = isPostsTab ? now : 0;
 
-      lastRecommendTabPressAt.current = isRecommendTab ? now : 0;
-
-      if (isActiveRecommendRetap || isRecommendDoubleTap) {
+      // 在「帖子·推荐」上再次点击 / 双击「帖子」→ 刷新推荐并回到顶部
+      if ((isPostsReTap || isPostsDoubleTap) && postsSubTab === "recommend") {
         refreshRecommendAndScrollToTop();
-        return;
+        if (isPostsReTap) return;
       }
 
-      const idx = TAB_INDEX_MAP[tab];
-      useDiscoverTabStore.getState().setActiveTab(tab);
+      const idx = TOP_TAB_INDEX[top];
       setMountedPages((prev) => {
         const n = new Set(prev);
-        neighborMountSet(idx).forEach((i) => n.add(i));
+        neighborMountSet(idx, TOP_TAB_PAGES.length).forEach((i) => n.add(i));
         return n;
       });
-      pagerRef.current?.setPage(idx);
+      pendingPagerIndexRef.current = idx;
       setPageIndex(idx);
-      loadTabData(tab);
+      loadDataForTop(top, postsSubTab);
     },
-    [activeTab, loadTabData, refreshRecommendAndScrollToTop]
+    [activeTopTab, postsSubTab, refreshRecommendAndScrollToTop, loadDataForTop]
+  );
+
+  const handlePostsSubTabChange = useCallback(
+    (sub: PostsSubTab) => {
+      setPostsSubTab(sub);
+      loadTabData(sub === "following" ? "following" : "recommend");
+    },
+    [loadTabData]
   );
 
   useEffect(() => {
     const targetTab = route.params?.targetDiscoverTab as TabType | undefined;
-    if (!targetTab || !(targetTab in TAB_INDEX_MAP)) return;
-    handleTabChange(targetTab);
+    if (!targetTab) return;
+    // 顶部不再有「交易」Tab；深链落到底部「消息 · 交易」。
+    if (targetTab === "trading") {
+      (navigation as any).navigate("Interaction", {
+        subTab: tradingEnabled ? "trading" : "messages",
+      });
+      (navigation as any).setParams?.({ targetDiscoverTab: undefined });
+      return;
+    }
+    const { top, postsSub } = targetToTopTab(targetTab);
+    if (postsSub) setPostsSubTab(postsSub);
+    handleTopTabChange(top);
     (navigation as any).setParams?.({ targetDiscoverTab: undefined });
-  }, [route.params?.targetDiscoverTab, handleTabChange, navigation]);
+  }, [route.params?.targetDiscoverTab, handleTopTabChange, navigation, tradingEnabled]);
 
-  const activeTabRef = useRef(activeTab);
-  activeTabRef.current = activeTab;
+  // 下拉刷新按当前数据层 Tab 分流
+  const dataTabRef = useRef<TabType>(resolveDataTab(activeTopTab, postsSubTab));
+  dataTabRef.current = resolveDataTab(activeTopTab, postsSubTab);
   const onRefresh = useCallback(() => {
-    handleRefresh(activeTabRef.current);
+    handleRefresh(dataTabRef.current);
   }, [handleRefresh]);
 
   const handlePostPress = useCallback(
     (post: Post) => {
-      console.log("查看帖子详情:", post.id);
       (navigation.navigate as any)("PostDetail", { postId: post.id });
     },
     [navigation]
@@ -407,8 +446,6 @@ const DiscoverScreen: React.FC = () => {
 
   const handleBannerPress = useCallback(
     (banner: Banner) => {
-      console.log("Banner 点击:", banner.linkType, banner.linkValue);
-
       switch (banner.linkType) {
         case "POST":
           if (banner.linkValue) {
@@ -445,25 +482,23 @@ const DiscoverScreen: React.FC = () => {
     (navigation.navigate as any)("Search");
   }, [navigation]);
 
-  const handleAvatarPress = useCallback(() => {
-    (navigation.navigate as any)("Profile");
-  }, [navigation]);
+  const postsTabLoading = useMemo(
+    () => ({ recommend: tabLoading.recommend, following: tabLoading.following }),
+    [tabLoading.recommend, tabLoading.following]
+  );
+  const postsTabLoaded = useMemo(
+    () => ({ recommend: tabLoaded.recommend, following: tabLoaded.following }),
+    [tabLoaded.recommend, tabLoaded.following]
+  );
 
-  const handleInteractionPress = useCallback(() => {
-    (navigation.navigate as any)("Main", {
-      screen: "Interaction",
-      params: { subTab: "trading" },
-    });
-  }, [navigation]);
-
-  const renderPageSlot = (tab: TabType, index: number) => {
+  const renderPageSlot = (top: TopTab, index: number) => {
     if (!mountedPages.has(index)) {
       return <View style={{ flex: 1 }} />;
     }
 
     const isFocused = pageIndex === index;
 
-    switch (tab) {
+    switch (top) {
       case "forum":
         return (
           <TabContent
@@ -486,18 +521,20 @@ const DiscoverScreen: React.FC = () => {
             onBannerPress={handleBannerPress}
           />
         );
-      case "recommend":
+      case "posts":
         return (
-          <TabContent
-            tab="recommend"
-            tabPosts={recommendPosts}
+          <PostsPage
+            isActive={isFocused}
+            subTab={postsSubTab}
+            onSubTabChange={handlePostsSubTabChange}
+            recommendPosts={recommendPosts}
+            followingPosts={followingPosts}
             banners={banners}
             communities={communities}
             error={error}
             refreshing={refreshing}
-            tabLoading={tabLoading.recommend}
-            tabLoaded={tabLoaded.recommend}
-            isActive={isFocused}
+            tabLoading={postsTabLoading}
+            tabLoaded={postsTabLoaded}
             onRefresh={onRefresh}
             onScroll={handleVerticalScroll}
             onPostPress={handlePostPress}
@@ -509,19 +546,21 @@ const DiscoverScreen: React.FC = () => {
             scrollToTopSignal={recommendScrollToTopSignal}
           />
         );
-      case "trading":
+      case "myArchive":
         return (
-          <TabContent
-            tab="trading"
+          <MyArchivePage
             isActive={isFocused}
+            subTab={archiveSubTab}
+            onSubTabChange={setArchiveSubTab}
             onScroll={handleVerticalScroll}
           />
         );
       case "buyer":
         return (
-          <TabContent
-            tab="buyer"
+          <BuyerPage
             isActive={isFocused}
+            subTab={buyerSubTab}
+            onSubTabChange={setBuyerSubTab}
             onScroll={handleVerticalScroll}
             onSearchPress={handleSearchPress}
             onStorePress={handleBuyerStorePress}
@@ -529,26 +568,6 @@ const DiscoverScreen: React.FC = () => {
             onPostPress={handleBuyerPostPress}
             onOpenAllStores={handleOpenAllBuyerStores}
             onOpenProductList={handleOpenProductList}
-          />
-        );
-      case "following":
-        return (
-          <TabContent
-            tab="following"
-            tabPosts={followingPosts}
-            banners={banners}
-            communities={communities}
-            error={error}
-            refreshing={refreshing}
-            tabLoading={tabLoading.following}
-            tabLoaded={tabLoaded.following}
-            isActive={isFocused}
-            onRefresh={onRefresh}
-            onScroll={handleVerticalScroll}
-            onPostPress={handlePostPress}
-            onAuthorPress={handleAuthorPress}
-            onLike={handleLike}
-            onBannerPress={handleBannerPress}
           />
         );
       default:
@@ -570,6 +589,12 @@ const DiscoverScreen: React.FC = () => {
           surfaceColor={t.colors.card}
           borderColor={t.colors.border}
           blockColor={skeletonColor}
+        />
+        <SkeletonSearchBar
+          opacity={skeletonOpacity}
+          surfaceColor={t.colors.card}
+          blockColor={skeletonColor}
+          borderColor={t.colors.border}
         />
         <ScrollView flex={1} showsVerticalScrollIndicator={false}>
           <HStack px="$sm" pt="$sm" alignItems="start">
@@ -601,41 +626,40 @@ const DiscoverScreen: React.FC = () => {
     );
   }
 
-  const userAvatarUrl = currentUserInfo?.avatarUrl || user?.avatar;
-  const username = currentUserInfo?.username || user?.username;
-
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
       <Reanimated.View style={[{ overflow: "hidden" }, headerAnimatedStyle]}>
-        <DiscoverHeader
-          avatar={userAvatarUrl}
-          username={username}
-          totalInteractionUnread={totalInteractionUnread}
-          onAvatarPress={handleAvatarPress}
-          onSearchPress={handleSearchPress}
-          onInteractionPress={handleInteractionPress}
-        />
+        <DiscoverHeader />
       </Reanimated.View>
-      <DiscoverTabBar activeTab={activeTab} onTabChange={handleTabChange} />
+      <DiscoverTabBar
+        activeTab={activeTopTab}
+        onTabChange={handleTopTabChange}
+        onSearchPress={handleSearchPress}
+        searchBarAnimatedStyle={searchBarAnimatedStyle}
+        searchIconAnimatedStyle={searchIconAnimatedStyle}
+        onChromeLayout={handleChromeLayout}
+      />
 
-      {/* @ts-expect-error RNC codegen typings omit `children`; runtime supports pages. */}
-      <PagerView
-        ref={pagerRef}
-        style={{ flex: 1 }}
-        initialPage={TAB_INDEX_MAP.recommend}
-        keyboardDismissMode="on-drag"
-        scrollEnabled
-        offscreenPageLimit={1}
-        onPageScroll={onPageScroll}
-        onPageSelected={onPageSelected}
-      >
-        {TAB_PAGES.map((tab, index) => (
-          <View key={tab} style={{ flex: 1 }} collapsable={false}>
-            {renderPageSlot(tab, index)}
-          </View>
-        ))}
-      </PagerView>
+      <View style={{ flex: 1 }} collapsable={false}>
+        {/* @ts-expect-error RNC codegen typings omit `children`; runtime supports pages. */}
+        <PagerView
+          ref={pagerRef}
+          style={{ flex: 1 }}
+          initialPage={DEFAULT_TOP_TAB_INDEX}
+          keyboardDismissMode="on-drag"
+          scrollEnabled
+          offscreenPageLimit={TOP_TAB_PAGES.length}
+          onPageScroll={onPageScroll}
+          onPageSelected={onPageSelected}
+        >
+          {TOP_TAB_PAGES.map((top, index) => (
+            <View key={top} style={{ flex: 1 }} collapsable={false}>
+              {renderPageSlot(top, index)}
+            </View>
+          ))}
+        </PagerView>
+      </View>
     </SafeAreaView>
   );
 };

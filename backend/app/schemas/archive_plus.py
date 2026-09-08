@@ -88,6 +88,21 @@ class ArchiveAnalytics(BaseModel):
     avgPriceCents: int
 
 
+# ---------------- My Archive · 世界（浏览他人档案） ----------------
+
+
+class ArchiveAuthor(BaseModel):
+    """世界档案 feed 中的作者简介（username + 头像）。"""
+    id: int
+    username: str = ""
+    avatarUrl: Optional[str] = None
+
+
+class WorldArchiveItem(ArchiveItem):
+    """他人公开档案条目 = 基础 ArchiveItem + 作者简介。"""
+    author: Optional[ArchiveAuthor] = None
+
+
 # ---------------- Plus ----------------
 
 

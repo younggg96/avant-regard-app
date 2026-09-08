@@ -34,9 +34,11 @@ import ProductReviewTab from "./ProductReviewTab";
 import ProductManagementTab from "./ProductManagementTab";
 import DisputeQueueTab from "./DisputeQueueTab";
 import ChatMonitorTab from "./ChatMonitorTab";
+import EventsTab from "./EventsTab";
 
 type MenuItemKey =
   | "pending"
+  | "events"
   | "postsManagement"
   | "comments"
   | "users"
@@ -95,6 +97,7 @@ const COMPONENT_MAP: Record<MenuItemKey, React.FC> = {
   maintenance: MaintenanceTab,
   levelReview: LevelReviewTab,
   lottery: LotteryAdminTab,
+  events: EventsTab,
 };
 
 const AdminScreen = () => {
@@ -137,6 +140,7 @@ const AdminScreen = () => {
         items: [
           { key: "postsManagement", label: t("admin.postsManagement"), icon: "newspaper-outline" },
           { key: "comments", label: t("admin.commentsManagement"), icon: "chatbubbles-outline" },
+          { key: "events", label: t("admin.eventsManagement"), icon: "calendar-number-outline" },
           { key: "banners", label: t("admin.banners"), icon: "megaphone-outline" },
           { key: "communities", label: t("admin.communityManagement"), icon: "people-outline" },
           { key: "broadcast", label: t("admin.broadcast"), icon: "notifications-outline" },

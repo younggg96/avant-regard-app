@@ -14,11 +14,17 @@ import {
   MaintenanceConfig,
   getMaintenanceConfig,
   updateMaintenanceConfig,
+  getFeatureFlagsAdmin,
+  updateFeatureFlagsAdmin,
 } from "../../services/adminService";
 import {
   DEFAULT_MAINTENANCE_MESSAGE,
   useMaintenanceStore,
 } from "../../store/maintenanceStore";
+import {
+  refreshFeatureFlags,
+  useFeatureFlagsStore,
+} from "../../store/featureFlagsStore";
 import { Box, HStack, VStack, Text, Pressable, ScrollView } from "../../components/ui";
 
 /**
@@ -47,6 +53,48 @@ const MaintenanceTab = () => {
   const [dirty, setDirty] = useState(false);
 
   const applyStatusToLocalStore = useMaintenanceStore((s) => s.setStatus);
+
+  // ===== 交易系统总开关 (feature flag: tradingEnabled) =====
+  // 与维护模式不同：切换即保存（乐观更新 + 失败回滚），不走「保存配置」按钮。
+  const [tradingEnabled, setTradingEnabled] = useState<boolean | null>(null);
+  const [tradingSaving, setTradingSaving] = useState(false);
+  const setLocalFlags = useFeatureFlagsStore((s) => s.setFlags);
+
+  const loadTradingFlag = useCallback(async () => {
+    try {
+      const flags = await getFeatureFlagsAdmin();
+      setTradingEnabled(!!flags.tradingEnabled);
+    } catch (e) {
+      console.warn("[MaintenanceTab] load feature flags failed:", e);
+      setTradingEnabled(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadTradingFlag();
+  }, [loadTradingFlag]);
+
+  const handleToggleTrading = useCallback(
+    async (next: boolean) => {
+      if (tradingEnabled === null || tradingSaving) return;
+      const before = tradingEnabled;
+      setTradingSaving(true);
+      setTradingEnabled(next);
+      try {
+        const saved = await updateFeatureFlagsAdmin({ tradingEnabled: next });
+        setTradingEnabled(!!saved.tradingEnabled);
+        // 当前管理员设备立刻生效，不必等 30s 轮询
+        setLocalFlags({ tradingEnabled: !!saved.tradingEnabled });
+        refreshFeatureFlags();
+      } catch (e) {
+        setTradingEnabled(before);
+        Alert.alert(t("admin.saveFailed"), e instanceof Error ? e.message : t("common.retryLater"));
+      } finally {
+        setTradingSaving(false);
+      }
+    },
+    [tradingEnabled, tradingSaving, setLocalFlags, t],
+  );
 
   const loadConfig = useCallback(async () => {
     try {
@@ -158,6 +206,32 @@ const MaintenanceTab = () => {
             trackColor={{ false: theme.colors.gray200, true: theme.colors.error }}
             thumbColor={theme.colors.white}
           />
+        </HStack>
+      </Box>
+
+      {/* ===== 交易系统总开关 ===== */}
+      <Box style={styles.section}>
+        <HStack style={styles.sectionHeader}>
+          <Ionicons name="cart-outline" size={18} color={theme.colors.black} />
+          <Text style={styles.sectionTitle}>{t("admin.tradingFlagTitle")}</Text>
+        </HStack>
+        <HStack style={styles.toggleRow}>
+          <VStack style={{ flex: 1 }}>
+            <Text style={styles.toggleLabel}>
+              {tradingEnabled ? t("admin.tradingFlagOn") : t("admin.tradingFlagOff")}
+            </Text>
+            <Text style={styles.toggleDesc}>{t("admin.tradingFlagHint")}</Text>
+          </VStack>
+          {tradingEnabled === null || tradingSaving ? (
+            <ActivityIndicator size="small" color={theme.colors.black} />
+          ) : (
+            <Switch
+              value={tradingEnabled}
+              onValueChange={handleToggleTrading}
+              trackColor={{ false: theme.colors.gray200, true: theme.colors.black }}
+              thumbColor={theme.colors.white}
+            />
+          )}
         </HStack>
       </Box>
 

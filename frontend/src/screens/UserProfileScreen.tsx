@@ -54,6 +54,7 @@ import {
 } from "../theme";
 import { useProfileLoadingGif } from "../utils/loadingGifs";
 import { useAuthStore } from "../store/authStore";
+import { useTradingEnabled } from "../store/featureFlagsStore";
 import { Alert } from "../utils/Alert";
 import { postService, Post as ApiPost, likePost, unlikePost, UserPostStats } from "../services/postService";
 import {
@@ -165,6 +166,7 @@ const UserProfileScreen = () => {
   const [followersCount, setFollowersCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
   const [topTab, setTopTab] = useState<UserProfileTopTab>("notes");
+  const tradingEnabled = useTradingEnabled();
   const [notesSubTab, setNotesSubTab] = useState<NotesSubTab>("posts");
   const [sellingSubTab, setSellingSubTab] = useState<"active" | "sold">("active");
   const [refreshing, setRefreshing] = useState(false);
@@ -231,7 +233,8 @@ const UserProfileScreen = () => {
     const items: { id: UserProfileTopTab; label: string }[] = [
       { id: "notes", label: t("profile.tabNotes") },
     ];
-    if (isCurrentUser || !privacySettings?.hideSales) {
+    // 「在售」属于交易系统：总开关关闭时对所有人隐藏
+    if (tradingEnabled && (isCurrentUser || !privacySettings?.hideSales)) {
       items.push({ id: "selling", label: t("profile.tabSelling") });
     }
     if (isCurrentUser || !privacySettings?.hideWishlist) {
@@ -239,7 +242,12 @@ const UserProfileScreen = () => {
     }
     items.push({ id: "archive", label: t("profile.contributions") });
     return items;
-  }, [isCurrentUser, privacySettings, t]);
+  }, [isCurrentUser, privacySettings, t, tradingEnabled]);
+
+  // 开关运行时关闭且正停在「在售」→ 回到笔记
+  useEffect(() => {
+    if (!tradingEnabled && topTab === "selling") setTopTab("notes");
+  }, [tradingEnabled, topTab]);
 
   const notesSubTabs = React.useMemo(() => {
     const chips: { id: NotesSubTab; label: string; count?: number }[] = [
@@ -1624,7 +1632,7 @@ const UserProfileScreen = () => {
 
         {/* 历史评价入口 —— 与主页默认展示内容（笔记 / 在售 等）明确区分，
             单独成卡片入口，点击进入卖家历史评价独立页。 */}
-        {tradeReviewsTotal > 0 && (
+        {tradingEnabled && tradeReviewsTotal > 0 && (
           <Pressable
             style={styles.ratingSection}
             onPress={() =>

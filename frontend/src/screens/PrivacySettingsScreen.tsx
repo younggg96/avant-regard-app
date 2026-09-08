@@ -8,6 +8,7 @@ import { useTranslation } from "react-i18next";
 import ScreenHeader from "../components/ScreenHeader";
 import { Alert } from "../utils/Alert";
 import { useAuthStore } from "../store/authStore";
+import { useTradingEnabled } from "../store/featureFlagsStore";
 import {
   userInfoService,
   type UserPrivacySettings,
@@ -32,6 +33,11 @@ const PrivacySettingsScreen = () => {
   const { t } = useTranslation();
   const { user } = useAuthStore();
   const appTheme = useAppTheme();
+  // 「隐藏在售」只在交易系统开启时有意义
+  const tradingEnabled = useTradingEnabled();
+  const privacyItems = tradingEnabled
+    ? PRIVACY_ITEMS
+    : PRIVACY_ITEMS.filter((item) => item.id !== "hideSales");
   const styles = useThemedStyles(makeStyles);
 
   const [privacySettings, setPrivacySettings] =
@@ -87,12 +93,12 @@ const PrivacySettingsScreen = () => {
         showsVerticalScrollIndicator={false}
       >
         <Box style={styles.card}>
-          {PRIVACY_ITEMS.map((item, idx) => (
+          {privacyItems.map((item, idx) => (
             <View
               key={item.id}
               style={[
                 styles.row,
-                idx < PRIVACY_ITEMS.length - 1 && {
+                idx < privacyItems.length - 1 && {
                   borderBottomWidth: StyleSheet.hairlineWidth,
                   borderBottomColor: appTheme.colors.border,
                 },

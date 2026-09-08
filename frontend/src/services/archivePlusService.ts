@@ -68,6 +68,31 @@ export async function listArchive(params?: {
   );
 }
 
+// ---------------- 世界（浏览他人档案） ----------------
+
+export interface ArchiveAuthor {
+  id: number;
+  username: string;
+  avatarUrl?: string | null;
+}
+
+export interface WorldArchiveItem extends ArchiveItem {
+  author?: ArchiveAuthor | null;
+}
+
+/** 「世界」二级 Tab：浏览其他用户的公开档案条目（后端已排除本人）。 */
+export async function listWorldArchive(params?: {
+  page?: number;
+  pageSize?: number;
+}): Promise<{ items: WorldArchiveItem[]; total: number }> {
+  const q = new URLSearchParams();
+  if (params?.page) q.append("page", String(params.page));
+  if (params?.pageSize) q.append("pageSize", String(params.pageSize));
+  return request<{ items: WorldArchiveItem[]; total: number }>(
+    `/api/archive/world?${q.toString()}`,
+  );
+}
+
 export async function getArchiveAnalytics(): Promise<ArchiveAnalytics> {
   return request<ArchiveAnalytics>("/api/archive/analytics");
 }
