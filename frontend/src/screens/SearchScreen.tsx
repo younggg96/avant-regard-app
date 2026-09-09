@@ -2,6 +2,8 @@ import React, { useState, useCallback, useEffect, useRef } from "react";
 import {
   StyleSheet,
   TextInput,
+  Text as RNText,
+  Pressable as RNPressable,
   TouchableOpacity,
   FlatList,
   Keyboard,
@@ -11,6 +13,7 @@ import {
   NativeScrollEvent,
   NativeSyntheticEvent,
   View,
+  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute } from "@react-navigation/native";
@@ -1310,32 +1313,19 @@ const SearchScreen = () => {
       {/* Header */}
       <HStack
         px="$md"
-        py="$sm"
         alignItems="center"
-        space="sm"
-        borderBottomWidth={1}
-        style={{ borderBottomColor: theme.colors.gray100 }}
+        style={styles.searchHeader}
       >
-        {/* Back Button */}
-        <Pressable onPress={() => navigation.goBack()} p="$xs">
-          <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
+        <Pressable onPress={() => navigation.goBack()} hitSlop={8} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={20} color={theme.colors.text} />
         </Pressable>
 
-        {/* Search Input */}
-        <Box
-          flex={1}
-          style={{ backgroundColor: theme.colors.gray100 }}
-          rounded="$sm"
-          px="$md"
-          py="$xs"
-          flexDirection="row"
-          alignItems="center"
-        >
+        <Box style={[styles.searchBar, { backgroundColor: theme.colors.gray50 }]}>
           <Ionicons
             name="search"
-            size={20}
+            size={14}
             color={theme.colors.gray400}
-            style={{ marginRight: 8 }}
+            style={{ marginRight: 4 }}
           />
           <TextInput
             style={styles.searchInput}
@@ -1360,29 +1350,25 @@ const SearchScreen = () => {
           {searchQuery.length > 0 && (
             <TouchableOpacity
               onPress={handleClearSearch}
-              style={{ padding: 4 }}
+              hitSlop={6}
             >
               <Ionicons
                 name="close-circle"
-                size={18}
+                size={14}
                 color={theme.colors.gray400}
               />
             </TouchableOpacity>
           )}
         </Box>
 
-        {/* Search Button */}
-        <Pressable
+        <RNPressable
           onPress={handleSearch}
-          px="$lg"
-          py="$sm"
-          style={{ backgroundColor: theme.colors.black }}
-          rounded="$sm"
+          style={[styles.searchButton, { backgroundColor: theme.colors.text }]}
         >
-          <Text style={{ color: theme.colors.white }} fontSize="$sm" fontWeight="$semibold">
+          <RNText style={[styles.searchButtonText, { color: theme.colors.textInverted }]}>
             {t("common.search")}
-          </Text>
-        </Pressable>
+          </RNText>
+        </RNPressable>
       </HStack>
 
       {/* Search Type Tabs */}
@@ -1513,19 +1499,58 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
     flex: 1,
     backgroundColor: t.colors.background,
   },
+  searchHeader: {
+    paddingTop: 4,
+    paddingBottom: 6,
+    gap: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: t.colors.gray100,
+  },
+  backButton: {
+    width: 28,
+    height: 28,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  searchBar: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    height: 28,
+    paddingHorizontal: 10,
+    borderRadius: t.borderRadius.sm,
+  },
   searchInput: {
     flex: 1,
-    fontSize: 16,
+    height: 28,
+    paddingVertical: 0,
+    fontSize: 12,
     fontFamily: playfairFonts.regular,
     color: t.colors.text,
-    paddingVertical: 8,
+  },
+  searchButton: {
+    height: 28,
+    minWidth: 48,
+    paddingHorizontal: 12,
+    borderRadius: t.borderRadius.sm,
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
+  searchButtonText: {
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: "500",
+    letterSpacing: 0,
+    includeFontPadding: false,
+    fontFamily: Platform.OS === "ios" ? "PingFang SC" : undefined,
   },
   scrollContent: {
     paddingBottom: 20,
   },
   tabsContainer: {
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingVertical: 6,
     alignItems: "center",
   },
   suggestionThumb: {

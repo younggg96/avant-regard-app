@@ -106,7 +106,12 @@ export const ForumMyArchiveSection: React.FC<Props> = ({ refreshSignal = 0, onLo
 
 const makeStyles = (t: AppTheme) =>
   StyleSheet.create({
-    center: { alignItems: "center", justifyContent: "center", paddingVertical: 48, paddingHorizontal: 32 },
+    center: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: 32,
+    },
     cta: { marginTop: 16, paddingHorizontal: 20, height: 36, borderRadius: 4, alignItems: "center", justifyContent: "center" },
     grid: {
       flexDirection: "row",

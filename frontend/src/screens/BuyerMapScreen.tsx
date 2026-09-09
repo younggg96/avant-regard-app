@@ -12,6 +12,7 @@ import {
   Alert,
   Image,
   View,
+  Text as RNText,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
@@ -1065,67 +1066,118 @@ const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
     ? { style: styles.container }
     : { style: styles.container, edges: ["top"] as const };
 
+  const filterChipTone = (active: boolean) => ({
+    backgroundColor: active
+      ? isDark
+        ? theme.colors.gray100
+        : theme.colors.text
+      : theme.colors.card,
+    borderColor: active
+      ? isDark
+        ? theme.colors.gray200
+        : theme.colors.text
+      : theme.colors.gray200,
+  });
+  const filterChipLabel = (active: boolean) =>
+    active
+      ? isDark
+        ? theme.colors.text
+        : theme.colors.textInverted
+      : theme.colors.text;
+  const filterChipMuted = (active: boolean) =>
+    active
+      ? isDark
+        ? theme.colors.text
+        : theme.colors.gray100
+      : theme.colors.gray300;
+
+  const filterButton = (
+    <Pressable
+      w={40}
+      h={40}
+      flexDirection="row"
+      justifyContent="center"
+      alignItems="center"
+      onPress={openFilters}
+      style={{
+        backgroundColor: activeFilterCount > 0 ? theme.colors.black : theme.colors.white,
+        borderColor: activeFilterCount > 0 ? theme.colors.black : theme.colors.gray100,
+        borderWidth: 1,
+        borderRadius: theme.borderRadius.sm,
+      }}
+    >
+      <Ionicons
+        name="options-outline"
+        size={22}
+        color={activeFilterCount > 0 ? theme.colors.white : theme.colors.black}
+      />
+      {activeFilterCount > 0 && (
+        <Box
+          position="absolute"
+          top={-4}
+          right={-4}
+          w={16}
+          h={16}
+          rounded="$sm"
+          style={{ backgroundColor: theme.colors.error }}
+          justifyContent="center"
+          alignItems="center"
+        >
+          <Text style={{ color: theme.colors.white }} fontSize="$xs" fontWeight="$medium" lineHeight={16}>
+            {activeFilterCount}
+          </Text>
+        </Box>
+      )}
+    </Pressable>
+  );
+
+  const filterActionBadge =
+    activeFilterCount > 0 ? (
+      <Box
+        position="absolute"
+        top={-4}
+        right={-4}
+        w={14}
+        h={14}
+        rounded="$sm"
+        style={{ backgroundColor: theme.colors.error }}
+        justifyContent="center"
+        alignItems="center"
+      >
+        <RNText style={styles.filterBadgeText}>{activeFilterCount}</RNText>
+      </Box>
+    ) : null;
+
   return (
     <Wrapper {...(wrapperProps as any)}>
-      {/* 搜索栏 */}
-      <Box px="$md" pb="$sm" pt="$xs">
-        <HStack alignItems="center" gap="$sm">
-          <Pressable
-            flex={1}
-            flexDirection="row"
-            alignItems="center"
-            style={{ backgroundColor: theme.colors.gray50 }}
-            rounded="$sm"
-            px="$md"
-            h={40}
-            onPress={handleSearchPress}
-          >
-            <Ionicons
-              name="search"
-              size={20}
-              color={theme.colors.gray400}
-              style={{ marginRight: 6 }}
-            />
-            <Text style={styles.searchPlaceholder} numberOfLines={1}>
-              {t("store.searchPlaceholder")}
-            </Text>
-          </Pressable>
-          <Pressable
-            w={40}
-            h={40}
-            rounded="$sm"
-            style={[{ backgroundColor: activeFilterCount > 0 ? theme.colors.black : theme.colors.white }, { borderColor: activeFilterCount > 0 ? theme.colors.black : theme.colors.gray100 }]}
-            borderWidth={1}
-
-            justifyContent="center"
-            alignItems="center"
-            onPress={openFilters}
-          >
-            <Ionicons
-              name="options-outline"
-              size={22}
-              color={activeFilterCount > 0 ? theme.colors.white : theme.colors.black}
-            />
-            {activeFilterCount > 0 && (
-              <Box
-                position="absolute"
-                top={-4}
-                right={-4}
-                w={16}
-                h={16}
-                rounded="$sm"
-                style={{ backgroundColor: theme.colors.error }}
-                justifyContent="center"
-                alignItems="center"
-              >
-                <Text style={{ color: theme.colors.white }} fontSize="$xs" fontWeight="$medium" lineHeight={16}>
-                  {activeFilterCount}
-                </Text>
-              </Box>
-            )}
-          </Pressable>
-        </HStack>
-      </Box>
+      {/* 独立地图页保留搜索；Discover 内嵌时用一级 Tab 下的首页搜索条 */}
+      {!embedded && (
+        <Box px="$md" pb="$sm" pt="$xs">
+          <HStack alignItems="center" gap="$sm">
+            <Pressable
+              flex={1}
+              flexDirection="row"
+              alignItems="center"
+              style={{ backgroundColor: theme.colors.gray50 }}
+              rounded="$sm"
+              px="$md"
+              h={40}
+              onPress={handleSearchPress}
+            >
+              <Ionicons
+                name="search"
+                size={20}
+                color={theme.colors.gray400}
+                style={{ marginRight: 6 }}
+              />
+              <Text style={styles.searchPlaceholder} numberOfLines={1}>
+                {t("store.searchPlaceholder")}
+              </Text>
+            </Pressable>
+            {filterButton}
+          </HStack>
+        </Box>
+      )}
 
       {/* 地图视图 */}
       <Box flex={1}>
@@ -1192,7 +1244,7 @@ const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
       {/* 快速筛选标签 - 浮在地图上方，位于搜索栏下方 (渲染在 Map 之后以确保显示在上层) */}
       <Box
         position="absolute"
-        top={(embedded ? 0 : insets.top) + SEARCH_BAR_HEIGHT}
+        top={embedded ? 0 : insets.top + SEARCH_BAR_HEIGHT}
         left={0}
         right={0}
         zIndex={100}
@@ -1201,92 +1253,45 @@ const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{
-            paddingHorizontal: theme.spacing.md,
-            paddingVertical: theme.spacing.sm
-          }}
+          contentContainerStyle={styles.filterRow}
         >
           {/* 附近按钮 */}
           <Pressable
             flexDirection="row"
             alignItems="center"
-            px="$md"
-            py="$xs"
-            rounded="$sm"
-            style={{
-              backgroundColor: nearbyMode ? theme.colors.black : floatingPillBg,
-              borderColor: nearbyMode ? "transparent" : floatingPillBorder,
-              borderWidth: isDark && !nearbyMode ? 1 : 0,
-            }}
-            mr="$sm"
+            style={[styles.filterChip, filterChipTone(nearbyMode)]}
             onPress={toggleNearbyMode}
             opacity={isLoadingLocation ? 0.6 : 1}
             disabled={isLoadingLocation}
-            sx={{
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.1,
-              shadowRadius: 4,
-              elevation: 3,
-            }}
           >
-            {isLoadingLocation ? (
-              <ActivityIndicator size="small" color={nearbyMode ? theme.colors.white : theme.colors.black} />
-            ) : (
-              <Ionicons
-                name="location"
-                size={14}
-                color={nearbyMode ? theme.colors.white : theme.colors.black}
-              />
-            )}
-            <Text
-              style={{ color: nearbyMode ? theme.colors.white : theme.colors.black }}
-              fontSize="$sm"
-              fontWeight="$medium"
-              ml="$xs"
-            >
+            <Ionicons
+              name="location"
+              size={12}
+              color={filterChipLabel(nearbyMode)}
+            />
+            <RNText style={[styles.filterChipText, { color: filterChipLabel(nearbyMode) }]}>
               {t("map.nearby")}
-            </Text>
+            </RNText>
           </Pressable>
 
           {/* 营业中按钮 */}
           <Pressable
             flexDirection="row"
             alignItems="center"
-            px="$md"
-            py="$xs"
-            rounded="$sm"
-            style={{
-              backgroundColor: filters.openOnly ? theme.colors.black : floatingPillBg,
-              borderColor: filters.openOnly ? "transparent" : floatingPillBorder,
-              borderWidth: isDark && !filters.openOnly ? 1 : 0,
-            }}
-            mr="$sm"
+            style={[styles.filterChip, filterChipTone(filters.openOnly)]}
             onPress={() => setFilters((prev) => ({ ...prev, openOnly: !prev.openOnly }))}
-            sx={{
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.1,
-              shadowRadius: 4,
-              elevation: 3,
-            }}
           >
             <Ionicons
               name="time-outline"
-              size={14}
-              color={filters.openOnly ? theme.colors.white : theme.colors.black}
+              size={12}
+              color={filterChipLabel(filters.openOnly)}
             />
-            <Text
-              style={{ color: filters.openOnly ? theme.colors.white : theme.colors.black }}
-              fontSize="$sm"
-              fontWeight="$medium"
-              ml="$xs"
-            >
+            <RNText style={[styles.filterChipText, { color: filterChipLabel(filters.openOnly) }]}>
               {t("store.open")}
-            </Text>
+            </RNText>
           </Pressable>
 
-          <Box w={1} h={16} style={{ backgroundColor: theme.colors.gray200 }} mr="$sm" alignSelf="center" />
+          <Box w={1} h={12} style={[styles.filterDivider, { backgroundColor: theme.colors.gray200 }]} />
 
           {/* 国家选择（按数量排序） */}
           {sortedCountries.map((country) => {
@@ -1296,46 +1301,17 @@ const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
               key={country}
               flexDirection="row"
               alignItems="center"
-              px="$md"
-              py="$xs"
-              rounded="$sm"
-              style={{
-                backgroundColor: isActive ? theme.colors.black : floatingPillBg,
-                borderColor: isActive ? "transparent" : floatingPillBorder,
-                borderWidth: isDark && !isActive ? 1 : 0,
-              }}
-              mr="$sm"
+              style={[styles.filterChip, filterChipTone(isActive)]}
               onPress={() => handleCountrySelect(country)}
-              sx={{
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.1,
-                shadowRadius: 4,
-                elevation: 3,
-              }}
             >
-              <Ionicons
-                name="globe-outline"
-                size={12}
-                color={isActive ? theme.colors.white : theme.colors.gray300}
-                style={{ marginRight: 4 }}
-              />
-              <Text
-                style={{ color: isActive ? theme.colors.white : theme.colors.black }}
-                fontSize="$sm"
-                fontWeight="$medium"
-              >
+              <RNText style={[styles.filterChipText, { color: filterChipLabel(isActive) }]}>
                 {getCountryDisplayName(country)}
-              </Text>
-              {countryStoreCounts[country] && (
-                <Text
-                  style={{ color: isActive ? theme.colors.gray100 : theme.colors.gray300 }}
-                  fontSize="$xs"
-                  ml="$xs"
-                >
+              </RNText>
+              {countryStoreCounts[country] ? (
+                <RNText style={[styles.filterChipCount, { color: filterChipMuted(isActive) }]}>
                   {countryStoreCounts[country]}
-                </Text>
-              )}
+                </RNText>
+              ) : null}
             </Pressable>
             );
           })}
@@ -1346,10 +1322,7 @@ const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{
-              paddingHorizontal: theme.spacing.md,
-              paddingBottom: theme.spacing.sm
-            }}
+            contentContainerStyle={styles.filterRowCities}
           >
             {sortedCities.slice(0, 15).map((city) => {
               const isActive = filters.city === city;
@@ -1358,45 +1331,17 @@ const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
                 key={city}
                 flexDirection="row"
                 alignItems="center"
-                px="$md"
-                py="$xs"
-                rounded="$sm"
-                style={{
-                  backgroundColor: isActive ? theme.colors.black : floatingPillBg,
-                  borderColor: isActive
-                    ? theme.colors.black
-                    : isDark
-                      ? theme.colors.border
-                      : theme.colors.gray100,
-                }}
-                borderWidth={1}
-
-                mr="$sm"
+                style={[styles.filterChip, filterChipTone(isActive)]}
                 onPress={() => handleCitySelect(city)}
-                sx={{
-                  shadowColor: "#000",
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.1,
-                  shadowRadius: 4,
-                  elevation: 3,
-                }}
               >
-                <Text
-                  style={{ color: isActive ? theme.colors.white : theme.colors.black }}
-                  fontSize="$sm"
-                  fontWeight="$medium"
-                >
+                <RNText style={[styles.filterChipText, { color: filterChipLabel(isActive) }]}>
                   {getCityDisplayName(city)}
-                </Text>
-                {cityStoreCounts[city] && (
-                  <Text
-                    style={{ color: isActive ? theme.colors.gray100 : theme.colors.gray300 }}
-                    fontSize="$xs"
-                    ml="$xs"
-                  >
+                </RNText>
+                {cityStoreCounts[city] ? (
+                  <RNText style={[styles.filterChipCount, { color: filterChipMuted(isActive) }]}>
                     {cityStoreCounts[city]}
-                  </Text>
-                )}
+                  </RNText>
+                ) : null}
               </Pressable>
               );
             })}
@@ -1426,7 +1371,7 @@ const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
               {t("map.foundStores", { count: visibleStores.length })}
             </Text>
           </Box>
-          <HStack gap="$sm">
+          <HStack style={{ gap: 6 }}>
             {activeFilterCount > 0 && (
               <Pressable
                 style={{
@@ -1445,36 +1390,53 @@ const BuyerMapScreen = ({ embedded }: { embedded?: boolean }) => {
               </Pressable>
             )}
             <Pressable
-              style={{
-                backgroundColor: floatingPillBg,
-                borderColor: floatingPillBorder,
-                borderWidth: isDark ? 1 : 0,
-              }}
-              px="$md"
-              py="$xs"
-              rounded="$sm"
               flexDirection="row"
               alignItems="center"
+              style={[
+                styles.filterChip,
+                styles.filterChipBottom,
+                {
+                  backgroundColor: theme.colors.card,
+                  borderColor: theme.colors.gray200,
+                },
+              ]}
               onPress={() => (navigation.navigate as any)("SubmitStore")}
             >
-              <Ionicons name="add" size={14} color={theme.colors.black} />
-              <Text fontSize="$xs" fontWeight="$semibold" style={{ color: theme.colors.black }} ml="$xs">
+              <Ionicons name="add" size={12} color={theme.colors.text} />
+              <RNText style={[styles.filterChipText, { color: theme.colors.text }]}>
                 {t("map.upload")}
-              </Text>
+              </RNText>
             </Pressable>
             <Pressable
-              style={{ backgroundColor: theme.colors.black }}
-              px="$md"
-              py="$xs"
-              rounded="$sm"
               flexDirection="row"
               alignItems="center"
+              style={[
+                styles.filterChip,
+                styles.filterChipBottom,
+                filterChipTone(activeFilterCount > 0),
+              ]}
+              onPress={openFilters}
+            >
+              <Ionicons
+                name="options-outline"
+                size={12}
+                color={filterChipLabel(activeFilterCount > 0)}
+              />
+              <RNText style={[styles.filterChipText, { color: filterChipLabel(activeFilterCount > 0) }]}>
+                {t("store.filter")}
+              </RNText>
+              {filterActionBadge}
+            </Pressable>
+            <Pressable
+              flexDirection="row"
+              alignItems="center"
+              style={[styles.filterChip, styles.filterChipBottom, filterChipTone(true)]}
               onPress={() => (navigation.navigate as any)("StoreList")}
             >
-              <Ionicons name="list" size={14} color={theme.colors.white} />
-              <Text fontSize="$xs" fontWeight="$semibold" style={{ color: theme.colors.white }} ml="$xs">
+              <Ionicons name="list" size={12} color={filterChipLabel(true)} />
+              <RNText style={[styles.filterChipText, { color: filterChipLabel(true) }]}>
                 {t("common.all")}
-              </Text>
+              </RNText>
             </Pressable>
           </HStack>
         </HStack>
@@ -2069,6 +2031,55 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
     fontSize: 16,
     fontFamily: __DEV__ ? "Georgia" : "PlayfairDisplay-Regular",
     color: t.colors.gray400,
+  },
+  filterRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingTop: 4,
+    paddingBottom: 6,
+  },
+  filterRowCities: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingBottom: 6,
+  },
+  filterChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    minHeight: 26,
+    marginRight: 6,
+    borderRadius: t.borderRadius.sm,
+    borderWidth: 1,
+  },
+  filterChipBottom: {
+    marginRight: 0,
+  },
+  filterChipText: {
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: "500",
+    fontFamily: Platform.OS === "ios" ? "PingFang SC" : undefined,
+  },
+  filterChipCount: {
+    fontSize: 10,
+    lineHeight: 14,
+    fontWeight: "600",
+    fontFamily: Platform.OS === "ios" ? "PingFang SC" : undefined,
+  },
+  filterBadgeText: {
+    color: "#FFFFFF",
+    fontSize: 9,
+    lineHeight: 12,
+    fontWeight: "600",
+  },
+  filterDivider: {
+    marginRight: 6,
+    alignSelf: "center",
   },
   map: {
     flex: 1,

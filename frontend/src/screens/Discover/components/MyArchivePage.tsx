@@ -105,7 +105,7 @@ const MyArchivePageImpl: React.FC<MyArchivePageProps> = ({
 const styles = StyleSheet.create({
   root: { width: SCREEN_WIDTH, flex: 1 },
   scroll: { flex: 1 },
-  content: { paddingBottom: 56 },
+  content: { flexGrow: 1 },
 });
 
 export const MyArchivePage = React.memo(MyArchivePageImpl);

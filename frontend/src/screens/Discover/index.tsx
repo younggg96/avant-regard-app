@@ -37,6 +37,7 @@ import { DiscoverTabBar } from "./components/DiscoverTabBar";
 import { TabContent } from "./components/TabContent";
 import { PostsPage } from "./components/PostsPage";
 import { MyArchivePage } from "./components/MyArchivePage";
+import { EventsPage } from "./components/EventsPage";
 import { BuyerPage } from "./components/BuyerPage";
 import { useDiscoverData } from "./hooks/useDiscoverData";
 import { useHeaderAnimation } from "./hooks/useHeaderAnimation";
@@ -67,6 +68,8 @@ const resolveDataTab = (top: TopTab, postsSub: PostsSubTab): TabType => {
       return "myArchive";
     case "buyer":
       return "buyer";
+    case "events":
+      return "forum";
     default:
       return "recommend";
   }
@@ -87,6 +90,8 @@ const targetToTopTab = (
       return { top: "buyer" };
     case "myArchive":
       return { top: "myArchive" };
+    case "events":
+      return { top: "events" };
     default:
       return { top: "posts", postsSub: "recommend" };
   }
@@ -100,7 +105,7 @@ const SkeletonTabBar: React.FC<{
 }> = ({ opacity, surfaceColor, blockColor }) => (
   <Box style={{ backgroundColor: surfaceColor }}>
     <HStack justifyContent="center" alignItems="center" py="$xs">
-      {[0, 1, 2, 3].map((i) => (
+      {[0, 1, 2, 3, 4].map((i) => (
         <Animated.View
           key={i}
           style={{
@@ -135,40 +140,13 @@ const SkeletonHeader: React.FC<{
   </Box>
 );
 
-const SkeletonSearchBar: React.FC<{
-  opacity: Animated.AnimatedInterpolation<number>;
-  surfaceColor: string;
-  blockColor: string;
-  borderColor: string;
-}> = ({ opacity, surfaceColor, blockColor, borderColor }) => (
-  <Box
-    style={{
-      backgroundColor: surfaceColor,
-      paddingTop: 2,
-      paddingBottom: 4,
-      borderBottomWidth: 1,
-      borderBottomColor: borderColor,
-    }}
-    px="$md"
-  >
-    <Animated.View
-      style={{
-        height: 32,
-        borderRadius: 4,
-        backgroundColor: blockColor,
-        opacity,
-      }}
-    />
-  </Box>
-);
-
 /**
- * 首页（发现）—— Logo + 顶部四 Tab（论坛 / 帖子 / My Archive / 买手店）
- * + 搜索 + 横向分页（`react-native-pager-view`）。
+ * 首页（发现）—— Logo + 右侧搜索图标 + 顶部五 Tab
+ * （论坛 / 帖子 / 活动 / My Archive / 买手店）+ 横向分页。
  *
- * 信息架构（重构后）：
- *   - 论坛：banner + 论坛选择 + 日历 + 论坛帖子
+ *   - 论坛：banner + 社区 + 论坛帖子
  *   - 帖子：推荐 / 关注 二级切换
+ *   - 活动：时装日历 + 近期活动 + 活动回顾
  *   - My Archive：我的 / 世界 二级切换
  *   - 买手店：地图 / 详情 二级切换
  *   - 交易：隐藏（仍可从底部「消息」/ Marketplace 到达）
@@ -253,7 +231,7 @@ const DiscoverScreen: React.FC = () => {
     recommendLoadingMore,
   } = useDiscoverData();
 
-  const { headerAnimatedStyle, searchBarAnimatedStyle, searchIconAnimatedStyle, handleVerticalScroll, notifyRefreshing } = useHeaderAnimation();
+  const { headerAnimatedStyle, handleVerticalScroll, notifyRefreshing } = useHeaderAnimation();
 
   useLayoutEffect(() => {
     notifyRefreshing(refreshing);
@@ -269,7 +247,7 @@ const DiscoverScreen: React.FC = () => {
       } else if (top === "posts") {
         loadTabData(postsSub === "following" ? "following" : "recommend");
       }
-      // buyer / myArchive 由各自组件按 isActive 自取数据
+      // events / buyer / myArchive 由各自组件按 isActive 自取数据
     },
     [loadTabData]
   );
@@ -546,6 +524,13 @@ const DiscoverScreen: React.FC = () => {
             scrollToTopSignal={recommendScrollToTopSignal}
           />
         );
+      case "events":
+        return (
+          <EventsPage
+            isActive={isFocused}
+            onScroll={handleVerticalScroll}
+          />
+        );
       case "myArchive":
         return (
           <MyArchivePage
@@ -590,12 +575,6 @@ const DiscoverScreen: React.FC = () => {
           borderColor={t.colors.border}
           blockColor={skeletonColor}
         />
-        <SkeletonSearchBar
-          opacity={skeletonOpacity}
-          surfaceColor={t.colors.card}
-          blockColor={skeletonColor}
-          borderColor={t.colors.border}
-        />
         <ScrollView flex={1} showsVerticalScrollIndicator={false}>
           <HStack px="$sm" pt="$sm" alignItems="start">
             <VStack flex={1} pr="$xs">
@@ -630,14 +609,11 @@ const DiscoverScreen: React.FC = () => {
     <SafeAreaView style={styles.container} edges={["top"]}>
       <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
       <Reanimated.View style={[{ overflow: "hidden" }, headerAnimatedStyle]}>
-        <DiscoverHeader />
+        <DiscoverHeader onSearchPress={handleSearchPress} />
       </Reanimated.View>
       <DiscoverTabBar
         activeTab={activeTopTab}
         onTabChange={handleTopTabChange}
-        onSearchPress={handleSearchPress}
-        searchBarAnimatedStyle={searchBarAnimatedStyle}
-        searchIconAnimatedStyle={searchIconAnimatedStyle}
         onChromeLayout={handleChromeLayout}
       />
 

@@ -1,7 +1,7 @@
 /**
  * Discover 二级切换 —— chip 筛选，而不是再做一条下划线 Tab。
  *
- * 一级（CenteredTabBar）是页面导航：左对齐、选中字号加大。
+ * 一级（CenteredTabBar）是页面导航：右对齐、选中加粗。
  * 二级只是当前页内的筛选（推荐/关注、我的/世界、地图/详情），
  * 用实心 chip 压低视觉权重，避免两排 Tab 叠在一起。
  */
@@ -54,7 +54,7 @@ const styles = StyleSheet.create({
     flexWrap: "nowrap",
     alignItems: "center",
     paddingHorizontal: 16,
-    paddingTop: 4,
+    paddingTop: 6,
     paddingBottom: 6,
     gap: 6,
   },

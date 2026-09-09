@@ -21,13 +21,13 @@ interface CenteredTabBarProps<T extends string> {
   tabs: TabItem<T>[];
   activeTab: T;
   onTabChange: (tab: T) => void;
-  /** 更紧凑的垂直内边距，给首页 Logo / Tab / 搜索叠放用 */
+  /** 更紧凑的垂直内边距，给首页 Logo / Tab 叠放用 */
   compact?: boolean;
-  /** 默认 true；首页 Tab 下方紧贴搜索栏时关掉，避免多出一条分割线 */
+  /** 默认 true；首页 Tab 下方紧贴内容时关掉，避免多出一条分割线 */
   showBottomBorder?: boolean;
-  /** 默认居中；首页与下方 chip 对齐时用 left */
-  align?: "center" | "left";
-  /** 选中项字号加大，拉开和未选项的层级 */
+  /** 默认居中；首页可用 left / right */
+  align?: "center" | "left" | "right";
+  /** 选中项只加粗，字号不变 */
   emphasizeActive?: boolean;
 }
 
@@ -38,7 +38,7 @@ function TabButton<T extends string>({
   onLayout,
   compact,
   emphasizeActive,
-  alignLeft,
+  compactPad,
 }: {
   tab: TabItem<T>;
   isActive: boolean;
@@ -46,7 +46,7 @@ function TabButton<T extends string>({
   onLayout: (e: LayoutChangeEvent) => void;
   compact?: boolean;
   emphasizeActive?: boolean;
-  alignLeft?: boolean;
+  compactPad?: boolean;
 }) {
   const styles = useThemedStyles(makeStyles);
   return (
@@ -54,7 +54,7 @@ function TabButton<T extends string>({
       style={[
         styles.tabItem,
         compact && styles.tabItemCompact,
-        alignLeft && styles.tabItemLeft,
+        compactPad && styles.tabItemTight,
       ]}
       onPress={onPress}
       onLayout={onLayout}
@@ -63,13 +63,13 @@ function TabButton<T extends string>({
         style={[
           styles.tabText,
           isActive ? styles.tabTextActive : styles.tabTextInactive,
-          emphasizeActive && (isActive ? styles.tabTextActiveLg : styles.tabTextInactiveSm),
+          emphasizeActive && (isActive ? styles.tabTextActiveBold : styles.tabTextInactive),
         ]}
         numberOfLines={1}
       >
         {tab.label}
       </Text>
-      {isActive && !emphasizeActive && <View style={styles.tabIndicator} />}
+      {isActive && <View style={styles.tabIndicator} />}
       {!!tab.badge && tab.badge > 0 && (
         <NotificationBadge count={tab.badge} size="sm" style={styles.badge} />
       )}
@@ -98,7 +98,7 @@ export function CenteredTabBar<T extends string>({
     Partial<Record<string, { x: number; width: number }>>
   >({});
 
-  /** 居中时把激活 tab 滚到可视区中央；左对齐时不抢滚动，避免跳动 */
+  /** 居中时把激活 tab 滚到可视区中央；左右对齐时不抢滚动，避免跳动 */
   useEffect(() => {
     if (align !== "center") return;
     const layout = tabLayoutsRef.current[activeTab];
@@ -125,6 +125,7 @@ export function CenteredTabBar<T extends string>({
         contentContainerStyle={[
           styles.scrollContent,
           align === "left" && styles.scrollContentLeft,
+          align === "right" && styles.scrollContentRight,
         ]}
       >
         {tabs.map((tab) => (
@@ -134,7 +135,7 @@ export function CenteredTabBar<T extends string>({
             isActive={activeTab === tab.id}
             compact={compact}
             emphasizeActive={emphasizeActive}
-            alignLeft={align === "left"}
+            compactPad={align !== "center"}
             onPress={() => onTabChange(tab.id)}
             onLayout={(e) => {
               tabLayoutsRef.current[tab.id] = {
@@ -161,6 +162,11 @@ const makeStyles = (t: AppTheme) =>
       paddingLeft: 8,
       paddingRight: 4,
     },
+    scrollContentRight: {
+      justifyContent: "flex-end",
+      paddingLeft: 4,
+      paddingRight: 8,
+    },
     tabItem: {
       paddingVertical: 8,
       paddingHorizontal: 14,
@@ -168,9 +174,9 @@ const makeStyles = (t: AppTheme) =>
       alignItems: "center",
     },
     tabItemCompact: {
-      paddingVertical: 2,
+      paddingVertical: 6,
     },
-    tabItemLeft: {
+    tabItemTight: {
       paddingHorizontal: 8,
     },
     tabText: {
@@ -182,17 +188,13 @@ const makeStyles = (t: AppTheme) =>
       color: t.colors.text,
       fontWeight: "600",
     },
+    tabTextActiveBold: {
+      color: t.colors.text,
+      fontWeight: "700",
+    },
     tabTextInactive: {
       color: t.colors.gray300,
-    },
-    tabTextActiveLg: {
-      fontSize: 17,
-      fontWeight: "700",
-      lineHeight: 22,
-    },
-    tabTextInactiveSm: {
-      fontSize: 13,
-      lineHeight: 22,
+      fontWeight: "500",
     },
     tabIndicator: {
       position: "absolute",

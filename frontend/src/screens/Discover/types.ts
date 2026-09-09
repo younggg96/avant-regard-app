@@ -57,13 +57,14 @@ export type TabType =
   | "trading"
   | "buyer"
   | "following"
-  | "myArchive";
+  | "myArchive"
+  | "events";
 
 /**
- * 顶部一级 Tab（信息架构重构后）：论坛 / 帖子 / My Archive / 买手店。
+ * 顶部一级 Tab：论坛 / 帖子 / 活动 / My Archive / 买手店。
  * 「交易」隐藏；「推荐 / 关注」下沉为「帖子」内部二级 Tab。
  */
-export type TopTab = "forum" | "posts" | "myArchive" | "buyer";
+export type TopTab = "forum" | "posts" | "events" | "myArchive" | "buyer";
 
 /** 「帖子」Tab 内部二级切换 */
 export type PostsSubTab = "recommend" | "following";

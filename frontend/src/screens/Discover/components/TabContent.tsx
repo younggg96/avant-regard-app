@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import {
   RefreshControl,
   View,
@@ -14,7 +14,6 @@ import { MasonryFlashList, MasonryListRenderItemInfo } from "@shopify/flash-list
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, ScrollView, Pressable, VStack, HStack } from "../../../components/ui";
-import ForumCalendarSection from "../../Events/ForumCalendarSection";
 import { theme, useThemedStyles, type AppTheme, useAppTheme } from "../../../theme";
 import PostCard, { Post } from "../../../components/PostCard";
 import ForumPostCard from "../../../components/ForumPostCard";
@@ -356,14 +355,6 @@ const PostsTabContentInner: React.FC<PostsTabContentProps> = ({
   const flatListRef = useRef<FlatList<Post>>(null);
   const masonryListRef = useRef<any>(null);
 
-  // 父级下拉刷新 → 通知自取数据的活动日历区块重新拉取
-  const [forumRefreshSignal, setForumRefreshSignal] = useState(0);
-  useEffect(() => {
-    if (tab === "forum" && refreshing) {
-      setForumRefreshSignal((n) => n + 1);
-    }
-  }, [tab, refreshing]);
-
   const currentPosts = useMemo(() => {
     if (!Array.isArray(tabPosts)) return [];
     const mapped = tabPosts.map(convertToPost);
@@ -612,11 +603,6 @@ const PostsTabContentInner: React.FC<PostsTabContentProps> = ({
         ) : (
           <PopularCommunities communities={communities} />
         )}
-        {/* 论坛专区：展开式时装日历 + 近期活动 + 活动回顾（PRD 第 2 / 3 节） */}
-        <ForumCalendarSection
-          refreshSignal={forumRefreshSignal}
-          showPostsHeading={currentPosts.length > 0}
-        />
       </>
     );
 

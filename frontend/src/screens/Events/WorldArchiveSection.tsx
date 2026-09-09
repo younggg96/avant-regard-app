@@ -120,7 +120,12 @@ export const WorldArchiveSection: React.FC<Props> = ({ refreshSignal = 0, onLoad
 
 const makeStyles = (t: AppTheme) =>
   StyleSheet.create({
-    center: { alignItems: "center", justifyContent: "center", paddingVertical: 48, paddingHorizontal: 32 },
+    center: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: 32,
+    },
     grid: {
       flexDirection: "row",
       flexWrap: "wrap",

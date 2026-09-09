@@ -1,10 +1,7 @@
 /**
- * 论坛 Tab · 「活动日历」子 Tab 的头部内容（PRD 第 2 / 3 节）：
- *
- *   展开式时装日历 → 近期活动（点击更多进入列表）→ 活动回顾（点击进入详情）
- *   → 下方接现有论坛帖子流（由父 FlatList 渲染）
- *
- * 数据自取（日历 / 近期 / 回顾三路接口），通过 `refreshSignal` 响应父级下拉刷新。
+ * 「活动」Tab 内容（PRD 第 2 / 3 节）：
+ * 展开式时装日历 → 近期活动 → 活动回顾。
+ * 数据自取，通过 `refreshSignal` 响应父级下拉刷新。
  */
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
@@ -30,6 +27,7 @@ interface Props {
   refreshSignal?: number;
   /** 是否显示尾部「活动相关帖子」小标题（父级帖子流非空时） */
   showPostsHeading?: boolean;
+  onLoaded?: () => void;
 }
 
 const UPCOMING_LIMIT = 5;
@@ -67,7 +65,11 @@ const sectionStyles = StyleSheet.create({
   more: { flexDirection: "row", alignItems: "center" },
 });
 
-export const ForumCalendarSection: React.FC<Props> = ({ refreshSignal = 0, showPostsHeading = true }) => {
+export const ForumCalendarSection: React.FC<Props> = ({
+  refreshSignal = 0,
+  showPostsHeading = false,
+  onLoaded,
+}) => {
   const { t } = useTranslation();
   const theme = useAppTheme();
   const s = useThemedStyles(makeStyles);
@@ -117,8 +119,9 @@ export const ForumCalendarSection: React.FC<Props> = ({ refreshSignal = 0, showP
     } finally {
       setListsLoading(false);
       setListsLoaded(true);
+      onLoaded?.();
     }
-  }, [syncFromEvents]);
+  }, [syncFromEvents, onLoaded]);
 
   useEffect(() => {
     loadCalendar(month);
