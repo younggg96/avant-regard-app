@@ -171,8 +171,13 @@ export const usePostDetail = ({
       const uiPost = await convertApiPostToUiPost(apiPost, userInfo);
       setPost(uiPost);
     } catch (err) {
-      console.error("Error loading post detail:", err);
-      setError(err instanceof Error ? err.message : t("common.failed"));
+      const message = err instanceof Error ? err.message : t("common.failed");
+      const isNotFound =
+        /不存在|not found|404/i.test(message);
+      if (!isNotFound) {
+        console.error("Error loading post detail:", err);
+      }
+      setError(isNotFound ? t("post.notFound") : message);
     } finally {
       setIsLoading(false);
     }

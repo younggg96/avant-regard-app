@@ -166,12 +166,13 @@ const InteractionScreen = () => {
           });
         }}
         style={styles.swipeContainer}
+        contentContainerStyle={{ flexGrow: 1 }}
       >
-        <View style={{ width: screenWidth }}>
+        <View style={{ width: screenWidth, height: "100%" }}>
           <MessagesContent />
         </View>
         {tradingEnabled ? (
-          <View style={{ width: screenWidth }}>
+          <View style={{ width: screenWidth, height: "100%" }}>
             <TradingContent />
           </View>
         ) : null}

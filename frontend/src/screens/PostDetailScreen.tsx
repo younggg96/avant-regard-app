@@ -49,6 +49,7 @@ import {
 import { ShareModal } from "../components/ShareModal";
 import { ShareToChatModal } from "../components/ShareToChatModal";
 import { ReportBlockModal } from "../components/ReportBlockModal";
+import ScreenHeader from "../components/ScreenHeader";
 import type { ReportTarget } from "../components/PostDetail/CommentsSection";
 
 const PostDetailScreen = () => {
@@ -300,26 +301,32 @@ const PostDetailScreen = () => {
     );
   }
 
-  // 错误状态
-  if (error) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <Box flex={1} justifyContent="center" alignItems="center" px="$lg">
-          <Text style={{ color: theme.colors.gray600 }} fontSize="$md" textAlign="center">
-            {error}
-          </Text>
-        </Box>
-      </SafeAreaView>
-    );
-  }
+  const handleUnavailableBack = () => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      (navigation as any).navigate("Home");
+    }
+  };
 
-  // 帖子不存在时显示
-  if (!post) {
+  // 错误 / 帖子不存在：保留返回，避免用户卡在空白页
+  if (error || !post) {
     return (
-      <SafeAreaView style={styles.container}>
-        <Box flex={1} justifyContent="center" alignItems="center">
-          <Text style={{ color: theme.colors.gray600 }} fontSize="$md">
-            {t("post.notFound")}
+      <SafeAreaView style={styles.container} edges={["top"]}>
+        <ScreenHeader
+          title=""
+          showBack
+          borderless
+          onBackPress={handleUnavailableBack}
+        />
+        <Box flex={1} justifyContent="center" alignItems="center" px="$lg">
+          <Ionicons name="document-text-outline" size={40} color={theme.colors.gray200} />
+          <Text
+            style={{ color: theme.colors.gray600, marginTop: 12 }}
+            fontSize="$md"
+            textAlign="center"
+          >
+            {error || t("post.notFound")}
           </Text>
         </Box>
       </SafeAreaView>

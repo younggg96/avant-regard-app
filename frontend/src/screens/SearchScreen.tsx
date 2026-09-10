@@ -20,7 +20,7 @@ import { useNavigation, useRoute } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, Pressable, HStack, VStack, UserAvatar, AnimatedChip, chipRowStyle } from "../components/ui";
-import { playfairFonts, theme, useThemedStyles, type AppTheme, useAppTheme } from "../theme";
+import { theme, useThemedStyles, type AppTheme, useAppTheme } from "../theme";
 import PostCard, { Post } from "../components/PostCard";
 import { searchPosts, likePost, unlikePost, Post as PostData } from "../services/postService";
 import { searchUsers, UserInfo } from "../services/userInfoService";
@@ -64,9 +64,14 @@ const SearchScreen = () => {
     "products",
   ];
   const isRestricted = allowedTypes.length < 5;
+  const requestedType = route.params?.initialType as SearchType | undefined;
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchType, setSearchType] = useState<SearchType>(allowedTypes[0]);
+  const [searchType, setSearchType] = useState<SearchType>(
+    requestedType && allowedTypes.includes(requestedType)
+      ? requestedType
+      : allowedTypes[0]
+  );
   const [postResults, setPostResults] = useState<PostData[]>([]);
   const [userResults, setUserResults] = useState<UserInfo[]>([]);
   const [brandResults, setBrandResults] = useState<Brand[]>([]);
@@ -1317,15 +1322,15 @@ const SearchScreen = () => {
         style={styles.searchHeader}
       >
         <Pressable onPress={() => navigation.goBack()} hitSlop={8} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={20} color={theme.colors.text} />
+          <Ionicons name="arrow-back" size={22} color={theme.colors.text} />
         </Pressable>
 
         <Box style={[styles.searchBar, { backgroundColor: theme.colors.gray50 }]}>
           <Ionicons
             name="search"
-            size={14}
+            size={16}
             color={theme.colors.gray400}
-            style={{ marginRight: 4 }}
+            style={{ marginRight: 6 }}
           />
           <TextInput
             style={styles.searchInput}
@@ -1354,7 +1359,7 @@ const SearchScreen = () => {
             >
               <Ionicons
                 name="close-circle"
-                size={14}
+                size={16}
                 color={theme.colors.gray400}
               />
             </TouchableOpacity>
@@ -1507,8 +1512,8 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
     borderBottomColor: t.colors.gray100,
   },
   backButton: {
-    width: 28,
-    height: 28,
+    width: 32,
+    height: 32,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -1516,30 +1521,30 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    height: 28,
-    paddingHorizontal: 10,
+    height: 36,
+    paddingHorizontal: 12,
     borderRadius: t.borderRadius.sm,
   },
   searchInput: {
     flex: 1,
-    height: 28,
+    height: 36,
     paddingVertical: 0,
-    fontSize: 12,
-    fontFamily: playfairFonts.regular,
+    fontSize: 15,
+    fontFamily: Platform.OS === "ios" ? "PingFang SC" : undefined,
     color: t.colors.text,
   },
   searchButton: {
-    height: 28,
-    minWidth: 48,
-    paddingHorizontal: 12,
+    height: 36,
+    minWidth: 56,
+    paddingHorizontal: 14,
     borderRadius: t.borderRadius.sm,
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
   },
   searchButtonText: {
-    fontSize: 12,
-    lineHeight: 16,
+    fontSize: 15,
+    lineHeight: 20,
     fontWeight: "500",
     letterSpacing: 0,
     includeFontPadding: false,

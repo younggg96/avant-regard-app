@@ -1,21 +1,30 @@
 import React, { useMemo, useRef } from "react";
 import { StyleSheet, View } from "react-native";
 import { useTranslation } from "react-i18next";
+import type { SharedValue } from "react-native-reanimated";
 import { CenteredTabBar } from "../../../components/CenteredTabBar";
 import { useAppTheme } from "../../../theme";
 import { TopTab } from "../types";
+import { DiscoverSearchBar } from "./DiscoverSearchBar";
 
 interface DiscoverTabBarProps {
   activeTab: TopTab;
   onTabChange: (tab: TopTab) => void;
+  searchPlaceholder: string;
+  onSearchPress: () => void;
+  /** Pager 滑动进度，驱动一级 Tab 下划线跟手 */
+  pagerPosition?: SharedValue<number>;
   /** Tab 栏高度变化时对齐 PagerView 当前页 */
   onChromeLayout?: () => void;
 }
 
-/** 顶部一级 Tab：论坛 / 帖子 / 活动 / My Archive / 买手店。搜索在 Header 右侧图标。 */
+/** 顶部一级 Tab + 搜索栏（搜索栏在 Tab 与二级筛选之间）。 */
 export const DiscoverTabBar: React.FC<DiscoverTabBarProps> = ({
   activeTab,
   onTabChange,
+  searchPlaceholder,
+  onSearchPress,
+  pagerPosition,
   onChromeLayout,
 }) => {
   const { t } = useTranslation();
@@ -57,6 +66,11 @@ export const DiscoverTabBar: React.FC<DiscoverTabBarProps> = ({
         showBottomBorder={false}
         align="left"
         emphasizeActive
+        pagerPosition={pagerPosition}
+      />
+      <DiscoverSearchBar
+        placeholder={searchPlaceholder}
+        onPress={onSearchPress}
       />
     </View>
   );

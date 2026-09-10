@@ -3,7 +3,8 @@ import { StyleSheet } from "react-native";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { Image as ExpoImage } from "expo-image";
-import { Box, Pressable, HStack } from "../../../components/ui";
+import { Box, Pressable, HStack, NotificationBadge } from "../../../components/ui";
+import { UserAvatar } from "../../../components/ui/UserAvatar";
 import { useAppTheme, useThemedStyles, type AppTheme } from "../../../theme";
 
 const headerLogoDark = require("../../../../assets/gif/header-logo-dark.gif");
@@ -23,11 +24,19 @@ const DiscoverLogo: React.FC = () => {
 };
 
 interface DiscoverHeaderProps {
-    onSearchPress: () => void;
+    avatar?: string;
+    username?: string | null;
+    totalInteractionUnread?: number;
+    onAvatarPress: () => void;
+    onInteractionPress: () => void;
 }
 
 export const DiscoverHeader: React.FC<DiscoverHeaderProps> = ({
-    onSearchPress,
+    avatar,
+    username,
+    totalInteractionUnread = 0,
+    onAvatarPress,
+    onInteractionPress,
 }) => {
     const { t } = useTranslation();
     const theme = useAppTheme();
@@ -37,15 +46,31 @@ export const DiscoverHeader: React.FC<DiscoverHeaderProps> = ({
         <Box style={{ backgroundColor: theme.colors.background }} px="$md" pt={2} pb={0}>
             <HStack alignItems="center" justifyContent="space-between">
                 <DiscoverLogo />
-                <Pressable
-                    onPress={onSearchPress}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    style={styles.searchButton}
-                    accessibilityRole="button"
-                    accessibilityLabel={t("discover.searchPlaceholder")}
-                >
-                    <Ionicons name="search" size={20} color={theme.colors.text} />
-                </Pressable>
+                <HStack alignItems="center" space="md">
+                    <Pressable
+                        onPress={onInteractionPress}
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                        style={styles.interactionButton}
+                        accessibilityRole="button"
+                        accessibilityLabel={t("tabs.interaction")}
+                    >
+                        <Ionicons name="notifications-outline" size={22} color={theme.colors.text} />
+                        <NotificationBadge count={totalInteractionUnread} size="sm" showBorder />
+                    </Pressable>
+                    <Pressable
+                        onPress={onAvatarPress}
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                        accessibilityRole="button"
+                        accessibilityLabel={t("tabs.profile")}
+                    >
+                        <UserAvatar
+                            uri={avatar}
+                            name={username}
+                            size={32}
+                            style={styles.avatar}
+                        />
+                    </Pressable>
+                </HStack>
             </HStack>
         </Box>
     );
@@ -56,11 +81,16 @@ const makeStyles = (t: AppTheme) => StyleSheet.create({
         width: 92,
         height: 30,
     },
-    searchButton: {
+    avatar: {
+        borderWidth: 1,
+        borderColor: t.colors.border,
+    },
+    interactionButton: {
+        position: "relative",
         width: 32,
         height: 32,
-        alignItems: "center",
         justifyContent: "center",
+        alignItems: "center",
     },
 });
 

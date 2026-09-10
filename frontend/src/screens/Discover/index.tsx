@@ -9,14 +9,17 @@ import PagerView, {
   type PagerViewOnPageScrollEvent,
   type PagerViewOnPageSelectedEvent,
 } from "react-native-pager-view";
-import Reanimated from "react-native-reanimated";
+import Reanimated, { useSharedValue } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useFocusEffect, useRoute } from "@react-navigation/native";
+import { useTranslation } from "react-i18next";
 import { Box, ScrollView, VStack, HStack } from "../../components/ui";
 import { Post } from "../../components/PostCard";
 import { Banner } from "../../services/bannerService";
 import { useDiscoverTabStore } from "../../store/discoverTabStore";
 import { useMainBottomTabStore } from "../../store/mainBottomTabStore";
+import { useAuthStore } from "../../store/authStore";
+import { useNotificationStore } from "../../store/notificationStore";
 import {
   TabType,
   TopTab,
@@ -42,8 +45,25 @@ import { BuyerPage } from "./components/BuyerPage";
 import { useDiscoverData } from "./hooks/useDiscoverData";
 import { useHeaderAnimation } from "./hooks/useHeaderAnimation";
 import { useTradingEnabled } from "../../store/featureFlagsStore";
+import { isChatNotification } from "../Interaction/utils";
 
 const RECOMMEND_TAB_DOUBLE_TAP_MS = 700;
+
+const SEARCH_PLACEHOLDER_KEY: Record<TopTab, string> = {
+  forum: "discover.searchPlaceholderForum",
+  posts: "discover.searchPlaceholderPosts",
+  events: "discover.searchPlaceholderEvents",
+  myArchive: "discover.searchPlaceholderArchive",
+  buyer: "discover.searchPlaceholderBuyer",
+};
+
+const SEARCH_INITIAL_TYPE: Record<TopTab, "posts" | "stores"> = {
+  forum: "posts",
+  posts: "posts",
+  events: "posts",
+  myArchive: "posts",
+  buyer: "stores",
+};
 
 /** 稳定在「当前 ±1」页的 React 挂载量，卸载远处 Tab 的重列表。 */
 const neighborMountSet = (center: number, pageCount: number = TOP_TAB_PAGES.length): Set<number> => {
@@ -128,21 +148,43 @@ const SkeletonHeader: React.FC<{
   blockColor: string;
 }> = ({ opacity, surfaceColor, blockColor }) => (
   <Box style={{ backgroundColor: surfaceColor }} px="$md" pt={2} pb={0}>
-    <Animated.View
-      style={{
-        width: 92,
-        height: 30,
-        borderRadius: 4,
-        backgroundColor: blockColor,
-        opacity,
-      }}
-    />
+    <HStack alignItems="center" justifyContent="space-between">
+      <Animated.View
+        style={{
+          width: 92,
+          height: 30,
+          borderRadius: 4,
+          backgroundColor: blockColor,
+          opacity,
+        }}
+      />
+      <HStack alignItems="center" space="md">
+        <Animated.View
+          style={{
+            width: 22,
+            height: 22,
+            borderRadius: 11,
+            backgroundColor: blockColor,
+            opacity,
+          }}
+        />
+        <Animated.View
+          style={{
+            width: 32,
+            height: 32,
+            borderRadius: 16,
+            backgroundColor: blockColor,
+            opacity,
+          }}
+        />
+      </HStack>
+    </HStack>
   </Box>
 );
 
 /**
- * 首页（发现）—— Logo + 右侧搜索图标 + 顶部五 Tab
- * （论坛 / 帖子 / 活动 / My Archive / 买手店）+ 横向分页。
+ * 首页（发现）—— Logo + 通知/头像 + 顶部五 Tab + 搜索栏 + 横向分页。
+ * 搜索栏在一级 Tab 与二级筛选之间，点击进入 Search 页。
  *
  *   - 论坛：banner + 社区 + 论坛帖子
  *   - 帖子：推荐 / 关注 二级切换
@@ -156,10 +198,20 @@ const SkeletonHeader: React.FC<{
 const DiscoverScreen: React.FC = () => {
   const navigation = useNavigation();
   const route = useRoute<any>();
+  const { t: i18nT } = useTranslation();
   const t = useAppTheme();
   const styles = useDiscoverStyles();
   const isDark = t.mode === "dark";
   const skeletonColor = isDark ? "#1F1F1F" : "#e5e5e5";
+
+  const user = useAuthStore((s) => s.user);
+  // 铃铛是「互动通知」，不含私信未读；底部「消息」Tab 才合计聊天 + 通知。
+  const headerNotifUnread = useNotificationStore(
+    (s) =>
+      s.notifications.filter(
+        (n) => !n.isRead && n.category == null && !isChatNotification(n)
+      ).length
+  );
 
   // 交易系统总开关：底部「消息」跳转是否带「交易」子 Tab（顶部不再有交易 Tab）
   const tradingEnabled = useTradingEnabled();
@@ -178,6 +230,7 @@ const DiscoverScreen: React.FC = () => {
   const pageIndexRef = useRef(pageIndex);
   pageIndexRef.current = pageIndex;
   const pendingPagerIndexRef = useRef<number | null>(null);
+  const pagerPosition = useSharedValue(DEFAULT_TOP_TAB_INDEX);
 
   const activeTopTab: TopTab = TOP_TAB_PAGES[pageIndex] ?? "posts";
 
@@ -195,7 +248,8 @@ const DiscoverScreen: React.FC = () => {
 
   const handleChromeLayout = useCallback(() => {
     syncPagerToIndex(pageIndexRef.current);
-  }, [syncPagerToIndex]);
+    pagerPosition.value = pageIndexRef.current;
+  }, [syncPagerToIndex, pagerPosition]);
 
   // 顶部 / 二级 Tab 变化 → 同步 discoverTabStore，供「+」发布按钮分流
   useEffect(() => {
@@ -267,9 +321,11 @@ const DiscoverScreen: React.FC = () => {
 
   const onPageScroll = useCallback(
     (e: PagerViewOnPageScrollEvent) => {
-      augmentMountFromScrollFraction(e.nativeEvent.position, e.nativeEvent.offset);
+      const { position, offset } = e.nativeEvent;
+      pagerPosition.value = position + offset;
+      augmentMountFromScrollFraction(position, offset);
     },
-    [augmentMountFromScrollFraction]
+    [augmentMountFromScrollFraction, pagerPosition]
   );
 
   const onPageSelected = useCallback(
@@ -277,11 +333,12 @@ const DiscoverScreen: React.FC = () => {
       const idx = Math.round(Number(e.nativeEvent.position));
       if (idx < 0 || idx >= TOP_TAB_PAGES.length) return;
       const top = TOP_TAB_PAGES[idx];
+      pagerPosition.value = idx;
       setPageIndex(idx);
       setMountedPages(neighborMountSet(idx, TOP_TAB_PAGES.length));
       loadDataForTop(top, postsSubTab);
     },
-    [loadDataForTop, postsSubTab]
+    [loadDataForTop, postsSubTab, pagerPosition]
   );
 
   const refreshRecommendAndScrollToTop = useCallback(() => {
@@ -457,7 +514,17 @@ const DiscoverScreen: React.FC = () => {
   );
 
   const handleSearchPress = useCallback(() => {
-    (navigation.navigate as any)("Search");
+    (navigation.navigate as any)("Search", {
+      initialType: SEARCH_INITIAL_TYPE[activeTopTab],
+    });
+  }, [navigation, activeTopTab]);
+
+  const handleAvatarPress = useCallback(() => {
+    (navigation.navigate as any)("Profile");
+  }, [navigation]);
+
+  const handleInteractionPress = useCallback(() => {
+    (navigation.navigate as any)("Activity");
   }, [navigation]);
 
   const postsTabLoading = useMemo(
@@ -575,6 +642,16 @@ const DiscoverScreen: React.FC = () => {
           borderColor={t.colors.border}
           blockColor={skeletonColor}
         />
+        <Box px="$md" pt={4} pb="$sm" style={{ backgroundColor: t.colors.card }}>
+          <Animated.View
+            style={{
+              height: 32,
+              borderRadius: 6,
+              backgroundColor: skeletonColor,
+              opacity: skeletonOpacity,
+            }}
+          />
+        </Box>
         <ScrollView flex={1} showsVerticalScrollIndicator={false}>
           <HStack px="$sm" pt="$sm" alignItems="start">
             <VStack flex={1} pr="$xs">
@@ -609,11 +686,20 @@ const DiscoverScreen: React.FC = () => {
     <SafeAreaView style={styles.container} edges={["top"]}>
       <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
       <Reanimated.View style={[{ overflow: "hidden" }, headerAnimatedStyle]}>
-        <DiscoverHeader onSearchPress={handleSearchPress} />
+        <DiscoverHeader
+          avatar={user?.avatar}
+          username={user?.username || user?.name}
+          totalInteractionUnread={headerNotifUnread}
+          onAvatarPress={handleAvatarPress}
+          onInteractionPress={handleInteractionPress}
+        />
       </Reanimated.View>
       <DiscoverTabBar
         activeTab={activeTopTab}
         onTabChange={handleTopTabChange}
+        searchPlaceholder={i18nT(SEARCH_PLACEHOLDER_KEY[activeTopTab])}
+        onSearchPress={handleSearchPress}
+        pagerPosition={pagerPosition}
         onChromeLayout={handleChromeLayout}
       />
 

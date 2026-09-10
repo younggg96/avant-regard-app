@@ -1,14 +1,15 @@
 /**
- * Discover 二级切换 —— chip 筛选，而不是再做一条下划线 Tab。
+ * Discover 二级切换：无衬线小字 + 颜色/字重选中态。
  *
- * 一级（CenteredTabBar）是页面导航：右对齐、选中加粗。
- * 二级只是当前页内的筛选（推荐/关注、我的/世界、地图/详情），
- * 用实心 chip 压低视觉权重，避免两排 Tab 叠在一起。
+ * 一级 Tab 是 Playfair + 下划线导航；二级只是页内筛选，字号更小、
+ * 不用下划线，避免两排 Tab 看起来像同一套控件。
  */
 import React from "react";
-import { StyleSheet, View } from "react-native";
-import { AnimatedChip } from "../../../components/ui";
+import { Platform, StyleSheet, Text, View } from "react-native";
+import { Pressable } from "../../../components/ui";
 import { useAppTheme } from "../../../theme";
+
+const SUB_FONT = Platform.OS === "ios" ? "PingFang SC" : "sans-serif";
 
 export interface DiscoverSubTabItem<T extends string = string> {
   id: T;
@@ -35,15 +36,29 @@ export function DiscoverSubTabBar<T extends string>({
         { backgroundColor: theme.colors.background },
       ]}
     >
-      {tabs.map((tab) => (
-        <AnimatedChip
-          key={tab.id}
-          label={tab.label}
-          isActive={activeTab === tab.id}
-          onPress={() => onTabPress(tab.id)}
-          size="sm"
-        />
-      ))}
+      {tabs.map((tab) => {
+        const isActive = activeTab === tab.id;
+        return (
+          <Pressable
+            key={tab.id}
+            onPress={() => onTabPress(tab.id)}
+            hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
+            style={styles.item}
+          >
+            <Text
+              style={[
+                styles.label,
+                {
+                  color: isActive ? theme.colors.text : theme.colors.gray300,
+                  fontWeight: isActive ? "600" : "400",
+                },
+              ]}
+            >
+              {tab.label}
+            </Text>
+          </Pressable>
+        );
+      })}
     </View>
   );
 }
@@ -54,9 +69,17 @@ const styles = StyleSheet.create({
     flexWrap: "nowrap",
     alignItems: "center",
     paddingHorizontal: 16,
-    paddingTop: 6,
-    paddingBottom: 6,
-    gap: 6,
+    paddingTop: 4,
+    paddingBottom: 8,
+    gap: 16,
+  },
+  item: {
+    paddingVertical: 4,
+  },
+  label: {
+    fontSize: 14,
+    lineHeight: 20,
+    fontFamily: SUB_FONT,
   },
 });
 

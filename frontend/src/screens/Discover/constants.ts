@@ -29,4 +29,4 @@ export const HEADER_ANIMATION_DURATION = 150;
 export const SCROLL_THRESHOLD = 50;
 // 滑回到距离顶部此值以内时才展开 Header。留 10px 容差避免顶部微抖动连续触发。
 export const TOP_EXPAND_THRESHOLD = 10;
-export const HEADER_HEIGHT = 34; // Logo + 搜索图标行：pt 2 + 32
+export const HEADER_HEIGHT = 34; // Logo 行：pt 2 + 32

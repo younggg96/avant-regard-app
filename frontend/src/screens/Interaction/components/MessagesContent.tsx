@@ -143,8 +143,12 @@ export const MessagesContent = () => {
   return (
     <>
       <FlatList
+        style={{ flex: 1 }}
         data={regularConversations}
         keyExtractor={(item) => `conv-${item.id}`}
+        contentContainerStyle={
+          regularConversations.length === 0 ? { flexGrow: 1 } : undefined
+        }
         renderItem={({ item }) => {
           const itemDeleting = deletingConversationIds.has(item.id);
           return (
@@ -186,10 +190,10 @@ export const MessagesContent = () => {
           </>
         }
         ListEmptyComponent={
-          <Box py={48} px="$lg" alignItems="center">
+          <Box flex={1} justifyContent="center" alignItems="center" px="$lg">
             <Ionicons name="chatbubbles-outline" size={44} color={theme.colors.gray200} />
             <Text fontSize="$md" fontWeight="$semibold" style={{ color: theme.colors.black }} mt="$md" mb="$sm">
-              {t("interaction.noMessages")}
+              {t("interaction.noChatMessages")}
             </Text>
             <Text fontSize="$sm" style={{ color: theme.colors.gray400 }} textAlign="center">
               {t("interaction.startChatHint")}
