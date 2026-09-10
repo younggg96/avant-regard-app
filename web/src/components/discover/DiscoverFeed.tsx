@@ -36,8 +36,11 @@
  *      • `excludeIds` = sliding dedup window bounded at 200, with negative
  *        IDs encoding already-seen show cards so Stage 2's show-interleave
  *        doesn't resurface them;
- *      • "no more data" only flips off after we cross into Stage 3
- *        (`skip >= STAGE2_END = 26`) AND the latest page is short.
+ *      • "no more data" only flips off when the server returns an EMPTY page.
+ *        Short-but-non-empty pages are expected-by-design (the Stage 1+2 →
+ *        Stage 3 handoff is capped at `STAGE2_END - skip`, and the final
+ *        long-tail page is short), so terminating on them ends the feed
+ *        prematurely. See `loadMoreRecommend` for the full rationale.
  *    An IntersectionObserver on a sentinel node triggers `loadMore` well
  *    before the user reaches the true bottom, so the feed feels seamless.
  *  - `关注` uses `GET /api/posts/following` which the backend caps at
@@ -71,10 +74,6 @@ interface DiscoverFeedProps {
 
 const PAGE_SIZE = 30;
 const EXCLUDE_IDS_MAX = 200;
-// Mirror backend `STAGE2_END = STAGE1_SIZE + STAGE2_SIZE` (6 + 20). Under this
-// cursor the server is still in the Stage 1+2 path and short pages are
-// expected-by-design, so we must not flip `hasMore` off prematurely.
-const STAGE2_END = 26;
 const FOLLOWING_LIMIT = 100;
 
 // Breakpoints mirror the previous CSS columns: `sm:2 lg:3 xl:4`.
@@ -194,18 +193,29 @@ export function DiscoverFeed({ initialItems, initialError }: DiscoverFeedProps) 
         ...extractExcludeIds(resp.items),
       ]);
 
-      // End-of-feed detection (mirror mobile):
-      //   • Empty page → definitely no more (both Stage 2 and Stage 3 ran).
-      //   • Below STAGE2_END → expected short pages, stay hopeful.
-      //   • Stage 3 territory → a short page means the 90-day long-tail window
-      //     is exhausted.
-      if (newPostCount === 0) {
-        setRecommendHasMore(false);
-      } else if (recommendSkipRef.current < STAGE2_END) {
-        setRecommendHasMore(true);
-      } else {
-        setRecommendHasMore(newPostCount >= PAGE_SIZE);
-      }
+      // End-of-feed detection.
+      //
+      // The ONLY reliable "no more" signal is an EMPTY page. A short but
+      // non-empty page must NOT terminate the feed, because the backend
+      // returns short pages *by design* in two situations that are not
+      // exhaustion:
+      //   1. The Stage 1+2 → Stage 3 handoff. While `skip < STAGE2_END` the
+      //      server stays on the first-page path and caps the response at
+      //      `STAGE2_END - skip` items (see FeedService._serve_first_page's
+      //      `total_cap`), so the page that straddles the boundary is short
+      //      by construction — not because content ran out.
+      //   2. The final Stage 3 long-tail page, which is short but real; only
+      //      the *next* (empty) page proves the 90-day pool is exhausted.
+      //
+      // Mobile mirrors this: `useFeedRecommendation.loadMore` never ends the
+      // feed on a short page — it switches to a client-side replay loop
+      // instead. We don't replay on web, so we simply keep paging until the
+      // server returns nothing, then cleanly show 「没有更多帖子了」.
+      //
+      // The previous `newPostCount >= PAGE_SIZE` heuristic flipped `hasMore`
+      // off at exactly the boundary page, which is why the feed showed
+      // "no more posts" prematurely.
+      setRecommendHasMore(newPostCount > 0);
     } catch (err) {
       setRecommendError(err instanceof Error ? err.message : t("discover.loadMoreFailed"));
       setRecommendHasMore(false);
