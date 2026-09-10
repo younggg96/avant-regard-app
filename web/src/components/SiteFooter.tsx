@@ -4,6 +4,9 @@ import Link from "next/link";
 import { useTranslation } from "react-i18next";
 import { ThemeSegmented } from "@/components/ThemeSegmented";
 
+const ICP_FILING_NUMBER = "沪ICP备2026006380号-1";
+const ICP_FILING_URL = "https://beian.miit.gov.cn";
+
 export function SiteFooter() {
   const { t } = useTranslation();
   const year = new Date().getFullYear();
@@ -50,7 +53,17 @@ export function SiteFooter() {
                         md:flex-row md:items-center md:justify-between md:gap-6">
           <ThemeSegmented />
 
-          <span className="uppercase tracking-[0.15em] md:order-none">© {year} Avant Regard</span>
+          <div className="flex flex-col gap-1.5 md:items-center">
+            <span className="uppercase tracking-[0.15em]">© {year} Avant Regard</span>
+            <a
+              href={ICP_FILING_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="tracking-normal text-black/25 transition-colors hover:text-black/50 dark:text-white/20 dark:hover:text-white/40"
+            >
+              {ICP_FILING_NUMBER}
+            </a>
+          </div>
 
           <span className="font-serif italic tracking-normal text-black/20 dark:text-white/15">
             Designed in Shanghai · Worn worldwide.

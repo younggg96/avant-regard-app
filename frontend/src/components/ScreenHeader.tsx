@@ -105,7 +105,9 @@ const ScreenHeader: React.FC<ScreenHeaderProps> = ({
     }
 
     return (
-      <HStack w={40} justifyContent="end" alignItems="center">
+      // minWidth 而非固定 w=40: 与左侧 back 按钮宽度对齐让 title 视觉居中,
+      // 但文字按钮 (如「保存」) 需要自然撑开, 否则会被 40px 压成竖排换行。
+      <HStack minWidth={40} justifyContent="end" alignItems="center">
         {rightActions.map((action, index) => (
           <Pressable
             key={index}
@@ -130,6 +132,7 @@ const ScreenHeader: React.FC<ScreenHeaderProps> = ({
               )}
               {action.text && (
                 <Text
+                  numberOfLines={1}
                   style={{ color: action.style === "primary" ? theme.colors.white : theme.colors.gray600 }}
                   fontWeight="$semibold"
                   fontSize="$sm"
