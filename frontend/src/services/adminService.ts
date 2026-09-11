@@ -1022,6 +1022,8 @@ export interface RecommendConfig {
   discovery_pool: { enabled: boolean };
   random_pool: { grades: string[] };
   cold_start: { days: number; grades: string[] };
+  /** 发现页 feed 帖子年龄上限（天）。0 = 不限时间（默认）。 */
+  feed_window: { days: number };
 }
 
 export async function getRecommendConfig(): Promise<RecommendConfig> {

@@ -31,7 +31,15 @@ const DEFAULT_CONFIG: RecommendConfig = {
   discovery_pool: { enabled: true },
   random_pool: { grades: ["A", "B"] },
   cold_start: { days: 7, grades: ["A", "B"] },
+  feed_window: { days: 0 },
 };
+
+/** 开启时间限制时的默认天数（关闭 = 0 = 不限） */
+const FEED_WINDOW_DEFAULT_DAYS = 90;
+const FEED_WINDOW_MAX_DAYS = 3650;
+
+const clampFeedWindowDays = (raw: string, fallback = FEED_WINDOW_DEFAULT_DAYS) =>
+  Math.max(1, Math.min(FEED_WINDOW_MAX_DAYS, parseInt(raw, 10) || fallback));
 
 const RecommendConfigTab = () => {
   const { t } = useTranslation();
@@ -54,16 +62,28 @@ const RecommendConfigTab = () => {
   const [discoveryInput, setDiscoveryInput] = useState("30");
   const [randomInput, setRandomInput] = useState("20");
   const [daysInput, setDaysInput] = useState("7");
+  // Feed age window: `feed_window.days === 0` means unlimited. The input only
+  // shows while the limit is switched on; its text is kept separately so the
+  // admin can clear/retype without the value snapping to 0 mid-edit.
+  const [feedWindowInput, setFeedWindowInput] = useState(String(FEED_WINDOW_DEFAULT_DAYS));
 
   const loadConfig = useCallback(async () => {
     try {
       setLoading(true);
       const data = await getRecommendConfig();
-      setConfig(data);
+      // Older saved configs predate `feed_window`; default to unlimited.
+      const normalized: RecommendConfig = {
+        ...data,
+        feed_window: data.feed_window ?? { days: 0 },
+      };
+      setConfig(normalized);
       setCoreInput(String(Math.round(data.pool_ratios.core * 100)));
       setDiscoveryInput(String(Math.round(data.pool_ratios.discovery * 100)));
       setRandomInput(String(Math.round(data.pool_ratios.random * 100)));
       setDaysInput(String(data.cold_start.days));
+      setFeedWindowInput(
+        String(normalized.feed_window.days > 0 ? normalized.feed_window.days : FEED_WINDOW_DEFAULT_DAYS)
+      );
       setDirty(false);
     } catch (e) {
       Alert.alert(t("admin.error"), t("admin.fetchRecommendFailed"));
@@ -120,6 +140,25 @@ const RecommendConfigTab = () => {
     updateField("cold_start", { ...config.cold_start, days });
   };
 
+  const feedWindowEnabled = config.feed_window.days > 0;
+
+  const handleFeedWindowToggle = (enabled: boolean) => {
+    if (enabled) {
+      const days = clampFeedWindowDays(feedWindowInput);
+      setFeedWindowInput(String(days));
+      updateField("feed_window", { days });
+    } else {
+      updateField("feed_window", { days: 0 });
+    }
+  };
+
+  const handleFeedWindowBlur = () => {
+    if (!feedWindowEnabled) return;
+    const days = clampFeedWindowDays(feedWindowInput);
+    setFeedWindowInput(String(days));
+    updateField("feed_window", { days });
+  };
+
   const ratioSum = () => {
     const { c, d, r } = parsedRatios();
     return c + d + r;
@@ -156,13 +195,23 @@ const RecommendConfigTab = () => {
         random: r / 100,
       },
       cold_start: { ...config.cold_start, days: clampedDays },
+      feed_window: {
+        days: feedWindowEnabled ? clampFeedWindowDays(feedWindowInput) : 0,
+      },
     };
 
     try {
       setSaving(true);
       const saved = await updateRecommendConfig(payload);
-      setConfig(saved);
+      const savedNormalized: RecommendConfig = {
+        ...saved,
+        feed_window: saved.feed_window ?? { days: 0 },
+      };
+      setConfig(savedNormalized);
       setDaysInput(String(saved.cold_start.days));
+      if (savedNormalized.feed_window.days > 0) {
+        setFeedWindowInput(String(savedNormalized.feed_window.days));
+      }
       setCoreInput(String(Math.round(saved.pool_ratios.core * 100)));
       setDiscoveryInput(String(Math.round(saved.pool_ratios.discovery * 100)));
       setRandomInput(String(Math.round(saved.pool_ratios.random * 100)));
@@ -200,6 +249,55 @@ const RecommendConfigTab = () => {
           {t("admin.recommendSubtitle")}
         </Text>
       </VStack>
+
+      {/* ===== Feed Age Window (discover feed) ===== */}
+      <Box style={styles.section}>
+        <HStack style={styles.sectionHeader}>
+          <Ionicons name="time-outline" size={18} color={theme.colors.text} />
+          <Text style={styles.sectionTitle}>{t("admin.recommendFeedWindow")}</Text>
+        </HStack>
+        <Text style={styles.sectionDesc}>
+          {t("admin.recommendFeedWindowHint")}
+        </Text>
+
+        <HStack style={styles.toggleRow}>
+          <VStack style={{ flex: 1 }}>
+            <Text style={styles.toggleLabel}>{t("admin.recommendFeedWindowEnable")}</Text>
+            <Text style={styles.toggleDesc}>
+              {feedWindowEnabled
+                ? t("admin.recommendFeedWindowOnDesc", { days: config.feed_window.days })
+                : t("admin.recommendFeedWindowOffDesc")}
+            </Text>
+          </VStack>
+          <Switch
+            {...COMPACT_SWITCH_PROPS}
+            value={feedWindowEnabled}
+            onValueChange={handleFeedWindowToggle}
+            trackColor={{ false: theme.colors.gray200, true: theme.colors.success }}
+            thumbColor={theme.colors.card}
+          />
+        </HStack>
+
+        {feedWindowEnabled && (
+          <HStack style={[styles.coldStartDaysRow, { marginTop: theme.spacing.sm, marginBottom: 0 }]}>
+            <Text style={styles.coldStartDaysLabel}>{t("admin.recommendFeedWindowDays")}</Text>
+            <HStack style={styles.ratioInputGroup}>
+              <TextInput
+                style={[styles.ratioInput, { width: 64 }]}
+                value={feedWindowInput}
+                onChangeText={(v) => {
+                  setFeedWindowInput(v.replace(/[^0-9]/g, ""));
+                  setDirty(true);
+                }}
+                onBlur={handleFeedWindowBlur}
+                keyboardType="number-pad"
+                maxLength={4}
+              />
+              <Text style={styles.ratioPercent}>{t("admin.recommendDays")}</Text>
+            </HStack>
+          </HStack>
+        )}
+      </Box>
 
       {/* ===== Pool Ratios ===== */}
       <Box style={styles.section}>

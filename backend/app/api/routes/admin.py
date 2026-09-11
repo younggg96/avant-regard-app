@@ -976,12 +976,18 @@ class ColdStartConfig(BaseModel):
         return normalized
 
 
+class FeedWindowConfig(BaseModel):
+    """发现页 feed 的帖子年龄上限。0 = 不限时间（默认）。"""
+    days: int = Field(0, ge=0, le=3650)
+
+
 class RecommendConfigRequest(BaseModel):
     pool_ratios: PoolRatiosConfig = PoolRatiosConfig()
     core_pool: CorePoolConfig = CorePoolConfig()
     discovery_pool: DiscoveryPoolConfig = DiscoveryPoolConfig()
     random_pool: RandomPoolConfig = RandomPoolConfig()
     cold_start: ColdStartConfig = ColdStartConfig()
+    feed_window: FeedWindowConfig = FeedWindowConfig()
 
 
 # ==================== 维护模式 ====================
@@ -1113,6 +1119,10 @@ def update_recommend_config(
         raise RuntimeError(
             f"保存推荐配置失败：{exc}（请确认 app_config 表已创建）"
         ) from exc
+    # FeedService caches feed_window.days in-process; drop it so the new
+    # window applies to the next /api/posts/feed request immediately.
+    from app.services.feed_service import feed_service
+    feed_service.invalidate_feed_window_cache()
     return success(config)
 
 

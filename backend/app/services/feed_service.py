@@ -18,10 +18,14 @@ Pipeline (driven by the client-supplied `skip` cursor):
 
   Stage 3 — 长尾兜底区 (slots STAGE1_SIZE+STAGE2_SIZE+1 ..)
     • Cursor-paginated via `get_feed_longtail` RPC.
-    • Plain chronological ORDER BY created_at DESC, 90-day window.
+    • Plain chronological ORDER BY created_at DESC over the whole graded
+      archive (or the admin-configured age window, see below).
     • No show interleaving, no brand boost — releases compute.
 
 Global rules:
+  • Feed age window     : `recommend_config.feed_window.days` (app_config, admin
+                           tunable). 0 = unlimited (default). When set, every
+                           stage only serves posts newer than N days.
   • Rule 1 (dedup)       : caller-supplied `exclude_ids` is passed to every RPC;
                            stage-1 IDs are appended before calling stage-2 so the
                            first-page response never repeats a post.
@@ -45,6 +49,17 @@ STAGE2_END = STAGE1_SIZE + STAGE2_SIZE  # 26 — boundary at which we switch to 
 
 # -- Mixer knobs ---------------------------------------------------------------
 SHOW_INSERT_INTERVAL = 8
+
+# -- Feed age window (admin tunable) -------------------------------------------
+# `recommend_config.feed_window.days` in app_config bounds how old a post may
+# be to appear anywhere in the discover feed. 0 (default) = unlimited: every
+# graded A/B/C post is reachable. The RPCs take a Postgres interval, so an
+# "unlimited" window is expressed as an interval that covers all posts.
+UNLIMITED_WINDOW = "100 years"
+# Stage 2's scored RPC is designed for bounded recall (its default is 30 days
+# — see get_feed_scored). The admin window only ever *narrows* it.
+STAGE2_DEFAULT_WINDOW_DAYS = 30
+FEED_WINDOW_CACHE_TTL_SEC = 60
 
 # -- Rule 3 new-user cutoff ----------------------------------------------------
 # A user is "new" when their account is younger than this many days OR they are
@@ -71,6 +86,67 @@ class FeedService:
         # Small dict; fine at single-process scale. Process restart is OK —
         # worst case one extra DB round-trip per user.
         self._new_user_cache: Dict[int, Tuple[bool, float]] = {}
+        # (days, cached_at_epoch) for the admin-tunable feed age window.
+        self._feed_window_cache: Optional[Tuple[int, float]] = None
+
+    # ------------------------------------------------------------------
+    # Admin-tunable feed age window
+    # ------------------------------------------------------------------
+
+    def get_feed_window_days(self) -> int:
+        """
+        Max post age (days) for the discover feed, from
+        `recommend_config.feed_window.days`. 0 = unlimited (default).
+        Cached in-process for FEED_WINDOW_CACHE_TTL_SEC; the admin config
+        endpoint calls `invalidate_feed_window_cache` on save so changes apply
+        immediately on that process.
+        """
+        now = time.time()
+        if (
+            self._feed_window_cache
+            and (now - self._feed_window_cache[1]) < FEED_WINDOW_CACHE_TTL_SEC
+        ):
+            return self._feed_window_cache[0]
+
+        days = 0
+        try:
+            # Lazy import: post_service imports nothing from here, but keep the
+            # module-level graph acyclic regardless.
+            from app.services.post_service import post_service
+            cfg = post_service._load_recommend_config()
+            raw = (cfg.get("feed_window") or {}).get("days", 0)
+            days = max(0, int(raw or 0))
+        except Exception as e:
+            print(f"[FeedService] feed_window load failed, using unlimited: {e}")
+        self._feed_window_cache = (days, now)
+        return days
+
+    def invalidate_feed_window_cache(self) -> None:
+        self._feed_window_cache = None
+
+    def _window_interval(self, days: int) -> str:
+        """Postgres interval text for an RPC `p_window` argument."""
+        return f"{days} days" if days > 0 else UNLIMITED_WINDOW
+
+    @staticmethod
+    def _window_cutoff_dt(days: int) -> Optional[datetime]:
+        """`now - days` as an aware datetime, or None when unlimited."""
+        if days <= 0:
+            return None
+        return datetime.now(timezone.utc) - timedelta(days=days)
+
+    @staticmethod
+    def _is_before(created_at_raw: Optional[str], cutoff: datetime) -> bool:
+        """True if the row's created_at is older than `cutoff`. Unparseable → keep."""
+        if not created_at_raw:
+            return False
+        try:
+            dt = datetime.fromisoformat(str(created_at_raw).replace("Z", "+00:00"))
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            return dt < cutoff
+        except ValueError:
+            return False
 
     # ------------------------------------------------------------------
     # Public API
@@ -84,9 +160,10 @@ class FeedService:
         boost_brand_id: Optional[int] = None,
         skip: int = 0,
         force_fresh: bool = False,
+        before: Optional[str] = None,
     ) -> dict:
         """
-        Return mixed feed items: { items: [{type, data}] }
+        Return mixed feed items: { items: [{type, data}], next_cursor?: str }
 
         `skip` is the number of *post* items the client has already consumed.
         It is the sole signal we use to pick a stage:
@@ -97,6 +174,13 @@ class FeedService:
 
         `force_fresh` (set by pull-to-refresh) bypasses — and repopulates — the
         Stage 1 cache pool so the client always sees the absolute latest posts.
+
+        `before` is an optional Stage 3 cursor: the `created_at` of the oldest
+        post from the previous Stage 3 page (echoed back from `next_cursor`).
+        Stage 3 is strictly chronological, so this lets a client page through
+        the entire archive without relying on `exclude_ids` alone — that list
+        is a bounded sliding window on the client, and once it overflows the
+        server would otherwise start re-serving the newest posts.
         """
         blocked_ids = self._get_blocked_user_ids(current_user_id)
         seen_show_ids = self._extract_seen_show_ids(exclude_ids)
@@ -107,6 +191,7 @@ class FeedService:
                 limit=limit,
                 exclude_ids=exclude_set,
                 blocked_ids=blocked_ids,
+                before=before,
             )
 
         return self._serve_first_page(
@@ -210,25 +295,103 @@ class FeedService:
         limit: int,
         exclude_ids: List[int],
         blocked_ids: set,
+        before: Optional[str] = None,
     ) -> dict:
         posts = self._fetch_longtail_posts(
-            limit=limit, exclude_ids=exclude_ids, blocked_ids=blocked_ids
+            limit=limit,
+            exclude_ids=exclude_ids,
+            blocked_ids=blocked_ids,
+            before=before,
         )
-        return {"items": [{"type": "post", "data": p} for p in posts]}
+        # Stage 3 is created_at DESC, so the last row is the oldest → the
+        # cursor for the next page. Clients that don't understand cursors
+        # (mobile) just ignore the field.
+        next_cursor = posts[-1].get("created_at") if posts else None
+        return {
+            "items": [{"type": "post", "data": p} for p in posts],
+            "next_cursor": next_cursor,
+        }
 
     def _fetch_longtail_posts(
         self,
         limit: int,
         exclude_ids: List[int],
         blocked_ids: set,
+        before: Optional[str] = None,
     ) -> List[dict]:
-        """Raw long-tail RPC call — reused by Stage 3 and by the Stage-2 empty fallback."""
+        """
+        Long-tail fetch — reused by Stage 3 and by the Stage-2 empty fallback.
+
+        Two paging modes:
+
+        • Cursor (`before` given) — plain keyset pagination over the whole
+          archive: same filters as the RPC, `created_at < before`, newest
+          first. Immune to the client's bounded `exclude_ids` window, so it
+          can reach every eligible post. `exclude_ids` is still applied to
+          suppress Stage 1/2 posts that happen to sit inside the cursor range.
+
+        • Exclude-only (no cursor) — the `get_feed_longtail` RPC, chronological
+          and bounded by `p_window`. We always pass the window explicitly: the
+          RPC's own default is 90 days, which used to hard-cap the whole feed
+          (once those posts were in `exclude_ids` it returned an empty page
+          and clients showed "没有更多帖子了" with older A/B/C posts left
+          unseen). Now the window is the admin-configured feed age limit, or
+          effectively unlimited by default.
+        """
+        window_days = self.get_feed_window_days()
+
+        if before:
+            return self._fetch_longtail_before(
+                limit=limit,
+                exclude_ids=exclude_ids,
+                blocked_ids=blocked_ids,
+                before=before,
+                window_days=window_days,
+            )
+
         params = {
             "p_exclude_ids": exclude_ids,
             "p_blocked_ids": list(blocked_ids),
             "p_limit": limit,
+            "p_window": self._window_interval(window_days),
         }
         result = self.db.rpc("get_feed_longtail", params).execute()
+        return result.data or []
+
+    def _fetch_longtail_before(
+        self,
+        limit: int,
+        exclude_ids: List[int],
+        blocked_ids: set,
+        before: str,
+        window_days: int = 0,
+    ) -> List[dict]:
+        """
+        Keyset-paginated long-tail query (`created_at < before`), mirroring the
+        eligibility filters of the `get_feed_longtail` RPC: PUBLISHED, APPROVED,
+        non-forum, graded A/B/C. The cursor bounds the page; the admin age
+        window (if any) bounds how far back it may go.
+        """
+        query = (
+            self.db.table("posts")
+            .select("*")
+            .eq("status", "PUBLISHED")
+            .eq("audit_status", "APPROVED")
+            .is_("community_id", "null")
+            .in_("grade", ["A", "B", "C"])
+            .lt("created_at", before)
+        )
+        cutoff_dt = self._window_cutoff_dt(window_days)
+        if cutoff_dt:
+            query = query.gte("created_at", cutoff_dt.isoformat())
+        if exclude_ids:
+            # Only positive IDs are posts; negatives encode seen show cards.
+            post_excludes = [i for i in exclude_ids if i > 0]
+            if post_excludes:
+                query = query.not_.in_("id", post_excludes)
+        if blocked_ids:
+            query = query.not_.in_("user_id", list(blocked_ids))
+        result = query.order("created_at", desc=True).limit(limit).execute()
         return result.data or []
 
     # ------------------------------------------------------------------
@@ -254,11 +417,15 @@ class FeedService:
         pool = self._load_fresh_pool(force_fresh=force_fresh)
         exclude_set = set(exclude_ids)
         blocked_set = set(blocked_ids) if blocked_ids else set()
+        # Admin age window: the pool is shared across users, so filter here.
+        cutoff_dt = self._window_cutoff_dt(self.get_feed_window_days())
         out: List[dict] = []
         for row in pool:
             if row["id"] in exclude_set:
                 continue
             if blocked_set and row["user_id"] in blocked_set:
+                continue
+            if cutoff_dt and self._is_before(row.get("created_at"), cutoff_dt):
                 continue
             out.append(row)
             if len(out) >= needed:
@@ -314,6 +481,11 @@ class FeedService:
             "p_blocked_ids": list(blocked_ids),
             "p_limit": limit,
         }
+        # Scored recall stays bounded (default 30 d); an admin window shorter
+        # than that narrows it so nothing older than the window is ranked.
+        window_days = self.get_feed_window_days()
+        if 0 < window_days < STAGE2_DEFAULT_WINDOW_DAYS:
+            params["p_window"] = self._window_interval(window_days)
         result = self.db.rpc("get_feed_scored", params).execute()
         return result.data or []
 

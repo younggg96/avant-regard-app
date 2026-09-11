@@ -152,6 +152,18 @@ export function DiscoverFeed({ initialItems, initialError }: DiscoverFeedProps) 
   const [recommendError, setRecommendError] = useState<string | null>(initialError);
   const recommendSkipRef = useRef<number>(countPosts(initialItems));
   const recommendExcludeIdsRef = useRef<number[]>(extractExcludeIds(initialItems));
+  // Every post id rendered so far. `excludeIds` is a *sliding* window capped
+  // at EXCLUDE_IDS_MAX, so once the viewer has scrolled past that many posts
+  // the server can legitimately hand back posts they've already seen. Dedup
+  // here keeps React keys unique and lets us end the feed once a page yields
+  // nothing new.
+  const recommendSeenIdsRef = useRef<Set<number>>(
+    new Set(initialItems.filter((it) => it.type === "post").map((it) => (it.data as Post).id)),
+  );
+  // Stage 3 keyset cursor returned by the server (`nextCursor`). Null until
+  // the first Stage 3 page lands; thereafter echoed back as `before` so deep
+  // pagination reaches the whole archive regardless of the exclude window.
+  const recommendCursorRef = useRef<string | null>(null);
   const recommendInFlightRef = useRef(false);
 
   const retryRecommend = useCallback(async () => {
@@ -164,6 +176,10 @@ export function DiscoverFeed({ initialItems, initialError }: DiscoverFeedProps) 
       setRecommendItems(resp.items);
       recommendSkipRef.current = countPosts(resp.items);
       recommendExcludeIdsRef.current = extractExcludeIds(resp.items);
+      recommendSeenIdsRef.current = new Set(
+        resp.items.filter((it) => it.type === "post").map((it) => (it.data as Post).id),
+      );
+      recommendCursorRef.current = resp.nextCursor ?? null;
       setRecommendHasMore(resp.items.length > 0);
     } catch (err) {
       setRecommendError(err instanceof Error ? err.message : t("discover.cannotLoadDiscover"));
@@ -183,11 +199,28 @@ export function DiscoverFeed({ initialItems, initialError }: DiscoverFeedProps) 
         limit: PAGE_SIZE,
         skip: recommendSkipRef.current,
         excludeIds: recommendExcludeIdsRef.current,
+        before: recommendCursorRef.current,
+      });
+      if (resp.nextCursor) recommendCursorRef.current = resp.nextCursor;
+
+      // Drop posts we've already rendered (see `recommendSeenIdsRef`). Show
+      // cards aren't rendered on web, so they pass through untouched.
+      const seen = recommendSeenIdsRef.current;
+      const freshItems = resp.items.filter((it) => {
+        if (it.type !== "post") return true;
+        const id = (it.data as Post).id;
+        if (seen.has(id)) return false;
+        seen.add(id);
+        return true;
       });
 
-      const newPostCount = countPosts(resp.items);
-      setRecommendItems((prev) => [...prev, ...resp.items]);
-      recommendSkipRef.current += newPostCount;
+      const newPostCount = countPosts(freshItems);
+      if (freshItems.length > 0) {
+        setRecommendItems((prev) => [...prev, ...freshItems]);
+      }
+      // `skip` only tells the server which stage to serve, so advance it by
+      // what the server actually returned rather than what survived dedup.
+      recommendSkipRef.current += countPosts(resp.items);
       recommendExcludeIdsRef.current = trimExcludeIds([
         ...recommendExcludeIdsRef.current,
         ...extractExcludeIds(resp.items),
@@ -215,6 +248,10 @@ export function DiscoverFeed({ initialItems, initialError }: DiscoverFeedProps) 
       // The previous `newPostCount >= PAGE_SIZE` heuristic flipped `hasMore`
       // off at exactly the boundary page, which is why the feed showed
       // "no more posts" prematurely.
+      //
+      // `newPostCount` is post-dedup: a page made entirely of already-seen
+      // posts (exclude window overflow) also ends the feed instead of
+      // appending duplicates forever.
       setRecommendHasMore(newPostCount > 0);
     } catch (err) {
       setRecommendError(err instanceof Error ? err.message : t("discover.loadMoreFailed"));

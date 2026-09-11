@@ -18,6 +18,10 @@ DEFAULT_RECOMMEND_CONFIG = {
     "discovery_pool": {"enabled": True},
     "random_pool": {"grades": ["A", "B"]},
     "cold_start": {"days": 7, "grades": ["A", "B"]},
+    # 发现页 feed 的帖子年龄上限（天）。0 = 不限时间（默认），任何年龄的
+    # A/B/C 帖子都可以进入推荐；>0 时只推荐最近 N 天内发布的帖子。
+    # 由 FeedService 读取，管理员可在推荐配置页调整。
+    "feed_window": {"days": 0},
 }
 
 

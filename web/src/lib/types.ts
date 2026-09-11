@@ -75,6 +75,13 @@ export interface FeedItem {
 
 export interface FeedResponse {
   items: FeedItem[];
+  /**
+   * Stage 3 keyset cursor (`created_at` of the oldest post on this page).
+   * Echo it back as `before` on the next request to page through the whole
+   * archive independently of the bounded `excludeIds` window. Absent/null on
+   * first-page (Stage 1+2) responses.
+   */
+  nextCursor?: string | null;
 }
 
 /**

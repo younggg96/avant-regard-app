@@ -71,13 +71,19 @@ def get_feed(
     boost_brand_id: Optional[int] = Query(None, description="会话级品牌提权ID（发现惯性）"),
     skip: int = Query(0, ge=0, description="已消耗的帖子数量（驱动三段式调度）"),
     force_fresh: bool = Query(False, description="下拉刷新场景下绕过 Stage 1 缓存池"),
+    before: Optional[str] = Query(
+        None,
+        description="Stage 3 时间游标：上一页响应的 nextCursor（最老一篇的 created_at），只返回更早的帖子",
+    ),
     current_user_id: Optional[int] = Depends(get_current_user_optional),
 ):
     """
     Feed v2.1: three-stage slot dispatch.
       skip == 0              → Stage 1 (fresh) + Stage 2 (scored, boosts, show interleave)
       skip >= STAGE2_END     → Stage 3 (long-tail, cursor pagination)
-    Dedup is carried entirely by `exclude_ids`.
+    Dedup is carried by `exclude_ids`; Stage 3 pages additionally return
+    `nextCursor`, which clients may echo back as `before` so deep pagination
+    doesn't depend on the (bounded) exclude window.
     `force_fresh=true` (pull-to-refresh) bypasses Stage 1's 30s cache pool.
     """
     parsed_exclude: Optional[List[int]] = None
@@ -94,6 +100,7 @@ def get_feed(
         boost_brand_id=boost_brand_id,
         skip=skip,
         force_fresh=force_fresh,
+        before=before,
     )
 
     # Batch-enrich all posts (username, avatar, interaction states) in 5 queries total
@@ -113,7 +120,7 @@ def get_feed(
                 "data": feed_service.format_show_card(entry["data"]),
             })
 
-    return success({"items": items})
+    return success({"items": items, "nextCursor": raw.get("next_cursor")})
 
 
 @router.get("/following")

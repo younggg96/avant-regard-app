@@ -28,16 +28,19 @@ export interface GetFeedPageParams {
   limit?: number;
   skip?: number;
   excludeIds?: number[];
+  /** Stage 3 cursor — the `nextCursor` from the previous page. */
+  before?: string | null;
 }
 
 export async function getFeedPage(
   params: GetFeedPageParams = {},
 ): Promise<FeedResponse> {
-  const { limit = 30, skip = 0, excludeIds } = params;
+  const { limit = 30, skip = 0, excludeIds, before } = params;
   const query: Record<string, unknown> = { limit, skip };
   if (excludeIds && excludeIds.length > 0) {
     query.exclude_ids = excludeIds.join(",");
   }
+  if (before) query.before = before;
   return apiClient.get<FeedResponse>("/api/posts/feed", query);
 }
 
