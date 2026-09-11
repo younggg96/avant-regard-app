@@ -454,7 +454,12 @@ class PostService:
             .eq("user_id", user_id)
             .execute()
         )
-        return bool(result.data)
+        deleted = bool(result.data)
+        if deleted:
+            # 同步清掉别人收到的、指向这篇帖子的点赞/收藏/评论通知，
+            # 否则对方互动消息里会留一条点开只剩「帖子不存在」的通知。
+            notification_service.delete_post_notifications(post_id)
+        return deleted
 
     def like_post(self, post_id: int, user_id: int) -> bool:
         """点赞帖子"""

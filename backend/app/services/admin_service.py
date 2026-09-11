@@ -68,7 +68,19 @@ class AdminService:
     def admin_delete_post(self, post_id: int) -> bool:
         """管理员删除帖子（不需要验证用户）"""
         result = self.db.table("posts").delete().eq("id", post_id).execute()
-        return bool(result.data)
+        deleted = bool(result.data)
+        if deleted:
+            self._cleanup_post_notifications(post_id)
+        return deleted
+
+    @staticmethod
+    def _cleanup_post_notifications(post_id: int) -> None:
+        """删帖后清理指向该帖的互动通知（惰性导入避免循环依赖）。"""
+        try:
+            from app.services.notification_service import notification_service
+            notification_service.delete_post_notifications(post_id)
+        except Exception as e:
+            print(f"[admin] cleanup notifications for post {post_id} failed: {e}")
 
     def get_all_posts(
         self,
@@ -421,6 +433,7 @@ class AdminService:
                 self.db.rpc("decrement_community_post_count", {"community_id_param": community_id}).execute()
             except:
                 pass  # 忽略更新失败
+            self._cleanup_post_notifications(post_id)
             return True
         return False
 

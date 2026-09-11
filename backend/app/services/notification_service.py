@@ -102,6 +102,91 @@ class NotificationService:
             category=category,
         )
 
+    # ------------------------------------------------------------------
+    # 已删除帖子的通知清理
+    # ------------------------------------------------------------------
+
+    def delete_post_notifications(self, post_id: int) -> int:
+        """
+        帖子被删除时调用：清理所有指向该帖子的互动通知（点赞 / 收藏 / 评论 /
+        想要等，凡 action_data.post_id == post_id）。否则接收者的互动消息里会
+        一直留着一条点进去只能看到「帖子不存在」的通知，未读角标也不会消失。
+
+        返回被删除的通知数量。
+        """
+        try:
+            result = (
+                self.db.table("notifications")
+                .delete()
+                .eq("action_data->>post_id", str(post_id))
+                .execute()
+            )
+            return len(result.data or [])
+        except Exception as e:
+            print(f"Failed to delete notifications for post {post_id}: {e}")
+            return 0
+
+    def purge_stale_post_notifications(
+        self, user_id: int, unread_only: bool = False
+    ) -> int:
+        """
+        惰性清理：删除该用户所有指向「已不存在的帖子」的通知。
+
+        用于兜底历史数据 —— 在 `delete_post_notifications` 接入之前删掉的帖子
+        留下的通知，以及任何绕过服务层直接删库的情况。在读取通知列表 / 未读
+        数时顺带执行，使脏数据在下一次拉取时自愈，无需数据库迁移。
+
+        代价：每次最多两次轻量查询（取带 post_id 的通知 + 批量校验帖子存在），
+        单个用户的通知量很小，可接受。任何异常都吞掉，绝不影响主流程。
+
+        返回被删除的通知数量。
+        """
+        try:
+            query = (
+                self.db.table("notifications")
+                .select("id, action_data")
+                .eq("user_id", user_id)
+                .not_.is_("action_data->>post_id", "null")
+            )
+            if unread_only:
+                query = query.eq("is_read", False)
+            rows = query.execute().data or []
+            if not rows:
+                return 0
+
+            referenced: Dict[int, List[int]] = {}
+            for row in rows:
+                raw = (row.get("action_data") or {}).get("post_id")
+                try:
+                    pid = int(raw)
+                except (TypeError, ValueError):
+                    continue
+                referenced.setdefault(pid, []).append(row["id"])
+            if not referenced:
+                return 0
+
+            existing = (
+                self.db.table("posts")
+                .select("id")
+                .in_("id", list(referenced.keys()))
+                .execute()
+            )
+            existing_ids = {r["id"] for r in existing.data or []}
+            stale_ids = [
+                nid
+                for pid, nids in referenced.items()
+                if pid not in existing_ids
+                for nid in nids
+            ]
+            if not stale_ids:
+                return 0
+
+            self.db.table("notifications").delete().in_("id", stale_ids).execute()
+            return len(stale_ids)
+        except Exception as e:
+            print(f"Failed to purge stale post notifications for user {user_id}: {e}")
+            return 0
+
     def get_notifications(
         self,
         user_id: int,
@@ -116,6 +201,9 @@ class NotificationService:
           - "system": 仅返回非交易类的系统/互动通知（交易通知已被提取出去）
           - None: 全部
         """
+        # 先清掉指向已删除帖子的通知，再查列表，保证返回的每条都可点开。
+        self.purge_stale_post_notifications(user_id, unread_only=unread_only)
+
         query = (
             self.db.table("notifications")
             .select("*")
@@ -148,7 +236,9 @@ class NotificationService:
         return counts
 
     def get_unread_count(self, user_id: int) -> int:
-        """获取未读通知数量"""
+        """获取未读通知数量（不含指向已删除帖子的脏通知）"""
+        # 角标是用户最先看到的入口，这里也要清理，否则帖子删了红点还挂着。
+        self.purge_stale_post_notifications(user_id, unread_only=True)
         result = (
             self.db.table("notifications")
             .select("id", count="exact")
