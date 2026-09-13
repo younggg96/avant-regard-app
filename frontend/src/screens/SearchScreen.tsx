@@ -26,6 +26,8 @@ import { searchPosts, likePost, unlikePost, Post as PostData } from "../services
 import { searchUsers, UserInfo } from "../services/userInfoService";
 import { searchBrands, Brand } from "../services/brandService";
 import { getStoresPaginated, BuyerStore } from "../services/buyerStoreService";
+import { searchEvents, EventSummary } from "../services/eventService";
+import EventCard from "./Events/EventCard";
 import {
   searchProductsGlobal,
   StoreProduct,
@@ -39,7 +41,7 @@ import { ImageSize } from "../utils/imageUtils";
 import { splitIntoMasonryColumns } from "../utils/masonryLayout";
 import { resolveAvatarUrlOrEmpty } from "../utils/avatarUtils";
 
-type SearchType = "posts" | "users" | "brands" | "stores" | "products";
+type SearchType = "posts" | "users" | "brands" | "stores" | "products" | "events";
 
 interface SearchHistory {
   id: string;
@@ -62,8 +64,9 @@ const SearchScreen = () => {
     "brands",
     "stores",
     "products",
+    "events",
   ];
-  const isRestricted = allowedTypes.length < 5;
+  const isRestricted = allowedTypes.length < 6;
   const requestedType = route.params?.initialType as SearchType | undefined;
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -79,6 +82,9 @@ const SearchScreen = () => {
   const [storeTotal, setStoreTotal] = useState(0);
   const [productResults, setProductResults] = useState<StoreProduct[]>([]);
   const [productTotal, setProductTotal] = useState(0);
+  const [eventResults, setEventResults] = useState<EventSummary[]>([]);
+  const [eventTotal, setEventTotal] = useState(0);
+  const [hasMoreEvents, setHasMoreEvents] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [searchHistory, setSearchHistory] = useState<SearchHistory[]>([]);
@@ -90,6 +96,7 @@ const SearchScreen = () => {
   const postOffsetRef = useRef(0);
   const storePageRef = useRef(1);
   const productPageRef = useRef(1);
+  const eventPageRef = useRef(1);
 
   // 输入下拉建议（PRD: 搜索框支持品牌名/单品名/秀场关键词的模糊匹配，
   // 输入"Rick"时下拉提示 Rick Owens / Rick Owens DRKSHDW / Rick Owens FW07）
@@ -141,6 +148,7 @@ const SearchScreen = () => {
 
   const STORE_PAGE_SIZE = 20;
   const PRODUCT_PAGE_SIZE = 20;
+  const EVENT_PAGE_SIZE = 20;
 
   // 执行搜索
   const handleSearch = useCallback(async () => {
@@ -152,6 +160,8 @@ const SearchScreen = () => {
       setStoreTotal(0);
       setProductResults([]);
       setProductTotal(0);
+      setEventResults([]);
+      setEventTotal(0);
       setIsSearching(false);
       setPostTotal(0);
       return;
@@ -189,6 +199,12 @@ const SearchScreen = () => {
         setProductResults(result.products);
         setProductTotal(result.total);
         setHasMoreProducts(result.products.length < result.total);
+      } else if (searchType === "events") {
+        eventPageRef.current = 1;
+        const result = await searchEvents(query, { page: 1, pageSize: EVENT_PAGE_SIZE });
+        setEventResults(result.items);
+        setEventTotal(result.total);
+        setHasMoreEvents(result.items.length < result.total);
       }
 
       // 保存搜索历史
@@ -230,6 +246,10 @@ const SearchScreen = () => {
         setProductResults([]);
         setProductTotal(0);
         setHasMoreProducts(false);
+      } else if (searchType === "events") {
+        setEventResults([]);
+        setEventTotal(0);
+        setHasMoreEvents(false);
       }
     } finally {
       setIsLoading(false);
@@ -271,6 +291,12 @@ const SearchScreen = () => {
           setProductResults(result.products);
           setProductTotal(result.total);
           setHasMoreProducts(result.products.length < result.total);
+        } else if (type === "events") {
+          eventPageRef.current = 1;
+          const result = await searchEvents(query, { page: 1, pageSize: EVENT_PAGE_SIZE });
+          setEventResults(result.items);
+          setEventTotal(result.total);
+          setHasMoreEvents(result.items.length < result.total);
         }
       } catch (error) {
         console.error("Search failed:", error);
@@ -295,6 +321,10 @@ const SearchScreen = () => {
           setProductResults([]);
           setProductTotal(0);
           setHasMoreProducts(false);
+        } else if (type === "events") {
+          setEventResults([]);
+          setEventTotal(0);
+          setHasMoreEvents(false);
         }
       } finally {
         setIsLoading(false);
@@ -324,14 +354,18 @@ const SearchScreen = () => {
     setStoreTotal(0);
     setProductResults([]);
     setProductTotal(0);
+    setEventResults([]);
+    setEventTotal(0);
     setIsSearching(false);
     setPostTotal(0);
     setHasMorePosts(false);
     setHasMoreStores(false);
     setHasMoreProducts(false);
+    setHasMoreEvents(false);
     postOffsetRef.current = 0;
     storePageRef.current = 1;
     productPageRef.current = 1;
+    eventPageRef.current = 1;
   }, []);
 
   // 点击下拉建议
@@ -442,6 +476,12 @@ const SearchScreen = () => {
           setProductResults(result.products);
           setProductTotal(result.total);
           setHasMoreProducts(result.products.length < result.total);
+        } else if (searchType === "events") {
+          eventPageRef.current = 1;
+          const result = await searchEvents(keyword, { page: 1, pageSize: EVENT_PAGE_SIZE });
+          setEventResults(result.items);
+          setEventTotal(result.total);
+          setHasMoreEvents(result.items.length < result.total);
         }
       } catch (error) {
         console.error("Search failed:", error);
@@ -466,6 +506,10 @@ const SearchScreen = () => {
           setProductResults([]);
           setProductTotal(0);
           setHasMoreProducts(false);
+        } else if (searchType === "events") {
+          setEventResults([]);
+          setEventTotal(0);
+          setHasMoreEvents(false);
         }
       } finally {
         setIsLoading(false);
@@ -525,6 +569,13 @@ const SearchScreen = () => {
   const handleProductPress = useCallback(
     (product: StoreProduct) => {
       (navigation.navigate as any)("StoreProductDetail", { productId: product.id });
+    },
+    [navigation]
+  );
+
+  const handleEventPress = useCallback(
+    (event: EventSummary) => {
+      (navigation.navigate as any)("EventDetail", { eventId: event.id });
     },
     [navigation]
   );
@@ -660,6 +711,23 @@ const SearchScreen = () => {
       setIsLoadingMore(false);
     }
   }, [isLoadingMore, hasMoreProducts, searchQuery, productResults.length]);
+
+  const loadMoreEvents = useCallback(async () => {
+    if (isLoadingMore || !hasMoreEvents || !searchQuery.trim()) return;
+    setIsLoadingMore(true);
+    try {
+      const nextPage = eventPageRef.current + 1;
+      const result = await searchEvents(searchQuery.trim(), { page: nextPage, pageSize: EVENT_PAGE_SIZE });
+      setEventResults((prev) => [...prev, ...result.items]);
+      setEventTotal(result.total);
+      eventPageRef.current = nextPage;
+      setHasMoreEvents(eventResults.length + result.items.length < result.total);
+    } catch (error) {
+      console.error("Load more events failed:", error);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [isLoadingMore, hasMoreEvents, searchQuery, eventResults.length]);
 
   const handlePostScroll = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -932,6 +1000,7 @@ const SearchScreen = () => {
     { type: "brands", label: t("search.brands") },
     { type: "stores", label: t("search.stores") },
     { type: "products", label: t("search.products") },
+    { type: "events", label: t("search.events") },
   ];
 
   const renderSearchTypeTabs = () => {
@@ -1313,6 +1382,47 @@ const SearchScreen = () => {
     </VStack>
   );
 
+  // 渲染活动搜索结果
+  const renderEventResults = () => (
+    <VStack flex={1}>
+      <HStack px="$md" py="$md" alignItems="center">
+        <Text fontSize="$md" style={{ color: theme.colors.gray600 }}>
+          {t("search.foundResults", { count: eventTotal, type: t("search.events") })}
+        </Text>
+      </HStack>
+      {eventResults.length > 0 ? (
+        <FlatList
+          data={eventResults}
+          renderItem={({ item }) => <EventCard event={item} onPress={handleEventPress} />}
+          keyExtractor={(item) => item.id.toString()}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          onEndReached={loadMoreEvents}
+          onEndReachedThreshold={0.3}
+          ItemSeparatorComponent={() => <Box height={1} style={{ backgroundColor: theme.colors.gray100 }} mx="$md" />}
+          ListFooterComponent={
+            isLoadingMore ? (
+              <VStack py="$md" alignItems="center">
+                <ActivityIndicator size="small" color={theme.colors.gray400} />
+              </VStack>
+            ) : null
+          }
+        />
+      ) : (
+        <VStack flex={1} justifyContent="center" alignItems="center" px="$xl">
+          <Ionicons name="calendar-outline" size={64} color={theme.colors.gray300} />
+          <Text fontSize="$lg" style={{ color: theme.colors.gray600 }} fontWeight="$medium" mt="$md" textAlign="center">
+            {t("search.noResults")}
+          </Text>
+          <Text fontSize="$sm" style={{ color: theme.colors.gray400 }} mt="$sm" textAlign="center" lineHeight="$lg">
+            {t("search.tryOtherKeywords")}
+          </Text>
+        </VStack>
+      )}
+    </VStack>
+  );
+
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       {/* Header */}
@@ -1343,7 +1453,9 @@ const SearchScreen = () => {
                     ? t("search.searchBrandsPlaceholder")
                     : searchType === "stores"
                       ? t("search.searchStoresPlaceholder")
-                      : t("search.searchProductsPlaceholder")
+                      : searchType === "events"
+                        ? t("search.searchEventsPlaceholder")
+                        : t("search.searchProductsPlaceholder")
             }
             placeholderTextColor={theme.colors.gray400}
             value={searchQuery}
@@ -1433,7 +1545,9 @@ const SearchScreen = () => {
                         ? "pricetag-outline"
                         : searchType === "stores"
                           ? "storefront-outline"
-                          : "bag-outline"
+                          : searchType === "events"
+                            ? "calendar-outline"
+                            : "bag-outline"
                 }
                 size={64}
                 color={theme.colors.gray300}
@@ -1453,7 +1567,9 @@ const SearchScreen = () => {
                       ? t("search.brands")
                       : searchType === "stores"
                         ? t("search.stores")
-                        : t("search.products")}
+                        : searchType === "events"
+                          ? t("search.events")
+                          : t("search.products")}
               </Text>
               <Text
                 fontSize="$sm"
@@ -1470,7 +1586,9 @@ const SearchScreen = () => {
                       ? t("search.searchBrandsHint")
                       : searchType === "stores"
                         ? t("search.searchStoresHint")
-                        : t("search.searchProductsHint")}
+                        : searchType === "events"
+                          ? t("search.searchEventsHint")
+                          : t("search.searchProductsHint")}
               </Text>
             </VStack>
           )}
@@ -1493,7 +1611,9 @@ const SearchScreen = () => {
               ? renderBrandResults()
               : searchType === "stores"
                 ? renderStoreResults()
-                : renderProductResults()
+                : searchType === "events"
+                  ? renderEventResults()
+                  : renderProductResults()
       )}
     </SafeAreaView>
   );

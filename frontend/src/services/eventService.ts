@@ -164,6 +164,14 @@ export const getUpcomingEvents = (params?: {
 export const getEventReviews = (params?: { page?: number; pageSize?: number }) =>
   request<Paged<EventSummary>>(`/api/events/reviews${qs(params ?? {})}`);
 
+export const searchEvents = (
+  keyword: string,
+  params?: { page?: number; pageSize?: number; eventType?: EventType },
+) =>
+  request<Paged<EventSummary>>(
+    `/api/events/search${qs({ keyword, ...(params ?? {}) })}`,
+  );
+
 export const getEventCalendar = (month: string) =>
   request<EventCalendarResponse>(
     `/api/events/calendar${qs({ month, tzOffset: localTzOffsetMinutes() })}`,

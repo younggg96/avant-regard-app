@@ -57,10 +57,10 @@ const SEARCH_PLACEHOLDER_KEY: Record<TopTab, string> = {
   buyer: "discover.searchPlaceholderBuyer",
 };
 
-const SEARCH_INITIAL_TYPE: Record<TopTab, "posts" | "stores"> = {
+const SEARCH_INITIAL_TYPE: Record<TopTab, "posts" | "stores" | "events"> = {
   forum: "posts",
   posts: "posts",
-  events: "posts",
+  events: "events",
   myArchive: "posts",
   buyer: "stores",
 };

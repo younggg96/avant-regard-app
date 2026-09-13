@@ -37,6 +37,21 @@ def list_upcoming(
     return success({"items": [i.model_dump() for i in items], "total": total})
 
 
+@router.get("/search", response_model=None)
+def search_events(
+    keyword: str = Query(..., min_length=1, description="关键词：标题 / 城市 / 地点 / 主办方"),
+    page: int = Query(1, ge=1),
+    pageSize: int = Query(20, ge=1, le=100),
+    eventType: Optional[str] = None,
+    viewer_id: Optional[int] = Depends(get_current_user_optional),
+):
+    """公开活动搜索（已发布 + 已结束），按开始时间倒序。"""
+    items, total = event_service.search(
+        viewer_id, keyword, limit=pageSize, page=page, event_type=eventType
+    )
+    return success({"items": [i.model_dump() for i in items], "total": total})
+
+
 @router.get("/reviews", response_model=None)
 def list_reviews(
     page: int = Query(1, ge=1),

@@ -191,6 +191,37 @@ class EventService:
         r = q.order("start_at", desc=False).range(offset, offset + limit - 1).execute()
         return self._rows_to_summaries(r.data or [], viewer_id), (r.count or 0)
 
+    def search(
+        self,
+        viewer_id: Optional[int],
+        keyword: str,
+        limit: int = 20,
+        page: int = 1,
+        event_type: Optional[str] = None,
+    ) -> Tuple[List[EventSummary], int]:
+        """公开活动关键词搜索：匹配标题 / 城市 / 地点 / 主办方，按开始时间倒序。"""
+        kw = (keyword or "").strip()
+        if not kw:
+            return [], 0
+        # PostgREST `or` 语法：以逗号分隔多个条件；关键词里的逗号 / 括号会破坏
+        # 语法，这里做保守转义。
+        safe = kw.replace(",", " ").replace("(", " ").replace(")", " ").strip()
+        pattern = f"%{safe}%"
+        offset = (max(page, 1) - 1) * limit
+        q = (
+            self.db.table("events")
+            .select("*", count="exact")
+            .in_("status", list(self.PUBLIC_STATUSES))
+            .or_(
+                f"title.ilike.{pattern},city.ilike.{pattern},"
+                f"location_name.ilike.{pattern},organizer.ilike.{pattern}"
+            )
+        )
+        if event_type:
+            q = q.eq("event_type", event_type)
+        r = q.order("start_at", desc=True).range(offset, offset + limit - 1).execute()
+        return self._rows_to_summaries(r.data or [], viewer_id), (r.count or 0)
+
     def list_reviews(
         self, viewer_id: Optional[int], limit: int = 20, page: int = 1
     ) -> Tuple[List[EventSummary], int]:
