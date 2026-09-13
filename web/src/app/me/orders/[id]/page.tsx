@@ -23,7 +23,7 @@ import {
   OrderTimeline,
   TrackingFeedList,
 } from "@/components/trading/OrderTimeline";
-import { PaymentHandoffCard } from "@/components/trading/PaymentHandoffCard";
+import { PaymentPanel } from "@/components/trading/PaymentPanel";
 import { ReviewDialog } from "@/components/trading/ReviewDialog";
 import { ShipDialog } from "@/components/trading/ShipDialog";
 import { useAuthStore } from "@/lib/auth/store";
@@ -125,7 +125,7 @@ export default function OrderDetailPage() {
       </section>
 
       {isBuyer && order.status === "pending_payment" && (
-        <PaymentHandoffCard order={order} onRefresh={() => mutate()} />
+        <PaymentPanel order={order} onRefresh={() => mutate()} />
       )}
 
       {/* 商品 */}
