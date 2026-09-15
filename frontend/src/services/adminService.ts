@@ -673,6 +673,54 @@ export interface AdminBrandImage {
   createdAt?: string;
 }
 
+// ==================== 数字护照 · 档案审核 ====================
+
+export interface AdminArchiveReviewItem {
+  id: number;
+  userId: number;
+  username: string;
+  title: string;
+  brandId: number | null;
+  brandName: string | null;
+  releaseYear: number | null;
+  photos: string[];
+  /** photos 的子集：由 AI 生成的三视图，不是实拍。 */
+  aiPhotos?: string[];
+  validityStatus: string;
+  /** 进入人工复核的原因，后端算好的。 */
+  reasons: string[];
+  aiSuggestion?: Record<string, unknown> | null;
+  reviewNote?: string | null;
+  createdAt: string;
+}
+
+export async function getArchiveReviewQueue(
+  page = 1,
+  pageSize = 20
+): Promise<{ items: AdminArchiveReviewItem[]; total: number }> {
+  return request<{ items: AdminArchiveReviewItem[]; total: number }>(
+    `/api/admin/archive-review?page=${page}&pageSize=${pageSize}`,
+    { method: "GET" }
+  );
+}
+
+export async function getArchiveReviewCount(): Promise<{ count: number }> {
+  return request<{ count: number }>("/api/admin/archive-review/count", {
+    method: "GET",
+  });
+}
+
+export async function reviewArchiveItem(
+  itemId: number,
+  action: "approve" | "reject",
+  note?: string
+): Promise<void> {
+  return request<void>(`/api/admin/archive-review/${itemId}`, {
+    method: "POST",
+    body: JSON.stringify({ action, note }),
+  });
+}
+
 export async function getPendingBrandImages(): Promise<{ images: AdminBrandImage[]; total: number }> {
   return request<{ images: AdminBrandImage[]; total: number }>(
     "/api/admin/brand-images/pending",
@@ -1457,6 +1505,10 @@ export const adminService = {
   adminUploadBrandImage,
   getBrandImagesAdmin,
   toggleBrandImageSelected,
+  // 数字护照档案审核
+  getArchiveReviewQueue,
+  getArchiveReviewCount,
+  reviewArchiveItem,
   // 广播通知
   broadcastNotification,
   // 客服自动回复

@@ -35,6 +35,7 @@ import ProductManagementTab from "./ProductManagementTab";
 import DisputeQueueTab from "./DisputeQueueTab";
 import ChatMonitorTab from "./ChatMonitorTab";
 import EventsTab from "./EventsTab";
+import ArchiveReviewTab from "./ArchiveReviewTab";
 
 type MenuItemKey =
   | "pending"
@@ -59,6 +60,7 @@ type MenuItemKey =
   | "recommendConfig"
   | "maintenance"
   | "levelReview"
+  | "archiveReview"
   | "lottery";
 
 interface MenuItem {
@@ -98,6 +100,7 @@ const COMPONENT_MAP: Record<MenuItemKey, React.FC> = {
   levelReview: LevelReviewTab,
   lottery: LotteryAdminTab,
   events: EventsTab,
+  archiveReview: ArchiveReviewTab,
 };
 
 const AdminScreen = () => {
@@ -122,6 +125,7 @@ const AdminScreen = () => {
           { key: "brandSubmissions", label: t("admin.brandReview"), icon: "ribbon-outline" },
           { key: "brandImageReview", label: t("admin.brandImages"), icon: "images-outline" },
           { key: "showReview", label: t("admin.showReview"), icon: "eye-outline" },
+          { key: "archiveReview", label: t("admin.archiveReviewTab.menu"), icon: "shirt-outline" },
           { key: "levelReview", label: t("admin.levelReview"), icon: "medal-outline" },
           { key: "disputeQueue", label: t("admin.disputeQueue"), icon: "shield-checkmark-outline" },
         ],

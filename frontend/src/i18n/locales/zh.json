@@ -2468,7 +2468,15 @@
     "bannerShowIdPlaceholder": "输入秀场 ID",
     "bannerUrlPlaceholder": "输入完整 URL（https://...）",
     "bannerSortLabel": "排序（数字越小越靠前）",
-    "eventsManagement": "活动管理"
+    "eventsManagement": "活动管理",
+    "archiveReviewTab": {
+      "menu": "档案审核",
+      "empty": "没有待审核的档案",
+      "noBrand": "未填写品牌",
+      "aiBadge": "AI",
+      "confirmApprove": "确认通过「{{title}}」？通过后将进入正式档案。",
+      "rejectReason": "请填写驳回原因，用户会看到"
+    }
   },
   "events": {
     "tabCalendar": "活动日历",

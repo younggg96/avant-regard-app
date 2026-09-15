@@ -2468,7 +2468,15 @@
     "bannerShowIdPlaceholder": "Enter show ID",
     "bannerUrlPlaceholder": "Enter full URL (https://...)",
     "bannerSortLabel": "Sort (lower = first)",
-    "eventsManagement": "Events"
+    "eventsManagement": "Events",
+    "archiveReviewTab": {
+      "menu": "Archive Review",
+      "empty": "No archives awaiting review",
+      "noBrand": "No brand",
+      "aiBadge": "AI",
+      "confirmApprove": "Approve “{{title}}”? It will enter the official archive.",
+      "rejectReason": "Reason for rejection (the user will see this)"
+    }
   },
   "events": {
     "tabCalendar": "Calendar",

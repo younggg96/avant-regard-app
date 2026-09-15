@@ -1252,3 +1252,122 @@ def review_archive_item(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return success(result)
+
+
+# ==================== 数字护照 · 典藏全量管理 ====================
+
+class ArchiveUpdateRequest(BaseModel):
+    """管理员改档案字段。字段白名单在 service 层，这里只做形态校验。"""
+    title: Optional[str] = Field(None, max_length=200)
+    brandId: Optional[int] = None
+    releaseYear: Optional[int] = None
+    originalShowId: Optional[str] = None
+    validityStatus: Optional[str] = Field(
+        None, pattern="^(passed|warned|manual_review|rejected)$"
+    )
+    reviewNote: Optional[str] = Field(None, max_length=500)
+
+
+@router.get("/archive")
+def list_archive_items(
+    keyword: Optional[str] = Query(None),
+    status: Optional[str] = Query(None),
+    userId: Optional[int] = Query(None),
+    page: int = Query(1, ge=1),
+    pageSize: int = Query(20, ge=1, le=100),
+    current_user_id: int = Depends(get_current_admin_user),
+):
+    """全量典藏列表（不限状态）。待审队列见 /archive-review。"""
+    result = passport_review_service.list_archive(
+        keyword=keyword, status=status, user_id=userId,
+        page=page, page_size=pageSize,
+    )
+    return success(result)
+
+
+@router.patch("/archive/{item_id}")
+def update_archive_item(
+    item_id: int,
+    request: ArchiveUpdateRequest,
+    current_user_id: int = Depends(get_current_admin_user),
+):
+    """修改档案字段。改了 brandId 会同步冗余的 brand_name。"""
+    fields = {
+        "title": request.title,
+        "brand_id": request.brandId,
+        "release_year": request.releaseYear,
+        "original_show_id": request.originalShowId,
+        "validity_status": request.validityStatus,
+        "review_note": request.reviewNote,
+    }
+    fields = {k: v for k, v in fields.items() if v is not None}
+    try:
+        result = passport_review_service.update_archive(item_id, fields)
+    except LookupError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return success(result)
+
+
+@router.delete("/archive/{item_id}")
+def delete_archive_item(
+    item_id: int,
+    current_user_id: int = Depends(get_current_admin_user),
+):
+    """删除档案条目，连带清掉持有记录。"""
+    try:
+        passport_review_service.delete_archive(item_id)
+    except LookupError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    return success(None)
+
+
+# ==================== 数字护照 · 三视图管理 ====================
+
+class ThreeViewDisableRequest(BaseModel):
+    reason: Optional[str] = Field(None, max_length=500)
+
+
+@router.get("/three-views")
+def list_three_views(
+    status: Optional[str] = Query(None),
+    userId: Optional[int] = Query(None),
+    page: int = Query(1, ge=1),
+    pageSize: int = Query(20, ge=1, le=100),
+    current_user_id: int = Depends(get_current_admin_user),
+):
+    """AI 三视图生成记录：源图、视角、模型、用量，以及失败原因。"""
+    result = passport_review_service.list_three_views(
+        status=status, user_id=userId, page=page, page_size=pageSize
+    )
+    return success(result)
+
+
+@router.get("/three-views/stats")
+def get_three_view_stats(
+    current_user_id: int = Depends(get_current_admin_user),
+):
+    """用量概览，gpt-image-1 按张计费，用来算账。"""
+    return success(passport_review_service.three_view_stats())
+
+
+@router.post("/three-views/{view_id}/disable")
+def disable_three_view(
+    view_id: int,
+    request: ThreeViewDisableRequest,
+    current_user_id: int = Depends(get_current_admin_user),
+):
+    """
+    下架一张不合格的生成图。
+
+    只改状态不删记录（成本已发生，要留着算账），同时把这张图从所有引用它的
+    档案的 photos / ai_photos 里摘掉，否则公开验证页还会继续展示。
+    """
+    try:
+        result = passport_review_service.disable_three_view(
+            view_id, admin_id=current_user_id, reason=request.reason
+        )
+    except LookupError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    return success(result)

@@ -1055,3 +1055,101 @@ export const archiveReviewApi = {
       { decision, note },
     ),
 };
+
+// ─── 数字护照 · 典藏全量管理 ──────────────────────────────────────────────────
+
+export interface AdminArchiveItem extends ArchiveReviewItem {
+  /** photos 的子集：其中由 AI 生成（三视图）而非实拍的那些。 */
+  aiPhotos: string[];
+}
+
+export interface AdminArchiveListResponse {
+  items: AdminArchiveItem[];
+  total: number;
+}
+
+export interface AdminArchivePatch {
+  title?: string;
+  brandId?: number;
+  releaseYear?: number;
+  originalShowId?: string;
+  validityStatus?: "passed" | "warned" | "manual_review" | "rejected";
+  reviewNote?: string;
+}
+
+export const adminArchiveApi = {
+  list: (params: {
+    keyword?: string;
+    status?: string;
+    userId?: number;
+    page?: number;
+    pageSize?: number;
+  } = {}) =>
+    apiClient.get<AdminArchiveListResponse>("/api/admin/archive", {
+      keyword: params.keyword,
+      status: params.status,
+      userId: params.userId,
+      page: params.page ?? 1,
+      pageSize: params.pageSize ?? 20,
+    }),
+
+  update: (itemId: number, patch: AdminArchivePatch) =>
+    apiClient.patch<{ id: number; updated: string[] }>(
+      `/api/admin/archive/${itemId}`,
+      patch,
+    ),
+
+  remove: (itemId: number) => apiClient.delete<void>(`/api/admin/archive/${itemId}`),
+};
+
+// ─── 数字护照 · 三视图管理 ────────────────────────────────────────────────────
+
+export interface AdminThreeView {
+  id: number;
+  userId: number;
+  username: string;
+  archiveItemId: number | null;
+  sourceImageUrl: string;
+  /** front / side / back */
+  viewSlug: string;
+  /** 失败时为 null。 */
+  imageUrl: string | null;
+  model: string | null;
+  imageSize: string | null;
+  tokensUsed: number;
+  costCents: number;
+  /** success / failed / disabled */
+  status: string;
+  errorMessage: string | null;
+  disableReason: string | null;
+  createdAt: string;
+}
+
+export interface AdminThreeViewListResponse {
+  items: AdminThreeView[];
+  total: number;
+}
+
+export interface AdminThreeViewStats {
+  total: number;
+  success: number;
+  failed: number;
+  disabled: number;
+}
+
+export const adminThreeViewApi = {
+  list: (status?: string, page = 1, pageSize = 20) =>
+    apiClient.get<AdminThreeViewListResponse>("/api/admin/three-views", {
+      status,
+      page,
+      pageSize,
+    }),
+
+  stats: () => apiClient.get<AdminThreeViewStats>("/api/admin/three-views/stats"),
+
+  disable: (viewId: number, reason?: string) =>
+    apiClient.post<{ id: number; removedFromItems: number[] }>(
+      `/api/admin/three-views/${viewId}/disable`,
+      { reason },
+    ),
+};

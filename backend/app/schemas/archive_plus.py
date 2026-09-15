@@ -37,7 +37,11 @@ class ArchiveItem(BaseModel):
     # brandId 为空而 brandName 有值 = 新品牌还在后台审核中。
     brandId: Optional[int] = None
     releaseYear: Optional[int] = None
-    validityStatus: str = "passed"   # passed / warned / manual_review
+    validityStatus: str = "passed"   # passed / warned / manual_review / rejected
+    # photos 的子集：其中由 AI 生成（三视图）而非实拍的那些。
+    # 展示单品照片的地方都应据此标注，尤其是 5.4 的公开验证页 ——
+    # 把 AI 推测的侧背面当实物照展示会误导买家。
+    aiPhotos: List[str] = Field(default_factory=list)
     createdAt: Optional[str] = None
     updatedAt: Optional[str] = None
 

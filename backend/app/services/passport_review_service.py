@@ -202,6 +202,227 @@ class PassportReviewService:
         self.db.table("user_archive_items").update(payload).eq("id", item_id).execute()
         return {"id": item_id, "status": decision, "backfilledBrand": backfilled_brand}
 
+    # -----------------------------------------------------------------
+    # 典藏全量管理(不止待审队列)
+    # -----------------------------------------------------------------
+    def list_archive(
+        self,
+        *,
+        keyword: Optional[str] = None,
+        status: Optional[str] = None,
+        user_id: Optional[int] = None,
+        page: int = 1,
+        page_size: int = 20,
+    ) -> Dict[str, Any]:
+        """全量档案列表。status 不传就是所有状态,和只看待审队列的 list_queue 区分开。"""
+        offset = (page - 1) * page_size
+        q = self.db.table("user_archive_items").select("*", count="exact")
+        if status:
+            q = q.eq("validity_status", status)
+        if user_id:
+            q = q.eq("user_id", user_id)
+        if keyword:
+            # 标题或品牌名任一命中。PostgREST 的 or 语法,逗号分隔。
+            safe = keyword.replace(",", " ").replace("(", " ").replace(")", " ")
+            q = q.or_(f"title.ilike.%{safe}%,brand_name.ilike.%{safe}%")
+
+        res = (
+            q.order("created_at", desc=True)
+            .range(offset, offset + page_size - 1)
+            .execute()
+        )
+        rows = res.data or []
+        if not rows:
+            return {"items": [], "total": res.count or 0}
+
+        users = self._fetch_users([r["user_id"] for r in rows])
+        attributions = self._fetch_attributions([r["id"] for r in rows])
+        items = []
+        for r in rows:
+            item = self._format(r, users.get(r["user_id"]), attributions.get(r["id"]))
+            # 全量管理页要能看出哪几张是 AI 生成的
+            item["aiPhotos"] = r.get("ai_photos") or []
+            items.append(item)
+        return {"items": items, "total": res.count or 0}
+
+    def update_archive(self, item_id: int, fields: Dict[str, Any]) -> Dict[str, Any]:
+        """管理员改档案字段。只放行白名单里的列,避免把 user_id 之类改掉。"""
+        allowed = {
+            "title",
+            "brand_id",
+            "brand_name",
+            "release_year",
+            "original_show_id",
+            "validity_status",
+            "review_note",
+        }
+        payload = {k: v for k, v in fields.items() if k in allowed}
+        if not payload:
+            raise ValueError("没有可更新的字段")
+
+        # 改了品牌就把冗余的 brand_name 同步过来,避免两边对不上。
+        if "brand_id" in payload and payload["brand_id"]:
+            res = (
+                self.db.table("brands")
+                .select("id,name")
+                .eq("id", payload["brand_id"])
+                .limit(1)
+                .execute()
+            )
+            if not res.data:
+                raise ValueError(f"品牌 {payload['brand_id']} 不存在")
+            payload["brand_name"] = res.data[0]["name"]
+
+        res = (
+            self.db.table("user_archive_items")
+            .update(payload)
+            .eq("id", item_id)
+            .execute()
+        )
+        if not res.data:
+            raise LookupError("档案条目不存在")
+        return {"id": item_id, "updated": list(payload.keys())}
+
+    def delete_archive(self, item_id: int) -> None:
+        """删除档案条目。持有记录级联不一定配了,这里显式清一次。"""
+        try:
+            self.db.table("archive_holding_history").delete().eq(
+                "archive_item_id", item_id
+            ).execute()
+        except Exception as e:  # noqa: BLE001
+            logger.warning("[passport_review] clean holdings failed: %s", e)
+        res = self.db.table("user_archive_items").delete().eq("id", item_id).execute()
+        if not res.data:
+            raise LookupError("档案条目不存在")
+
+    # -----------------------------------------------------------------
+    # 三视图管理
+    # -----------------------------------------------------------------
+    def list_three_views(
+        self,
+        *,
+        status: Optional[str] = None,
+        user_id: Optional[int] = None,
+        page: int = 1,
+        page_size: int = 20,
+    ) -> Dict[str, Any]:
+        offset = (page - 1) * page_size
+        q = self.db.table("passport_three_views").select("*", count="exact")
+        if status:
+            q = q.eq("status", status)
+        if user_id:
+            q = q.eq("user_id", user_id)
+
+        res = (
+            q.order("created_at", desc=True)
+            .range(offset, offset + page_size - 1)
+            .execute()
+        )
+        rows = res.data or []
+        users = self._fetch_users([r["user_id"] for r in rows])
+        items = [
+            {
+                "id": r["id"],
+                "userId": r["user_id"],
+                "username": (users.get(r["user_id"]) or {}).get("username")
+                or f"#{r['user_id']}",
+                "archiveItemId": r.get("archive_item_id"),
+                "sourceImageUrl": r.get("source_image_url"),
+                "viewSlug": r.get("view_slug"),
+                "imageUrl": r.get("image_url"),
+                "model": r.get("model"),
+                "imageSize": r.get("image_size"),
+                "tokensUsed": r.get("tokens_used") or 0,
+                "costCents": r.get("cost_cents") or 0,
+                "status": r.get("status"),
+                "errorMessage": r.get("error_message"),
+                "disableReason": r.get("disable_reason"),
+                "createdAt": r.get("created_at"),
+            }
+            for r in rows
+        ]
+        return {"items": items, "total": res.count or 0}
+
+    def three_view_stats(self) -> Dict[str, Any]:
+        """用量概览。gpt-image-1 按张计费,这几个数是算账用的。"""
+
+        def _count(**eq) -> int:
+            q = self.db.table("passport_three_views").select("id", count="exact").limit(1)
+            for k, v in eq.items():
+                q = q.eq(k, v)
+            try:
+                return q.execute().count or 0
+            except Exception:
+                return 0
+
+        total = _count()
+        return {
+            "total": total,
+            "success": _count(status="success"),
+            "failed": _count(status="failed"),
+            "disabled": _count(status="disabled"),
+        }
+
+    def disable_three_view(
+        self, view_id: int, *, admin_id: int, reason: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        下架一张不合格的生成图。
+
+        只改状态不删记录:成本已经花掉了,记录要留着算账。同时把它从所有
+        引用它的档案的 ai_photos / photos 里摘掉,否则公开页还会展示。
+        """
+        res = (
+            self.db.table("passport_three_views")
+            .select("id,image_url,status")
+            .eq("id", view_id)
+            .limit(1)
+            .execute()
+        )
+        if not res.data:
+            raise LookupError("生成记录不存在")
+        row = res.data[0]
+
+        self.db.table("passport_three_views").update(
+            {
+                "status": "disabled",
+                "disabled_by": admin_id,
+                "disabled_at": datetime.now(timezone.utc).isoformat(),
+                "disable_reason": reason,
+            }
+        ).eq("id", view_id).execute()
+
+        removed_from = self._detach_photo(row.get("image_url"))
+        return {"id": view_id, "removedFromItems": removed_from}
+
+    def _detach_photo(self, image_url: Optional[str]) -> List[int]:
+        """把一张图从所有引用它的档案条目的 photos / ai_photos 里摘掉。"""
+        if not image_url:
+            return []
+        try:
+            res = (
+                self.db.table("user_archive_items")
+                .select("id,photos,ai_photos")
+                .contains("photos", [image_url])
+                .execute()
+            )
+        except Exception as e:  # noqa: BLE001
+            logger.warning("[passport_review] find items by photo failed: %s", e)
+            return []
+
+        touched: List[int] = []
+        for r in res.data or []:
+            self.db.table("user_archive_items").update(
+                {
+                    "photos": [p for p in (r.get("photos") or []) if p != image_url],
+                    "ai_photos": [
+                        p for p in (r.get("ai_photos") or []) if p != image_url
+                    ],
+                }
+            ).eq("id", r["id"]).execute()
+            touched.append(r["id"])
+        return touched
+
     def pending_count(self) -> int:
         try:
             res = (

@@ -99,6 +99,7 @@ class ArchiveService:
             brandId=row.get("brand_id"),
             releaseYear=row.get("release_year"),
             validityStatus=row.get("validity_status", "passed"),
+            aiPhotos=row.get("ai_photos") or [],
             createdAt=row.get("created_at"),
             updatedAt=row.get("updated_at"),
         )
@@ -415,6 +416,30 @@ class ArchiveService:
     # PDF p.21 · 独立上传 MY ARCHIVE 条目（不依赖订单）
     # ------------------------------------------------------------------
 
+    def _detect_ai_photos(self, photos: List[str]) -> List[str]:
+        """
+        从一组照片里挑出 AI 生成的那些。
+
+        依据是 passport_three_views 里真实存在的生成记录，不是客户端自报 ——
+        客户端谎称「AI 图是实拍」正是要防的方向，5.4 公开验证页要靠这个
+        标记告诉买家哪张是 AI 推测的侧背面。
+
+        查不到时返回空（全部按实拍处理）。这是保守的失败方向吗？不是，
+        所以这里不吞异常：标漏了等于在公开页上把 AI 图当实物照展示。
+        """
+        if not photos:
+            return []
+        res = (
+            self.db.table("passport_three_views")
+            .select("image_url")
+            .in_("image_url", photos)
+            .eq("status", "success")
+            .execute()
+        )
+        generated = {r["image_url"] for r in (res.data or []) if r.get("image_url")}
+        # 保持与 photos 相同的顺序，方便前端按序比对。
+        return [p for p in photos if p in generated]
+
     def manual_create(
         self,
         user_id: int,
@@ -449,9 +474,20 @@ class ArchiveService:
             "brand_id": body.brandId,
             "release_year": body.releaseYear,
             "validity_status": validity_status,
+            "ai_photos": self._detect_ai_photos(body.photos or []),
         }
         res = self.db.table("user_archive_items").insert(payload).execute()
         item = self._format(res.data[0])
+
+        # 生成三视图时档案条目还不存在，到这里才能把两边挂上。
+        # 后台的三视图管理页靠它跳转到对应档案。
+        if item.aiPhotos:
+            try:
+                self.db.table("passport_three_views").update(
+                    {"archive_item_id": item.id}
+                ).in_("image_url", item.aiPhotos).execute()
+            except Exception as e:
+                print(f"[archive] link three-view records failed: {e}")
 
         # 自动开一段 owned 持有记录
         try:

@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import base64
 import io
+import logging
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from typing import List, Optional
@@ -33,6 +34,8 @@ from app.core.config import settings
 from app.services.ai.image_source import is_allowed_source
 from app.services.ai.quota_service import quota_service
 from app.services.file_service import file_service
+
+logger = logging.getLogger(__name__)
 
 
 class ThreeViewError(RuntimeError):
@@ -125,6 +128,33 @@ _FETCH_TIMEOUT_S = 20.0
 
 
 class ThreeViewService:
+    def _record(
+        self, user_id: int, source_url: str, views: List[GeneratedView]
+    ) -> None:
+        """
+        每张生成图落一行。
+
+        image_url 这一列同时承担「这张图是 AI 生成的」的权威依据 ——
+        入库时服务端拿 photos 来这里反查，客户端无法谎称 AI 图是实拍。
+        """
+        from app.db.supabase import get_supabase_admin
+
+        rows = [
+            {
+                "user_id": user_id,
+                "source_image_url": source_url,
+                "view_slug": v.slug,
+                "image_url": v.url,
+                "model": settings.OPENAI_IMAGE_MODEL,
+                "image_size": settings.OPENAI_IMAGE_SIZE,
+                "tokens_used": v.tokens_used,
+                "status": "success" if v.url else "failed",
+                "error_message": v.error,
+            }
+            for v in views
+        ]
+        get_supabase_admin().table("passport_three_views").insert(rows).execute()
+
     def _client(self) -> OpenAI:
         if not settings.OPENAI_API_KEY:
             raise ThreeViewError("OPENAI_API_KEY 未配置", "NOT_CONFIGURED")
@@ -222,6 +252,13 @@ class ThreeViewService:
             views = list(
                 pool.map(lambda spec: self._generate_one(client, png, spec), VIEW_SPECS)
             )
+
+        # 先落表再判成败:失败的那几张同样要留记录,否则「为什么这次只出了
+        # 两张」事后查不出来。落表失败不影响用户拿到图。
+        try:
+            self._record(user_id, source_image_url, views)
+        except Exception as e:  # noqa: BLE001
+            logger.warning("[three_view] record failed: %s", e)
 
         if all(v.url is None for v in views):
             raise ThreeViewError(

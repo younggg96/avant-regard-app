@@ -55,6 +55,8 @@ def main() -> int:
         ("086 档案有效性状态", "user_archive_items", "validity_status"),
         ("086 归因标注表", "passport_attributions", "id"),
         ("087 审核留痕", "user_archive_items", "review_note"),
+        ("088 三视图生成记录", "passport_three_views", "id"),
+        ("088 AI 图来源标记", "user_archive_items", "ai_photos"),
     ]
 
     print("表结构:")
@@ -101,6 +103,7 @@ def main() -> int:
         print("  app/db/migrations/085_three_view_quota.sql")
         print("  app/db/migrations/086_passport_attribution.sql")
         print("  app/db/migrations/087_archive_review_queue.sql")
+        print("  app/db/migrations/088_three_view_provenance.sql")
         print(f"贴完复跑: ./venv/bin/python -m scripts.passport_preflight{suffix}")
         return 1
     print("全部就位")
