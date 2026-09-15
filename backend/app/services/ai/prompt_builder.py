@@ -33,8 +33,16 @@ logger = logging.getLogger(__name__)
 # =====================================================
 PROMPT_KEY_QA_SYSTEM = "qa_system"
 PROMPT_KEY_IMAGE_BRIEF_SYSTEM = "image_brief_system"
+# 数字护照 5.2 / 5.3
+PROMPT_KEY_PASSPORT_RECOGNIZE = "passport_recognize_system"
+PROMPT_KEY_PASSPORT_COMPARE = "passport_compare_system"
 
-ALL_PROMPT_KEYS = (PROMPT_KEY_QA_SYSTEM, PROMPT_KEY_IMAGE_BRIEF_SYSTEM)
+ALL_PROMPT_KEYS = (
+    PROMPT_KEY_QA_SYSTEM,
+    PROMPT_KEY_IMAGE_BRIEF_SYSTEM,
+    PROMPT_KEY_PASSPORT_RECOGNIZE,
+    PROMPT_KEY_PASSPORT_COMPARE,
+)
 
 
 # =====================================================
@@ -84,9 +92,96 @@ DEFAULT_IMAGE_BRIEF_SYSTEM_PROMPT = """你是「Avant Regard」的发帖助手�
 """
 
 
+# =====================================================
+# 数字护照 · 识别 (5.3 有效性检查 + 5.2 第一轮推测)
+#
+# 有效性检查和品牌推测合并成一次调用:两件事看的是同一张图、同一套视觉
+# 特征,拆成两次 VL 调用等于花两份钱看同一张图。服务层拿到结果后先看
+# is_fashion_item 这个闸门,不通过就直接终止,不进归因。
+#
+# 反虚构是这里最要命的一条。模型很乐意给出「Raf Simons AW01」这种
+# 精确到系列的答案,但它没有鉴定能力。所以:
+#   - 只允许给品牌「候选名」,由服务层去 brands 表里核对,对不上就丢弃;
+#   - 年份只要区间,不要精确年;
+#   - 证据必须是能在图里指出来的具体视觉特征,不能是「风格很像」。
+# =====================================================
+DEFAULT_PASSPORT_RECOGNIZE_PROMPT = """你是「Avant Regard」数字档案的服装识别助手。
+用户上传了一件单品的照片,要为它建立档案。你的任务是两步:
+
+第一步 · 有效性检查
+判断图片是否是「可入档的服装 / 时尚单品」。以下情况一律判为不通过:
+  - 宠物、风景、food、人像自拍而看不清衣服
+  - 纯文字截图、表情包、屏幕截图
+  - 完全看不出是什么的模糊图
+穿在人身上的衣服算通过,只要单品本身看得清。
+
+第二步 · 归因推测(仅在第一步通过时做)
+基于可见的视觉特征推测它可能属于哪个品牌、哪个年代。
+
+严格约束:
+1. 你没有鉴定能力,给出的是「候选」不是结论。宁可少给也不要编。
+2. brand_guesses 最多 3 个,按可能性从高到低。完全看不出就给空数组,
+   绝对不要为了凑数塞一个知名品牌。
+3. year_range 给区间(如 [1998, 2004]),不要给精确到年的答案。
+   看不出年代就给 null。
+4. evidence 必须是图里能指出来的具体物证:版型、拉链头样式、缝线走向、
+   洗标格式、五金件、印花工艺。禁止写「风格很先锋」这类无法证伪的话。
+5. confidence 是你对 brand_guesses[0] 的信心,0 到 1 的小数,按这个标尺给:
+     - 0.8 以上: 你认得出这件单品的确切款式,能说出它是哪一季的哪个 look
+     - 0.5-0.8: 有明确的品牌标识(logo、专属五金、特征性洗标)支撑
+     - 0.3-0.5: 只是版型与工艺像这个品牌的风格
+     - 0.3 以下: 基本靠猜
+   「看起来像某个品牌的风格」最多只能给到 0.5。绝大多数非经典款都应该
+   落在 0.5 以下,给高分而判断错会直接误导用户,低分转人工反而是对的。
+
+必须返回严格 JSON,不要代码块标记:
+{
+  "is_fashion_item": true,
+  "reject_reason": null,
+  "category": "outerwear",
+  "category_zh": "外套",
+  "brand_guesses": ["Raf Simons", "Helmut Lang"],
+  "year_range": [1998, 2004],
+  "evidence": "双头拉链 + 袖口魔术贴,肩线为落肩工装剪裁",
+  "visual_summary": "黑色尼龙飞行员夹克,左袖有贴布",
+  "confidence": 0.42
+}
+不通过时 is_fashion_item 为 false,reject_reason 写清看到的是什么,
+其余字段给 null 或空数组。
+"""
+
+
+# =====================================================
+# 数字护照 · 参照图比对 (5.2 第二轮)
+#
+# 输入是「1 张用户图 + N 张参照图」,要模型逐张判断是否同款/同系列,
+# 产出真实的「N 张中 M 张一致」。
+#
+# 注意:这一轮当前处于休眠状态 —— show_images 表还是空的,没有参照图
+# 可送。等秀场图导入后自动生效,prompt 先备好。
+# =====================================================
+DEFAULT_PASSPORT_COMPARE_PROMPT = """你是服装比对助手。
+第 1 张图是用户的单品照,之后的图是某个系列的参照图(按顺序编号 1..N)。
+
+逐张判断每张参照图与用户单品是否为同款或同系列产出。
+判断依据只能是可见的结构性特征:版型轮廓、分割线、口袋位置、五金件、
+领型、袖型、面料肌理。颜色不同但版型一致也算匹配(同款不同配色)。
+
+严格约束:
+1. matched 里只放你确实认为匹配的编号,宁缺毋滥。
+2. evidence 要写出具体是哪个部位让你做出判断。
+3. 不要因为都是同一个品牌风格就判匹配,必须有结构性证据。
+
+必须返回严格 JSON:
+{"matched": [1, 3, 4], "evidence": "拉链头样式与袖口收口方式一致", "confidence": 0.6}
+"""
+
+
 _DEFAULTS_BY_KEY: Dict[str, str] = {
     PROMPT_KEY_QA_SYSTEM: DEFAULT_QA_SYSTEM_PROMPT,
     PROMPT_KEY_IMAGE_BRIEF_SYSTEM: DEFAULT_IMAGE_BRIEF_SYSTEM_PROMPT,
+    PROMPT_KEY_PASSPORT_RECOGNIZE: DEFAULT_PASSPORT_RECOGNIZE_PROMPT,
+    PROMPT_KEY_PASSPORT_COMPARE: DEFAULT_PASSPORT_COMPARE_PROMPT,
 }
 
 
@@ -248,6 +343,60 @@ def build_image_messages(
         get_prompt(PROMPT_KEY_IMAGE_BRIEF_SYSTEM),
         build_image_user_prompt(image_ctx, community_pool),
     )
+
+
+# =====================================================
+# 数字护照 · 识别 / 比对
+# =====================================================
+def build_passport_recognize_messages(
+    *, photo_count: int, user_hint: Optional[str] = None
+) -> Tuple[str, str]:
+    parts = [f"【图片数】 {photo_count}"]
+    hint = (user_hint or "").strip()
+    if hint:
+        # 用户自己写的名称/备注。作为线索给模型,但 system 里的反虚构约束优先,
+        # 用户写「Raf Simons」不代表模型就该无条件认同。
+        parts.append(f"【用户填写的线索】 {hint}")
+        parts.append("用户线索仅供参考,若与你从图中看到的特征矛盾,以图为准。")
+    parts.append("\n请按 system 约束输出严格 JSON。")
+    return get_prompt(PROMPT_KEY_PASSPORT_RECOGNIZE), "\n".join(parts)
+
+
+def build_passport_compare_messages(
+    *, brand_name: str, season: str, ref_count: int
+) -> Tuple[str, str]:
+    user = (
+        f"【参照系列】 {brand_name} {season}\n"
+        f"【参照图数量】 {ref_count} (编号 1..{ref_count})\n\n"
+        "请逐张比对后输出严格 JSON。"
+    )
+    return get_prompt(PROMPT_KEY_PASSPORT_COMPARE), user
+
+
+def parse_json_output(content: str) -> Dict[str, Any]:
+    """
+    护照链路的通用 JSON 解析。
+
+    与 parse_llm_output 的区别:发帖那条链路解析失败还能把原文当正文兜底,
+    归因不行 —— 拿不到结构化字段就没有候选可展示,必须让上层知道失败,
+    所以这里解析不出来直接返回空 dict 由服务层判定 error。
+    """
+    text = (content or "").strip()
+    if not text:
+        return {}
+    try:
+        data = json.loads(text)
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        pass
+    m = _JSON_BLOCK.search(text)
+    if m:
+        try:
+            data = json.loads(m.group(0))
+            return data if isinstance(data, dict) else {}
+        except Exception:
+            pass
+    return {}
 
 
 # =====================================================

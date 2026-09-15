@@ -96,6 +96,9 @@ class ArchiveService:
             source=row.get("source", "order"),
             storageLocation=row.get("storage_location"),
             isCurrentlyOwned=row.get("is_currently_owned", True),
+            brandId=row.get("brand_id"),
+            releaseYear=row.get("release_year"),
+            validityStatus=row.get("validity_status", "passed"),
             createdAt=row.get("created_at"),
             updatedAt=row.get("updated_at"),
         )
@@ -413,8 +416,20 @@ class ArchiveService:
     # ------------------------------------------------------------------
 
     def manual_create(
-        self, user_id: int, body: ArchiveItemManualCreate
+        self,
+        user_id: int,
+        body: ArchiveItemManualCreate,
+        *,
+        validity_status: str = "manual_review",
     ) -> ArchiveItem:
+        """
+        独立上传一条档案。
+
+        validity_status 只能由调用方（服务端）给，不从 body 里读 —— 它记录的是
+        「这张图过没过 5.3 有效性检查」。默认 manual_review 是有意为之：走到这个
+        方法而没有显式传值，就说明这条记录没经过 AI 闸门，只能先进人工队列。
+        真正跑过闸门的护照链路（attribution_service.confirm）会显式传入结论。
+        """
         payload = {
             "user_id": user_id,
             "title": body.title,
@@ -431,6 +446,9 @@ class ArchiveService:
             "storage_location": body.storageLocation,
             "source": "manual",
             "is_currently_owned": True,
+            "brand_id": body.brandId,
+            "release_year": body.releaseYear,
+            "validity_status": validity_status,
         }
         res = self.db.table("user_archive_items").insert(payload).execute()
         item = self._format(res.data[0])

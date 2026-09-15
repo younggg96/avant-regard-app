@@ -1001,3 +1001,57 @@ export const adminOrdersApi = {
   refund: (orderId: number, reason?: string) =>
     apiClient.post<AdminOrder>(`/api/admin/orders/${orderId}/refund`, { reason }),
 };
+
+// ─── 数字护照 · 档案人工审核 (5.3) ────────────────────────────────────────────
+
+/** 进入待审队列的原因，由后端算好，前端只负责展示对应文案。 */
+export type ArchiveReviewReason =
+  | "PENDING_BRAND"    // 品牌还在新品牌审核流程里，brand_id 尚未归一
+  | "LOW_CONFIDENCE"   // 归因跑过但 AI 自己没把握
+  | "SKIPPED_AI";      // AI 不可用时用户手填，这张图没过有效性检查
+
+export interface ArchiveReviewItem {
+  id: number;
+  userId: number;
+  username: string;
+  title: string | null;
+  photos: string[];
+  brandId: number | null;
+  brandName: string | null;
+  releaseYear: number | null;
+  showId: string | null;
+  validityStatus: string;
+  createdAt: string;
+  reason: ArchiveReviewReason;
+  /** AI 对首选品牌的置信度；跳过识别的条目为 null。 */
+  aiConfidence: number | null;
+  aiBrands: string[];
+  userAction: string | null;
+  /** AI 建议与用户最终选择的差异字段。 */
+  divergence: Record<string, { ai: unknown; user: unknown }>;
+  reviewNote: string | null;
+  reviewedAt: string | null;
+}
+
+export interface ArchiveReviewListResponse {
+  items: ArchiveReviewItem[];
+  total: number;
+}
+
+export const archiveReviewApi = {
+  list: (status = "manual_review", page = 1, pageSize = 20) =>
+    apiClient.get<ArchiveReviewListResponse>("/api/admin/archive-review", {
+      status,
+      page,
+      pageSize,
+    }),
+
+  count: () =>
+    apiClient.get<{ pending: number }>("/api/admin/archive-review/count"),
+
+  review: (itemId: number, decision: "passed" | "rejected", note?: string) =>
+    apiClient.post<{ id: number; status: string; backfilledBrand: string | null }>(
+      `/api/admin/archive-review/${itemId}`,
+      { decision, note },
+    ),
+};

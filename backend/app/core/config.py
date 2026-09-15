@@ -94,6 +94,44 @@ class Settings(BaseSettings):
     AI_DAILY_GENERATE_LIMIT: int = 10
     AI_DAILY_REGEN_LIMIT: int = 3                # 需求硬规定: 重新生成 <= 3 次/天
 
+    # =====================================================
+    # 三视图生成 (OpenAI gpt-image)
+    # =====================================================
+    # 用户上传一张单品照,调 images.edit 生成正 / 侧 / 背三张棚拍图,
+    # 用于数字护照。走 OpenAI 官方图像模型,与上面的 DeepSeek/Qwen 无关。
+    #
+    # OPENAI_BASE_URL 留出来是因为国内直连 api.openai.com 不通,
+    # CN 环境需要指向反代网关。
+    OPENAI_API_KEY: str = ""
+    OPENAI_BASE_URL: str = "https://api.openai.com/v1"
+    OPENAI_IMAGE_MODEL: str = "gpt-image-2"
+    OPENAI_IMAGE_SIZE: str = "1024x1024"
+    # 单张图实测 ~20s,三张并发跑;超时给足,否则前端拿不到结果白花钱。
+    OPENAI_IMAGE_TIMEOUT: int = 180
+    # 送进 images.edit 前先把源图压到这个长边。原图常有 2560px+/8MB,
+    # 模型内部一样会缩,先压能省上行带宽和几秒延迟。
+    THREE_VIEW_SOURCE_MAX_EDGE: int = 1536
+    # 每用户每天可生成几组三视图 (一组 = 三张图 = 三次计费)。
+    THREE_VIEW_DAILY_LIMIT: int = 5
+
+    # =====================================================
+    # 数字护照 · AI 归因 (5.2 / 5.3)
+    # =====================================================
+    # 视觉识别走 Qwen-VL (复用 QWEN_API_KEY / QWEN_VL_MODEL),不另配 key。
+    # 一次归因 = 1 次识别调用 + 最多 ATTRIBUTION_MAX_CANDIDATES 次参照图比对。
+    ATTRIBUTION_DAILY_LIMIT: int = 20
+    # 展示给用户的候选上限。多了用户挑不动,也没必要为长尾候选多花调用。
+    ATTRIBUTION_MAX_CANDIDATES: int = 3
+    # 每个候选最多带几张参照图进比对。call_vision 硬上限 9 张图,
+    # 其中 1 张是用户原图,所以参照图最多 8 张。
+    ATTRIBUTION_MAX_REFS_PER_CANDIDATE: int = 8
+    # 低于这个置信度就标 manual_review,进后台人工队列。
+    ATTRIBUTION_REVIEW_CONFIDENCE: float = 0.35
+    # /validate 的识别结果可被后续 /attribute 复用多久(分钟)。
+    # 覆盖「检查完图 → 填一会儿表单 → 提交识别」这段时间即可,不宜太长:
+    # prompt 改版后旧结果就过时了。
+    ATTRIBUTION_REUSE_TTL_MIN: int = 30
+
     # 图片内容安全 (阿里云绿网 Green-CIP)
     # 未配置时服务层会拒绝 IMAGE_BRIEF 模式 (status='blocked'),
     # 不做静默降级,避免违规图直接喂给 LLM 与发布。

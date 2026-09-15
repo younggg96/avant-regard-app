@@ -20,6 +20,7 @@ import { useDiscoverTabStore } from "../../store/discoverTabStore";
 import { useMainBottomTabStore } from "../../store/mainBottomTabStore";
 import { useAuthStore } from "../../store/authStore";
 import { useNotificationStore } from "../../store/notificationStore";
+import { useChatStore } from "../../store/chatStore";
 import {
   TabType,
   TopTab,
@@ -205,13 +206,15 @@ const DiscoverScreen: React.FC = () => {
   const skeletonColor = isDark ? "#1F1F1F" : "#e5e5e5";
 
   const user = useAuthStore((s) => s.user);
-  // 铃铛是「互动通知」，不含私信未读；底部「消息」Tab 才合计聊天 + 通知。
-  const headerNotifUnread = useNotificationStore(
+  // 铃铛合计「互动通知 + 私信未读」（与底部「消息」Tab 口径一致）。
+  const notifUnread = useNotificationStore(
     (s) =>
       s.notifications.filter(
         (n) => !n.isRead && n.category == null && !isChatNotification(n)
       ).length
   );
+  const chatUnread = useChatStore((s) => s.totalUnread);
+  const headerNotifUnread = notifUnread + chatUnread;
 
   // 交易系统总开关：底部「消息」跳转是否带「交易」子 Tab（顶部不再有交易 Tab）
   const tradingEnabled = useTradingEnabled();

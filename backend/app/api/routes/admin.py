@@ -10,6 +10,7 @@ from app.services.notification_service import notification_service
 from app.services.moderation_service import moderation_service
 from app.services.maintenance_service import maintenance_service
 from app.services.feature_flags_service import feature_flags_service
+from app.services.passport_review_service import passport_review_service
 from app.api.deps import get_current_admin_user
 from app.core.response import success
 
@@ -1189,3 +1190,65 @@ def delete_style(
     if not ok:
         raise HTTPException(status_code=404, detail="风格不存在")
     return success(None)
+
+
+# ==================== 数字护照 · 档案人工审核 (5.3) ====================
+
+class ArchiveReviewRequest(BaseModel):
+    """审核决定。passed 放行成为有效护照;rejected 驳回但保留用户数据。"""
+    decision: str = Field(..., pattern="^(passed|rejected)$")
+    note: Optional[str] = Field(None, max_length=500)
+
+
+@router.get("/archive-review")
+def list_archive_review_queue(
+    status: str = Query("manual_review"),
+    page: int = Query(1, ge=1),
+    pageSize: int = Query(20, ge=1, le=100),
+    current_user_id: int = Depends(get_current_admin_user),
+):
+    """
+    待人工复核的档案条目。
+
+    每条会带上进队列的原因(新品牌待审 / AI 置信度低 / 跳过了 AI 识别)、
+    AI 当初给的候选品牌、以及用户最终选择与 AI 建议的差异,
+    审核员不用再去翻归因表。
+    """
+    result = passport_review_service.list_queue(
+        status=status, page=page, page_size=pageSize
+    )
+    return success(result)
+
+
+@router.get("/archive-review/count")
+def get_archive_review_count(
+    current_user_id: int = Depends(get_current_admin_user),
+):
+    """待审数量，用于导航角标。"""
+    return success({"pending": passport_review_service.pending_count()})
+
+
+@router.post("/archive-review/{item_id}")
+def review_archive_item(
+    item_id: int,
+    request: ArchiveReviewRequest,
+    current_user_id: int = Depends(get_current_admin_user),
+):
+    """
+    放行或驳回一条档案。
+
+    放行时如果这条还挂着裸品牌名(当初提交的新品牌还在审核中),会尝试把它
+    归一到 brands 表并补上 brand_id。
+    """
+    try:
+        result = passport_review_service.review(
+            item_id,
+            decision=request.decision,
+            reviewer_id=current_user_id,
+            note=request.note,
+        )
+    except LookupError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return success(result)

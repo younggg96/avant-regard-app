@@ -88,6 +88,7 @@ from app.api.routes.level import (
 )
 from app.api.routes.ai_post import router as ai_post_router
 from app.api.routes.ai_prompts_admin import router as ai_prompts_admin_router
+from app.api.routes.passport import router as passport_router
 from app.api.routes.events import router as events_router
 
 # 导入缓存服务
@@ -366,6 +367,7 @@ app.include_router(admin_level_router, prefix="/api")
 app.include_router(admin_lottery_router, prefix="/api")
 app.include_router(ai_post_router, prefix="/api")
 app.include_router(ai_prompts_admin_router, prefix="/api")
+app.include_router(passport_router, prefix="/api")
 app.include_router(events_router, prefix="/api")
 
 

@@ -28,6 +28,8 @@ const ADMIN_NAV: AdminNavItem[] = [
   { href: "/admin/brands/images",  labelKey: "admin.brandImages",      groupKey: "admin.navGroupCommunity" },
   { href: "/admin/styles",         labelKey: "admin.styles",           groupKey: "admin.navGroupCommunity" },
 
+  { href: "/admin/archive-review", labelKey: "admin.archiveReview.menu", groupKey: "admin.navGroupCommunity" },
+
   { href: "/admin/shows",          labelKey: "admin.shows",            groupKey: "admin.navGroupShows" },
   { href: "/admin/shows/review",   labelKey: "admin.showReview",       groupKey: "admin.navGroupShows" },
   { href: "/admin/stores",         labelKey: "admin.stores",           groupKey: "admin.navGroupShows" },

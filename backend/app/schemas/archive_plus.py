@@ -33,6 +33,11 @@ class ArchiveItem(BaseModel):
     source: str = "order"          # 'order' / 'manual' / 'imported'
     storageLocation: Optional[str] = None
     isCurrentlyOwned: bool = True
+    # 数字护照 5.2 / 5.3：品牌归一到 brands 表、发布年份、有效性检查结论。
+    # brandId 为空而 brandName 有值 = 新品牌还在后台审核中。
+    brandId: Optional[int] = None
+    releaseYear: Optional[int] = None
+    validityStatus: str = "passed"   # passed / warned / manual_review
     createdAt: Optional[str] = None
     updatedAt: Optional[str] = None
 
@@ -51,6 +56,12 @@ class ArchiveItemManualCreate(BaseModel):
     note: Optional[str] = None
     storageLocation: Optional[str] = None
     originalShowId: Optional[str] = None
+    # 数字护照链路写入；老的独立上传入口不传这些，保持默认值即可。
+    brandId: Optional[int] = None
+    releaseYear: Optional[int] = None
+    # 注意：validityStatus 故意不在这里 —— 它是「这张图过没过 5.3 有效性检查」
+    # 的结论，只能由服务端根据实际检查结果写，客户端不能自证清白。
+    # 见 archive_service.manual_create 的 validity_status 参数。
 
 
 # PDF p.22 · MY ARCHIVE 持有记录

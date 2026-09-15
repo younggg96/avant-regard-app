@@ -99,6 +99,41 @@ export const makeTradingFormStyles = (t: AppTheme) =>
       fontFamily: "PlayfairDisplay-Medium",
       color: t.colors.textInverted,
     },
+    // primaryBtn 的描边版，用在「返回上一步」「都不对」这类次要动作上。
+    secondaryBtn: {
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: t.colors.border,
+      paddingHorizontal: 28,
+      paddingVertical: 12,
+      borderRadius: t.borderRadius.sm,
+      alignItems: "center",
+    },
+    secondaryBtnText: {
+      ...t.typography.button,
+      fontSize: 15,
+      fontFamily: "PlayfairDisplay-Medium",
+      color: t.colors.text,
+    },
+    // 长得像 input、但点了会拉起选择面板的行（品牌选择等）。
+    selectRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: t.colors.inputBorder,
+      borderRadius: t.borderRadius.sm,
+      paddingHorizontal: 12,
+      paddingVertical: Platform.OS === "ios" ? 14 : 12,
+      backgroundColor: t.colors.inputBackground,
+    },
+    selectRowValue: {
+      ...t.typography.bodySmall,
+      color: t.colors.text,
+    },
+    selectRowPlaceholder: {
+      ...t.typography.bodySmall,
+      color: t.colors.gray300,
+    },
     defaultRow: {
       flexDirection: "row",
       alignItems: "center",

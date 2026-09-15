@@ -33,6 +33,19 @@ class QuotaCheckResult:
     reason: Optional[str] = None     # "DAILY_LIMIT" | "REGEN_LIMIT" | None
 
 
+@dataclass
+class ThreeViewQuotaInfo:
+    used: int
+    limit: int
+
+
+@dataclass
+class ThreeViewQuotaCheck:
+    allowed: bool
+    info: ThreeViewQuotaInfo
+    reason: Optional[str] = None     # "DAILY_LIMIT" | None
+
+
 class QuotaService:
     def __init__(self):
         self.db = get_supabase_admin()
@@ -62,14 +75,17 @@ class QuotaService:
         # 日切判断
         reset_at = row.get("daily_reset_at")
         if reset_at and str(reset_at) < str(date.today()):
-            row["daily_count"] = 0
-            row["daily_regen_count"] = 0
-            row["daily_reset_at"] = str(date.today())
-            self.db.table("ai_post_quota").update({
+            reset = {
                 "daily_count": 0,
                 "daily_regen_count": 0,
+                "daily_three_view_count": 0,
+                "daily_attribution_count": 0,
                 "daily_reset_at": str(date.today()),
-            }).eq("user_id", user_id).execute()
+            }
+            row.update(reset)
+            self.db.table("ai_post_quota").update(reset).eq(
+                "user_id", user_id
+            ).execute()
 
         return row
 
@@ -136,6 +152,56 @@ class QuotaService:
                 daily_regen_used=new_regen,
                 daily_regen_limit=settings.AI_DAILY_REGEN_LIMIT,
             ),
+        )
+
+    # -----------------------------------------------------------------
+    # 护照相关配额 (三视图 / 归因,各自独立计数,不与发帖配额互相消耗)
+    #
+    # 都是「先扣后用」:调用失败也不退还,避免拿坏图反复重试刷掉预算。
+    # -----------------------------------------------------------------
+    def _peek_counter(self, user_id: int, column: str, limit: int) -> ThreeViewQuotaInfo:
+        row = self._fetch_or_init(user_id)
+        return ThreeViewQuotaInfo(used=row.get(column, 0) or 0, limit=limit)
+
+    def _consume_counter(
+        self, user_id: int, column: str, limit: int
+    ) -> ThreeViewQuotaCheck:
+        row = self._fetch_or_init(user_id)
+        used = row.get(column, 0) or 0
+
+        if used >= limit:
+            return ThreeViewQuotaCheck(
+                allowed=False,
+                info=ThreeViewQuotaInfo(used=used, limit=limit),
+                reason="DAILY_LIMIT",
+            )
+
+        self.db.table("ai_post_quota").update({column: used + 1}).eq(
+            "user_id", user_id
+        ).execute()
+
+        return ThreeViewQuotaCheck(
+            allowed=True, info=ThreeViewQuotaInfo(used=used + 1, limit=limit)
+        )
+
+    def get_three_view_info(self, user_id: int) -> ThreeViewQuotaInfo:
+        return self._peek_counter(
+            user_id, "daily_three_view_count", settings.THREE_VIEW_DAILY_LIMIT
+        )
+
+    def check_and_consume_three_view(self, user_id: int) -> ThreeViewQuotaCheck:
+        return self._consume_counter(
+            user_id, "daily_three_view_count", settings.THREE_VIEW_DAILY_LIMIT
+        )
+
+    def get_attribution_info(self, user_id: int) -> ThreeViewQuotaInfo:
+        return self._peek_counter(
+            user_id, "daily_attribution_count", settings.ATTRIBUTION_DAILY_LIMIT
+        )
+
+    def check_and_consume_attribution(self, user_id: int) -> ThreeViewQuotaCheck:
+        return self._consume_counter(
+            user_id, "daily_attribution_count", settings.ATTRIBUTION_DAILY_LIMIT
         )
 
 
