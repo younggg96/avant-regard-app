@@ -79,6 +79,32 @@ def main() -> int:
             print(f"  ✗ {label} 未配置")
             missing.append(label)
 
+    # 配置齐不等于打得通。生产在上海腾讯云,直连 api.openai.com 是连接阶段
+    # 挂住 —— 表现为前端"请求超时"而不是任何错误。这一项必须在服务器上跑
+    # 才有意义,本地(能翻墙的机器)永远是绿的。
+    print("\n上游连通性:")
+    if settings.OPENAI_API_KEY:
+        import httpx
+
+        base = settings.OPENAI_BASE_URL.rstrip("/")
+        try:
+            r = httpx.get(
+                f"{base}/models",
+                headers={"Authorization": f"Bearer {settings.OPENAI_API_KEY}"},
+                timeout=httpx.Timeout(15, connect=settings.OPENAI_CONNECT_TIMEOUT),
+            )
+            if r.status_code == 200:
+                print(f"  ✓ 图像服务可达 ({base})")
+            elif r.status_code in (401, 403):
+                print(f"  ✗ {base} 可达但鉴权失败 ({r.status_code}),检查 OPENAI_API_KEY")
+                missing.append("OPENAI_API_KEY 无效")
+            else:
+                print(f"  ! {base} 返回 {r.status_code}")
+        except Exception as e:
+            print(f"  ✗ 连不上 {base}: {type(e).__name__}")
+            print("    国内服务器需把 OPENAI_BASE_URL 指向可达的反代网关")
+            missing.append("OPENAI_BASE_URL 不可达")
+
     print("\n参照库:")
     try:
         brands = db.table("brands").select("id", count="exact").limit(1).execute().count

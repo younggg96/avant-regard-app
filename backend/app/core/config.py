@@ -2,6 +2,9 @@
 应用配置 - 使用 Supabase Auth 认证
 """
 
+import logging
+
+from pydantic import model_validator
 from pydantic_settings import BaseSettings
 from typing import List, Optional
 import json
@@ -106,8 +109,20 @@ class Settings(BaseSettings):
     OPENAI_BASE_URL: str = "https://api.openai.com/v1"
     OPENAI_IMAGE_MODEL: str = "gpt-image-2"
     OPENAI_IMAGE_SIZE: str = "1024x1024"
-    # 单张图实测 ~20s,三张并发跑;超时给足,否则前端拿不到结果白花钱。
-    OPENAI_IMAGE_TIMEOUT: int = 180
+    # 单张图实测 ~20s,三张并发跑;读超时给足,否则前端拿不到结果白花钱。
+    #
+    # 必须低于前端的 120s(passportService.THREE_VIEW_TIMEOUT_MS)。之前是
+    # 180s,比前端还能扛,结果无论后端出什么问题,用户看到的永远是一句
+    # 「请求超时」,真正的原因被吃掉了。
+    OPENAI_IMAGE_TIMEOUT: int = 100
+    # 客户端放弃等待的时间。后端超时必须低于它，见下面的 validator。
+    THREE_VIEW_CLIENT_TIMEOUT: int = 120
+    # 连接超时单列,而且要短。
+    #
+    # 生成慢是正常的(读超时给 100s),但"连不上"不该也等 100s —— 国内机器
+    # 直连 api.openai.com 就是连接阶段挂住,拖满整个超时才报错。分开之后
+    # 这种情况 10s 内就能拿到明确的连接失败。
+    OPENAI_CONNECT_TIMEOUT: int = 10
     # 送进 images.edit 前先把源图压到这个长边。原图常有 2560px+/8MB,
     # 模型内部一样会缩,先压能省上行带宽和几秒延迟。
     THREE_VIEW_SOURCE_MAX_EDGE: int = 1536
@@ -146,6 +161,30 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
+
+    @model_validator(mode="after")
+    def _clamp_image_timeout(self):
+        """
+        后端调图像服务的超时必须低于客户端的等待上限。
+
+        这不是偏好而是硬约束：一旦后端比客户端还能扛，客户端总是先断开，
+        用户看到的永远是一句「请求超时」，后端真正的错误（连不上上游、
+        鉴权失败、模型报错）全被吃掉，线上没法定位。
+
+        之所以在这里夹住而不是只改默认值：各环境的 .env 是独立的，生产那份
+        里写着 180，改代码默认值管不到它。
+        """
+        ceiling = self.THREE_VIEW_CLIENT_TIMEOUT - 20
+        if self.OPENAI_IMAGE_TIMEOUT > ceiling:
+            logging.getLogger(__name__).warning(
+                "OPENAI_IMAGE_TIMEOUT=%ss 超过客户端等待上限 %ss，已夹到 %ss；"
+                "请同步修正 .env",
+                self.OPENAI_IMAGE_TIMEOUT,
+                self.THREE_VIEW_CLIENT_TIMEOUT,
+                ceiling,
+            )
+            self.OPENAI_IMAGE_TIMEOUT = ceiling
+        return self
 
     @property
     def aliyun_green_image_scenes_list(self) -> List[str]:

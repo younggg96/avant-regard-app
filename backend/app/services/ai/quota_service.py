@@ -184,6 +184,27 @@ class QuotaService:
             allowed=True, info=ThreeViewQuotaInfo(used=used + 1, limit=limit)
         )
 
+    def _refund_counter(self, user_id: int, column: str) -> None:
+        """
+        退还一次已扣的配额。
+
+        只用于「请求根本没发出去」的情况(比如连不上上游),此时没有产生任何
+        费用,扣着不放等于白吃用户额度。
+
+        注意这与上面「失败不退还」的默认策略并不矛盾:那条针对的是模型真的
+        跑了但结果不理想 —— 那种要是能退,用户就会拿坏图反复重试刷预算。
+        """
+        row = self._fetch_or_init(user_id)
+        used = row.get(column, 0) or 0
+        if used <= 0:
+            return
+        self.db.table("ai_post_quota").update({column: used - 1}).eq(
+            "user_id", user_id
+        ).execute()
+
+    def refund_three_view(self, user_id: int) -> None:
+        self._refund_counter(user_id, "daily_three_view_count")
+
     def get_three_view_info(self, user_id: int) -> ThreeViewQuotaInfo:
         return self._peek_counter(
             user_id, "daily_three_view_count", settings.THREE_VIEW_DAILY_LIMIT

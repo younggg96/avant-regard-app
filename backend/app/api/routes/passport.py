@@ -40,6 +40,9 @@ _ERROR_STATUS = {
     "BAD_SOURCE": 400,
     "NOT_CONFIGURED": 503,
     "GENERATION_FAILED": 502,
+    # 上游连不上是我方基础设施问题，不是用户输入问题，也不该让前端
+    # 当成"模型失败"引导用户重试 —— 重试同样连不上。
+    "UPSTREAM_UNREACHABLE": 503,
 }
 
 

@@ -27,7 +27,7 @@ from dataclasses import dataclass, field
 from typing import List, Optional
 
 import httpx
-from openai import OpenAI
+from openai import APIConnectionError, OpenAI
 from PIL import Image
 
 from app.core.config import settings
@@ -111,6 +111,9 @@ class GeneratedView:
     url: Optional[str] = None
     error: Optional[str] = None
     tokens_used: int = 0
+    # 请求根本没发出去(连不上上游),区别于"模型跑了但没成"。
+    # 前者没产生费用，配额要退。
+    unreachable: bool = False
 
 
 @dataclass
@@ -161,7 +164,11 @@ class ThreeViewService:
         return OpenAI(
             api_key=settings.OPENAI_API_KEY,
             base_url=settings.OPENAI_BASE_URL,
-            timeout=settings.OPENAI_IMAGE_TIMEOUT,
+            # 连接与读取分开：生成本来就慢（读 100s），但连不上不该也等 100s。
+            timeout=httpx.Timeout(
+                settings.OPENAI_IMAGE_TIMEOUT,
+                connect=settings.OPENAI_CONNECT_TIMEOUT,
+            ),
             max_retries=0,
         )
 
@@ -202,6 +209,15 @@ class ThreeViewService:
                 prompt=spec.prompt,
                 n=1,
                 size=settings.OPENAI_IMAGE_SIZE,
+            )
+        except APIConnectionError as e:
+            # 连不上 base_url。国内机器直连 api.openai.com 就是死在这里，
+            # 报「Connection error.」看不出所以然，这里把地址带上。
+            return GeneratedView(
+                slug=spec.slug,
+                label=spec.label,
+                error=f"无法连接图像服务 {settings.OPENAI_BASE_URL}: {e}",
+                unreachable=True,
             )
         except Exception as e:
             return GeneratedView(slug=spec.slug, label=spec.label, error=f"生成失败: {e}")
@@ -261,6 +277,24 @@ class ThreeViewService:
             logger.warning("[three_view] record failed: %s", e)
 
         if all(v.url is None for v in views):
+            # 全挂在"连不上"上：一次请求都没发出去，没有任何费用，
+            # 把刚才扣的配额还回去，否则用户为一个纯基础设施故障买单。
+            if all(v.unreachable for v in views):
+                try:
+                    quota_service.refund_three_view(user_id)
+                except Exception as e:  # noqa: BLE001
+                    logger.warning("[three_view] quota refund failed: %s", e)
+                # 能定位的细节进日志，不进用户的弹窗：base_url 是内部配置，
+                # 而"去配反代"也不是用户能做的事。
+                logger.error(
+                    "[three_view] upstream unreachable: base_url=%s — "
+                    "国内服务器需把 OPENAI_BASE_URL 指向可达的反代网关",
+                    settings.OPENAI_BASE_URL,
+                )
+                raise ThreeViewError(
+                    "三视图服务暂时不可用，请稍后再试（本次不消耗次数）",
+                    "UPSTREAM_UNREACHABLE",
+                )
             raise ThreeViewError(
                 views[0].error or "三视图全部生成失败", "GENERATION_FAILED"
             )
