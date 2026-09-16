@@ -27,7 +27,12 @@ from dataclasses import dataclass, field
 from typing import List, Optional
 
 import httpx
-from openai import APIConnectionError, OpenAI
+from openai import (
+    APIConnectionError,
+    AuthenticationError,
+    OpenAI,
+    PermissionDeniedError,
+)
 from PIL import Image
 
 from app.core.config import settings
@@ -120,6 +125,9 @@ class GeneratedView:
     # 请求根本没发出去(连不上上游),区别于"模型跑了但没成"。
     # 前者没产生费用，配额要退。
     unreachable: bool = False
+    # 上游拒绝鉴权(key 无效 / 没开通该模型)。同样没花钱，但和"连不上"
+    # 的处置完全不同：重试永远不会好，得去改配置。
+    auth_failed: bool = False
     # 本次花费(micros，币种由 provider 决定)。三个值含义不同，别合并：
     #   0     确认没花钱 —— 请求没发出去，或上游直接拒了
     #   >0    算得出来的花费
@@ -264,6 +272,9 @@ class ThreeViewService:
                 slug=spec.slug,
                 label=spec.label,
                 error=f"生成失败 HTTP {resp.status_code}: {resp.text[:200]}",
+                # 401/403 是配置问题(key 无效、未开通该模型)，不是生成失败。
+                # 上游在鉴权阶段就拒了，没有产生任何费用。
+                auth_failed=resp.status_code in (401, 403),
             )
 
         try:
@@ -368,6 +379,14 @@ class ThreeViewService:
                 error=f"无法连接图像服务 {settings.OPENAI_BASE_URL}: {e}",
                 unreachable=True,
             )
+        except (AuthenticationError, PermissionDeniedError) as e:
+            # key 无效，或该 key 没被批准使用 gpt-image(需要组织实名验证)。
+            return GeneratedView(
+                slug=spec.slug,
+                label=spec.label,
+                error=f"鉴权失败: {e}",
+                auth_failed=True,
+            )
         except Exception as e:
             return GeneratedView(slug=spec.slug, label=spec.label, error=f"生成失败: {e}")
 
@@ -464,20 +483,40 @@ class ThreeViewService:
             logger.warning("[three_view] record failed: %s", e)
 
         if all(v.url is None for v in views):
-            # 全挂在"连不上"上：一次请求都没发出去，没有任何费用，
-            # 把刚才扣的配额还回去，否则用户为一个纯基础设施故障买单。
-            if all(v.unreachable for v in views):
+            endpoint = (
+                settings.OPENAI_BASE_URL
+                if settings.THREE_VIEW_PROVIDER == "openai"
+                else settings.WAN_IMAGE_ENDPOINT
+            )
+
+            # 退配额的判据是「这次没花钱」，而不是某个具体的失败原因。
+            # 之前只认 unreachable，结果 key 失效、上游直接拒了这类同样
+            # 分文未花的情况照样扣次数 —— 用户为我们的配置错误买单。
+            # cost_micros: 0 = 确认没花，None = 花了但定不出价，>0 = 花了。
+            if not any(v.cost_micros != 0 for v in views):
                 try:
                     quota_service.refund_three_view(user_id)
                 except Exception as e:  # noqa: BLE001
                     logger.warning("[three_view] quota refund failed: %s", e)
-                # 能定位的细节进日志，不进用户的弹窗：base_url 是内部配置，
-                # 而"去配反代"也不是用户能做的事。
-                endpoint = (
-                    settings.OPENAI_BASE_URL
-                    if settings.THREE_VIEW_PROVIDER == "openai"
-                    else settings.WAN_IMAGE_ENDPOINT
+
+            # 能定位的细节进日志，不进用户的弹窗：endpoint 和 key 都是
+            # 内部配置，"去换把 key" 也不是用户能做的事。
+            if all(v.auth_failed for v in views):
+                logger.error(
+                    "[three_view] upstream auth rejected: provider=%s endpoint=%s — "
+                    "该环境的 API key 无效或没开通对应模型，检查服务器上的 "
+                    "%s（本地能跑不代表生产的 key 一样）",
+                    settings.THREE_VIEW_PROVIDER,
+                    endpoint,
+                    "OPENAI_API_KEY" if settings.THREE_VIEW_PROVIDER == "openai"
+                    else "QWEN_API_KEY",
                 )
+                raise ThreeViewError(
+                    "三视图服务配置有误，请联系管理员（本次不消耗次数）",
+                    "UPSTREAM_AUTH_FAILED",
+                )
+
+            if all(v.unreachable for v in views):
                 logger.error(
                     "[three_view] upstream unreachable: provider=%s endpoint=%s — "
                     "走 openai 时国内服务器需把 OPENAI_BASE_URL 指向可达的反代网关",
@@ -488,6 +527,7 @@ class ThreeViewService:
                     "三视图服务暂时不可用，请稍后再试（本次不消耗次数）",
                     "UPSTREAM_UNREACHABLE",
                 )
+
             raise ThreeViewError(
                 views[0].error or "三视图全部生成失败", "GENERATION_FAILED"
             )

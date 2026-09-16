@@ -286,6 +286,69 @@ export const makeTradingFormStyles = (t: AppTheme) =>
       alignItems: "center",
       justifyContent: "center",
     },
+    // AI 按钮 + 配额徽章同一行。
+    aiActionRow: { alignItems: "center", gap: 10, flexWrap: "wrap" },
+    // 「今日 1 / 5 次」。用量是花钱的事，得让人点之前就看见。
+    quotaPill: {
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      borderRadius: t.borderRadius.full,
+      backgroundColor: t.colors.surface,
+    },
+    quotaPillOut: { backgroundColor: "transparent" },
+    quotaText: {
+      ...t.typography.caption,
+      fontSize: 12,
+      color: t.colors.gray300,
+    },
+    quotaTextOut: { color: t.colors.error },
+    // 生成要求清单。
+    ruleList: { marginTop: 10, marginBottom: 16, gap: 4 },
+    ruleRow: { alignItems: "flex-start", gap: 6 },
+    ruleDot: {
+      ...t.typography.caption,
+      color: t.colors.gray300,
+      lineHeight: 18,
+    },
+    ruleText: {
+      ...t.typography.caption,
+      color: t.colors.gray300,
+      lineHeight: 18,
+      flex: 1,
+    },
+    // 照片网格上方的分组标签（「实拍照片」/「AI 三视图」）。
+    groupLabel: {
+      fontFamily: "PlayfairDisplay-Medium",
+      fontSize: 11,
+      letterSpacing: 1.6,
+      color: t.colors.gray300,
+      marginBottom: 8,
+    },
+    // AI 生成图单独圈起来的面板。用描边 + 另一层底色把它和实拍区拉开距离，
+    // 光靠图上那枚角标不足以让人一眼分清来源。
+    aiPanel: {
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: t.colors.border,
+      borderRadius: t.borderRadius.sm,
+      backgroundColor: t.colors.card,
+      padding: 12,
+      marginBottom: 16,
+    },
+    aiPanelHead: {
+      alignItems: "center",
+      marginBottom: 10,
+    },
+    aiPanelTitle: {
+      fontFamily: "PlayfairDisplay-Medium",
+      fontSize: 11,
+      letterSpacing: 1.6,
+      color: t.colors.text,
+    },
+    aiPanelHint: {
+      ...t.typography.caption,
+      color: t.colors.gray300,
+      marginTop: 10,
+    },
     photoAdd: {
       width: 72,
       height: 72,

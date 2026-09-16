@@ -57,7 +57,8 @@
     "viewAll": "查看全部",
     "previousPage": "上一页",
     "nextPage": "下一页",
-    "wan": "万"
+    "wan": "万",
+    "preview": "查看大图"
   },
   "tabs": {
     "home": "首页",
@@ -3814,7 +3815,8 @@
       "successCta": "去完善",
       "confirm": "确定",
       "addHoldingFailed": "添加失败",
-      "aiPhotoNote": "标有「AI 生成」的图由模型根据实拍推测，不是实物照片，仅供参考廓形。"
+      "aiPhotoNote": "标有「AI 生成」的图由模型根据实拍推测，不是实物照片，仅供参考廓形。",
+      "aiPhotosLabel": "AI 三视图"
     },
     "uploadArchive": {
       "headerTitle": "上传新典藏",
@@ -3844,7 +3846,6 @@
       "threeViewBtn": "AI 生成三视图",
       "threeViewGenerating": "正在生成，约 20-40 秒…",
       "threeViewNeedPhoto": "请先上传一张单品照",
-      "threeViewHint": "以第一张图为准生成正 / 侧 / 背三视图。侧面与背面由 AI 推测，不是实物照片。",
       "stepCandidates": "AI 识别结果",
       "stepConfirm": "确认入库",
       "recognizeBtn": "AI 识别",
@@ -3866,7 +3867,16 @@
       "yearLabel": "年份",
       "threeViewPartial": "有 {{count}} 张视图生成失败，其余已加入",
       "threeViewFailed": "三视图生成失败",
-      "threeViewQuota": "今日剩余 {{remaining}} 次"
+      "realPhotosLabel": "实拍照片",
+      "aiPhotosLabel": "AI 三视图",
+      "aiPhotosHint": "侧面与背面由 AI 根据第一张图推测，不是实物照片。入库后会在档案里标注来源。",
+      "threeViewQuotaUsed": "今日 {{used}} / {{limit}} 次",
+      "threeViewQuotaOut": "今日次数已用完",
+      "threeViewRuleSource": "以「实拍照片」里的第一张为源，生成正 / 侧 / 背 3 张。",
+      "threeViewRuleShoot": "源图请单品正面拍全、尽量占满画面、背景干净，出图才准。",
+      "threeViewRuleCost": "每生成一组算 1 次，每天 {{limit}} 次，次日恢复。",
+      "threeViewRuleCostUnknown": "每生成一组算 1 次，每天有次数上限，次日恢复。",
+      "threeViewRuleAi": "侧面与背面是 AI 根据正面推测的，不是实物照片，会在档案里标注来源。"
     },
     "archiveEntry": {
       "title": "MY ARCHIVE",

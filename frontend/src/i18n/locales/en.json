@@ -57,7 +57,8 @@
     "viewAll": "View All",
     "previousPage": "Previous",
     "nextPage": "Next",
-    "wan": "万"
+    "wan": "万",
+    "preview": "View full size"
   },
   "tabs": {
     "home": "Home",
@@ -3814,7 +3815,8 @@
       "successCta": "Finalize",
       "confirm": "OK",
       "addHoldingFailed": "Add entry failed",
-      "aiPhotoNote": "Images marked “AI” are model-inferred from the real photo, not photographs of the item. Treat them as silhouette references only."
+      "aiPhotoNote": "Images marked “AI” are model-inferred from the real photo, not photographs of the item. Treat them as silhouette references only.",
+      "aiPhotosLabel": "AI three views"
     },
     "uploadArchive": {
       "headerTitle": "New Archive Entry",
@@ -3844,7 +3846,6 @@
       "threeViewBtn": "Generate 3 views with AI",
       "threeViewGenerating": "Generating, about 20-40s…",
       "threeViewNeedPhoto": "Add a photo of the item first",
-      "threeViewHint": "Front / side / back views are generated from your first photo. Side and back are AI inferences, not real photographs.",
       "stepCandidates": "AI results",
       "stepConfirm": "Confirm",
       "recognizeBtn": "Identify with AI",
@@ -3866,7 +3867,16 @@
       "yearLabel": "Year",
       "threeViewPartial": "{{count}} view(s) failed, the rest were added",
       "threeViewFailed": "Could not generate the three views",
-      "threeViewQuota": "{{remaining}} left today"
+      "realPhotosLabel": "Your photos",
+      "aiPhotosLabel": "AI three views",
+      "aiPhotosHint": "Side and back are AI inferences from your first photo, not real photographs. The archive records their origin.",
+      "threeViewQuotaUsed": "{{used}} / {{limit}} today",
+      "threeViewQuotaOut": "Daily limit reached",
+      "threeViewRuleSource": "Uses the first image under \"Your photos\" to generate front, side and back.",
+      "threeViewRuleShoot": "Shoot the piece front-on, filling the frame, on a clean background for the best result.",
+      "threeViewRuleCost": "Each set counts as one of {{limit}} daily generations, reset the next day.",
+      "threeViewRuleCostUnknown": "Each set counts as one daily generation, reset the next day.",
+      "threeViewRuleAi": "Side and back are AI inferences from the front, not real photographs; the archive records their origin."
     },
     "archiveEntry": {
       "title": "MY ARCHIVE",

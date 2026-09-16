@@ -17,7 +17,7 @@
  * 后点一下就绕过去了，5.3 的硬闸门等于没做。走退路入档的条目会被后端标成
  * manual_review 进人工队列，不冒充「已通过检查」。
  */
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -42,7 +42,9 @@ import {
 } from "../../components/ui";
 import ScreenHeader from "../../components/ScreenHeader";
 import BrandSearchSheet from "../../components/BrandSearchSheet";
+import ImagePreviewModal from "../../components/ImagePreviewModal";
 import AttributionCandidateCard from "../../components/trading/AttributionCandidateCard";
+import AiThreeViewButton from "../../components/trading/AiThreeViewButton";
 import {
   makeTradingFormStyles,
   TradingFormField,
@@ -57,8 +59,10 @@ import {
   attributeItem,
   confirmPassport,
   generateThreeView,
+  getThreeViewQuota,
   type AttributionCandidate,
   type AttributionResult,
+  type ThreeViewQuota,
   type UserAction,
 } from "../../services/passportService";
 import type { Brand } from "../../services/brandService";
@@ -76,6 +80,19 @@ const UploadArchiveItemScreen: React.FC = () => {
   // 本次会话里哪些图是 AI 三视图。纯展示用 —— 入库时服务端会反查生成记录
   // 重新判定一遍，不信客户端这份。
   const [aiPhotos, setAiPhotos] = useState<string[]>([]);
+
+  // 点图放大。ai 决定全屏里要不要挂「这是 AI 推测」的说明 —— 放大看细节
+  // 恰恰是最容易把生成图当实物照的时刻。
+  const [preview, setPreview] = useState<{
+    urls: string[];
+    index: number;
+    ai: boolean;
+  } | null>(null);
+
+  // 今日三视图用量。null = 还没拉到，此时不显示配额，也不据此禁用按钮
+  // （拉取失败就让用户去点，由后端 429 兜底，别凭一次网络抖动把功能锁死）。
+  const [quota, setQuota] = useState<ThreeViewQuota | null>(null);
+  const quotaExhausted = quota !== null && quota.used >= quota.limit;
 
   // AI 归因结果。attribution 为 null 表示走的是「跳过识别」的退路。
   const [attribution, setAttribution] = useState<AttributionResult | null>(null);
@@ -141,8 +158,24 @@ const UploadArchiveItemScreen: React.FC = () => {
     }
   };
 
-  const removePhoto = (idx: number) =>
+  const removePhoto = (idx: number) => {
+    const gone = photos[idx];
     setPhotos((prev) => prev.filter((_, i) => i !== idx));
+    // aiPhotos 也要跟着清，否则删掉一张 AI 图后它还留在标记表里；万一之后
+    // 又上传到同一个 URL，那张实拍就会被错标成 AI 生成。
+    setAiPhotos((prev) => prev.filter((u) => u !== gone));
+  };
+
+  /** 点缩略图放大。传进来的是「同一分区」的图，滑动不会串到另一组去。 */
+  const openPreview = (urls: string[], index: number) =>
+    setPreview({ urls, index, ai: isAiPhoto(urls[index], aiPhotos) });
+
+  // 三视图是按次计费的，用户有权在点之前就知道还剩几次。
+  // 进页面拉一次；生成成功后直接用响应里的数（省一趟请求），失败则重拉
+  // —— 连不上 / 鉴权失败这类后端会把次数退回来，不重拉会显示成已扣。
+  useEffect(() => {
+    getThreeViewQuota().then(setQuota).catch(() => setQuota(null));
+  }, []);
 
   /**
    * 以第一张图为源生成正 / 侧 / 背三视图，成功的追加进图片网格。
@@ -161,6 +194,7 @@ const UploadArchiveItemScreen: React.FC = () => {
         .filter((u): u is string => Boolean(u));
       setPhotos((prev) => [...prev, ...urls].slice(0, 9));
       setAiPhotos((prev) => [...prev, ...urls]);
+      setQuota({ used: result.quotaUsed, limit: result.quotaLimit });
 
       const failed = result.views.length - urls.length;
       if (failed > 0) {
@@ -170,6 +204,9 @@ const UploadArchiveItemScreen: React.FC = () => {
       }
     } catch (e: any) {
       Alert.show(e?.message ?? t("trading.uploadArchive.threeViewFailed"));
+      // 失败分两种：真扣了次数（模型跑了但没成）和退回了次数（连不上 /
+      // key 失效）。前端分不出来，也不该猜，重新问一次后端。
+      getThreeViewQuota().then(setQuota).catch(() => {});
     } finally {
       setGeneratingViews(false);
     }
@@ -346,78 +383,158 @@ const UploadArchiveItemScreen: React.FC = () => {
   // ------------------------------------------------------------------
   // 渲染
   // ------------------------------------------------------------------
-  const renderPhotosStep = () => (
-    <>
-      <RNText style={styles.mutedText}>
-        {t("trading.uploadArchive.privacyHint")}
-      </RNText>
-
-      <View style={styles.photoGrid}>
-        {photos.map((uri, idx) => (
-          <View key={uri + idx} style={styles.photoWrap}>
-            <RNImage source={{ uri }} style={styles.photoThumb} />
-            {isAiPhoto(uri, aiPhotos) && <AiPhotoBadge size="sm" />}
-            <Pressable
-              style={styles.photoRemove}
-              onPress={() => removePhoto(idx)}
-              accessibilityRole="button"
-              accessibilityLabel={t("common.delete")}
-            >
-              <Ionicons name="close" size={14} color={theme.colors.textInverted} />
-            </Pressable>
-          </View>
-        ))}
-        {photos.length < 9 ? (
-          <Pressable style={styles.photoAdd} onPress={pickImage}>
-            {uploading ? (
-              <ActivityIndicator color={theme.colors.text} />
-            ) : (
-              <Ionicons name="add" size={28} color={theme.colors.gray300} />
-            )}
-          </Pressable>
-        ) : null}
-      </View>
-
+  /**
+   * 一张缩略图。AI 图和实拍图长得一样、行为也一样，只有角标和所属分区不同，
+   * 所以共用这一个渲染，别在两处各写一遍。
+   *
+   * idx 必须是它在 photos 里的真实下标 —— 分区展示只是视觉上的拆分，删除
+   * 仍然作用在原数组上，传过滤后的下标会删错图。
+   */
+  const renderThumb = (uri: string, idx: number, group: string[]) => (
+    <View key={uri + idx} style={styles.photoWrap}>
       <Pressable
-        style={[
-          styles.primaryBtn,
-          { alignSelf: "flex-start", marginBottom: 8 },
-          (generatingViews || photos.length === 0) && styles.primaryBtnDisabled,
-        ]}
-        onPress={generateViews}
-        disabled={generatingViews || photos.length === 0}
+        onPress={() => openPreview(group, group.indexOf(uri))}
+        accessibilityRole="imagebutton"
+        accessibilityLabel={t("common.preview")}
       >
-        {generatingViews ? (
-          <HStack space="sm" style={{ alignItems: "center" }}>
-            <ActivityIndicator size="small" color={theme.colors.textInverted} />
-            <RNText style={styles.primaryBtnText}>
-              {t("trading.uploadArchive.threeViewGenerating")}
-            </RNText>
-          </HStack>
-        ) : (
-          <RNText style={styles.primaryBtnText}>
-            {t("trading.uploadArchive.threeViewBtn")}
-          </RNText>
-        )}
+        <RNImage source={{ uri }} style={styles.photoThumb} />
       </Pressable>
-
-      <RNText style={[styles.mutedText, { marginBottom: 16 }]}>
-        {t("trading.uploadArchive.threeViewHint")}
-      </RNText>
-
-      <TradingFormField label={t("trading.uploadArchive.titleLabel")}>
-        <TradingFormInput
-          value={title}
-          onChangeText={setTitle}
-          placeholder={t("trading.uploadArchive.titlePlaceholder")}
-        />
-      </TradingFormField>
-
-      <RNText style={styles.mutedText}>
-        {t("trading.uploadArchive.recognizeHint")}
-      </RNText>
-    </>
+      {isAiPhoto(uri, aiPhotos) && <AiPhotoBadge size="sm" />}
+      <Pressable
+        style={styles.photoRemove}
+        onPress={() => removePhoto(idx)}
+        accessibilityRole="button"
+        accessibilityLabel={t("common.delete")}
+      >
+        <Ionicons name="close" size={14} color={theme.colors.textInverted} />
+      </Pressable>
+    </View>
   );
+
+  const renderPhotosStep = () => {
+    // 分区展示，但底层始终是同一个 photos 数组（第一张仍是封面、仍是三视图
+    // 的取材源）。这里只按来源把它劈成两拨，并记住每张的真实下标。
+    const shot = photos
+      .map((uri, idx) => ({ uri, idx }))
+      .filter(({ uri }) => !isAiPhoto(uri, aiPhotos));
+    const generated = photos
+      .map((uri, idx) => ({ uri, idx }))
+      .filter(({ uri }) => isAiPhoto(uri, aiPhotos));
+    const shotUrls = shot.map((e) => e.uri);
+    const generatedUrls = generated.map((e) => e.uri);
+
+    return (
+      <>
+        <RNText style={styles.mutedText}>
+          {t("trading.uploadArchive.privacyHint")}
+        </RNText>
+
+        <RNText style={styles.groupLabel}>
+          {t("trading.uploadArchive.realPhotosLabel")}
+        </RNText>
+        <View style={styles.photoGrid}>
+          {shot.map(({ uri, idx }) => renderThumb(uri, idx, shotUrls))}
+          {photos.length < 9 ? (
+            <Pressable style={styles.photoAdd} onPress={pickImage}>
+              {uploading ? (
+                <ActivityIndicator color={theme.colors.text} />
+              ) : (
+                <Ionicons name="add" size={28} color={theme.colors.gray300} />
+              )}
+            </Pressable>
+          ) : null}
+        </View>
+
+        {/* AI 图单独圈进一个面板，而不是和实拍图混在同一片网格里。只靠角标
+            区分不够：缩略图一小、角标一淡，用户扫一眼就当成自己拍的了。
+            这几张是要跟着档案进公开验证页的，来源必须一眼可辨。 */}
+        {generated.length > 0 ? (
+          <View style={styles.aiPanel}>
+            <HStack style={styles.aiPanelHead} space="xs">
+              <Ionicons
+                name="sparkles-outline"
+                size={13}
+                color={theme.colors.gray300}
+              />
+              <RNText style={styles.aiPanelTitle}>
+                {t("trading.uploadArchive.aiPhotosLabel")}
+              </RNText>
+            </HStack>
+            <View style={[styles.photoGrid, { marginBottom: 0 }]}>
+              {generated.map(({ uri, idx }) =>
+                renderThumb(uri, idx, generatedUrls),
+              )}
+            </View>
+            <RNText style={styles.aiPanelHint}>
+              {t("trading.uploadArchive.aiPhotosHint")}
+            </RNText>
+          </View>
+        ) : null}
+
+        <HStack style={styles.aiActionRow}>
+          <AiThreeViewButton
+            label={t("trading.uploadArchive.threeViewBtn")}
+            loadingLabel={t("trading.uploadArchive.threeViewGenerating")}
+            loading={generatingViews}
+            disabled={photos.length === 0 || quotaExhausted}
+            onPress={generateViews}
+          />
+          {quota ? (
+            <View
+              style={[styles.quotaPill, quotaExhausted && styles.quotaPillOut]}
+            >
+              <RNText
+                style={[
+                  styles.quotaText,
+                  quotaExhausted && styles.quotaTextOut,
+                ]}
+              >
+                {quotaExhausted
+                  ? t("trading.uploadArchive.threeViewQuotaOut")
+                  : t("trading.uploadArchive.threeViewQuotaUsed", {
+                      used: quota.used,
+                      limit: quota.limit,
+                    })}
+              </RNText>
+            </View>
+          ) : null}
+        </HStack>
+
+        {/* 把规则写在按下之前。这一步按次计费、额度每天才回满，用户有权
+            先知道「怎么拍才出得准」和「这一下花掉的是第几次」。 */}
+        <View style={styles.ruleList}>
+          {[
+            t("trading.uploadArchive.threeViewRuleSource"),
+            t("trading.uploadArchive.threeViewRuleShoot"),
+            // 配额没拉到时退回不带数字的说法，别渲染出「每天 次」
+            quota
+              ? t("trading.uploadArchive.threeViewRuleCost", {
+                  limit: quota.limit,
+                })
+              : t("trading.uploadArchive.threeViewRuleCostUnknown"),
+            t("trading.uploadArchive.threeViewRuleAi"),
+          ].map((line) => (
+            <HStack key={line} style={styles.ruleRow}>
+              <RNText style={styles.ruleDot}>·</RNText>
+              <RNText style={styles.ruleText}>{line}</RNText>
+            </HStack>
+          ))}
+        </View>
+
+        <TradingFormField label={t("trading.uploadArchive.titleLabel")}>
+          <TradingFormInput
+            value={title}
+            onChangeText={setTitle}
+            placeholder={t("trading.uploadArchive.titlePlaceholder")}
+          />
+        </TradingFormField>
+
+        <RNText style={styles.mutedText}>
+          {t("trading.uploadArchive.recognizeHint")}
+        </RNText>
+      </>
+    );
+  };
 
   const renderCandidatesStep = () => {
     const v = attribution?.validity;
@@ -692,6 +809,20 @@ const UploadArchiveItemScreen: React.FC = () => {
         visible={brandSheetVisible}
         onClose={() => setBrandSheetVisible(false)}
         onSelect={selectBrand}
+      />
+
+      {/* 和发布 lookbook / 单品用的是同一个预览组件，手势和交互保持一致 */}
+      <ImagePreviewModal
+        visible={preview !== null}
+        imageUrls={preview?.urls}
+        initialIndex={preview?.index ?? 0}
+        title={
+          preview?.ai ? t("trading.uploadArchive.aiPhotosLabel") : undefined
+        }
+        subtitle={
+          preview?.ai ? t("trading.uploadArchive.aiPhotosHint") : undefined
+        }
+        onClose={() => setPreview(null)}
       />
     </SafeAreaView>
   );

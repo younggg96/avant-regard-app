@@ -33,6 +33,7 @@ import {
   isAiPhoto,
 } from "../../components/ui";
 import ScreenHeader from "../../components/ScreenHeader";
+import ImagePreviewModal from "../../components/ImagePreviewModal";
 import { KeyboardFriend, KeyboardFriendScrollView } from "../../components/KeyboardFriend";
 import { TradingNotFoundState } from "../../components/trading/TradingFormShared";
 import { useAppTheme, useThemedStyles, type AppTheme } from "../../theme";
@@ -83,6 +84,26 @@ const ArchiveDetailScreen: React.FC = () => {
   const [holdings, setHoldings] = useState<ArchiveHoldingRecord[]>([]);
   const [holdingNote, setHoldingNote] = useState("");
   const [holdingStatus, setHoldingStatus] = useState<HoldingStatus>("owned");
+
+  // 点图放大。ai 决定全屏里要不要挂来源说明 —— 放大看细节恰恰是最容易
+  // 把生成图当实物照的时刻。
+  const [preview, setPreview] = useState<{
+    urls: string[];
+    index: number;
+    ai: boolean;
+  } | null>(null);
+  const openPreview = (urls: string[], index: number, ai = false) =>
+    setPreview({ urls, index, ai });
+
+  // 实拍与 AI 生成分开。photos[0] 是封面，始终留在实拍那组里。
+  const shotPhotos = useMemo(
+    () => (item?.photos ?? []).filter((u) => !isAiPhoto(u, item?.aiPhotos)),
+    [item],
+  );
+  const aiGenerated = useMemo(
+    () => (item?.photos ?? []).filter((u) => isAiPhoto(u, item?.aiPhotos)),
+    [item],
+  );
 
   const reloadHoldings = useCallback(async () => {
     try {
@@ -184,34 +205,65 @@ const ArchiveDetailScreen: React.FC = () => {
         >
           {item.photos?.[0] ? (
             <View>
-              <View>
+              <Pressable
+                onPress={() => openPreview(shotPhotos, 0)}
+                accessibilityRole="imagebutton"
+                accessibilityLabel={t("common.preview")}
+              >
                 <RNImage
                   source={{ uri: item.photos[0] }}
                   style={styles.cover}
                 />
                 {isAiPhoto(item.photos[0], item.aiPhotos) && <AiPhotoBadge />}
-              </View>
+              </Pressable>
 
               {/* 封面之外的图以前根本不展示 —— 用户生成完三视图就再也看不到。
-                  平铺出来，并把 AI 推测的那几张标出来。 */}
-              {item.photos.length > 1 && (
-                <>
+                  实拍和 AI 推测分两处摆：混在一排里只靠角标区分，缩略图一小
+                  就看不出来了，而这页是买家判断实物状况的依据。 */}
+              {shotPhotos.length > 1 && (
+                <HStack style={styles.thumbRow}>
+                  {shotPhotos.slice(1).map((url, i) => (
+                    <Pressable
+                      key={`${url}-${i}`}
+                      onPress={() => openPreview(shotPhotos, i + 1)}
+                      accessibilityRole="imagebutton"
+                      accessibilityLabel={t("common.preview")}
+                    >
+                      <RNImage source={{ uri: url }} style={styles.thumb} />
+                    </Pressable>
+                  ))}
+                </HStack>
+              )}
+
+              {aiGenerated.length > 0 && (
+                <View style={styles.aiPanel}>
+                  <HStack style={styles.aiPanelHead}>
+                    <Ionicons
+                      name="sparkles-outline"
+                      size={13}
+                      color={theme.colors.gray300}
+                    />
+                    <Text style={styles.aiPanelTitle}>
+                      {t("trading.archiveDetail.aiPhotosLabel")}
+                    </Text>
+                  </HStack>
                   <HStack style={styles.thumbRow}>
-                    {item.photos.slice(1).map((url, i) => (
-                      <View key={`${url}-${i}`}>
+                    {aiGenerated.map((url, i) => (
+                      <Pressable
+                        key={`${url}-${i}`}
+                        onPress={() => openPreview(aiGenerated, i, true)}
+                        accessibilityRole="imagebutton"
+                        accessibilityLabel={t("common.preview")}
+                      >
                         <RNImage source={{ uri: url }} style={styles.thumb} />
-                        {isAiPhoto(url, item.aiPhotos) && (
-                          <AiPhotoBadge size="sm" />
-                        )}
-                      </View>
+                        <AiPhotoBadge size="sm" />
+                      </Pressable>
                     ))}
                   </HStack>
-                  {(item.aiPhotos?.length ?? 0) > 0 && (
-                    <Text style={styles.aiNote}>
-                      {t("trading.archiveDetail.aiPhotoNote")}
-                    </Text>
-                  )}
-                </>
+                  <Text style={styles.aiNote}>
+                    {t("trading.archiveDetail.aiPhotoNote")}
+                  </Text>
+                </View>
               )}
             </View>
           ) : (
@@ -391,6 +443,20 @@ const ArchiveDetailScreen: React.FC = () => {
           </Box>
         ) : null}
       </KeyboardFriend>
+
+      {/* 与发布流程共用同一个预览组件，手势和交互保持一致 */}
+      <ImagePreviewModal
+        visible={preview !== null}
+        imageUrls={preview?.urls}
+        initialIndex={preview?.index ?? 0}
+        title={
+          preview?.ai ? t("trading.archiveDetail.aiPhotosLabel") : undefined
+        }
+        subtitle={
+          preview?.ai ? t("trading.archiveDetail.aiPhotoNote") : undefined
+        }
+        onClose={() => setPreview(null)}
+      />
     </SafeAreaView>
   );
 };
@@ -421,6 +487,22 @@ const makeStyles = (t: AppTheme) =>
     },
     coverPlaceholder: { alignItems: "center", justifyContent: "center" },
     thumbRow: { gap: 8, marginTop: 8, flexWrap: "wrap" },
+    // AI 生成图单独圈起来，和实拍区拉开距离。
+    aiPanel: {
+      marginTop: 12,
+      padding: 12,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: t.colors.border,
+      borderRadius: 8,
+      backgroundColor: t.colors.card,
+    },
+    aiPanelHead: { alignItems: "center", gap: 6 },
+    aiPanelTitle: {
+      fontFamily: "PlayfairDisplay-Medium",
+      fontSize: 11,
+      letterSpacing: 1.6,
+      color: t.colors.text,
+    },
     thumb: {
       width: 88,
       height: 88,
