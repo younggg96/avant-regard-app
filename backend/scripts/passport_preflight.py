@@ -40,6 +40,68 @@ def _connect(use_cn: bool):
     return create_client(url, key), url
 
 
+def _probe_openai(missing: list) -> None:
+    import httpx
+
+    if not settings.OPENAI_API_KEY:
+        return
+    base = settings.OPENAI_BASE_URL.rstrip("/")
+    try:
+        r = httpx.get(
+            f"{base}/models",
+            headers={"Authorization": f"Bearer {settings.OPENAI_API_KEY}"},
+            timeout=httpx.Timeout(15, connect=settings.OPENAI_CONNECT_TIMEOUT),
+        )
+        if r.status_code == 200:
+            print(f"  ✓ 图像服务可达 ({base})")
+        elif r.status_code in (401, 403):
+            body = r.text[:300]
+            # 403 + unsupported_country 不是 key 的问题,是反代落在了
+            # OpenAI 不服务的地区(最常见是香港)。两者提示完全不同,
+            # 混为一谈会把人引到错误的方向上排查半天。
+            if "unsupported_country" in body or "country, region" in body.lower():
+                print(f"  ✗ {base} 所在地区不被 OpenAI 支持")
+                print("    反代节点别放香港,换东京 / 新加坡 / 美西")
+                missing.append("反代节点地区不受支持")
+            else:
+                print(f"  ✗ {base} 可达但鉴权失败 ({r.status_code})")
+                print(f"    {body[:160]}")
+                missing.append("OPENAI_API_KEY 无效")
+        else:
+            print(f"  ! {base} 返回 {r.status_code}: {r.text[:160]}")
+    except Exception as e:
+        print(f"  ✗ 连不上 {base}: {type(e).__name__}")
+        print("    国内服务器需把 OPENAI_BASE_URL 指向可达的反代网关")
+        missing.append("OPENAI_BASE_URL 不可达")
+
+
+def _probe_wan(missing: list) -> None:
+    """
+    万相没有 /models 这种免费探活端点,真发一次生成请求要花钱也要等一分钟。
+    这里只探到连接层:能握上手就说明网络通,key 对不对留给真实调用去报。
+    """
+    import httpx
+
+    endpoint = settings.WAN_IMAGE_ENDPOINT
+    try:
+        r = httpx.post(
+            endpoint,
+            headers={"Authorization": f"Bearer {settings.QWEN_API_KEY}"},
+            json={},
+            timeout=httpx.Timeout(15, connect=settings.WAN_CONNECT_TIMEOUT),
+        )
+        if r.status_code in (401, 403):
+            print(f"  ✗ {endpoint} 可达但鉴权失败 ({r.status_code})")
+            print(f"    {r.text[:160]}")
+            missing.append("QWEN_API_KEY 无效或未开通万相")
+        else:
+            # 空 body 必然是 400,那正说明请求已经走到业务层了
+            print(f"  ✓ 万相可达 ({settings.WAN_IMAGE_MODEL} @ {settings.WAN_IMAGE_SIZE})")
+    except Exception as e:
+        print(f"  ✗ 连不上 {endpoint}: {type(e).__name__}")
+        missing.append("万相端点不可达")
+
+
 def main() -> int:
     use_cn = "--cn" in sys.argv
     db, target = _connect(use_cn)
@@ -57,6 +119,7 @@ def main() -> int:
         ("087 审核留痕", "user_archive_items", "review_note"),
         ("088 三视图生成记录", "passport_three_views", "id"),
         ("088 AI 图来源标记", "user_archive_items", "ai_photos"),
+        ("089 三视图成本", "passport_three_views", "cost_micros"),
     ]
 
     print("表结构:")
@@ -68,11 +131,18 @@ def main() -> int:
             print(f"  ✗ {label}  ({table}.{column}) 不存在")
             missing.append(f"{table}.{column}")
 
+    provider = settings.THREE_VIEW_PROVIDER
+
     print("\n配置:")
-    for label, value in [
-        ("OPENAI_API_KEY (三视图)", settings.OPENAI_API_KEY),
-        ("QWEN_API_KEY (归因视觉识别)", settings.QWEN_API_KEY),
-    ]:
+    print(f"  · 三视图 provider = {provider}")
+    # 只校验当前 provider 真正用到的那把 key。走万相时 OPENAI_API_KEY 空着
+    # 完全正常,报成缺失只会制造噪音。
+    checks = [("QWEN_API_KEY (归因视觉识别)", settings.QWEN_API_KEY)]
+    if provider == "openai":
+        checks.insert(0, ("OPENAI_API_KEY (三视图)", settings.OPENAI_API_KEY))
+    else:
+        checks[0] = ("QWEN_API_KEY (归因视觉识别 + 万相三视图)", settings.QWEN_API_KEY)
+    for label, value in checks:
         if value:
             print(f"  ✓ {label}")
         else:
@@ -83,37 +153,12 @@ def main() -> int:
     # 挂住 —— 表现为前端"请求超时"而不是任何错误。这一项必须在服务器上跑
     # 才有意义,本地(能翻墙的机器)永远是绿的。
     print("\n上游连通性:")
-    if settings.OPENAI_API_KEY:
-        import httpx
+    import httpx
 
-        base = settings.OPENAI_BASE_URL.rstrip("/")
-        try:
-            r = httpx.get(
-                f"{base}/models",
-                headers={"Authorization": f"Bearer {settings.OPENAI_API_KEY}"},
-                timeout=httpx.Timeout(15, connect=settings.OPENAI_CONNECT_TIMEOUT),
-            )
-            if r.status_code == 200:
-                print(f"  ✓ 图像服务可达 ({base})")
-            elif r.status_code in (401, 403):
-                body = r.text[:300]
-                # 403 + unsupported_country 不是 key 的问题,是反代落在了
-                # OpenAI 不服务的地区(最常见是香港)。两者提示完全不同,
-                # 混为一谈会把人引到错误的方向上排查半天。
-                if "unsupported_country" in body or "country, region" in body.lower():
-                    print(f"  ✗ {base} 所在地区不被 OpenAI 支持")
-                    print("    反代节点别放香港,换东京 / 新加坡 / 美西")
-                    missing.append("反代节点地区不受支持")
-                else:
-                    print(f"  ✗ {base} 可达但鉴权失败 ({r.status_code})")
-                    print(f"    {body[:160]}")
-                    missing.append("OPENAI_API_KEY 无效")
-            else:
-                print(f"  ! {base} 返回 {r.status_code}: {r.text[:160]}")
-        except Exception as e:
-            print(f"  ✗ 连不上 {base}: {type(e).__name__}")
-            print("    国内服务器需把 OPENAI_BASE_URL 指向可达的反代网关")
-            missing.append("OPENAI_BASE_URL 不可达")
+    if provider == "openai":
+        _probe_openai(missing)
+    else:
+        _probe_wan(missing)
 
     print("\n参照库:")
     try:
@@ -140,6 +185,7 @@ def main() -> int:
         print("  app/db/migrations/086_passport_attribution.sql")
         print("  app/db/migrations/087_archive_review_queue.sql")
         print("  app/db/migrations/088_three_view_provenance.sql")
+        print("  app/db/migrations/089_three_view_cost.sql")
         print(f"贴完复跑: ./venv/bin/python -m scripts.passport_preflight{suffix}")
         return 1
     print("全部就位")

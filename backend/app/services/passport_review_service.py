@@ -334,7 +334,8 @@ class PassportReviewService:
                 "model": r.get("model"),
                 "imageSize": r.get("image_size"),
                 "tokensUsed": r.get("tokens_used") or 0,
-                "costCents": r.get("cost_cents") or 0,
+                "costMicros": r.get("cost_micros"),
+                "costCurrency": r.get("cost_currency"),
                 "status": r.get("status"),
                 "errorMessage": r.get("error_message"),
                 "disableReason": r.get("disable_reason"),
@@ -345,7 +346,7 @@ class PassportReviewService:
         return {"items": items, "total": res.count or 0}
 
     def three_view_stats(self) -> Dict[str, Any]:
-        """用量概览。gpt-image-1 按张计费,这几个数是算账用的。"""
+        """用量与花费概览。"""
 
         def _count(**eq) -> int:
             q = self.db.table("passport_three_views").select("id", count="exact").limit(1)
@@ -356,13 +357,71 @@ class PassportReviewService:
             except Exception:
                 return 0
 
-        total = _count()
         return {
-            "total": total,
+            "total": _count(),
             "success": _count(status="success"),
             "failed": _count(status="failed"),
             "disabled": _count(status="disabled"),
+            "cost": self._cost_breakdown(),
         }
+
+    def _cost_breakdown(self) -> List[Dict[str, Any]]:
+        """
+        花费按币种分组。
+
+        必须分组而不是求一个总数：万相计人民币、OpenAI 计美元，加在一起
+        没有意义。同时单独报出「定不出价」的行数 —— 那些是真花了钱但
+        算不出来的(模型不在价表里)，看板上不交代就会让人以为花费更少。
+        """
+        # 必须翻页取全：PostgREST 默认一次最多吐 1000 行，直接 execute() 在
+        # 记录过千之后会安静地少算钱 —— 看板上少一截又没有任何提示，
+        # 比干脆报错更糟。
+        page, size = 0, 1000
+        rows: List[Dict[str, Any]] = []
+        while True:
+            try:
+                batch = (
+                    self.db.table("passport_three_views")
+                    .select("cost_micros,cost_currency")
+                    .range(page * size, page * size + size - 1)
+                    .execute()
+                    .data
+                    or []
+                )
+            except Exception as e:  # noqa: BLE001
+                logger.warning("[three_view_stats] 读取成本失败: %s", e)
+                return []
+            rows.extend(batch)
+            if len(batch) < size:
+                break
+            page += 1
+
+        by_currency: Dict[str, Dict[str, int]] = {}
+        unknown = 0
+        for r in rows:
+            micros, currency = r.get("cost_micros"), r.get("cost_currency")
+            if micros is None and currency:
+                # 有币种说明发生了调用，只是定不出价
+                unknown += 1
+                continue
+            if not micros or not currency:
+                continue
+            slot = by_currency.setdefault(currency, {"micros": 0, "images": 0})
+            slot["micros"] += micros
+            slot["images"] += 1
+
+        out = [
+            {
+                "currency": c,
+                "micros": v["micros"],
+                "amount": round(v["micros"] / 1_000_000, 4),
+                "images": v["images"],
+            }
+            for c, v in sorted(by_currency.items())
+        ]
+        if unknown:
+            out.append({"currency": "UNKNOWN", "micros": 0, "amount": 0, "images": unknown})
+        return out
 
     def disable_three_view(
         self, view_id: int, *, admin_id: int, reason: Optional[str] = None

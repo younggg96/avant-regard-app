@@ -31,6 +31,13 @@ import {
 
 const PAGE_SIZE = 20;
 
+/** 单张三视图常在 ¥0.5 这个量级，两位小数会把差异抹平，所以留到 4 位。 */
+function formatMoney(amount: number, currency: string) {
+  const symbol: Record<string, string> = { CNY: "¥", USD: "$" };
+  const text = amount.toFixed(4).replace(/\.?0+$/, "");
+  return `${symbol[currency] ?? `${currency} `}${text}`;
+}
+
 export default function AdminThreeViewsPage() {
   const { t } = useTranslation();
 
@@ -121,6 +128,43 @@ export default function AdminThreeViewsPage() {
         </div>
       )}
 
+      {/* 花费一币种一张卡，不做汇总：万相计人民币、OpenAI 计美元，
+          相加得不到有意义的数。 */}
+      {stats && stats.cost.length > 0 && (
+        <div className="mb-4 flex flex-wrap gap-3">
+          {stats.cost.map((c) =>
+            c.currency === "UNKNOWN" ? (
+              <div
+                key={c.currency}
+                className="rounded-lg border border-dashed border-[var(--border)] px-4 py-3"
+              >
+                <div className="font-label text-[11px] tracking-wider text-[color:var(--ink-muted)]">
+                  {t("admin.threeViews.costUnknown")}
+                </div>
+                <div className="mt-1 font-label text-[20px]">
+                  {t("admin.threeViews.costImages", { count: c.images })}
+                </div>
+              </div>
+            ) : (
+              <div
+                key={c.currency}
+                className="rounded-lg border border-[var(--border)] px-4 py-3"
+              >
+                <div className="font-label text-[11px] tracking-wider text-[color:var(--ink-muted)]">
+                  {t("admin.threeViews.costTotal", { currency: c.currency })}
+                </div>
+                <div className="mt-1 font-label text-[20px]">
+                  {formatMoney(c.amount, c.currency)}
+                </div>
+                <div className="font-label text-[11px] text-[color:var(--ink-muted)]">
+                  {t("admin.threeViews.costImages", { count: c.images })}
+                </div>
+              </div>
+            ),
+          )}
+        </div>
+      )}
+
       <div className="mb-4">
         <FilterChips
           options={STATUS_OPTIONS}
@@ -190,6 +234,9 @@ export default function AdminThreeViewsPage() {
                   <div className="text-[12px] text-[color:var(--ink-muted)]">
                     {it.model || "—"}
                     {it.imageSize ? ` · ${it.imageSize}` : ""}
+                    {it.costMicros != null && it.costCurrency
+                      ? ` · ${formatMoney(it.costMicros / 1_000_000, it.costCurrency)}`
+                      : ""}
                     {it.archiveItemId
                       ? ` · ${t("admin.threeViews.linkedItem", { id: it.archiveItemId })}`
                       : ` · ${t("admin.threeViews.notLinked")}`}

@@ -1117,7 +1117,13 @@ export interface AdminThreeView {
   model: string | null;
   imageSize: string | null;
   tokensUsed: number;
-  costCents: number;
+  /**
+   * 本次花费，单位是 costCurrency 的百万分之一。
+   * null = 真花了钱但定不出价(模型不在价表里)，与 0 不是一回事。
+   */
+  costMicros: number | null;
+  /** CNY = 万相，USD = OpenAI。不同币种不能相加。 */
+  costCurrency: string | null;
   /** success / failed / disabled */
   status: string;
   errorMessage: string | null;
@@ -1130,11 +1136,21 @@ export interface AdminThreeViewListResponse {
   total: number;
 }
 
+/** 花费按币种分组。currency 为 "UNKNOWN" 的那条是定不出价的张数。 */
+export interface AdminThreeViewCost {
+  currency: string;
+  micros: number;
+  /** micros 换算成货币单位后的值，直接展示用。 */
+  amount: number;
+  images: number;
+}
+
 export interface AdminThreeViewStats {
   total: number;
   success: number;
   failed: number;
   disabled: number;
+  cost: AdminThreeViewCost[];
 }
 
 export const adminThreeViewApi = {

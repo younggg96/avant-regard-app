@@ -105,6 +105,14 @@ class Settings(BaseSettings):
     #
     # OPENAI_BASE_URL 留出来是因为国内直连 api.openai.com 不通,
     # CN 环境需要指向反代网关。
+    # 三视图用哪家模型:
+    #   wan    —— 阿里云百炼 · 万相(通义万相)。国内直连,复用 QWEN_API_KEY,
+    #             不需要任何额外基础设施。默认走这条。
+    #   openai —— gpt-image。国内服务器直连不通,必须先配 OPENAI_BASE_URL
+    #             指向境外反代网关。
+    # 两条都留着:反代搭好了想换回来只改这一个值。
+    THREE_VIEW_PROVIDER: str = "wan"
+
     OPENAI_API_KEY: str = ""
     OPENAI_BASE_URL: str = "https://api.openai.com/v1"
     OPENAI_IMAGE_MODEL: str = "gpt-image-2"
@@ -123,6 +131,20 @@ class Settings(BaseSettings):
     # 直连 api.openai.com 就是连接阶段挂住,拖满整个超时才报错。分开之后
     # 这种情况 10s 内就能拿到明确的连接失败。
     OPENAI_CONNECT_TIMEOUT: int = 10
+
+    # --- 万相 (阿里云百炼) ---
+    # 鉴权复用 QWEN_API_KEY:百炼是同一把 key,归因的 Qwen-VL 也走它。
+    # 图像走原生 DashScope 路径,不是 QWEN_BASE_URL 那个 OpenAI 兼容端点。
+    WAN_IMAGE_ENDPOINT: str = (
+        "https://dashscope.aliyuncs.com/api/v1/services/aigc/"
+        "multimodal-generation/generation"
+    )
+    WAN_IMAGE_MODEL: str = "wan2.7-image-pro"
+    # 编辑场景支持 1K / 2K。2K 单张 5MB+,对档案影像是浪费 —— App 里要加载
+    # 三张,公开页还要再加载一遍。1K 约 1.5MB,与 OpenAI 那条线的量级一致。
+    WAN_IMAGE_SIZE: str = "1K"
+    WAN_IMAGE_TIMEOUT: int = 100
+    WAN_CONNECT_TIMEOUT: int = 10
     # 送进 images.edit 前先把源图压到这个长边。原图常有 2560px+/8MB,
     # 模型内部一样会缩,先压能省上行带宽和几秒延迟。
     THREE_VIEW_SOURCE_MAX_EDGE: int = 1536
@@ -175,15 +197,16 @@ class Settings(BaseSettings):
         里写着 180，改代码默认值管不到它。
         """
         ceiling = self.THREE_VIEW_CLIENT_TIMEOUT - 20
-        if self.OPENAI_IMAGE_TIMEOUT > ceiling:
-            logging.getLogger(__name__).warning(
-                "OPENAI_IMAGE_TIMEOUT=%ss 超过客户端等待上限 %ss，已夹到 %ss；"
-                "请同步修正 .env",
-                self.OPENAI_IMAGE_TIMEOUT,
-                self.THREE_VIEW_CLIENT_TIMEOUT,
-                ceiling,
-            )
-            self.OPENAI_IMAGE_TIMEOUT = ceiling
+        for name in ("OPENAI_IMAGE_TIMEOUT", "WAN_IMAGE_TIMEOUT"):
+            if getattr(self, name) > ceiling:
+                logging.getLogger(__name__).warning(
+                    "%s=%ss 超过客户端等待上限 %ss，已夹到 %ss；请同步修正 .env",
+                    name,
+                    getattr(self, name),
+                    self.THREE_VIEW_CLIENT_TIMEOUT,
+                    ceiling,
+                )
+                setattr(self, name, ceiling)
         return self
 
     @property

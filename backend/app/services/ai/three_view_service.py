@@ -31,6 +31,7 @@ from openai import APIConnectionError, OpenAI
 from PIL import Image
 
 from app.core.config import settings
+from app.services.ai import image_pricing
 from app.services.ai.image_source import is_allowed_source
 from app.services.ai.quota_service import quota_service
 from app.services.file_service import file_service
@@ -62,6 +63,11 @@ _SHARED_STYLE = (
     "Plain pure-white seamless background, soft even lighting, no harsh shadows. "
     "Present the garment on an invisible ghost mannequin so it holds its natural worn "
     "shape, centered and fully visible within the frame. "
+    # 「invisible ghost mannequin」对 gpt-image 够用,但万相会把胸模颈托和
+    # 底座支架画出来 —— 尤其是侧视图。逐个点名比形容词管用,同一个教训:
+    # 上面的配饰也是点名之后才干净的。
+    "The mannequin itself must be completely invisible: no dress form, no mannequin "
+    "neck or collar block, no support pole, no stand or base of any kind in the image. "
     "Preserve the exact colour, fabric texture, print, hardware, stitching and proportions "
     "of the reference garment."
 )
@@ -114,6 +120,14 @@ class GeneratedView:
     # 请求根本没发出去(连不上上游),区别于"模型跑了但没成"。
     # 前者没产生费用，配额要退。
     unreachable: bool = False
+    # 本次花费(micros，币种由 provider 决定)。三个值含义不同，别合并：
+    #   0     确认没花钱 —— 请求没发出去，或上游直接拒了
+    #   >0    算得出来的花费
+    #   None  花了钱但定不出价 —— 模型不在价表里，或上游没给用量明细
+    #
+    # 关键在于「出了图但我们没存下来」也要计费：模型已经跑完并扣了钱，
+    # 后面下载或上传失败是我们自己的问题，不记就会低估成本。
+    cost_micros: Optional[int] = 0
 
 
 @dataclass
@@ -122,6 +136,8 @@ class ThreeViewResult:
     views: List[GeneratedView] = field(default_factory=list)
     model: str = ""
     tokens_used: int = 0
+    cost_micros: int = 0
+    cost_currency: str = ""
     quota_used: int = 0
     quota_limit: int = 0
 
@@ -131,6 +147,17 @@ _FETCH_TIMEOUT_S = 20.0
 
 
 class ThreeViewService:
+    @staticmethod
+    def _active_model() -> tuple[str, str]:
+        """(模型名, 出图尺寸) —— 取决于当前 provider，落表和响应都要如实反映。"""
+        if settings.THREE_VIEW_PROVIDER == "openai":
+            return settings.OPENAI_IMAGE_MODEL, settings.OPENAI_IMAGE_SIZE
+        return settings.WAN_IMAGE_MODEL, settings.WAN_IMAGE_SIZE
+
+    @staticmethod
+    def _active_currency() -> str:
+        return image_pricing.provider_currency(settings.THREE_VIEW_PROVIDER)[0]
+
     def _record(
         self, user_id: int, source_url: str, views: List[GeneratedView]
     ) -> None:
@@ -142,22 +169,144 @@ class ThreeViewService:
         """
         from app.db.supabase import get_supabase_admin
 
+        model, image_size = self._active_model()
+        currency = self._active_currency()
         rows = [
             {
                 "user_id": user_id,
                 "source_image_url": source_url,
                 "view_slug": v.slug,
                 "image_url": v.url,
-                "model": settings.OPENAI_IMAGE_MODEL,
-                "image_size": settings.OPENAI_IMAGE_SIZE,
+                "model": model,
+                "image_size": image_size,
                 "tokens_used": v.tokens_used,
+                "cost_micros": v.cost_micros,
+                # 没花钱的行不占币种，免得按币种分组时混进一堆 0
+                "cost_currency": currency if v.cost_micros != 0 else None,
                 "status": "success" if v.url else "failed",
                 "error_message": v.error,
             }
             for v in views
         ]
-        get_supabase_admin().table("passport_three_views").insert(rows).execute()
+        table = get_supabase_admin().table("passport_three_views")
+        try:
+            table.insert(rows).execute()
+        except Exception:
+            # 089 还没应用时，带 cost_* 的整行插入会被拒。这里不能就这么放弃：
+            # 没有这几行，_detect_ai_photos 就标不出哪些是 AI 图，公开页会把
+            # 模型猜的侧背面当实拍展示 —— 那正是 088 建这张表要防的事。
+            # 成本丢了可以以后再补，来源标记丢了是会误导交易的。
+            for r in rows:
+                r.pop("cost_micros", None)
+                r.pop("cost_currency", None)
+            table.insert(rows).execute()
+            logger.error(
+                "[three_view] 成本未能落库，已降级为只记来源；"
+                "请应用 migration 089_three_view_cost.sql"
+            )
 
+    # -----------------------------------------------------------------
+    # 万相 (阿里云百炼) —— 默认 provider
+    # -----------------------------------------------------------------
+    def _generate_one_wan(self, png: bytes, spec: ViewSpec) -> GeneratedView:
+        """
+        万相图像编辑。与 OpenAI 那条线的差异有三处，都在这里吸收掉：
+
+          1. 入参是 messages 数组（图 + 指令），不是 images.edit 的 multipart
+          2. 图走 base64 内联。也可以传 URL 让 DashScope 自己去抓，但那样就
+             绕过了 _fetch_source_png 的白名单与压缩，还多一条对外依赖
+          3. 返回的是一个临时 URL，不是 base64，得先下载回来再转存
+        """
+        b64 = "data:image/png;base64," + base64.b64encode(png).decode()
+        body = {
+            "model": settings.WAN_IMAGE_MODEL,
+            "input": {
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": [{"image": b64}, {"text": spec.prompt}],
+                    }
+                ]
+            },
+            # watermark 必须显式关：右下角糊一个「AI生成」会和我们自己的
+            # 来源标记打架，而且那块水印压在衣服上会挡住细节。
+            "parameters": {
+                "size": settings.WAN_IMAGE_SIZE,
+                "n": 1,
+                "watermark": False,
+            },
+        }
+
+        try:
+            resp = httpx.post(
+                settings.WAN_IMAGE_ENDPOINT,
+                headers={
+                    "Authorization": f"Bearer {settings.QWEN_API_KEY}",
+                    "Content-Type": "application/json",
+                },
+                json=body,
+                timeout=httpx.Timeout(
+                    settings.WAN_IMAGE_TIMEOUT, connect=settings.WAN_CONNECT_TIMEOUT
+                ),
+            )
+        except (httpx.ConnectError, httpx.ConnectTimeout) as e:
+            return GeneratedView(
+                slug=spec.slug,
+                label=spec.label,
+                error=f"无法连接图像服务 {settings.WAN_IMAGE_ENDPOINT}: {e}",
+                unreachable=True,
+            )
+        except Exception as e:  # noqa: BLE001
+            return GeneratedView(slug=spec.slug, label=spec.label, error=f"生成失败: {e}")
+
+        if resp.status_code != 200:
+            return GeneratedView(
+                slug=spec.slug,
+                label=spec.label,
+                error=f"生成失败 HTTP {resp.status_code}: {resp.text[:200]}",
+            )
+
+        try:
+            content = resp.json()["output"]["choices"][0]["message"]["content"]
+            image_url = next(c["image"] for c in content if "image" in c)
+        except Exception:  # noqa: BLE001
+            return GeneratedView(
+                slug=spec.slug,
+                label=spec.label,
+                error=f"返回结构不符预期: {resp.text[:200]}",
+            )
+
+        # 走到这里图已经出了，钱已经花了。下面任何一步失败都不影响计费，
+        # 所以成本在这里就定下来，后续每个失败分支都带上它。
+        cost = image_pricing.wan_cost(settings.WAN_IMAGE_MODEL)
+
+        # 万相给的是有效期有限的临时地址，必须落到自家 Storage，
+        # 否则档案里的图过些天就成死链。
+        try:
+            img = httpx.get(image_url, timeout=_FETCH_TIMEOUT_S).content
+        except Exception as e:  # noqa: BLE001
+            return GeneratedView(
+                slug=spec.slug,
+                label=spec.label,
+                error=f"生成成功但回源失败: {e}",
+                cost_micros=cost,
+            )
+
+        url = file_service.upload_image(img, f"three-view-{spec.slug}.png", "image/png")
+        if not url:
+            return GeneratedView(
+                slug=spec.slug,
+                label=spec.label,
+                error="生成成功但上传失败",
+                cost_micros=cost,
+            )
+        return GeneratedView(
+            slug=spec.slug, label=spec.label, url=url, cost_micros=cost
+        )
+
+    # -----------------------------------------------------------------
+    # OpenAI gpt-image —— 需要境外反代才能用
+    # -----------------------------------------------------------------
     def _client(self) -> OpenAI:
         if not settings.OPENAI_API_KEY:
             raise ThreeViewError("OPENAI_API_KEY 未配置", "NOT_CONFIGURED")
@@ -222,28 +371,62 @@ class ThreeViewService:
         except Exception as e:
             return GeneratedView(slug=spec.slug, label=spec.label, error=f"生成失败: {e}")
 
-        data = resp.data[0] if resp.data else None
-        b64 = getattr(data, "b64_json", None) if data else None
-        if not b64:
-            return GeneratedView(slug=spec.slug, label=spec.label, error="模型未返回图片")
-
         usage = getattr(resp, "usage", None)
         tokens = 0
         if usage is not None:
             tokens = (usage.get("total_tokens", 0) if isinstance(usage, dict)
                       else getattr(usage, "total_tokens", 0) or 0)
+        # 有 usage 就说明模型确实跑了、确实计了费 —— 哪怕下面没拿到图。
+        cost = image_pricing.openai_cost(usage) if usage is not None else 0
+
+        data = resp.data[0] if resp.data else None
+        b64 = getattr(data, "b64_json", None) if data else None
+        if not b64:
+            return GeneratedView(
+                slug=spec.slug,
+                label=spec.label,
+                error="模型未返回图片",
+                tokens_used=tokens,
+                cost_micros=cost,
+            )
 
         url = file_service.upload_image(
             base64.b64decode(b64), f"three-view-{spec.slug}.png", "image/png"
         )
         if not url:
             return GeneratedView(
-                slug=spec.slug, label=spec.label, error="生成成功但上传失败", tokens_used=tokens
+                slug=spec.slug,
+                label=spec.label,
+                error="生成成功但上传失败",
+                tokens_used=tokens,
+                cost_micros=cost,
             )
 
-        return GeneratedView(slug=spec.slug, label=spec.label, url=url, tokens_used=tokens)
+        return GeneratedView(
+            slug=spec.slug,
+            label=spec.label,
+            url=url,
+            tokens_used=tokens,
+            cost_micros=cost,
+        )
+
+    @staticmethod
+    def _ensure_configured() -> None:
+        """
+        当前 provider 的 key 配没配。
+
+        放在扣配额之前：没配 key 是部署问题，不该让用户为此掉一次额度。
+        """
+        if settings.THREE_VIEW_PROVIDER == "openai":
+            if not settings.OPENAI_API_KEY:
+                raise ThreeViewError("OPENAI_API_KEY 未配置", "NOT_CONFIGURED")
+        elif not settings.QWEN_API_KEY:
+            raise ThreeViewError(
+                "QWEN_API_KEY 未配置（万相与 Qwen 共用百炼 key）", "NOT_CONFIGURED"
+            )
 
     def generate(self, user_id: int, source_image_url: str) -> ThreeViewResult:
+        self._ensure_configured()
         try:
             check = quota_service.check_and_consume_three_view(user_id)
         except Exception as e:
@@ -260,14 +443,18 @@ class ThreeViewService:
                 "QUOTA_EXCEEDED",
             )
 
-        client = self._client()
+        # 源图的下载、白名单校验、压缩转码两条 provider 共用。
         png = self._fetch_source_png(source_image_url)
 
-        # 三张互不依赖,并发跑。OpenAI SDK 的 client 是线程安全的。
+        if settings.THREE_VIEW_PROVIDER == "openai":
+            client = self._client()
+            run = lambda spec: self._generate_one(client, png, spec)  # noqa: E731
+        else:
+            run = lambda spec: self._generate_one_wan(png, spec)  # noqa: E731
+
+        # 三张互不依赖,并发跑。OpenAI SDK 的 client 线程安全,httpx.post 也是。
         with ThreadPoolExecutor(max_workers=len(VIEW_SPECS)) as pool:
-            views = list(
-                pool.map(lambda spec: self._generate_one(client, png, spec), VIEW_SPECS)
-            )
+            views = list(pool.map(run, VIEW_SPECS))
 
         # 先落表再判成败:失败的那几张同样要留记录,否则「为什么这次只出了
         # 两张」事后查不出来。落表失败不影响用户拿到图。
@@ -286,10 +473,16 @@ class ThreeViewService:
                     logger.warning("[three_view] quota refund failed: %s", e)
                 # 能定位的细节进日志，不进用户的弹窗：base_url 是内部配置，
                 # 而"去配反代"也不是用户能做的事。
+                endpoint = (
+                    settings.OPENAI_BASE_URL
+                    if settings.THREE_VIEW_PROVIDER == "openai"
+                    else settings.WAN_IMAGE_ENDPOINT
+                )
                 logger.error(
-                    "[three_view] upstream unreachable: base_url=%s — "
-                    "国内服务器需把 OPENAI_BASE_URL 指向可达的反代网关",
-                    settings.OPENAI_BASE_URL,
+                    "[three_view] upstream unreachable: provider=%s endpoint=%s — "
+                    "走 openai 时国内服务器需把 OPENAI_BASE_URL 指向可达的反代网关",
+                    settings.THREE_VIEW_PROVIDER,
+                    endpoint,
                 )
                 raise ThreeViewError(
                     "三视图服务暂时不可用，请稍后再试（本次不消耗次数）",
@@ -302,8 +495,11 @@ class ThreeViewService:
         return ThreeViewResult(
             source_url=source_image_url,
             views=views,
-            model=settings.OPENAI_IMAGE_MODEL,
+            model=self._active_model()[0],
             tokens_used=sum(v.tokens_used for v in views),
+            # 定不出价的(None)不计入合计 —— 当成 0 会让总额偏低且不自知
+            cost_micros=sum(v.cost_micros or 0 for v in views),
+            cost_currency=self._active_currency(),
             quota_used=check.info.used,
             quota_limit=check.info.limit,
         )

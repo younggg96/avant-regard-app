@@ -19,6 +19,7 @@ from __future__ import annotations
 import sys
 import time
 
+from app.core.config import settings
 from app.services.ai.three_view_service import VIEW_SPECS, three_view_service
 
 
@@ -76,18 +77,18 @@ def main() -> int:
         views = result.views
         print(f"[quota]  {result.quota_used}/{result.quota_limit}")
     else:
-        client = three_view_service._client()
         png = three_view_service._fetch_source_png(source)
         print(f"[source] 压缩后 {len(png) // 1024} KB")
         from concurrent.futures import ThreadPoolExecutor
 
+        if settings.THREE_VIEW_PROVIDER == "openai":
+            client = three_view_service._client()
+            run = lambda s: three_view_service._generate_one(client, png, s)  # noqa: E731
+        else:
+            run = lambda s: three_view_service._generate_one_wan(png, s)  # noqa: E731
+
         with ThreadPoolExecutor(max_workers=len(VIEW_SPECS)) as pool:
-            views = list(
-                pool.map(
-                    lambda spec: three_view_service._generate_one(client, png, spec),
-                    VIEW_SPECS,
-                )
-            )
+            views = list(pool.map(run, VIEW_SPECS))
 
     print(f"[done]   {time.time() - t0:.1f}s")
     for v in views:
