@@ -85,18 +85,33 @@ export default function ArchiveDetailPage() {
       </Link>
 
       {data.photos.length > 0 && (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {data.photos.map((url) => (
-            <Image
-              key={url}
-              src={url}
-              alt=""
-              width={400}
-              height={400}
-              sizes="(min-width: 640px) 25vw, 50vw"
-              className="aspect-square w-full rounded object-cover"
-            />
-          ))}
+        <div>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {data.photos.map((url) => (
+              <div key={url} className="relative">
+                <Image
+                  src={url}
+                  alt=""
+                  width={400}
+                  height={400}
+                  sizes="(min-width: 640px) 25vw, 50vw"
+                  className="aspect-square w-full rounded object-cover"
+                />
+                {/* 三视图里只有正面来自实拍，侧背面是模型推测的。
+                    不标出来，看的人会当成实物照片。 */}
+                {data.aiPhotos?.includes(url) && (
+                  <span className="absolute bottom-1.5 left-1.5 rounded bg-black/70 px-1.5 py-0.5 font-label text-[10px] text-white">
+                    {t("trading.archive.aiGenerated")}
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+          {(data.aiPhotos?.length ?? 0) > 0 && (
+            <p className="mt-2 font-label text-[12px] text-[color:var(--ink-muted)]">
+              {t("trading.archive.aiPhotoNote")}
+            </p>
+          )}
         </div>
       )}
 

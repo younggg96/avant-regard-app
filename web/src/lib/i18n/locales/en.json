@@ -1625,7 +1625,9 @@
       "resell": "Relist",
       "resellHint": "Creates a draft from this archive entry. You'll still need the seven required photos.",
       "createDraft": "Create Draft",
-      "viewRelisted": "View relist draft"
+      "viewRelisted": "View relist draft",
+      "aiGenerated": "AI",
+      "aiPhotoNote": "Images marked “AI” are model-inferred from the real photo, not photographs of the item. Treat them as silhouette references only."
     },
     "plus": {
       "title": "Plus",

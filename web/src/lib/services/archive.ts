@@ -24,6 +24,13 @@ export interface ArchiveItem {
   acquiredPriceCents?: number | null;
   currency: string;
   photos: string[];
+  /**
+   * photos 的子集：其中由 AI 生成（三视图）而非实拍的那些。
+   *
+   * 展示单品照片的地方都要据此标注 —— 侧面和背面往往是模型根据正面推测的，
+   * 当成实物照看会误导判断。由服务端反查生成记录得出，不是客户端自报。
+   */
+  aiPhotos?: string[];
   acquiredAt?: string | null;
   note?: string | null;
   relistedProductId?: number | null;

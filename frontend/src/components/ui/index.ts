@@ -11,6 +11,8 @@ export { VStack } from "./vstack";
 export { Toast, ToastText } from "./toast";
 export { UserAvatar } from "./UserAvatar";
 export { NotificationBadge } from "./NotificationBadge";
+export { AiPhotoBadge, isAiPhoto } from "./AiPhotoBadge";
+export type { AiPhotoBadgeSize } from "./AiPhotoBadge";
 export { ActionSheet } from "./ActionSheet";
 export type { ActionSheetAction } from "./ActionSheet";
 export { AnimatedChip, chipRowStyle } from "./AnimatedChip";

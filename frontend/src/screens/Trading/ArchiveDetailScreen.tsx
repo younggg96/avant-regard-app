@@ -29,6 +29,8 @@ import {
   VStack,
   Text,
   Pressable,
+  AiPhotoBadge,
+  isAiPhoto,
 } from "../../components/ui";
 import ScreenHeader from "../../components/ScreenHeader";
 import { KeyboardFriend, KeyboardFriendScrollView } from "../../components/KeyboardFriend";
@@ -181,7 +183,37 @@ const ArchiveDetailScreen: React.FC = () => {
           contentContainerStyle={styles.scroll}
         >
           {item.photos?.[0] ? (
-            <RNImage source={{ uri: item.photos[0] }} style={styles.cover} />
+            <View>
+              <View>
+                <RNImage
+                  source={{ uri: item.photos[0] }}
+                  style={styles.cover}
+                />
+                {isAiPhoto(item.photos[0], item.aiPhotos) && <AiPhotoBadge />}
+              </View>
+
+              {/* 封面之外的图以前根本不展示 —— 用户生成完三视图就再也看不到。
+                  平铺出来，并把 AI 推测的那几张标出来。 */}
+              {item.photos.length > 1 && (
+                <>
+                  <HStack style={styles.thumbRow}>
+                    {item.photos.slice(1).map((url, i) => (
+                      <View key={`${url}-${i}`}>
+                        <RNImage source={{ uri: url }} style={styles.thumb} />
+                        {isAiPhoto(url, item.aiPhotos) && (
+                          <AiPhotoBadge size="sm" />
+                        )}
+                      </View>
+                    ))}
+                  </HStack>
+                  {(item.aiPhotos?.length ?? 0) > 0 && (
+                    <Text style={styles.aiNote}>
+                      {t("trading.archiveDetail.aiPhotoNote")}
+                    </Text>
+                  )}
+                </>
+              )}
+            </View>
           ) : (
             <Box style={[styles.cover, styles.coverPlaceholder]}>
               <Ionicons
@@ -388,6 +420,19 @@ const makeStyles = (t: AppTheme) =>
       backgroundColor: t.colors.skeleton,
     },
     coverPlaceholder: { alignItems: "center", justifyContent: "center" },
+    thumbRow: { gap: 8, marginTop: 8, flexWrap: "wrap" },
+    thumb: {
+      width: 88,
+      height: 88,
+      borderRadius: 8,
+      backgroundColor: t.colors.skeleton,
+    },
+    aiNote: {
+      marginTop: 8,
+      fontSize: 12,
+      lineHeight: 17,
+      color: t.colors.gray300,
+    },
     title: {
       fontSize: 18,
       fontWeight: "700",

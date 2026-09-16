@@ -23,6 +23,8 @@ import {
   Text,
   Pressable,
   OptimizedImage,
+  AiPhotoBadge,
+  isAiPhoto,
 } from "../../components/ui";
 import ScreenHeader from "../../components/ScreenHeader";
 import { playfairFonts, useAppTheme, useThemedStyles, type AppTheme } from "../../theme";
@@ -152,13 +154,20 @@ const MyArchiveScreen: React.FC = () => {
           >
             <HStack space="md" alignItems="flex-start">
               {item.photos?.[0] ? (
-                <OptimizedImage
-                  uri={item.photos[0]}
-                  size={ImageSize.THUMBNAIL}
-                  style={styles.thumb}
-                  contentFit="cover"
-                  lazy
-                />
+                <Box>
+                  <OptimizedImage
+                    uri={item.photos[0]}
+                    size={ImageSize.THUMBNAIL}
+                    style={styles.thumb}
+                    contentFit="cover"
+                    lazy
+                  />
+                  {/* 封面一般是实拍（三视图是追加在后面的），所以这个角标
+                      正常不会出现；只有用户把实拍删光时才兜底标一下。 */}
+                  {isAiPhoto(item.photos[0], item.aiPhotos) && (
+                    <AiPhotoBadge size="sm" />
+                  )}
+                </Box>
               ) : (
                 <Box style={[styles.thumb, styles.thumbPlaceholder]}>
                   <Ionicons

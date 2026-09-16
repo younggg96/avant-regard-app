@@ -33,7 +33,13 @@ import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { useTranslation } from "react-i18next";
 
-import { Box, HStack, Pressable } from "../../components/ui";
+import {
+  Box,
+  HStack,
+  Pressable,
+  AiPhotoBadge,
+  isAiPhoto,
+} from "../../components/ui";
 import ScreenHeader from "../../components/ScreenHeader";
 import BrandSearchSheet from "../../components/BrandSearchSheet";
 import AttributionCandidateCard from "../../components/trading/AttributionCandidateCard";
@@ -67,6 +73,9 @@ const UploadArchiveItemScreen: React.FC = () => {
 
   const [step, setStep] = useState<Step>("photos");
   const [photos, setPhotos] = useState<string[]>([]);
+  // 本次会话里哪些图是 AI 三视图。纯展示用 —— 入库时服务端会反查生成记录
+  // 重新判定一遍，不信客户端这份。
+  const [aiPhotos, setAiPhotos] = useState<string[]>([]);
 
   // AI 归因结果。attribution 为 null 表示走的是「跳过识别」的退路。
   const [attribution, setAttribution] = useState<AttributionResult | null>(null);
@@ -151,6 +160,7 @@ const UploadArchiveItemScreen: React.FC = () => {
         .map((v) => v.url)
         .filter((u): u is string => Boolean(u));
       setPhotos((prev) => [...prev, ...urls].slice(0, 9));
+      setAiPhotos((prev) => [...prev, ...urls]);
 
       const failed = result.views.length - urls.length;
       if (failed > 0) {
@@ -346,6 +356,7 @@ const UploadArchiveItemScreen: React.FC = () => {
         {photos.map((uri, idx) => (
           <View key={uri + idx} style={styles.photoWrap}>
             <RNImage source={{ uri }} style={styles.photoThumb} />
+            {isAiPhoto(uri, aiPhotos) && <AiPhotoBadge size="sm" />}
             <Pressable
               style={styles.photoRemove}
               onPress={() => removePhoto(idx)}

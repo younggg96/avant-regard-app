@@ -1423,7 +1423,8 @@
     "allBrandsLoaded": "All {{total}} brands loaded",
     "loginToSubmitBrand": "Please log in before submitting a brand",
     "noLeaderboard": "No rankings yet",
-    "noLeaderboardHint": "Rankings will appear here once submissions are approved"
+    "noLeaderboardHint": "Rankings will appear here once submissions are approved",
+    "aiGenerated": "AI"
   },
   "brand": {
     "detail": "Brand Detail",
@@ -3812,7 +3813,8 @@
       "successMessage": "Open 'My Listings' to add the 5-angle photos and submit for review.",
       "successCta": "Finalize",
       "confirm": "OK",
-      "addHoldingFailed": "Add entry failed"
+      "addHoldingFailed": "Add entry failed",
+      "aiPhotoNote": "Images marked “AI” are model-inferred from the real photo, not photographs of the item. Treat them as silhouette references only."
     },
     "uploadArchive": {
       "headerTitle": "New Archive Entry",

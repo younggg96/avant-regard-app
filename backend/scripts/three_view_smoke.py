@@ -30,10 +30,42 @@ _DEFAULT_SOURCE = (
 )
 
 
+def _save_locally(out_dir: str):
+    """
+    把 file_service.upload_image 换成写本地文件。
+
+    用于在带宽够不着目标 Storage 的机器上验出图质量 —— 比如在海外调试
+    国内环境时,上传 1MB 图要 30s 而 storage3 默认 20s 就超时,图生成出来了
+    却看不到。换掉落盘的那一端,生成链路本身完全不变。
+    """
+    import os
+
+    from app.services import file_service as fs_mod
+
+    os.makedirs(out_dir, exist_ok=True)
+    original = fs_mod.file_service.upload_image
+
+    def _fake(data: bytes, filename: str, content_type: str):
+        path = os.path.join(out_dir, filename)
+        with open(path, "wb") as f:
+            f.write(data)
+        return path
+
+    fs_mod.file_service.upload_image = _fake
+    return original
+
+
 def main() -> int:
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     with_quota = "--with-quota" in sys.argv
+    save_local = next(
+        (a.split("=", 1)[1] for a in sys.argv if a.startswith("--save-local=")), None
+    )
     source = args[0] if args else _DEFAULT_SOURCE
+
+    if save_local:
+        _save_locally(save_local)
+        print(f"[sink]   本地目录 {save_local} (跳过 Storage 上传)")
 
     print(f"[source] {source}")
     print(f"[quota]  {'启用' if with_quota else '跳过 (--with-quota 可开启)'}")

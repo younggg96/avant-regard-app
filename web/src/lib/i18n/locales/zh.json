@@ -1625,7 +1625,9 @@
       "resell": "转售",
       "resellHint": "将用档案信息生成一条草稿，你还需要补齐 7 视角图等必填项。",
       "createDraft": "生成草稿",
-      "viewRelisted": "查看转售草稿"
+      "viewRelisted": "查看转售草稿",
+      "aiGenerated": "AI 生成",
+      "aiPhotoNote": "标有「AI 生成」的图由模型根据实拍推测，不是实物照片，仅供参考廓形。"
     },
     "plus": {
       "title": "Plus 会员",

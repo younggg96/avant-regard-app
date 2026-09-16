@@ -96,10 +96,20 @@ def main() -> int:
             if r.status_code == 200:
                 print(f"  ✓ 图像服务可达 ({base})")
             elif r.status_code in (401, 403):
-                print(f"  ✗ {base} 可达但鉴权失败 ({r.status_code}),检查 OPENAI_API_KEY")
-                missing.append("OPENAI_API_KEY 无效")
+                body = r.text[:300]
+                # 403 + unsupported_country 不是 key 的问题,是反代落在了
+                # OpenAI 不服务的地区(最常见是香港)。两者提示完全不同,
+                # 混为一谈会把人引到错误的方向上排查半天。
+                if "unsupported_country" in body or "country, region" in body.lower():
+                    print(f"  ✗ {base} 所在地区不被 OpenAI 支持")
+                    print("    反代节点别放香港,换东京 / 新加坡 / 美西")
+                    missing.append("反代节点地区不受支持")
+                else:
+                    print(f"  ✗ {base} 可达但鉴权失败 ({r.status_code})")
+                    print(f"    {body[:160]}")
+                    missing.append("OPENAI_API_KEY 无效")
             else:
-                print(f"  ! {base} 返回 {r.status_code}")
+                print(f"  ! {base} 返回 {r.status_code}: {r.text[:160]}")
         except Exception as e:
             print(f"  ✗ 连不上 {base}: {type(e).__name__}")
             print("    国内服务器需把 OPENAI_BASE_URL 指向可达的反代网关")

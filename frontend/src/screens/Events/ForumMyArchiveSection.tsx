@@ -9,7 +9,12 @@ import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { useNavigation } from "@react-navigation/native";
-import { Pressable, Text } from "../../components/ui";
+import {
+  Pressable,
+  Text,
+  AiPhotoBadge,
+  isAiPhoto,
+} from "../../components/ui";
 import { OptimizedImage } from "../../components/ui/OptimizedImage";
 import { ImageSize } from "../../utils/imageUtils";
 import { useAppTheme, useThemedStyles, type AppTheme } from "../../theme";
@@ -91,7 +96,10 @@ export const ForumMyArchiveSection: React.FC<Props> = ({ refreshSignal = 0, onLo
       {items.map((item) => (
         <Pressable key={item.id} onPress={() => openItem(item)} style={s.cell}>
           {item.photos?.[0] ? (
-            <OptimizedImage uri={item.photos[0]} size={ImageSize.THUMBNAIL} style={s.img} contentFit="cover" lazy />
+            <View>
+              <OptimizedImage uri={item.photos[0]} size={ImageSize.THUMBNAIL} style={s.img} contentFit="cover" lazy />
+              {isAiPhoto(item.photos[0], item.aiPhotos) && <AiPhotoBadge size="sm" />}
+            </View>
           ) : (
             <View style={[s.img, { backgroundColor: theme.colors.surface }]} />
           )}

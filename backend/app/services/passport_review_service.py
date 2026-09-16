@@ -139,6 +139,9 @@ class PassportReviewService:
             "username": (user or {}).get("username") or f"#{row['user_id']}",
             "title": row.get("title"),
             "photos": row.get("photos") or [],
+            # 审核员得能看出哪几张是 AI 推测的侧背面，否则会拿生成图去判断
+            # 实物状况。这是审核队列和全量管理都要带的，放在 _format 里。
+            "aiPhotos": row.get("ai_photos") or [],
             "brandId": row.get("brand_id"),
             "brandName": row.get("brand_name"),
             "releaseYear": row.get("release_year"),
@@ -237,12 +240,10 @@ class PassportReviewService:
 
         users = self._fetch_users([r["user_id"] for r in rows])
         attributions = self._fetch_attributions([r["id"] for r in rows])
-        items = []
-        for r in rows:
-            item = self._format(r, users.get(r["user_id"]), attributions.get(r["id"]))
-            # 全量管理页要能看出哪几张是 AI 生成的
-            item["aiPhotos"] = r.get("ai_photos") or []
-            items.append(item)
+        items = [
+            self._format(r, users.get(r["user_id"]), attributions.get(r["id"]))
+            for r in rows
+        ]
         return {"items": items, "total": res.count or 0}
 
     def update_archive(self, item_id: int, fields: Dict[str, Any]) -> Dict[str, Any]:

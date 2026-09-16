@@ -1423,7 +1423,8 @@
     "allBrandsLoaded": "已加载全部 {{total}} 个品牌",
     "loginToSubmitBrand": "请先登录后再提交品牌",
     "noLeaderboard": "暂无贡献排行",
-    "noLeaderboardHint": "有用户提交并通过审核后，排行将在此显示"
+    "noLeaderboardHint": "有用户提交并通过审核后，排行将在此显示",
+    "aiGenerated": "AI 生成"
   },
   "brand": {
     "detail": "品牌详情",
@@ -3812,7 +3813,8 @@
       "successMessage": "可在「我的在售」继续完善 5 视角图后提交审核",
       "successCta": "去完善",
       "confirm": "确定",
-      "addHoldingFailed": "添加失败"
+      "addHoldingFailed": "添加失败",
+      "aiPhotoNote": "标有「AI 生成」的图由模型根据实拍推测，不是实物照片，仅供参考廓形。"
     },
     "uploadArchive": {
       "headerTitle": "上传新典藏",
