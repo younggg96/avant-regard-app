@@ -74,6 +74,52 @@ export async function getThreeViewQuota(): Promise<ThreeViewQuota> {
   });
 }
 
+/** 历史里的单张视图。失败的那张 url 为 null，errorMessage 说明原因。 */
+export interface ThreeViewHistoryView {
+  id: number;
+  slug: string;
+  url: string | null;
+  /** success | failed | disabled */
+  status: string;
+  errorMessage: string | null;
+}
+
+/** 一次生成 = 一批（正 / 侧 / 背 三张）。 */
+export interface ThreeViewHistoryBatch {
+  createdAt: string;
+  sourceImageUrl: string;
+  model: string | null;
+  imageSize: string | null;
+  archiveItemId: number | null;
+  views: ThreeViewHistoryView[];
+  okCount: number;
+  totalCount: number;
+  /** success = 三张全成，partial = 部分成功，failed = 全失败 */
+  status: "success" | "partial" | "failed";
+}
+
+export interface ThreeViewHistoryPage {
+  items: ThreeViewHistoryBatch[];
+  /** 总批数（不是总张数）。 */
+  total: number;
+}
+
+/**
+ * 自己的三视图生成记录，成功和失败都会返回。
+ *
+ * 失败的记录同样重要 —— 用户点过一次没拿到图，要能在这里看到原因，
+ * 而不是只能猜「是不是白扣了一次」。
+ */
+export async function getThreeViewHistory(
+  page = 1,
+  pageSize = 20,
+): Promise<ThreeViewHistoryPage> {
+  return request<ThreeViewHistoryPage>(
+    `/api/passport/three-view/history?page=${page}&pageSize=${pageSize}`,
+    { silent: true },
+  );
+}
+
 // =====================================================
 // 5.2 / 5.3 · AI 识别、用户确认与入库
 // =====================================================

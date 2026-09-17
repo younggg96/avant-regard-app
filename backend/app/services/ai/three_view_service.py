@@ -24,7 +24,7 @@ import io
 import logging
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 import httpx
 from openai import (
@@ -155,6 +155,87 @@ _FETCH_TIMEOUT_S = 20.0
 
 
 class ThreeViewService:
+    def history(
+        self, user_id: int, *, page: int = 1, page_size: int = 20
+    ) -> Dict[str, Any]:
+        """
+        用户自己的三视图生成记录，成功和失败都给。
+
+        失败的尤其要给：那才是用户需要解释的地方 —— 「我点了一次，图没出来，
+        次数是不是白扣了」。把失败原因和当时的源图摆出来，比任何客服话术都
+        管用。
+
+        按「批次」返回而不是按张。一次生成 = 一条 insert = 3 行，它们共享同一
+        个 created_at（NOW() 在单条语句内是同一个值），所以可以直接拿
+        (created_at, source_image_url) 把它们归拢回去，不用额外加 batch 列。
+
+        分页按行做（每批固定 3 行，边界正好对齐），page_size 是批数。
+        """
+        from app.db.supabase import get_supabase_admin
+
+        db = get_supabase_admin()
+        per_batch = len(VIEW_SPECS)
+        offset = (page - 1) * page_size * per_batch
+
+        res = (
+            db.table("passport_three_views")
+            .select("*", count="exact")
+            # 走的是 admin client（绕过 RLS），user_id 这层过滤就是唯一的
+            # 边界 —— 漏了它等于把所有人的生成记录开放给任何登录用户。
+            .eq("user_id", user_id)
+            # 按 id 排而不是 created_at：同批三行的 created_at 完全相同，
+            # 只靠它排序批与批之间会交错，分页边界就切坏了。
+            .order("id", desc=True)
+            .range(offset, offset + page_size * per_batch - 1)
+            .execute()
+        )
+        rows = res.data or []
+
+        batches: List[Dict[str, Any]] = []
+        index: Dict[tuple, Dict[str, Any]] = {}
+        for r in rows:
+            key = (r.get("created_at"), r.get("source_image_url"))
+            batch = index.get(key)
+            if batch is None:
+                batch = {
+                    "createdAt": r.get("created_at"),
+                    "sourceImageUrl": r.get("source_image_url"),
+                    "model": r.get("model"),
+                    "imageSize": r.get("image_size"),
+                    "archiveItemId": r.get("archive_item_id"),
+                    "views": [],
+                }
+                index[key] = batch
+                batches.append(batch)
+            batch["views"].append(
+                {
+                    "id": r["id"],
+                    "slug": r.get("view_slug"),
+                    "url": r.get("image_url"),
+                    "status": r.get("status"),
+                    "errorMessage": r.get("error_message"),
+                }
+            )
+
+        for batch in batches:
+            # 视角顺序按 VIEW_SPECS 排，不按 id —— 并发生成的落表顺序是乱的，
+            # 历史里每批都是「正侧背」才看得舒服。
+            order = {spec.slug: i for i, spec in enumerate(VIEW_SPECS)}
+            batch["views"].sort(key=lambda v: order.get(v["slug"], 99))
+            ok = sum(1 for v in batch["views"] if v["status"] == "success")
+            batch["okCount"] = ok
+            batch["totalCount"] = len(batch["views"])
+            batch["status"] = (
+                "success" if ok == len(batch["views"]) else "failed" if ok == 0
+                else "partial"
+            )
+
+        total_rows = res.count or 0
+        return {
+            "items": batches,
+            "total": (total_rows + per_batch - 1) // per_batch,
+        }
+
     @staticmethod
     def _active_model() -> tuple[str, str]:
         """(模型名, 出图尺寸) —— 取决于当前 provider，落表和响应都要如实反映。"""

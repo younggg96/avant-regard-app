@@ -80,9 +80,7 @@
     "buyer": "Stores",
     "postsTab": "Posts",
     "eventsTab": "Events",
-    "myArchiveTab": "My Archive",
-    "archiveMine": "Mine",
-    "archiveWorld": "World",
+    "myArchiveTab": "Archive",
     "buyerMap": "Store Map",
     "buyerDetail": "Store Details",
     "noFollowContent": "Follow more users to see their latest posts",
@@ -148,6 +146,7 @@
     "tabSelling": "Selling",
     "tabSaleStatus": "Sale Status",
     "tabCollections": "Saved",
+    "tabArchive": "Archive",
     "published": "Published",
     "pending": "Under Review",
     "forum": "Forum",
@@ -3876,7 +3875,19 @@
       "threeViewRuleShoot": "Shoot the piece front-on, filling the frame, on a clean background for the best result.",
       "threeViewRuleCost": "Each set counts as one of {{limit}} daily generations, reset the next day.",
       "threeViewRuleCostUnknown": "Each set counts as one daily generation, reset the next day.",
-      "threeViewRuleAi": "Side and back are AI inferences from the front, not real photographs; the archive records their origin."
+      "threeViewRuleAi": "Side and back are AI inferences from the front, not real photographs; the archive records their origin.",
+      "threeViewHistoryLink": "History"
+    },
+    "threeViewHistory": {
+      "title": "Three-View History",
+      "empty": "No three-view generations yet",
+      "source": "Source",
+      "view_front": "Front",
+      "view_side": "Side",
+      "view_back": "Back",
+      "statusSuccess": "Generated",
+      "statusPartial": "Partial {{ok}}/{{total}}",
+      "statusFailed": "Failed"
     },
     "archiveEntry": {
       "title": "MY ARCHIVE",

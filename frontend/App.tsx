@@ -143,6 +143,7 @@ import UserReviewsScreen from "./src/screens/Trading/UserReviewsScreen";
 import MyArchiveScreen from "./src/screens/Trading/MyArchiveScreen";
 import ArchiveDetailScreen from "./src/screens/Trading/ArchiveDetailScreen";
 import UploadArchiveItemScreen from "./src/screens/Trading/UploadArchiveItemScreen";
+import ThreeViewHistoryScreen from "./src/screens/Trading/ThreeViewHistoryScreen";
 import EventDetailScreen from "./src/screens/Events/EventDetailScreen";
 import EventListScreen from "./src/screens/Events/EventListScreen";
 import AdminEventEditorScreen from "./src/screens/Events/AdminEventEditorScreen";
@@ -1154,6 +1155,11 @@ function AppNavigator({
         <Stack.Screen
           name="UploadArchiveItem"
           component={UploadArchiveItemScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="ThreeViewHistory"
+          component={ThreeViewHistoryScreen}
           options={{ headerShown: false }}
         />
         <Stack.Screen

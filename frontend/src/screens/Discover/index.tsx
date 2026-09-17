@@ -25,7 +25,6 @@ import {
   TabType,
   TopTab,
   PostsSubTab,
-  ArchiveSubTab,
   BuyerSubTab,
 } from "./types";
 import {
@@ -225,7 +224,6 @@ const DiscoverScreen: React.FC = () => {
 
   // 二级 Tab 状态
   const [postsSubTab, setPostsSubTab] = useState<PostsSubTab>("recommend");
-  const [archiveSubTab, setArchiveSubTab] = useState<ArchiveSubTab>("mine");
   const [buyerSubTab, setBuyerSubTab] = useState<BuyerSubTab>("map");
 
   const lastPostsTabPressAt = useRef(0);
@@ -605,8 +603,6 @@ const DiscoverScreen: React.FC = () => {
         return (
           <MyArchivePage
             isActive={isFocused}
-            subTab={archiveSubTab}
-            onSubTabChange={setArchiveSubTab}
             onScroll={handleVerticalScroll}
           />
         );

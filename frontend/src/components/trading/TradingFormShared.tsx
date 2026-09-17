@@ -302,6 +302,14 @@ export const makeTradingFormStyles = (t: AppTheme) =>
       color: t.colors.gray300,
     },
     quotaTextOut: { color: t.colors.error },
+    // 「生成记录」文字入口，低调但一直在，失败时才有地方可去。
+    historyLink: { paddingVertical: 5 },
+    historyLinkText: {
+      ...t.typography.caption,
+      fontSize: 12,
+      color: t.colors.gray300,
+      textDecorationLine: "underline",
+    },
     // 生成要求清单。
     ruleList: { marginTop: 10, marginBottom: 16, gap: 4 },
     ruleRow: { alignItems: "flex-start", gap: 6 },

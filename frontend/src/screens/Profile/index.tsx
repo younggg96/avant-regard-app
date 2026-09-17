@@ -56,6 +56,7 @@ import { TopTabBar } from "../../components/ui";
 import { TradingContent } from "./components/TradingContent";
 import { PostsContent } from "./components/PostsContent";
 import { CollectionsContent } from "./components/CollectionsContent";
+import { ForumMyArchiveSection } from "../Events/ForumMyArchiveSection";
 import { DeletePostDialog } from "./components/DeletePostDialog";
 import { AvatarPreviewModal } from "../../components/AvatarPreviewModal";
 import { MonthlyLotteryEntry } from "../../components/level";
@@ -116,6 +117,7 @@ const ProfileScreen = () => {
           { id: "buying" as TopTabType, label: t("profile.tabBuying") },
           { id: "selling" as TopTabType, label: t("profile.tabSaleStatus") },
           { id: "collections" as TopTabType, label: t("profile.tabCollections") },
+          { id: "archive" as TopTabType, label: t("profile.tabArchive") },
         ]
       ).filter((tab) => tradingEnabled || !isTradingTab(tab.id)),
     [t, tradingEnabled],
@@ -808,6 +810,16 @@ const ProfileScreen = () => {
               }
               onFoldersChanged={() => loadCollectionFolders(true)}
             />
+          </View>
+        ) : topTab === "archive" ? (
+          /* 自己的 Archive。发现页那个 tab 现在只逛别人的，个人档案落在这里。 */
+          <View
+            style={[
+              styles.postsContainer,
+              { minHeight: contentMinHeight, backgroundColor: appTheme.colors.background },
+            ]}
+          >
+            <ForumMyArchiveSection />
           </View>
         ) : (
           <View style={[styles.postsContainer, { minHeight: contentMinHeight, backgroundColor: appTheme.colors.background }]}>

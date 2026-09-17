@@ -69,9 +69,6 @@ export type TopTab = "forum" | "posts" | "events" | "myArchive" | "buyer";
 /** 「帖子」Tab 内部二级切换 */
 export type PostsSubTab = "recommend" | "following";
 
-/** 「My Archive」Tab 内部二级切换 */
-export type ArchiveSubTab = "mine" | "world";
-
 /** 「买手店」Tab 内部二级切换：地图 / 详情 */
 export type BuyerSubTab = "map" | "detail";
 

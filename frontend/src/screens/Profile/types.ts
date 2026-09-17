@@ -9,11 +9,20 @@ import type { OrderStatus } from "../../services/orderService";
  *  在售 = 卖家订单侧
  *  收藏 = 用户的收藏聚合 (CollectionsContent + 3 个 sub chip:
  *          帖子收藏 / 买手店收藏 / 产品收藏)
+ *  档案 = 用户自己的 Archive 单品 (ForumMyArchiveSection)
  *
  *  之前的「我的收藏」入口位于 Settings → 商家中心, 与产品域绑定较深;
  *  现在拍平为顶级 tab, 让用户在「我」页一眼能找到。
+ *
+ *  archive 同理: 发现页的 Archive tab 已改成只逛别人的, 自己的档案收回到
+ *  「我」页, 放在「收藏」右边。
  */
-export type TopTabType = "notes" | "buying" | "selling" | "collections";
+export type TopTabType =
+  | "notes"
+  | "buying"
+  | "selling"
+  | "collections"
+  | "archive";
 
 /** 「收藏」一级 tab 下的二级 chip:
  *  - posts    = 帖子收藏 (post_favorites)

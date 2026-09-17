@@ -498,6 +498,18 @@ const UploadArchiveItemScreen: React.FC = () => {
               </RNText>
             </View>
           ) : null}
+
+          {/* 生成记录入口放在按钮旁边：失败也会留档，用户点了没出图时
+              第一反应就是在这附近找「刚才那次怎么了」。 */}
+          <Pressable
+            style={styles.historyLink}
+            onPress={() => navigation.navigate("ThreeViewHistory")}
+            accessibilityRole="button"
+          >
+            <RNText style={styles.historyLinkText}>
+              {t("trading.uploadArchive.threeViewHistoryLink")}
+            </RNText>
+          </Pressable>
         </HStack>
 
         {/* 把规则写在按下之前。这一步按次计费、额度每天才回满，用户有权

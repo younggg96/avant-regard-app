@@ -80,9 +80,7 @@
     "buyer": "买手店",
     "postsTab": "帖子",
     "eventsTab": "活动",
-    "myArchiveTab": "My Archive",
-    "archiveMine": "我的",
-    "archiveWorld": "世界",
+    "myArchiveTab": "Archive",
     "buyerMap": "买手店地图",
     "buyerDetail": "买手店详情",
     "noFollowContent": "关注更多用户，查看他们的最新动态",
@@ -148,6 +146,7 @@
     "tabSelling": "在售",
     "tabSaleStatus": "售出状态",
     "tabCollections": "收藏",
+    "tabArchive": "档案",
     "published": "笔记",
     "pending": "审核中",
     "forum": "论坛",
@@ -3876,7 +3875,19 @@
       "threeViewRuleShoot": "源图请单品正面拍全、尽量占满画面、背景干净，出图才准。",
       "threeViewRuleCost": "每生成一组算 1 次，每天 {{limit}} 次，次日恢复。",
       "threeViewRuleCostUnknown": "每生成一组算 1 次，每天有次数上限，次日恢复。",
-      "threeViewRuleAi": "侧面与背面是 AI 根据正面推测的，不是实物照片，会在档案里标注来源。"
+      "threeViewRuleAi": "侧面与背面是 AI 根据正面推测的，不是实物照片，会在档案里标注来源。",
+      "threeViewHistoryLink": "生成记录"
+    },
+    "threeViewHistory": {
+      "title": "三视图生成记录",
+      "empty": "还没有生成过三视图",
+      "source": "源图",
+      "view_front": "正面",
+      "view_side": "侧面",
+      "view_back": "背面",
+      "statusSuccess": "已生成",
+      "statusPartial": "部分成功 {{ok}}/{{total}}",
+      "statusFailed": "生成失败"
     },
     "archiveEntry": {
       "title": "MY ARCHIVE",

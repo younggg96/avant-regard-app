@@ -3,6 +3,7 @@
 
   POST /api/passport/three-view          AI 三视图生成
   GET  /api/passport/three-view/quota
+  GET  /api/passport/three-view/history  自己的生成记录(含失败)
   POST /api/passport/validate            5.3 有效性检查(单独闸门)
   POST /api/passport/attribute           5.2 识别 + 候选
   POST /api/passport/confirm             5.2 用户确认入库
@@ -11,7 +12,7 @@
 后续的编号与公开验证页(5.4)、鉴定分层(5.5)继续挂在这个 prefix 下。
 """
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.api.deps import get_current_user_id
 from app.core.response import success
@@ -79,6 +80,25 @@ def generate_three_view(
             quotaUsed=result.quota_used,
             quotaLimit=result.quota_limit,
         ).model_dump()
+    )
+
+
+@router.get("/three-view/history")
+def get_three_view_history(
+    page: int = Query(1, ge=1),
+    pageSize: int = Query(20, ge=1, le=50),
+    current_user_id: int = Depends(get_current_user_id),
+):
+    """
+    自己的三视图生成记录，按批次倒序，成功和失败都返回。
+
+    失败的必须给：用户点了一次没拿到图，需要一个地方看到「为什么」以及
+    「这次到底算不算次数」，否则只能来问客服。
+    """
+    return success(
+        three_view_service.history(
+            current_user_id, page=page, page_size=pageSize
+        )
     )
 
 
