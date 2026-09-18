@@ -1,8 +1,8 @@
 /**
- * My Archive Tab · 「世界」二级 Tab
+ * Archive Tab · 公开档案
  *
- * 浏览其他用户的公开档案条目（后端 /api/archive/world 已排除本人）。
- * 三列瀑布，展示图片 + 作者头像/名，点击进入作者主页。
+ * 展示所有 visibility=public 的藏品，包括本人的。线上旧接口仍会排除本人，
+ * 所以这里再拉一次自己的列表补上，按 id 去重。私密的不进这个 feed。
  */
 import React, { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
@@ -18,7 +18,12 @@ import {
 import { OptimizedImage } from "../../components/ui/OptimizedImage";
 import { ImageSize } from "../../utils/imageUtils";
 import { useAppTheme, useThemedStyles, type AppTheme } from "../../theme";
-import { WorldArchiveItem, listWorldArchive } from "../../services/archivePlusService";
+import {
+  WorldArchiveItem,
+  listArchive,
+  listWorldArchive,
+} from "../../services/archivePlusService";
+import { useAuthStore } from "../../store/authStore";
 import { SCREEN_WIDTH } from "../Discover/constants";
 
 interface Props {
@@ -36,6 +41,9 @@ export const WorldArchiveSection: React.FC<Props> = ({ refreshSignal = 0, onLoad
   const theme = useAppTheme();
   const s = useThemedStyles(makeStyles);
   const navigation = useNavigation();
+  const userId = useAuthStore((s) => s.user?.userId);
+  const username = useAuthStore((s) => s.user?.username);
+  const avatar = useAuthStore((s) => s.user?.avatar);
   const [items, setItems] = useState<WorldArchiveItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [loaded, setLoaded] = useState(false);
@@ -43,16 +51,44 @@ export const WorldArchiveSection: React.FC<Props> = ({ refreshSignal = 0, onLoad
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await listWorldArchive({ page: 1, pageSize: 60 });
-      setItems(res.items);
-    } catch (e) {
-      console.warn("[archive] world list failed", e);
+      const [worldRes, mineRes] = await Promise.all([
+        listWorldArchive({ page: 1, pageSize: 60 }).catch((e) => {
+          console.warn("[archive] world list failed", e);
+          return { items: [] as WorldArchiveItem[], total: 0 };
+        }),
+        listArchive({ page: 1, pageSize: 60 }).catch((e) => {
+          console.warn("[archive] own list failed", e);
+          return { items: [], total: 0 };
+        }),
+      ]);
+
+      const byId = new Map<number, WorldArchiveItem>();
+      for (const item of worldRes.items) byId.set(item.id, item);
+
+      // 旧的 /world 会把本人排除掉。Archive tab 是唯一浏览入口，
+      // 自己公开的藏品必须从 /items 补回来，否则「已公开」永远是空的。
+      const me =
+        userId != null
+          ? { id: userId, username: username ?? "", avatarUrl: avatar }
+          : null;
+      for (const item of mineRes.items) {
+        if ((item.visibility ?? "public") !== "public") continue;
+        const prev = byId.get(item.id);
+        if (prev?.author) continue;
+        byId.set(item.id, { ...(prev ?? item), author: prev?.author ?? me });
+      }
+
+      setItems(
+        [...byId.values()].sort((a, b) =>
+          (b.createdAt || "").localeCompare(a.createdAt || ""),
+        ),
+      );
     } finally {
       setLoading(false);
       setLoaded(true);
       onLoaded?.();
     }
-  }, [onLoaded]);
+  }, [onLoaded, userId, username, avatar]);
 
   useEffect(() => {
     load();

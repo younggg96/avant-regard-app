@@ -2560,7 +2560,7 @@
     "archiveEmptyHint": "Upload your vintage pieces to build their digital passports",
     "archiveUpload": "Upload item",
     "worldEmpty": "No archives to explore yet",
-    "worldEmptyHint": "Archives shared by other collectors will show up here",
+    "worldEmptyHint": "Public archives show up here, including yours. Private ones stay hidden"
     "admin": {
       "createTitle": "Publish Event",
       "editTitle": "Edit Event",

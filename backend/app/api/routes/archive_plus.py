@@ -42,7 +42,7 @@ def list_archive(
 def list_world_archive(
     page: int = 1, pageSize: int = 30, user_id: int = Depends(get_current_user)
 ):
-    """「世界」二级 Tab：浏览其他用户的档案条目（排除本人）。"""
+    """公开档案 feed：所有 visibility=public 的藏品，包括本人的。"""
     items, total = archive_service.list_world(user_id, page=page, page_size=pageSize)
     return success({"items": items, "total": total})
 

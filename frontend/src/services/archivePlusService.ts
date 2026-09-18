@@ -91,7 +91,7 @@ export interface WorldArchiveItem extends ArchiveItem {
   author?: ArchiveAuthor | null;
 }
 
-/** 「世界」二级 Tab：浏览其他用户的公开档案条目（后端已排除本人）。 */
+/** 公开档案 feed：所有 visibility=public 的藏品，包括本人的。 */}
 export async function listWorldArchive(params?: {
   page?: number;
   pageSize?: number;

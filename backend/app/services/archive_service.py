@@ -372,7 +372,12 @@ class ArchiveService:
         page: int = 1,
         page_size: int = 30,
     ) -> Tuple[List[Dict[str, Any]], int]:
-        """「世界」二级 Tab：浏览其他用户的档案条目（排除本人）。
+        """公开档案 feed。
+
+        只按 visibility='public' 过滤，不再排除本人。Archive tab 已经是唯一的
+        浏览入口，「我的 / 世界」拆开之后，排除自己等于公开了也无处可看。
+        viewer_user_id 留着是为了以后做「已看过 / 拉黑」之类的个性化，
+        现在的查询用不到它。
 
         返回 dict 列表（基础 archive 字段 + `author` 作者简介），
         按创建时间倒序分页。
@@ -381,7 +386,6 @@ class ArchiveService:
         q = (
             self.db.table("user_archive_items")
             .select("*", count="exact")
-            .neq("user_id", viewer_user_id)
             .eq("visibility", "public")
             .order("created_at", desc=True)
             .range(offset, offset + page_size - 1)
