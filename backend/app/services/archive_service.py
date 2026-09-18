@@ -71,7 +71,114 @@ class ArchiveService:
                 raise insert_err
         if not res.data:
             return None
-        return self._format(res.data[0])
+        item = self._format(res.data[0])
+        self._sync_shadow_post(item)
+        return item
+
+    # ------------------------------------------------------------------
+    # 影子帖子（migration 092）· 点赞 / 评论 / 收藏的挂载点
+    # ------------------------------------------------------------------
+
+    def _sync_shadow_post(self, item: ArchiveItem) -> Optional[Dict[str, Any]]:
+        """取（必要时创建 / 更新）这条档案在 posts 里的影子行，返回该行。
+
+        互动层不是多态的：post_likes / post_comments / post_favorites 都硬绑
+        post_id 外键。与其给档案再抄一套平行表，不如让每条档案在 posts 里挂一行，
+        直接复用帖子那整套表、RPC、路由和前端组件。
+
+        status 固定 HIDDEN —— posts 的每一处 feed / 列表查询都带
+        status='PUBLISHED'，所以档案帖子被自动排除在所有帖子流之外，
+        不需要去二十多处查询里逐个加 post_type 过滤（漏一处藏品就外泄到帖子流）。
+
+        这里是惰性的：读详情时也会调，所以迁移回填漏掉的、或历史上创建失败的
+        条目会在第一次被访问时自愈。
+
+        任何失败都只记日志不抛 —— 互动挂载点缺失顶多是这件藏品点不了赞，
+        不该让上传档案这个主流程失败。
+        """
+        try:
+            existing = (
+                self.db.table("posts")
+                .select("*")
+                .eq("archive_item_id", item.id)
+                .limit(1)
+                .execute()
+            )
+        except Exception as e:
+            # 092 还没跑时 archive_item_id 列不存在，整张详情页不该因此 500。
+            print(f"[archive] shadow post lookup failed (migration 092?): {e}")
+            return None
+
+        # 影子帖子的标题/封面只用于「我的收藏」这类复用帖子列表的界面，
+        # 所以封面必须和 _apply_photo_display 给外人看的那份一致，
+        # 否则藏起来的实拍会从收藏夹缩略图漏出去。
+        public_photos = self._apply_photo_display(item, is_owner=False).photos
+        content = {
+            # posts.title 是 NOT NULL 而档案标题可空，逐级回退到占位符。
+            "title": (item.title or item.brandName or "未命名档案")[:500],
+            "content_text": item.note or "",
+            "image_urls": public_photos,
+        }
+
+        try:
+            if existing.data:
+                row = existing.data[0]
+                stale = any(row.get(k) != v for k, v in content.items())
+                if not stale:
+                    return row
+                updated = (
+                    self.db.table("posts")
+                    .update(content)
+                    .eq("id", row["id"])
+                    .execute()
+                )
+                return updated.data[0] if updated.data else row
+
+            res = (
+                self.db.table("posts")
+                .insert(
+                    {
+                        **content,
+                        "user_id": item.userId,
+                        "archive_item_id": item.id,
+                        "post_type": "ARCHIVE",
+                        "status": "HIDDEN",
+                        "audit_status": "APPROVED",
+                    }
+                )
+                .execute()
+            )
+            return res.data[0] if res.data else None
+        except Exception as e:
+            print(f"[archive] sync shadow post failed for item {item.id}: {e}")
+            return None
+
+    def _engagement(
+        self, item: ArchiveItem, viewer_user_id: Optional[int]
+    ) -> Dict[str, Any]:
+        """详情页的互动状态，字段名与帖子保持一致，前端可以直接复用组件。
+
+        postId 为 None 时前端应隐藏互动区 —— 那说明影子帖子还没建起来
+        （092 未执行），此时调用 /api/posts/{id}/like 只会得到一个假的成功。
+        """
+        post = self._sync_shadow_post(item)
+        if not post:
+            return {"postId": None}
+        post_id = post["id"]
+        liked = favorited = False
+        if viewer_user_id:
+            from app.services.post_service import post_service
+
+            liked = post_service._check_liked(post_id, viewer_user_id)
+            favorited = post_service._check_favorited(post_id, viewer_user_id)
+        return {
+            "postId": post_id,
+            "likeCount": post.get("like_count") or 0,
+            "favoriteCount": post.get("favorite_count") or 0,
+            "commentCount": post.get("comment_count") or 0,
+            "isLiked": liked,
+            "isFavorited": favorited,
+        }
 
     @staticmethod
     def _format(row: dict) -> ArchiveItem:
@@ -426,7 +533,35 @@ class ArchiveService:
             data = item.dict()
             data["author"] = author_map.get(r.get("user_id"))
             items.append(data)
+        self._attach_feed_counts(items)
         return items, (res.count or 0)
+
+    def _attach_feed_counts(self, items: List[Dict[str, Any]]) -> None:
+        """给 feed 卡片批量补点赞数（一次查询，不是逐条 N+1）。
+
+        这里不做惰性建帖子：feed 一页三十条，为此写三十行 posts 不划算。
+        缺影子帖子的条目点赞数按 0 显示，等用户点进详情时 _engagement 会补上。
+        """
+        ids = [i["id"] for i in items]
+        if not ids:
+            return
+        try:
+            rows = (
+                self.db.table("posts")
+                .select("archive_item_id, like_count, comment_count")
+                .in_("archive_item_id", ids)
+                .execute()
+                .data
+                or []
+            )
+        except Exception as e:
+            print(f"[archive] feed counts failed (migration 092?): {e}")
+            return
+        by_item = {r["archive_item_id"]: r for r in rows}
+        for i in items:
+            row = by_item.get(i["id"]) or {}
+            i["likeCount"] = row.get("like_count") or 0
+            i["commentCount"] = row.get("comment_count") or 0
 
     def get_detail(
         self, archive_id: int, viewer_user_id: int
@@ -446,6 +581,7 @@ class ArchiveService:
         data = self._apply_photo_display(item, is_owner=is_owner).dict()
         data["author"] = self._authors_brief([item.userId]).get(item.userId)
         data["isOwner"] = is_owner
+        data.update(self._engagement(item, viewer_user_id))
         return data
 
     def set_visibility(
@@ -492,7 +628,11 @@ class ArchiveService:
         )
         if not res.data:
             raise LookupError("未找到该藏品")
-        return self._format(res.data[0])
+        updated = self._format(res.data[0])
+        # 影子帖子的封面跟着走：它是「我的收藏」列表的缩略图来源，
+        # 不同步的话刚藏起来的实拍还会挂在别人的收藏夹里。
+        self._sync_shadow_post(updated)
+        return updated
 
     def get(self, archive_id: int) -> Optional[ArchiveItem]:
         res = (
@@ -580,6 +720,7 @@ class ArchiveService:
         }
         res = self.db.table("user_archive_items").insert(payload).execute()
         item = self._format(res.data[0])
+        self._sync_shadow_post(item)
 
         # 生成三视图时档案条目还不存在，到这里才能把两边挂上。
         # 后台的三视图管理页靠它跳转到对应档案。

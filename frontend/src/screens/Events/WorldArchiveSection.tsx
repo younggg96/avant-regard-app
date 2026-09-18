@@ -108,8 +108,13 @@ export const WorldArchiveSection: React.FC<Props> = ({ refreshSignal = 0, onLoad
 
   // 点图看藏品、点作者行看主页。整格都跳作者主页的话，这个 feed 里就没有
   // 任何入口能真正打开一件藏品。
+  // 公开 feed 一律走浏览模式 —— 包括自己的藏品。作者在这里看到的和陌生人
+  // 完全一样，这是他确认「我公开出去的样子」的唯一途径。
   const openItem = (item: WorldArchiveItem) => {
-    (navigation.navigate as any)("ArchiveDetail", { archiveId: item.id });
+    (navigation.navigate as any)("ArchiveDetail", {
+      archiveId: item.id,
+      mode: "view",
+    });
   };
 
   if (loading && !loaded) {
@@ -146,22 +151,34 @@ export const WorldArchiveSection: React.FC<Props> = ({ refreshSignal = 0, onLoad
           ) : (
             <View style={[s.img, { backgroundColor: theme.colors.surface }]} />
           )}
-          <Pressable style={s.authorRow} onPress={() => openAuthor(item)}>
-            {item.author?.avatarUrl ? (
-              <OptimizedImage
-                uri={item.author.avatarUrl}
-                size={ImageSize.THUMBNAIL}
-                style={s.avatar}
-                contentFit="cover"
-                lazy
-              />
-            ) : (
-              <View style={[s.avatar, { backgroundColor: theme.colors.surface }]} />
-            )}
-            <Text fontSize={12} numberOfLines={1} style={{ color: theme.colors.gray600, flex: 1 }}>
-              {item.author?.username || "—"}
-            </Text>
-          </Pressable>
+          {/* 点赞数放在作者行外面：作者行整块是跳主页的热区，
+              计数塞进去会让「想看看有多少赞」变成误触。 */}
+          <View style={s.metaRow}>
+            <Pressable style={s.authorRow} onPress={() => openAuthor(item)}>
+              {item.author?.avatarUrl ? (
+                <OptimizedImage
+                  uri={item.author.avatarUrl}
+                  size={ImageSize.THUMBNAIL}
+                  style={s.avatar}
+                  contentFit="cover"
+                  lazy
+                />
+              ) : (
+                <View style={[s.avatar, { backgroundColor: theme.colors.surface }]} />
+              )}
+              <Text fontSize={12} numberOfLines={1} style={{ color: theme.colors.gray600, flex: 1 }}>
+                {item.author?.username || "—"}
+              </Text>
+            </Pressable>
+            {(item.likeCount ?? 0) > 0 ? (
+              <View style={s.likeBox}>
+                <Ionicons name="heart-outline" size={13} color={theme.colors.gray300} />
+                <Text fontSize={12} style={{ color: theme.colors.gray300 }}>
+                  {item.likeCount}
+                </Text>
+              </View>
+            ) : null}
+          </View>
           <Text fontSize={14} fontWeight="$semibold" numberOfLines={2} style={s.title}>
             {item.title || item.brandName || "—"}
           </Text>
@@ -200,12 +217,19 @@ const makeStyles = (t: AppTheme) =>
       marginTop: 4,
       lineHeight: 20,
     },
+    metaRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      marginTop: 6,
+    },
     authorRow: {
       flexDirection: "row",
       alignItems: "center",
       gap: 4,
-      marginTop: 6,
+      flex: 1,
     },
+    likeBox: { flexDirection: "row", alignItems: "center", gap: 2 },
     avatar: { width: 20, height: 20, borderRadius: 10 },
   });
 

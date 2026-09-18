@@ -58,8 +58,13 @@ export const ForumMyArchiveSection: React.FC<Props> = ({ refreshSignal = 0, onLo
     load();
   }, [load, refreshSignal]);
 
+  // 这里是「我的档案」，从自己的收藏格子点进去就是来管理的：直接开编辑模式，
+  // 购入价、持有记录、转卖这些只有主人能做的事都在那边。
   const openItem = (item: ArchiveItem) =>
-    (navigation.navigate as any)("ArchiveDetail", { archiveId: item.id });
+    (navigation.navigate as any)("ArchiveDetail", {
+      archiveId: item.id,
+      mode: "edit",
+    });
 
   if (loading && !loaded) {
     return (

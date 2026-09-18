@@ -1,10 +1,16 @@
 /**
- * ArchiveDetailScreen —— 单条藏品页。
+ * ArchiveDetailScreen —— 单条藏品页，一个屏两种模式。
  *
- * 功能：
- *   - 展示藏品快照
- *   - 一键转卖（生成新 listing 草稿）
- *   - PDF p.22 · 持有记录时间轴 + 新增持有记录
+ * mode="view"（默认）：把藏品当成一种帖子来看 —— 三视图 + 基本信息 +
+ *   点赞 / 收藏 / 评论。作者从 Archive feed 点进自己的藏品时走的也是这条，
+ *   看到的和陌生人完全一样，这样他才知道自己公开出去的究竟长什么样。
+ *
+ * mode="edit"：管理视角，从「我的档案」类入口进来。在 view 的内容之上多出
+ *   购入价、存放位置、持有记录时间轴、新增持有记录、一键转卖、实拍展示开关。
+ *   这些要么是隐私（成交价、藏在哪），要么是只有主人才做的操作。
+ *
+ * 互动本身不重新造：每条档案在 posts 里挂一条 status=HIDDEN 的影子帖子
+ * （migration 092），点赞/收藏/评论直接复用帖子那套接口和组件。
  *
  * 视觉：ArchiveDetailHeader（对齐帖子详情）+ useAppTheme，全部跟随主题。
  */
@@ -13,6 +19,7 @@ import {
   Animated,
   StyleSheet,
   TextInput,
+  TouchableWithoutFeedback,
   Image as RNImage,
   ActivityIndicator,
   Platform,
@@ -34,6 +41,11 @@ import {
   isAiPhoto,
 } from "../../components/ui";
 import ArchiveDetailHeader from "../../components/trading/ArchiveDetailHeader";
+// 评论区与底部互动条直接复用帖子详情的组件 —— 档案的互动就是帖子的互动，
+// 照抄一份只会让两边的交互慢慢分叉。
+import { CommentsSection } from "../../components/PostDetail/CommentsSection";
+import { CommentInputBar } from "../../components/PostDetail/CommentInputBar";
+import { useComments } from "../../components/PostDetail/hooks/useComments";
 import ImagePreviewModal from "../../components/ImagePreviewModal";
 import { KeyboardFriend, KeyboardFriendScrollView } from "../../components/KeyboardFriend";
 import { TradingNotFoundState } from "../../components/trading/TradingFormShared";
@@ -54,6 +66,12 @@ import {
   unfollowUser,
   isFollowingUser,
 } from "../../services/followService";
+import {
+  likePost,
+  unlikePost,
+  favoritePost,
+  unfavoritePost,
+} from "../../services/postService";
 import { useAuthStore } from "../../store/authStore";
 import { parsePriceInputToCents } from "../../services/storeProductService";
 import { useTradingEnabled } from "../../store/featureFlagsStore";
@@ -61,7 +79,15 @@ import { useFormatPrice } from "../../utils/currency";
 
 type HoldingStatus = "owned" | "lent" | "transferred" | "resold" | "returned";
 
-type RouteParams = { ArchiveDetail: { archiveId: number } };
+/**
+ * 进这一页的入口决定给什么模式，而不是「是不是我的」：
+ * 藏品主人也需要一个能看到自己公开面貌的入口。
+ */
+export type ArchiveDetailMode = "view" | "edit";
+
+type RouteParams = {
+  ArchiveDetail: { archiveId: number; mode?: ArchiveDetailMode };
+};
 
 const ArchiveDetailScreen: React.FC = () => {
   const theme = useAppTheme();
@@ -71,8 +97,9 @@ const ArchiveDetailScreen: React.FC = () => {
   const { t } = useTranslation();
   const tradingEnabled = useTradingEnabled();
   const formatPrice = useFormatPrice();
-  const { archiveId } = route.params;
+  const { archiveId, mode = "view" } = route.params;
   const currentUserId = useAuthStore((s) => s.user?.userId);
+  const currentUsername = useAuthStore((s) => s.user?.username);
 
   const HOLDING_STATUS_LABELS = useMemo<Record<HoldingStatus, string>>(
     () => ({
@@ -94,6 +121,10 @@ const ArchiveDetailScreen: React.FC = () => {
   // 这页现在也会被藏品主人以外的人打开（世界 feed 点进来），
   // 所以「是不是我的」决定了半页内容给不给看，不再是恒真。
   const isOwner = item?.isOwner ?? false;
+  // 管理区要同时满足「是我的」和「从管理入口进来的」。只看 isOwner 的话，
+  // 作者从 Archive feed 点进自己的藏品会看到一堆别人看不到的表单，
+  // 也就永远无法确认自己公开出去的样子。
+  const canEdit = isOwner && mode === "edit";
   const [visibilityLoading, setVisibilityLoading] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
@@ -186,6 +217,97 @@ const ArchiveDetailScreen: React.FC = () => {
   const showRealPhotos = item?.showRealPhotos ?? true;
   const [photoDisplayLoading, setPhotoDisplayLoading] = useState(false);
 
+  // ---------------- 点赞 / 收藏 / 评论 ----------------
+  // 全部挂在影子帖子上（migration 092），所以这里用的是帖子的接口。
+  // postId 缺失说明后端还没建起这条记录，互动区整体不渲染 —— 见下方 showEngagement。
+  const postId = item?.postId ?? null;
+
+  // 评论区照搬帖子详情那套 hook。postStatus 固定传 PUBLISHED：影子帖子在库里
+  // 是 HIDDEN（好让它被所有帖子流排除），而 hook 拿这个字段只当「能不能评论」
+  // 的开关用，传 HIDDEN 会让评论永远加载不出来。能不能看这条档案，
+  // 在 getArchiveItem 那一步已经判过了。
+  const comments = useComments({
+    postId: postId ? String(postId) : undefined,
+    postStatus: "PUBLISHED",
+    userId: currentUserId,
+    username: currentUsername,
+  });
+
+  const [likeBusy, setLikeBusy] = useState(false);
+  const [saveBusy, setSaveBusy] = useState(false);
+
+  /**
+   * 点赞 / 收藏共用的乐观更新。先改本地再发请求，失败原样回滚 ——
+   * 互动的手感比一致性优先，但回滚必须做，否则界面会停在一个服务端
+   * 并不认同的状态上。busy 标记挡住连点造成的计数漂移。
+   */
+  const toggleEngagement = useCallback(
+    async (
+      kind: "like" | "favorite",
+      busy: boolean,
+      setBusy: (v: boolean) => void,
+    ) => {
+      if (!item || !postId || busy) return;
+      if (!currentUserId) {
+        Alert.show(t("engagement.pleaseLogin"));
+        return;
+      }
+      const liking = kind === "like";
+      const on = liking ? !item.isLiked : !item.isFavorited;
+      const countKey = liking ? "likeCount" : "favoriteCount";
+      const flagKey = liking ? "isLiked" : "isFavorited";
+      const delta = on ? 1 : -1;
+
+      setBusy(true);
+      setItem((prev) =>
+        prev
+          ? {
+              ...prev,
+              [flagKey]: on,
+              [countKey]: Math.max(0, (prev[countKey] ?? 0) + delta),
+            }
+          : prev,
+      );
+      try {
+        if (liking) {
+          await (on ? likePost : unlikePost)(postId, currentUserId);
+        } else {
+          await (on ? favoritePost : unfavoritePost)(postId, currentUserId);
+        }
+      } catch (e: any) {
+        setItem((prev) =>
+          prev
+            ? {
+                ...prev,
+                [flagKey]: !on,
+                [countKey]: Math.max(0, (prev[countKey] ?? 0) - delta),
+              }
+            : prev,
+        );
+        Alert.show(e?.message ?? t("common.failed"));
+      } finally {
+        setBusy(false);
+      }
+    },
+    [item, postId, currentUserId, t],
+  );
+
+  const onLike = () => toggleEngagement("like", likeBusy, setLikeBusy);
+  const onSave = () => toggleEngagement("favorite", saveBusy, setSaveBusy);
+
+  // 互动区只在 view 模式出现：edit 的底部要留给「一键转卖」那个主按钮，
+  // 两条底栏叠在一起谁都用不了。edit 模式下走 viewPublicPage 入口过来看。
+  // postId 为空说明影子帖子还没建起来（092 未执行），此时点赞根本不会落库，
+  // 与其给一个假的成功，不如整块不渲染。
+  const showEngagement = mode === "view" && !!postId;
+
+  // 计数以服务端为准，但评论一加载完就切到本地列表 —— 这样刚发出去的评论
+  // 立刻反映在数字上，不用为了一个 +1 再跑一趟详情接口。回复也要算进去，
+  // 否则这里的数字和帖子详情的口径对不上。
+  const displayCommentCount = comments.isLoadingComments
+    ? item?.commentCount ?? 0
+    : comments.comments.reduce((n, c) => n + 1 + (c.replyCount || 0), 0);
+
   const reloadHoldings = useCallback(async () => {
     try {
       const list = await listArchiveHoldings(archiveId);
@@ -204,8 +326,9 @@ const ArchiveDetailScreen: React.FC = () => {
           setPriceText((it.acquiredPriceCents / 100).toFixed(2));
         }
         // 持有记录是本人才有的数据，别人打开这页不该去拉（后端也会拒）。
-        if (it.isOwner) reloadHoldings();
-        else if (it.author?.id && currentUserId) {
+        // view 模式下它不展示，也就没必要多发这个请求。
+        if (it.isOwner && mode === "edit") reloadHoldings();
+        else if (!it.isOwner && it.author?.id && currentUserId) {
           setIsFollowing(
             await isFollowingUser(currentUserId, it.author.id).catch(() => false),
           );
@@ -217,7 +340,7 @@ const ArchiveDetailScreen: React.FC = () => {
         setLoading(false);
       }
     })();
-  }, [archiveId, reloadHoldings, currentUserId]);
+  }, [archiveId, reloadHoldings, currentUserId, mode]);
 
   const onToggleVisibility = async () => {
     if (!item) return;
@@ -451,9 +574,9 @@ const ArchiveDetailScreen: React.FC = () => {
                 </View>
               )}
 
-              {/* 只有本人看得到这个开关。关掉之后实拍由服务端剔除，
+              {/* 只有管理视角看得到这个开关。关掉之后实拍由服务端剔除，
                   别人的响应里根本不含这些 URL。 */}
-              {isOwner && aiGenerated.length > 0 && (
+              {canEdit && aiGenerated.length > 0 && (
                 <Pressable
                   style={styles.photoDisplayRow}
                   onPress={onTogglePhotoDisplay}
@@ -506,9 +629,9 @@ const ArchiveDetailScreen: React.FC = () => {
               label={t("trading.archiveDetail.conditionLabel")}
               value={item.condition ?? "-"}
             />
-            {/* 购入价和存放位置只给本人。前者是别人不该知道的成交价，
+            {/* 购入价和存放位置只出现在管理视角。前者是别人不该知道的成交价，
                 后者直接指向这件衣服现在放在哪 —— 公开出去是另一类问题。 */}
-            {isOwner ? (
+            {canEdit ? (
               <>
                 <InfoRow
                   label={t("trading.archiveDetail.acquiredPriceLabel")}
@@ -526,10 +649,10 @@ const ArchiveDetailScreen: React.FC = () => {
             ) : null}
           </VStack>
 
-          {/* PDF p.22 · 持有记录。仅本人可见 —— 时间轴里带着交易对手的
+          {/* PDF p.22 · 持有记录。仅管理视角可见 —— 时间轴里带着交易对手的
               名字和流转时间，公开验证页对这段有单独的脱敏规则，在那套规则
               落地之前不要先把原始记录摊开给陌生人。 */}
-          {isOwner ? (
+          {canEdit ? (
             <>
               <Text style={styles.sectionTitle}>
                 {t("trading.archiveDetail.holdingHistoryTitle")}
@@ -574,7 +697,7 @@ const ArchiveDetailScreen: React.FC = () => {
           ) : null}
 
           {/* 添加新记录 */}
-          {isOwner ? (
+          {canEdit ? (
             <Box style={styles.holdingAddCard}>
               <Text style={styles.holdingAddLabel}>
                 {t("trading.archiveDetail.addHoldingTitle")}
@@ -609,7 +732,7 @@ const ArchiveDetailScreen: React.FC = () => {
           ) : null}
 
           {/* 一键转卖（属于交易系统，随开关隐藏）。别人的藏品不是你能转卖的。 */}
-          {!isOwner || !tradingEnabled ? null : item.relistedProductId ? (
+          {!canEdit || !tradingEnabled ? null : item.relistedProductId ? (
             <Box style={styles.banner}>
               <Text style={styles.bannerText}>
                 {t("trading.archiveDetail.relistedBanner", {
@@ -648,10 +771,89 @@ const ArchiveDetailScreen: React.FC = () => {
             </>
           )}
 
-          <Box style={{ height: 24 }} />
+          {/* 管理视角没有互动区，但作者仍然需要看到别人眼里的这条藏品
+              （以及别人留下的评论），所以给一个跳到 view 模式的入口。
+              用 push 而不是 navigate：同名路由 navigate 只会复用当前这个
+              实例并改参数，返回栈里就少了一层，返回键会直接退出详情。 */}
+          {canEdit ? (
+            <Pressable
+              style={styles.publicPageLink}
+              onPress={() =>
+                navigation.push("ArchiveDetail", { archiveId, mode: "view" })
+              }
+              accessibilityRole="button"
+            >
+              <Ionicons
+                name="globe-outline"
+                size={14}
+                color={theme.colors.gray300}
+              />
+              <Text style={styles.publicPageLinkText}>
+                {t("trading.archiveDetail.viewPublicPage")}
+              </Text>
+              <Ionicons
+                name="chevron-forward"
+                size={14}
+                color={theme.colors.gray300}
+              />
+            </Pressable>
+          ) : null}
+
+          {showEngagement ? (
+            <CommentsSection
+              comments={comments.comments}
+              isLoading={comments.isLoadingComments}
+              postStatus="PUBLISHED"
+              currentUserId={currentUserId}
+              onCommentLike={comments.handleCommentLike}
+              onReplyLike={comments.handleReplyLike}
+              onDeleteComment={comments.handleDeleteComment}
+              onDeleteReply={comments.handleDeleteReply}
+              onUserPress={(userId) =>
+                navigation.navigate("UserProfile", { userId })
+              }
+              onReplyPress={comments.handleReplyPress}
+              onToggleReplies={comments.handleToggleReplies}
+            />
+          ) : null}
+
+          {/* 有底部互动条时要多留出它的高度，否则最后一条评论被压在条下面。 */}
+          <Box style={{ height: showEngagement ? 80 : 24 }} />
         </KeyboardFriendScrollView>
 
-        {isOwner && tradingEnabled && !item.relistedProductId ? (
+        {/* 输入展开时压暗正文。必须夹在滚动区和互动条之间：
+            互动条 zIndex 20 > 遮罩 10，这样点空白处能收起键盘，
+            而输入框本身不会被自己的遮罩挡住。 */}
+        {showEngagement && comments.isCommentFocused ? (
+          <TouchableWithoutFeedback onPress={comments.handleOverlayPress}>
+            <View style={styles.contentOverlay} />
+          </TouchableWithoutFeedback>
+        ) : null}
+
+        {showEngagement ? (
+          <CommentInputBar
+            ref={comments.commentInputRef}
+            commentInput={comments.commentInput}
+            isSubmitting={comments.isSubmittingComment}
+            isFocused={comments.isCommentFocused}
+            displayLikes={item.likeCount ?? 0}
+            displaySaves={item.favoriteCount ?? 0}
+            displayComments={displayCommentCount}
+            displayIsLiked={item.isLiked ?? false}
+            displayIsSaved={item.isFavorited ?? false}
+            replyTarget={comments.replyTarget}
+            onInputChange={comments.setCommentInput}
+            onInputFocus={comments.handleInputFocus}
+            onInputBlur={comments.handleInputBlur}
+            onSubmit={comments.handleSubmitComment}
+            onLike={onLike}
+            onSave={onSave}
+            onOverlayPress={comments.handleOverlayPress}
+            onCancelReply={comments.handleCancelReply}
+          />
+        ) : null}
+
+        {canEdit && tradingEnabled && !item.relistedProductId ? (
           <Box style={styles.footer}>
             <Pressable
               style={[styles.primary, submitting && styles.primaryDisabled]}
@@ -712,6 +914,21 @@ const makeStyles = (t: AppTheme) =>
       backgroundColor: t.colors.skeleton,
     },
     coverPlaceholder: { alignItems: "center", justifyContent: "center" },
+    // 管理视角底部的「查看公开页」入口
+    publicPageLink: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      marginTop: 20,
+      paddingVertical: 10,
+    },
+    publicPageLinkText: { flex: 1, fontSize: 13, color: t.colors.gray300 },
+    // 评论输入展开时压暗正文。zIndex 要低于 CommentInputBar 的 20。
+    contentOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: t.colors.overlay,
+      zIndex: 10,
+    },
     // 主图缩略图：选中态用描边而不是变暗，白底三视图上变暗几乎看不出来。
     heroThumb: {
       borderRadius: 6,

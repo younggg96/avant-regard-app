@@ -3825,6 +3825,7 @@
       "realPhotosNowShown": "已恢复展示实拍",
       "realPhotosNowHidden": "已隐藏实拍，其他人只会看到 AI 三视图",
       "photoDisplayFailed": "修改失败，请稍后再试",
+      "viewPublicPage": "查看公开页（别人看到的样子）",
       "ownerFallbackName": "我",
       "authorFallbackName": "用户",
       "visibilityPublic": "公开",

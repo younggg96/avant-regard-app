@@ -145,6 +145,7 @@ class PostService:
             imageUrls=post_data.get("image_urls", []),
             coverWidth=post_data.get("cover_width"),
             coverHeight=post_data.get("cover_height"),
+            archiveItemId=post_data.get("archive_item_id"),
             likeCount=post_data.get("like_count", 0),
             favoriteCount=post_data.get("favorite_count", 0),
             commentCount=post_data.get("comment_count", 0),

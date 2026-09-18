@@ -148,8 +148,12 @@ const MyArchiveScreen: React.FC = () => {
         renderItem={({ item }) => (
           <Pressable
             style={styles.card}
+            // MY ARCHIVE 是管理清单，点进去直接是编辑模式。
             onPress={() =>
-              navigation.navigate("ArchiveDetail", { archiveId: item.id })
+              navigation.navigate("ArchiveDetail", {
+                archiveId: item.id,
+                mode: "edit",
+              })
             }
           >
             <HStack space="md" alignItems="flex-start">

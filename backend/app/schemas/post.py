@@ -13,6 +13,10 @@ class PostType(str, Enum):
     DAILY_SHARE = "DAILY_SHARE"
     ITEM_REVIEW = "ITEM_REVIEW"
     ARTICLES = "ARTICLES"  # 文章类型，论坛帖子也使用此类型（通过 community_id 区分）
+    # 档案影子帖子（migration 092）。不是用户直接发的内容 —— 每条 user_archive_items
+    # 自动挂一条，只为复用点赞/评论/收藏那套表和路由。status 恒为 HIDDEN，
+    # 因此不会出现在任何 feed 里；正文展示走 /api/archive/items/{id}。
+    ARCHIVE = "ARCHIVE"
 
 
 class PostStatus(str, Enum):
@@ -92,6 +96,9 @@ class Post(BaseModel):
     # 服务端 join buyer_stores 后回填, 给前端避免再多发一次查店铺接口。
     storeId: Optional[str] = None
     storeName: Optional[str] = None
+    # 档案影子帖子（migration 092）。非空表示这条 post 背后是一件藏品，
+    # 「我的收藏」等复用帖子列表的界面要靠它跳 ArchiveDetail 而不是 PostDetail。
+    archiveItemId: Optional[int] = None
     # 内容评级
     grade: Optional[str] = None
     gradeReward: Optional[int] = None

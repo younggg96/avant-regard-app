@@ -528,7 +528,8 @@ const EventDetailScreen: React.FC = () => {
                 )}
                 {c.archiveItem && (
                   <Pressable
-                    onPress={() => navigation.navigate("ArchiveDetail", { archiveId: c.archiveItem!.id })}
+                    // 评论里引用的藏品多半是别人的，一律浏览模式。
+                    onPress={() => navigation.navigate("ArchiveDetail", { archiveId: c.archiveItem!.id, mode: "view" })}
                     style={[s.archiveRef, { borderColor: theme.colors.divider }]}
                   >
                     {c.archiveItem.photo ? (

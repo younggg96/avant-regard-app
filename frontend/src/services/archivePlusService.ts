@@ -94,6 +94,9 @@ export interface ArchiveAuthor {
 
 export interface WorldArchiveItem extends ArchiveItem {
   author?: ArchiveAuthor | null;
+  /** 影子帖子上的互动数，让档案卡片能和帖子卡片显示同样的点赞数。 */
+  likeCount?: number;
+  commentCount?: number;
 }
 
 /** 公开档案 feed：所有 visibility=public 的藏品，包括本人的。 */
@@ -113,6 +116,22 @@ export async function listWorldArchive(params?: {
 export interface ArchiveItemDetail extends ArchiveItem {
   author?: ArchiveAuthor | null;
   isOwner: boolean;
+  /**
+   * 档案在 posts 表里的「影子帖子」id（migration 092）。
+   *
+   * 点赞 / 收藏 / 评论没有多态层，全都以 post_id 为键，所以档案的互动挂在这条
+   * 影子帖子上，直接复用 /api/posts/{id}/like 等既有接口和前端组件。
+   * 影子帖子的 status 恒为 HIDDEN，不会出现在任何帖子流里。
+   *
+   * 为 null 说明后端还没建起这条记录（092 未执行），此时必须隐藏整个互动区：
+   * 拿着 undefined 去调接口只会得到一个看起来成功、实际没落库的点赞。
+   */
+  postId?: number | null;
+  likeCount?: number;
+  favoriteCount?: number;
+  commentCount?: number;
+  isLiked?: boolean;
+  isFavorited?: boolean;
 }
 
 export async function getArchiveItem(
