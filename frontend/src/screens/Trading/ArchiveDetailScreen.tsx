@@ -33,19 +33,27 @@ import {
   isAiPhoto,
 } from "../../components/ui";
 import ScreenHeader from "../../components/ScreenHeader";
+import ArchiveDetailHeader from "../../components/trading/ArchiveDetailHeader";
 import ImagePreviewModal from "../../components/ImagePreviewModal";
 import { KeyboardFriend, KeyboardFriendScrollView } from "../../components/KeyboardFriend";
 import { TradingNotFoundState } from "../../components/trading/TradingFormShared";
 import { useAppTheme, useThemedStyles, type AppTheme } from "../../theme";
 import { Alert } from "../../utils/Alert";
 import {
-  listArchive,
+  getArchiveItem,
+  updateArchiveVisibility,
   resellFromArchive,
-  ArchiveItem,
+  ArchiveItemDetail,
   ArchiveHoldingRecord,
   listArchiveHoldings,
   createArchiveHolding,
 } from "../../services/archivePlusService";
+import {
+  followUser,
+  unfollowUser,
+  isFollowingUser,
+} from "../../services/followService";
+import { useAuthStore } from "../../store/authStore";
 import { parsePriceInputToCents } from "../../services/storeProductService";
 import { useTradingEnabled } from "../../store/featureFlagsStore";
 import { useFormatPrice } from "../../utils/currency";
@@ -63,6 +71,7 @@ const ArchiveDetailScreen: React.FC = () => {
   const tradingEnabled = useTradingEnabled();
   const formatPrice = useFormatPrice();
   const { archiveId } = route.params;
+  const currentUserId = useAuthStore((s) => s.user?.userId);
 
   const HOLDING_STATUS_LABELS = useMemo<Record<HoldingStatus, string>>(
     () => ({
@@ -75,11 +84,18 @@ const ArchiveDetailScreen: React.FC = () => {
     [t]
   );
 
-  const [item, setItem] = useState<ArchiveItem | null>(null);
+  const [item, setItem] = useState<ArchiveItemDetail | null>(null);
   const [priceText, setPriceText] = useState("");
   const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+
+  // 这页现在也会被藏品主人以外的人打开（世界 feed 点进来），
+  // 所以「是不是我的」决定了半页内容给不给看，不再是恒真。
+  const isOwner = item?.isOwner ?? false;
+  const [visibilityLoading, setVisibilityLoading] = useState(false);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [followLoading, setFollowLoading] = useState(false);
 
   const [holdings, setHoldings] = useState<ArchiveHoldingRecord[]>([]);
   const [holdingNote, setHoldingNote] = useState("");
@@ -116,16 +132,63 @@ const ArchiveDetailScreen: React.FC = () => {
 
   useEffect(() => {
     (async () => {
-      const res = await listArchive({ pageSize: 200 });
-      const it = res.items.find((i) => i.id === archiveId) ?? null;
-      setItem(it);
-      if (it?.acquiredPriceCents) {
-        setPriceText((it.acquiredPriceCents / 100).toFixed(2));
+      try {
+        const it = await getArchiveItem(archiveId);
+        setItem(it);
+        if (it.acquiredPriceCents) {
+          setPriceText((it.acquiredPriceCents / 100).toFixed(2));
+        }
+        // 持有记录是本人才有的数据，别人打开这页不该去拉（后端也会拒）。
+        if (it.isOwner) reloadHoldings();
+        else if (it.author?.id && currentUserId) {
+          setIsFollowing(
+            await isFollowingUser(currentUserId, it.author.id).catch(() => false),
+          );
+        }
+      } catch {
+        // 不存在、或是别人的私密藏品，后端一律 404 —— 都落到「找不到」页。
+        setItem(null);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     })();
-    reloadHoldings();
-  }, [archiveId, reloadHoldings]);
+  }, [archiveId, reloadHoldings, currentUserId]);
+
+  const onToggleVisibility = async () => {
+    if (!item) return;
+    const next = item.visibility === "public" ? "private" : "public";
+    setVisibilityLoading(true);
+    try {
+      await updateArchiveVisibility(archiveId, next);
+      setItem({ ...item, visibility: next });
+      Alert.show(
+        next === "public"
+          ? t("trading.archiveDetail.visibilityNowPublic")
+          : t("trading.archiveDetail.visibilityNowPrivate"),
+      );
+    } catch (e: any) {
+      Alert.show(e?.message ?? t("trading.archiveDetail.visibilityFailed"));
+    } finally {
+      setVisibilityLoading(false);
+    }
+  };
+
+  const onToggleFollow = async () => {
+    const targetUserId = item?.author?.id;
+    if (!targetUserId || !currentUserId) return;
+    setFollowLoading(true);
+    const next = !isFollowing;
+    try {
+      const params = { followerId: currentUserId, targetUserId };
+      if (next) await followUser(params);
+      else await unfollowUser(params);
+      setIsFollowing(next);
+    } catch (e: any) {
+      Alert.show(e?.message ?? t("trading.archiveDetail.followFailed"));
+    } finally {
+      setFollowLoading(false);
+    }
+  };
 
   const onResell = async () => {
     if (!item) return;
@@ -197,7 +260,22 @@ const ArchiveDetailScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
-      <ScreenHeader title={t("trading.archiveDetail.headerTitle")} showBack />
+      <ArchiveDetailHeader
+        author={item.author}
+        createdAt={item.createdAt}
+        isOwner={isOwner}
+        visibility={item.visibility ?? "public"}
+        isVisibilityLoading={visibilityLoading}
+        isFollowing={isFollowing}
+        isFollowLoading={followLoading}
+        onGoBack={() => navigation.goBack()}
+        onAuthorPress={() =>
+          item.author?.id &&
+          navigation.navigate("UserProfile", { userId: item.author.id })
+        }
+        onFollow={onToggleFollow}
+        onToggleVisibility={onToggleVisibility}
+      />
 
       <KeyboardFriend style={styles.flex}>
         <KeyboardFriendScrollView
@@ -294,96 +372,110 @@ const ArchiveDetailScreen: React.FC = () => {
               label={t("trading.archiveDetail.conditionLabel")}
               value={item.condition ?? "-"}
             />
-            <InfoRow
-              label={t("trading.archiveDetail.acquiredPriceLabel")}
-              value={`${formatPrice(item.acquiredPriceCents ?? 0)}${
-                item.acquiredAt ? ` · ${item.acquiredAt}` : ""
-              }`}
-            />
-            {item.storageLocation ? (
-              <InfoRow
-                label={t("trading.archiveDetail.storageLocationLabel")}
-                value={item.storageLocation}
-              />
+            {/* 购入价和存放位置只给本人。前者是别人不该知道的成交价，
+                后者直接指向这件衣服现在放在哪 —— 公开出去是另一类问题。 */}
+            {isOwner ? (
+              <>
+                <InfoRow
+                  label={t("trading.archiveDetail.acquiredPriceLabel")}
+                  value={`${formatPrice(item.acquiredPriceCents ?? 0)}${
+                    item.acquiredAt ? ` · ${item.acquiredAt}` : ""
+                  }`}
+                />
+                {item.storageLocation ? (
+                  <InfoRow
+                    label={t("trading.archiveDetail.storageLocationLabel")}
+                    value={item.storageLocation}
+                  />
+                ) : null}
+              </>
             ) : null}
           </VStack>
 
-          {/* PDF p.22 · 持有记录 */}
-          <Text style={styles.sectionTitle}>
-            {t("trading.archiveDetail.holdingHistoryTitle")}
-          </Text>
-          {holdings.length === 0 ? (
-            <Text style={styles.muted}>
-              {t("trading.archiveDetail.noHoldingRecord")}
-            </Text>
-          ) : (
-            <VStack space="xs">
-              {holdings.map((h) => (
-                <HStack
-                  key={h.id}
-                  style={styles.holdingRow}
-                  space="md"
-                  alignItems="flex-start"
-                >
-                  <Box style={styles.holdingDot} />
-                  <VStack flex={1} space="xs">
-                    <Text style={styles.holdingTitle}>
-                      {HOLDING_STATUS_LABELS[h.status as HoldingStatus] ??
-                        h.status}
-                      {h.heldFrom ? ` · ${h.heldFrom}` : ""}
-                      {h.heldTo ? ` ~ ${h.heldTo}` : ""}
-                    </Text>
-                    {h.note ? (
-                      <Text style={styles.holdingNote}>{h.note}</Text>
-                    ) : null}
-                    {h.counterpartName ? (
-                      <Text style={styles.muted}>
-                        {t("trading.archiveDetail.counterpartLabel", {
-                          name: h.counterpartName,
-                        })}
-                      </Text>
-                    ) : null}
-                  </VStack>
-                </HStack>
-              ))}
-            </VStack>
-          )}
+          {/* PDF p.22 · 持有记录。仅本人可见 —— 时间轴里带着交易对手的
+              名字和流转时间，公开验证页对这段有单独的脱敏规则，在那套规则
+              落地之前不要先把原始记录摊开给陌生人。 */}
+          {isOwner ? (
+            <>
+              <Text style={styles.sectionTitle}>
+                {t("trading.archiveDetail.holdingHistoryTitle")}
+              </Text>
+              {holdings.length === 0 ? (
+                <Text style={styles.muted}>
+                  {t("trading.archiveDetail.noHoldingRecord")}
+                </Text>
+              ) : (
+                <VStack space="xs">
+                  {holdings.map((h) => (
+                    <HStack
+                      key={h.id}
+                      style={styles.holdingRow}
+                      space="md"
+                      alignItems="flex-start"
+                    >
+                      <Box style={styles.holdingDot} />
+                      <VStack flex={1} space="xs">
+                        <Text style={styles.holdingTitle}>
+                          {HOLDING_STATUS_LABELS[h.status as HoldingStatus] ??
+                            h.status}
+                          {h.heldFrom ? ` · ${h.heldFrom}` : ""}
+                          {h.heldTo ? ` ~ ${h.heldTo}` : ""}
+                        </Text>
+                        {h.note ? (
+                          <Text style={styles.holdingNote}>{h.note}</Text>
+                        ) : null}
+                        {h.counterpartName ? (
+                          <Text style={styles.muted}>
+                            {t("trading.archiveDetail.counterpartLabel", {
+                              name: h.counterpartName,
+                            })}
+                          </Text>
+                        ) : null}
+                      </VStack>
+                    </HStack>
+                  ))}
+                </VStack>
+              )}
+            </>
+          ) : null}
 
           {/* 添加新记录 */}
-          <Box style={styles.holdingAddCard}>
-            <Text style={styles.holdingAddLabel}>
-              {t("trading.archiveDetail.addHoldingTitle")}
-            </Text>
-            <View style={styles.holdingChipRow}>
-              {(
-                ["owned", "lent", "transferred", "resold", "returned"] as const
-              ).map((s) => (
-                <AnimatedChip
-                  key={s}
-                  label={HOLDING_STATUS_LABELS[s]}
-                  isActive={holdingStatus === s}
-                  onPress={() => setHoldingStatus(s)}
-                />
-              ))}
-            </View>
-            <TextInput
-              style={[styles.input, styles.textarea]}
-              placeholder={t("trading.archiveDetail.holdingNotePlaceholder")}
-              placeholderTextColor={theme.colors.placeholder}
-              value={holdingNote}
-              onChangeText={setHoldingNote}
-              multiline
-              textAlignVertical="top"
-            />
-            <Pressable style={styles.smallDarkBtn} onPress={addHolding}>
-              <Text style={styles.smallDarkBtnText}>
-                {t("trading.archiveDetail.addHoldingBtn")}
+          {isOwner ? (
+            <Box style={styles.holdingAddCard}>
+              <Text style={styles.holdingAddLabel}>
+                {t("trading.archiveDetail.addHoldingTitle")}
               </Text>
-            </Pressable>
-          </Box>
+              <View style={styles.holdingChipRow}>
+                {(
+                  ["owned", "lent", "transferred", "resold", "returned"] as const
+                ).map((s) => (
+                  <AnimatedChip
+                    key={s}
+                    label={HOLDING_STATUS_LABELS[s]}
+                    isActive={holdingStatus === s}
+                    onPress={() => setHoldingStatus(s)}
+                  />
+                ))}
+              </View>
+              <TextInput
+                style={[styles.input, styles.textarea]}
+                placeholder={t("trading.archiveDetail.holdingNotePlaceholder")}
+                placeholderTextColor={theme.colors.placeholder}
+                value={holdingNote}
+                onChangeText={setHoldingNote}
+                multiline
+                textAlignVertical="top"
+              />
+              <Pressable style={styles.smallDarkBtn} onPress={addHolding}>
+                <Text style={styles.smallDarkBtnText}>
+                  {t("trading.archiveDetail.addHoldingBtn")}
+                </Text>
+              </Pressable>
+            </Box>
+          ) : null}
 
-          {/* 一键转卖（属于交易系统，随开关隐藏） */}
-          {!tradingEnabled ? null : item.relistedProductId ? (
+          {/* 一键转卖（属于交易系统，随开关隐藏）。别人的藏品不是你能转卖的。 */}
+          {!isOwner || !tradingEnabled ? null : item.relistedProductId ? (
             <Box style={styles.banner}>
               <Text style={styles.bannerText}>
                 {t("trading.archiveDetail.relistedBanner", {
@@ -425,7 +517,7 @@ const ArchiveDetailScreen: React.FC = () => {
           <Box style={{ height: 24 }} />
         </KeyboardFriendScrollView>
 
-        {tradingEnabled && !item.relistedProductId ? (
+        {isOwner && tradingEnabled && !item.relistedProductId ? (
           <Box style={styles.footer}>
             <Pressable
               style={[styles.primary, submitting && styles.primaryDisabled]}

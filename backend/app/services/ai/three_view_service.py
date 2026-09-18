@@ -384,7 +384,8 @@ class ThreeViewService:
                 cost_micros=cost,
             )
 
-        url = file_service.upload_image(img, f"three-view-{spec.slug}.png", "image/png")
+        body, ext, ctype = self._encode_for_storage(img)
+        url = file_service.upload_image(body, f"three-view-{spec.slug}.{ext}", ctype)
         if not url:
             return GeneratedView(
                 slug=spec.slug,
@@ -412,6 +413,39 @@ class ThreeViewService:
             ),
             max_retries=0,
         )
+
+    @staticmethod
+    def _encode_for_storage(raw: bytes) -> tuple[bytes, str, str]:
+        """
+        把模型出的图转成落库用的 JPEG，返回 (字节, 文件名后缀, content-type)。
+
+        为什么必须转：模型给的是 1K PNG，每张约 1.44MB。三张并发上传，
+        国内到存储的链路实测只有 ~0.22MB/s —— 4.3MB 要跑满 20 秒，正好压在
+        storage 客户端 20s 超时线上，于是随机掉 1~2 张，变成「生成成功但
+        上传失败」：钱花了、图没了。三视图是白底单品图，JPEG 在这类内容上
+        几乎无可见损失，体积能降到 1/6，把耗时拉回安全区。
+
+        转不动就原样返回 PNG —— 编码失败不该把一张已经付过费的图整个丢掉。
+        """
+        try:
+            im = Image.open(io.BytesIO(raw))
+            im.load()
+            # JPEG 没有 alpha 通道。直接 convert("RGB") 会把透明区压成黑色，
+            # 白底单品图必须先合成到白背景上。
+            if im.mode in ("RGBA", "LA", "P"):
+                im = im.convert("RGBA")
+                bg = Image.new("RGB", im.size, (255, 255, 255))
+                bg.paste(im, mask=im.split()[-1])
+                im = bg
+            else:
+                im = im.convert("RGB")
+
+            buf = io.BytesIO()
+            im.save(buf, format="JPEG", quality=90, optimize=True, progressive=True)
+            return buf.getvalue(), "jpg", "image/jpeg"
+        except Exception as e:  # noqa: BLE001
+            logger.warning("[three_view] JPEG 编码失败，按原图上传: %s", e)
+            return raw, "png", "image/png"
 
     def _fetch_source_png(self, url: str) -> bytes:
         """回源 + 压到长边上限 + 统一转 PNG(images.edit 对 PNG 最稳)。"""
@@ -490,9 +524,8 @@ class ThreeViewService:
                 cost_micros=cost,
             )
 
-        url = file_service.upload_image(
-            base64.b64decode(b64), f"three-view-{spec.slug}.png", "image/png"
-        )
+        body, ext, ctype = self._encode_for_storage(base64.b64decode(b64))
+        url = file_service.upload_image(body, f"three-view-{spec.slug}.{ext}", ctype)
         if not url:
             return GeneratedView(
                 slug=spec.slug,

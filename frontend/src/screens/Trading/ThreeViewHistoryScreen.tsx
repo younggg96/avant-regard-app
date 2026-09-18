@@ -26,7 +26,6 @@ import { Box, HStack, Pressable, Text } from "../../components/ui";
 import ScreenHeader from "../../components/ScreenHeader";
 import ImagePreviewModal from "../../components/ImagePreviewModal";
 import {
-  playfairFonts,
   useAppTheme,
   useThemedStyles,
   type AppTheme,
@@ -168,7 +167,6 @@ const ThreeViewHistoryScreen: React.FC = () => {
           </View>
         )}
 
-        {item.model ? <Text style={styles.model}>{item.model}</Text> : null}
       </Box>
     );
   };
@@ -213,10 +211,12 @@ const ThreeViewHistoryScreen: React.FC = () => {
         />
       )}
 
+      {/* 这些图是用户自己花额度生成的，给下载入口 */}
       <ImagePreviewModal
         visible={preview !== null}
         imageUrls={preview ?? undefined}
         onClose={() => setPreview(null)}
+        allowSave
       />
     </SafeAreaView>
   );
@@ -279,12 +279,6 @@ const makeStyles = (t: AppTheme) =>
       paddingTop: 8,
     },
     reasonText: { fontSize: 11, lineHeight: 16, color: t.colors.gray300 },
-    model: {
-      fontFamily: playfairFonts.regular,
-      fontSize: 10,
-      letterSpacing: 0.6,
-      color: t.colors.gray300,
-    },
   });
 
 export default ThreeViewHistoryScreen;

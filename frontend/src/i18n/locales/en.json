@@ -58,7 +58,11 @@
     "previousPage": "Previous",
     "nextPage": "Next",
     "wan": "万",
-    "preview": "View full size"
+    "preview": "View full size",
+    "saveImage": "Save to Photos",
+    "saveImageDone": "Saved to Photos",
+    "saveImageFailed": "Save failed, please try again",
+    "saveImageNoPermission": "Photo library access is required. Please enable it in Settings."
   },
   "tabs": {
     "home": "Home",
@@ -3815,11 +3819,20 @@
       "confirm": "OK",
       "addHoldingFailed": "Add entry failed",
       "aiPhotoNote": "Images marked “AI” are model-inferred from the real photo, not photographs of the item. Treat them as silhouette references only.",
+      "ownerFallbackName": "Me",
+      "authorFallbackName": "User",
+      "visibilityPublic": "Public",
+      "visibilityPrivate": "Only me",
+      "visibilityA11y": "Change who can see this item",
+      "visibilityNowPublic": "Public — others can now find this item in World",
+      "visibilityNowPrivate": "Now visible only to you",
+      "visibilityFailed": "Couldn't change visibility. Please try again.",
+      "followFailed": "Something went wrong. Please try again.",
       "aiPhotosLabel": "AI three views"
     },
     "uploadArchive": {
       "headerTitle": "New Archive Entry",
-      "privacyHint": "Private to you. To sell instead, tap the + button and choose 'Publish item'.",
+      "privacyHint": "Public by default — others can find it in World. You can switch any item to private from its detail page. This isn't a sales listing; to sell, tap the + button and choose 'Publish item'.",
       "maxPhotos": "Up to 9 photos",
       "permissionAlbum": "Album permission required",
       "uploadFailed": "Upload failed",

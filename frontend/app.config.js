@@ -107,6 +107,17 @@ const config = {
       },
     ],
     "expo-video",
+    // 这里刻意不挂 "expo-media-library" 插件。
+    //
+    // 该插件只做两件事：往 infoPlist 写 NSPhotoLibrary{,Add}UsageDescription，
+    // 往 Android 加 READ/WRITE_EXTERNAL_STORAGE —— 这四项上面都已手写声明，
+    // 挂上去纯属重复。原生模块本身走 autolinking，不依赖这个插件。
+    //
+    // 而且挂上会直接让 prebuild 失败：npm workspaces 把 expo-media-library
+    // 提升到了仓库根 node_modules，但 expo 本体在 frontend/node_modules，
+    // 插件内部 require("expo/config-plugins") 从根目录解析不到。
+    // （expo-secure-store 同样被提升却没事，因为它 require 的是独立包
+    //   "@expo/config-plugins"，那个在根目录。）
     // Stripe React Native config plugin
     // - merchantIdentifier 在 Apple Developer Portal 创建,启用 Apple Pay 必填;
     //   留空时 Apple Pay 走不通(收单依然可以,降级走 Card)。

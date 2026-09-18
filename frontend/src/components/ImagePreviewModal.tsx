@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Modal,
   StyleSheet,
   FlatList,
@@ -7,12 +8,15 @@ import {
   StatusBar,
   View,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { Box, Text, Pressable } from "./ui";
 import { ZoomableImage } from "./ZoomableImage";
 import { theme, useAppTheme } from "../theme";
+import { Alert } from "../utils/Alert";
+import { saveImageToLibrary } from "../utils/saveImage";
 // NOTE: This modal is intentionally always dark (full-screen image preview),
 // so static StyleSheet colors below remain hardcoded.
 
@@ -27,6 +31,11 @@ interface ImagePreviewModalProps {
   subtitle?: string;
   onClose: () => void;
   onImagePress?: (index: number) => void;
+  /**
+   * 显示「保存到相册」。默认关闭 —— 这个 Modal 也用来看别人的帖子图，
+   * 不该无条件给下载入口；只在内容属于当前用户时由调用方打开。
+   */
+  allowSave?: boolean;
 }
 
 const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
@@ -38,8 +47,11 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
   subtitle,
   onClose,
   onImagePress,
+  allowSave = false,
 }) => {
   const theme = useAppTheme();
+  const { t } = useTranslation();
+  const [saving, setSaving] = useState(false);
   const flatListRef = useRef<FlatList>(null);
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   // Lock horizontal paging while the active image is zoomed so pan
@@ -70,6 +82,24 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
     [onImagePress]
   );
 
+  const handleSave = useCallback(async () => {
+    const url = images[currentIndex];
+    if (!url || saving) return;
+    setSaving(true);
+    try {
+      const res = await saveImageToLibrary(url);
+      Alert.show(
+        res.ok
+          ? t("common.saveImageDone")
+          : res.reason === "permission"
+            ? t("common.saveImageNoPermission")
+            : t("common.saveImageFailed"),
+      );
+    } finally {
+      setSaving(false);
+    }
+  }, [images, currentIndex, saving, t]);
+
   if (images.length === 0) return null;
 
   return (
@@ -86,6 +116,23 @@ const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
         <Pressable style={styles.closeButtonTop} onPress={onClose}>
           <Ionicons name="close" size={30} color="#FFFFFF" />
         </Pressable>
+
+        {/* 保存到相册。与关闭按钮同一行、置于右上，避开底部的图注区域 */}
+        {allowSave && (
+          <Pressable
+            style={styles.saveButtonTop}
+            onPress={handleSave}
+            disabled={saving}
+            accessibilityRole="button"
+            accessibilityLabel={t("common.saveImage")}
+          >
+            {saving ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Ionicons name="download-outline" size={26} color="#FFFFFF" />
+            )}
+          </Pressable>
+        )}
 
         {/* 图片计数器 */}
         {hasMultipleImages && (
@@ -178,6 +225,17 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.5)",
     borderRadius: theme.borderRadius.sm,
     padding: 8,
+  },
+  // 紧挨关闭按钮左侧：关闭键宽 46（图标 30 + 左右 padding 8），
+  // 加 8 的间距正好落在 74。
+  saveButtonTop: {
+    position: "absolute",
+    top: 50,
+    right: 74,
+    zIndex: 10,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    borderRadius: theme.borderRadius.sm,
+    padding: 10,
   },
   imageCounter: {
     position: "absolute",

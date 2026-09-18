@@ -31,8 +31,12 @@ export interface ArchiveItem {
   source?: "order" | "manual" | "imported";
   storageLocation?: string | null;
   isCurrentlyOwned?: boolean;
+  /** public = 出现在「世界」档案 feed、他人可打开详情页；private = 仅本人可见。 */
+  visibility?: ArchiveVisibility;
   createdAt?: string | null;
 }
+
+export type ArchiveVisibility = "public" | "private";
 
 export interface ArchiveHoldingRecord {
   id: number;
@@ -97,6 +101,29 @@ export async function listWorldArchive(params?: {
   if (params?.pageSize) q.append("pageSize", String(params.pageSize));
   return request<{ items: WorldArchiveItem[]; total: number }>(
     `/api/archive/world?${q.toString()}`,
+  );
+}
+
+/** 藏品详情：本人的任何条目 + 他人的公开条目；看不到时后端返回 404。 */
+export interface ArchiveItemDetail extends ArchiveItem {
+  author?: ArchiveAuthor | null;
+  isOwner: boolean;
+}
+
+export async function getArchiveItem(
+  archiveId: number,
+): Promise<ArchiveItemDetail> {
+  return request<ArchiveItemDetail>(`/api/archive/items/${archiveId}`);
+}
+
+/** 本人切换藏品「公开 / 仅自己可见」。 */
+export async function updateArchiveVisibility(
+  archiveId: number,
+  visibility: ArchiveVisibility,
+): Promise<ArchiveItem> {
+  return request<ArchiveItem>(
+    `/api/archive/items/${archiveId}/visibility`,
+    { method: "PATCH", body: JSON.stringify({ visibility }) },
   );
 }
 

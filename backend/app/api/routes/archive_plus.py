@@ -14,6 +14,7 @@ from app.schemas.archive_plus import (
     PlusPlan,
     ArchiveItemManualCreate,
     ArchiveHoldingCreate,
+    ArchiveVisibilityUpdate,
 )
 from app.schemas.store_product import StoreProductCreate, SellerKind, ProductStatus, PhotoAngles
 
@@ -44,6 +45,35 @@ def list_world_archive(
     """「世界」二级 Tab：浏览其他用户的档案条目（排除本人）。"""
     items, total = archive_service.list_world(user_id, page=page, page_size=pageSize)
     return success({"items": items, "total": total})
+
+
+@archive_router.get("/items/{archive_id}")
+def get_archive_item(archive_id: int, user_id: int = Depends(get_current_user)):
+    """单条藏品详情，含作者简介与 isOwner。
+
+    详情页此前是把自己的整个档案列表拉下来在本地按 id 找 —— 既看不了
+    别人的公开藏品，条目超过一页还会「找不到」。这里给它一个真正的按 id 取数。
+    """
+    data = archive_service.get_detail(archive_id, user_id)
+    if not data:
+        raise HTTPException(status_code=404, detail="未找到该藏品")
+    return success(data)
+
+
+@archive_router.patch("/items/{archive_id}/visibility")
+def update_archive_visibility(
+    archive_id: int,
+    body: ArchiveVisibilityUpdate,
+    user_id: int = Depends(get_current_user),
+):
+    """本人切换藏品「公开 / 仅自己可见」。"""
+    try:
+        item = archive_service.set_visibility(archive_id, user_id, body.visibility)
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    return success(item.dict())
 
 
 @archive_router.get("/analytics")

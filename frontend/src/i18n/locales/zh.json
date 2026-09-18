@@ -58,7 +58,11 @@
     "previousPage": "上一页",
     "nextPage": "下一页",
     "wan": "万",
-    "preview": "查看大图"
+    "preview": "查看大图",
+    "saveImage": "保存到相册",
+    "saveImageDone": "已保存到相册",
+    "saveImageFailed": "保存失败，请重试",
+    "saveImageNoPermission": "需要相册权限才能保存，请在系统设置里开启"
   },
   "tabs": {
     "home": "首页",
@@ -3815,11 +3819,20 @@
       "confirm": "确定",
       "addHoldingFailed": "添加失败",
       "aiPhotoNote": "标有「AI 生成」的图由模型根据实拍推测，不是实物照片，仅供参考廓形。",
+      "ownerFallbackName": "我",
+      "authorFallbackName": "用户",
+      "visibilityPublic": "公开",
+      "visibilityPrivate": "仅自己",
+      "visibilityA11y": "切换这件藏品的可见范围",
+      "visibilityNowPublic": "已公开，其他人可以在「世界」里看到这件藏品",
+      "visibilityNowPrivate": "已设为仅自己可见",
+      "visibilityFailed": "修改可见范围失败，请稍后再试",
+      "followFailed": "操作失败，请稍后再试",
       "aiPhotosLabel": "AI 三视图"
     },
     "uploadArchive": {
       "headerTitle": "上传新典藏",
-      "privacyHint": "这里不会公开发布，仅自己可见。要出售，请回到「+」按钮选「发布单品」。",
+      "privacyHint": "入库后默认公开，其他人可以在「世界」里看到；可随时在藏品详情页改为仅自己可见。这里不是出售入口，要出售请回到「+」按钮选「发布单品」。",
       "maxPhotos": "最多 9 张图",
       "permissionAlbum": "请开启相册权限",
       "uploadFailed": "上传失败",

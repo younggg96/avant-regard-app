@@ -34,7 +34,7 @@ install! 'cocoapods',
 
 prepare_react_native_project!
 
-target 'AvantRegardNA' do
+target 'AvantRegard' do
   use_expo_modules!
   config = use_native_modules!
 

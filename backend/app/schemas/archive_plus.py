@@ -42,6 +42,8 @@ class ArchiveItem(BaseModel):
     # 展示单品照片的地方都应据此标注，尤其是 5.4 的公开验证页 ——
     # 把 AI 推测的侧背面当实物照展示会误导买家。
     aiPhotos: List[str] = Field(default_factory=list)
+    # 090：public = 进「世界」feed、他人可打开详情页；private = 仅本人可见。
+    visibility: str = "public"
     createdAt: Optional[str] = None
     updatedAt: Optional[str] = None
 
@@ -116,6 +118,12 @@ class ArchiveAuthor(BaseModel):
 class WorldArchiveItem(ArchiveItem):
     """他人公开档案条目 = 基础 ArchiveItem + 作者简介。"""
     author: Optional[ArchiveAuthor] = None
+
+
+class ArchiveVisibilityUpdate(BaseModel):
+    """本人切换藏品可见性。只此一个字段 —— 其余字段的编辑走各自的入口，
+    别让一个「改可见性」的接口顺手成为万能更新接口。"""
+    visibility: str = Field(..., pattern="^(public|private)$")
 
 
 # ---------------- Plus ----------------

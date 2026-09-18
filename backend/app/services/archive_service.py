@@ -100,6 +100,9 @@ class ArchiveService:
             releaseYear=row.get("release_year"),
             validityStatus=row.get("validity_status", "passed"),
             aiPhotos=row.get("ai_photos") or [],
+            # 090 之前建的行没有这一列，读到 None 时按 public 兜底 ——
+            # 那正是它们在加列之前的实际可见性，不要凭空收紧。
+            visibility=row.get("visibility") or "public",
             createdAt=row.get("created_at"),
             updatedAt=row.get("updated_at"),
         )
@@ -379,6 +382,7 @@ class ArchiveService:
             self.db.table("user_archive_items")
             .select("*", count="exact")
             .neq("user_id", viewer_user_id)
+            .eq("visibility", "public")
             .order("created_at", desc=True)
             .range(offset, offset + page_size - 1)
         )
@@ -391,6 +395,45 @@ class ArchiveService:
             data["author"] = author_map.get(r.get("user_id"))
             items.append(data)
         return items, (res.count or 0)
+
+    def get_detail(
+        self, archive_id: int, viewer_user_id: int
+    ) -> Optional[Dict[str, Any]]:
+        """详情页数据：条目 + 作者简介，按可见性决定给不给看。
+
+        本人无论 public / private 都能看自己的；他人只能看 public 的。
+        看不到时统一返回 None（路由转 404）而不是 403 —— 403 会告诉
+        陌生人「这个 id 存在但你没权限」，等于确认了私密条目的存在。
+        """
+        item = self.get(archive_id)
+        if not item:
+            return None
+        is_owner = item.userId == viewer_user_id
+        if not is_owner and item.visibility != "public":
+            return None
+        data = item.dict()
+        data["author"] = self._authors_brief([item.userId]).get(item.userId)
+        data["isOwner"] = is_owner
+        return data
+
+    def set_visibility(
+        self, archive_id: int, user_id: int, visibility: str
+    ) -> ArchiveItem:
+        """本人切换藏品可见性。"""
+        item = self.get(archive_id)
+        if not item:
+            raise ValueError("未找到该藏品")
+        if item.userId != user_id:
+            raise PermissionError("只能修改自己的藏品")
+        res = (
+            self.db.table("user_archive_items")
+            .update({"visibility": visibility})
+            .eq("id", archive_id)
+            .execute()
+        )
+        if not res.data:
+            raise ValueError("未找到该藏品")
+        return self._format(res.data[0])
 
     def get(self, archive_id: int) -> Optional[ArchiveItem]:
         res = (

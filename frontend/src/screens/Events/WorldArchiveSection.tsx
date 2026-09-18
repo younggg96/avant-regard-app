@@ -67,6 +67,12 @@ export const WorldArchiveSection: React.FC<Props> = ({ refreshSignal = 0, onLoad
     });
   };
 
+  // 点图看藏品、点作者行看主页。整格都跳作者主页的话，这个 feed 里就没有
+  // 任何入口能真正打开一件藏品。
+  const openItem = (item: WorldArchiveItem) => {
+    (navigation.navigate as any)("ArchiveDetail", { archiveId: item.id });
+  };
+
   if (loading && !loaded) {
     return (
       <View style={s.center}>
@@ -92,7 +98,7 @@ export const WorldArchiveSection: React.FC<Props> = ({ refreshSignal = 0, onLoad
   return (
     <View style={s.grid}>
       {items.map((item) => (
-        <Pressable key={item.id} onPress={() => openAuthor(item)} style={s.cell}>
+        <Pressable key={item.id} onPress={() => openItem(item)} style={s.cell}>
           {item.photos?.[0] ? (
             <View>
               <OptimizedImage uri={item.photos[0]} size={ImageSize.THUMBNAIL} style={s.img} contentFit="cover" lazy />
@@ -101,7 +107,7 @@ export const WorldArchiveSection: React.FC<Props> = ({ refreshSignal = 0, onLoad
           ) : (
             <View style={[s.img, { backgroundColor: theme.colors.surface }]} />
           )}
-          <View style={s.authorRow}>
+          <Pressable style={s.authorRow} onPress={() => openAuthor(item)}>
             {item.author?.avatarUrl ? (
               <OptimizedImage
                 uri={item.author.avatarUrl}
@@ -116,7 +122,7 @@ export const WorldArchiveSection: React.FC<Props> = ({ refreshSignal = 0, onLoad
             <Text fontSize={11} numberOfLines={1} style={{ color: theme.colors.gray400, flex: 1 }}>
               {item.author?.username || "—"}
             </Text>
-          </View>
+          </Pressable>
           <Text fontSize={11} numberOfLines={1} style={{ color: theme.colors.text }}>
             {item.title || item.brandName || "—"}
           </Text>
