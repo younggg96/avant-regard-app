@@ -649,8 +649,31 @@ const ArchiveDetailScreen: React.FC = () => {
             ) : null}
           </VStack>
 
-          {/* PDF p.22 · 持有记录。仅管理视角可见 —— 时间轴里带着交易对手的
-              名字和流转时间，公开验证页对这段有单独的脱敏规则，在那套规则
+          {/* 公开视角的流转摘要，代替展不开的时间轴：只有「几任持有者 · 哪年入藏」。
+              流转过几手是这件东西价值的一部分，不该只有主人知道；但具体经手人
+              是第三方信息，所以这里只出计数，服务端也只算 distinct 不回传身份。 */}
+          {!canEdit && item.provenance ? (
+            <HStack style={styles.provenanceLine} alignItems="center">
+              <Ionicons
+                name="git-commit-outline"
+                size={13}
+                color={theme.colors.gray300}
+              />
+              <Text style={styles.provenanceText}>
+                {item.provenance.acquiredYear
+                  ? t("trading.archiveDetail.provenanceSummary", {
+                      holders: item.provenance.holderCount,
+                      year: item.provenance.acquiredYear,
+                    })
+                  : t("trading.archiveDetail.provenanceSummaryNoYear", {
+                      holders: item.provenance.holderCount,
+                    })}
+              </Text>
+            </HStack>
+          ) : null}
+
+          {/* PDF p.22 · 持有记录。完整时间轴仅管理视角可见 —— 里面带着交易对手的
+              名字、订单号和自由备注，公开验证页对这段有单独的脱敏规则，在那套规则
               落地之前不要先把原始记录摊开给陌生人。 */}
           {canEdit ? (
             <>
@@ -770,33 +793,6 @@ const ArchiveDetailScreen: React.FC = () => {
               />
             </>
           )}
-
-          {/* view 模式下主人的管理入口。没有它，从公开 feed 点进自己的藏品
-              就是一条死路：持有记录、入手价、转卖全在 edit 模式里，而这一页
-              不提供任何回去的方式，只能退出去绕 Profile。 */}
-          {isOwner && !canEdit ? (
-            <Pressable
-              style={styles.publicPageLink}
-              onPress={() =>
-                navigation.push("ArchiveDetail", { archiveId, mode: "edit" })
-              }
-              accessibilityRole="button"
-            >
-              <Ionicons
-                name="options-outline"
-                size={14}
-                color={theme.colors.gray300}
-              />
-              <Text style={styles.publicPageLinkText}>
-                {t("trading.archiveDetail.manageItem")}
-              </Text>
-              <Ionicons
-                name="chevron-forward"
-                size={14}
-                color={theme.colors.gray300}
-              />
-            </Pressable>
-          ) : null}
 
           {/* 管理视角没有互动区，但作者仍然需要看到别人眼里的这条藏品
               （以及别人留下的评论），所以给一个跳到 view 模式的入口。
@@ -941,6 +937,9 @@ const makeStyles = (t: AppTheme) =>
       backgroundColor: t.colors.skeleton,
     },
     coverPlaceholder: { alignItems: "center", justifyContent: "center" },
+    // 公开视角的流转摘要单行
+    provenanceLine: { gap: 6, marginTop: 16 },
+    provenanceText: { fontSize: 13, color: t.colors.gray300 },
     // 管理视角底部的「查看公开页」入口
     publicPageLink: {
       flexDirection: "row",

@@ -113,9 +113,20 @@ export async function listWorldArchive(params?: {
 }
 
 /** 藏品详情：本人的任何条目 + 他人的公开条目；看不到时后端返回 404。 */
+/**
+ * 公开可见的流转摘要。完整的持有记录只给本人 —— 每条都带着交易对手的姓名和
+ * 订单号，那是第三方信息。这里汇总成「几任持有者 · 哪年入藏」，能说明流转深度
+ * 又不指向任何具体的人。
+ */
+export interface ArchiveProvenanceSummary {
+  holderCount: number;
+  acquiredYear?: string | null;
+}
+
 export interface ArchiveItemDetail extends ArchiveItem {
   author?: ArchiveAuthor | null;
   isOwner: boolean;
+  provenance?: ArchiveProvenanceSummary | null;
   /**
    * 档案在 posts 表里的「影子帖子」id（migration 092）。
    *

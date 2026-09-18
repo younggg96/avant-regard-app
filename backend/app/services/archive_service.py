@@ -153,6 +153,36 @@ class ArchiveService:
             print(f"[archive] sync shadow post failed for item {item.id}: {e}")
             return None
 
+    def _provenance_summary(self, item: ArchiveItem) -> Dict[str, Any]:
+        """对外可见的流转摘要：只有「几任持有者」和「入藏年份」。
+
+        完整的持有记录（list_holdings）对非本人是不给的，因为每条都带着
+        counterpart_name、related_order_id 和自由填写的 note —— 那是交易对手的
+        信息，他本人从没同意过被公开。汇总成一个计数既能说明这件东西流转过几手，
+        又不指向任何具体的人。
+
+        持有人数按 archive_holding_history.user_id 去重，并把当前主人算进去：
+        存量条目可能一条持有记录都没有，但它显然至少有一任持有者。
+        """
+        holders = {item.userId}
+        try:
+            rows = (
+                self.db.table("archive_holding_history")
+                .select("user_id")
+                .eq("archive_item_id", item.id)
+                .execute()
+                .data
+                or []
+            )
+            holders.update(r["user_id"] for r in rows if r.get("user_id"))
+        except Exception as e:
+            print(f"[archive] provenance summary failed: {e}")
+        raw_year = str(item.acquiredAt or item.createdAt or "")[:4]
+        return {
+            "holderCount": len(holders),
+            "acquiredYear": raw_year if raw_year.isdigit() else None,
+        }
+
     def _engagement(
         self, item: ArchiveItem, viewer_user_id: Optional[int]
     ) -> Dict[str, Any]:
@@ -581,6 +611,8 @@ class ArchiveService:
         data = self._apply_photo_display(item, is_owner=is_owner).dict()
         data["author"] = self._authors_brief([item.userId]).get(item.userId)
         data["isOwner"] = is_owner
+        # 摘要对所有人都给：view 模式下主人看到的必须和陌生人一模一样。
+        data["provenance"] = self._provenance_summary(item)
         data.update(self._engagement(item, viewer_user_id))
         return data
 
