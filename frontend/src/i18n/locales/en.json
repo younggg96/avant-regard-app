@@ -3826,6 +3826,7 @@
       "realPhotosNowHidden": "Real photos hidden — others will only see the AI three-view",
       "photoDisplayFailed": "Couldn't save that. Please try again.",
       "viewPublicPage": "View public page (what others see)",
+      "manageItem": "Manage this item (holding records · resell)",
       "ownerFallbackName": "Me",
       "authorFallbackName": "User",
       "visibilityPublic": "Public",

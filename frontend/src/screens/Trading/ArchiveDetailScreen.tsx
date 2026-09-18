@@ -771,6 +771,33 @@ const ArchiveDetailScreen: React.FC = () => {
             </>
           )}
 
+          {/* view 模式下主人的管理入口。没有它，从公开 feed 点进自己的藏品
+              就是一条死路：持有记录、入手价、转卖全在 edit 模式里，而这一页
+              不提供任何回去的方式，只能退出去绕 Profile。 */}
+          {isOwner && !canEdit ? (
+            <Pressable
+              style={styles.publicPageLink}
+              onPress={() =>
+                navigation.push("ArchiveDetail", { archiveId, mode: "edit" })
+              }
+              accessibilityRole="button"
+            >
+              <Ionicons
+                name="options-outline"
+                size={14}
+                color={theme.colors.gray300}
+              />
+              <Text style={styles.publicPageLinkText}>
+                {t("trading.archiveDetail.manageItem")}
+              </Text>
+              <Ionicons
+                name="chevron-forward"
+                size={14}
+                color={theme.colors.gray300}
+              />
+            </Pressable>
+          ) : null}
+
           {/* 管理视角没有互动区，但作者仍然需要看到别人眼里的这条藏品
               （以及别人留下的评论），所以给一个跳到 view 模式的入口。
               用 push 而不是 navigate：同名路由 navigate 只会复用当前这个
