@@ -33,6 +33,11 @@ export interface ArchiveItem {
   isCurrentlyOwned?: boolean;
   /** public = 出现在「世界」档案 feed、他人可打开详情页；private = 仅本人可见。 */
   visibility?: ArchiveVisibility;
+  /**
+   * false = 他人只看到 AI 三视图。实拍由服务端剔除，不会出现在响应里，
+   * 所以非本人拿到的 photos 本身就已经是过滤后的结果。
+   */
+  showRealPhotos?: boolean;
   createdAt?: string | null;
 }
 
@@ -91,7 +96,7 @@ export interface WorldArchiveItem extends ArchiveItem {
   author?: ArchiveAuthor | null;
 }
 
-/** 公开档案 feed：所有 visibility=public 的藏品，包括本人的。 */}
+/** 公开档案 feed：所有 visibility=public 的藏品，包括本人的。 */
 export async function listWorldArchive(params?: {
   page?: number;
   pageSize?: number;
@@ -124,6 +129,17 @@ export async function updateArchiveVisibility(
   return request<ArchiveItem>(
     `/api/archive/items/${archiveId}/visibility`,
     { method: "PATCH", body: JSON.stringify({ visibility }) },
+  );
+}
+
+/** 本人切换「实拍是否对他人展示」。没有 AI 三视图时后端会拒绝关闭。 */
+export async function updateArchivePhotoDisplay(
+  archiveId: number,
+  showRealPhotos: boolean,
+): Promise<ArchiveItem> {
+  return request<ArchiveItem>(
+    `/api/archive/items/${archiveId}/photo-display`,
+    { method: "PATCH", body: JSON.stringify({ showRealPhotos }) },
   );
 }
 

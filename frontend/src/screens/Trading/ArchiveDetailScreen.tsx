@@ -6,10 +6,11 @@
  *   - 一键转卖（生成新 listing 草稿）
  *   - PDF p.22 · 持有记录时间轴 + 新增持有记录
  *
- * 视觉：ScreenHeader + useAppTheme，全部跟随主题。
+ * 视觉：ArchiveDetailHeader（对齐帖子详情）+ useAppTheme，全部跟随主题。
  */
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  Animated,
   StyleSheet,
   TextInput,
   Image as RNImage,
@@ -32,7 +33,6 @@ import {
   AiPhotoBadge,
   isAiPhoto,
 } from "../../components/ui";
-import ScreenHeader from "../../components/ScreenHeader";
 import ArchiveDetailHeader from "../../components/trading/ArchiveDetailHeader";
 import ImagePreviewModal from "../../components/ImagePreviewModal";
 import { KeyboardFriend, KeyboardFriendScrollView } from "../../components/KeyboardFriend";
@@ -42,6 +42,7 @@ import { Alert } from "../../utils/Alert";
 import {
   getArchiveItem,
   updateArchiveVisibility,
+  updateArchivePhotoDisplay,
   resellFromArchive,
   ArchiveItemDetail,
   ArchiveHoldingRecord,
@@ -97,6 +98,56 @@ const ArchiveDetailScreen: React.FC = () => {
   const [isFollowing, setIsFollowing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
 
+  // 骨架屏微光，与帖子详情同一套时长和透明度区间。
+  const shimmerAnim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (!loading) return;
+    const anim = Animated.loop(
+      Animated.sequence([
+        Animated.timing(shimmerAnim, {
+          toValue: 1,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+        Animated.timing(shimmerAnim, {
+          toValue: 0,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    anim.start();
+    return () => anim.stop();
+  }, [loading, shimmerAnim]);
+
+  const skeletonOpacity = shimmerAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.3, 0.7],
+  });
+
+  const SkeletonBox = ({
+    width,
+    height,
+    style,
+  }: {
+    width: number | string;
+    height: number;
+    style?: any;
+  }) => (
+    <Animated.View
+      style={[
+        {
+          width,
+          height,
+          backgroundColor: theme.colors.gray200,
+          borderRadius: 4,
+          opacity: skeletonOpacity,
+        },
+        style,
+      ]}
+    />
+  );
+
   const [holdings, setHoldings] = useState<ArchiveHoldingRecord[]>([]);
   const [holdingNote, setHoldingNote] = useState("");
   const [holdingStatus, setHoldingStatus] = useState<HoldingStatus>("owned");
@@ -120,6 +171,20 @@ const ArchiveDetailScreen: React.FC = () => {
     () => (item?.photos ?? []).filter((u) => isAiPhoto(u, item?.aiPhotos)),
     [item],
   );
+
+  // 主图取三视图；没有生成过就退回实拍。heroIsAi 决定要不要挂来源说明，
+  // 以及实拍是否降级成下方的次要区。
+  const heroPhotos = aiGenerated.length > 0 ? aiGenerated : shotPhotos;
+  const heroIsAi = aiGenerated.length > 0;
+  const [heroIndex, setHeroIndex] = useState(0);
+  // 图片集合会变（切换实拍展示、重新加载），下标必须跟着收敛，
+  // 否则会停在一个已经不存在的位置上渲染 undefined。
+  useEffect(() => {
+    setHeroIndex((i) => (i < heroPhotos.length ? i : 0));
+  }, [heroPhotos.length]);
+
+  const showRealPhotos = item?.showRealPhotos ?? true;
+  const [photoDisplayLoading, setPhotoDisplayLoading] = useState(false);
 
   const reloadHoldings = useCallback(async () => {
     try {
@@ -170,6 +235,25 @@ const ArchiveDetailScreen: React.FC = () => {
       Alert.show(e?.message ?? t("trading.archiveDetail.visibilityFailed"));
     } finally {
       setVisibilityLoading(false);
+    }
+  };
+
+  const onTogglePhotoDisplay = async () => {
+    if (!item) return;
+    const next = !showRealPhotos;
+    setPhotoDisplayLoading(true);
+    try {
+      await updateArchivePhotoDisplay(archiveId, next);
+      setItem({ ...item, showRealPhotos: next });
+      Alert.show(
+        next
+          ? t("trading.archiveDetail.realPhotosNowShown")
+          : t("trading.archiveDetail.realPhotosNowHidden"),
+      );
+    } catch (e: any) {
+      Alert.show(e?.message ?? t("trading.archiveDetail.photoDisplayFailed"));
+    } finally {
+      setPhotoDisplayLoading(false);
     }
   };
 
@@ -236,14 +320,25 @@ const ArchiveDetailScreen: React.FC = () => {
     }
   };
 
+  // 加载态用骨架屏，和帖子详情一致。这里不能放「藏品详情」那个居中标题的
+  // ScreenHeader —— 加载完换成作者头部之后标题会整个消失，页面顶部跳一下。
   if (loading) {
     return (
       <SafeAreaView style={styles.container} edges={["top"]}>
-        <ScreenHeader title={t("trading.archiveDetail.headerTitle")} showBack />
-        <ActivityIndicator
-          style={{ marginTop: 32 }}
-          color={theme.colors.text}
+        <HStack px="$md" py="$sm" alignItems="center" gap="$sm">
+          <SkeletonBox width={30} height={30} style={{ borderRadius: 15 }} />
+          <SkeletonBox width={100} height={14} />
+        </HStack>
+
+        <Animated.View
+          style={[styles.skeletonCover, { opacity: skeletonOpacity }]}
         />
+
+        <Box px="$md" py="$md" gap="$sm">
+          <SkeletonBox width="70%" height={18} />
+          <SkeletonBox width="100%" height={14} />
+          <SkeletonBox width="50%" height={14} />
+        </Box>
       </SafeAreaView>
     );
   }
@@ -281,67 +376,106 @@ const ArchiveDetailScreen: React.FC = () => {
         <KeyboardFriendScrollView
           contentContainerStyle={styles.scroll}
         >
-          {item.photos?.[0] ? (
+          {/* 主图区。三视图是白底、角度齐整的一组，拿它当主视觉比衣柜里
+              随手拍的实拍更能说明单品本身；没有三视图时退回实拍。
+              但主图无论落到哪一组，AI 角标都必须跟着 —— 被放大到全屏看
+              细节的那一刻，正是最容易把推测图当实物照的时刻。 */}
+          {heroPhotos.length > 0 ? (
             <View>
               <Pressable
-                onPress={() => openPreview(shotPhotos, 0)}
+                onPress={() => openPreview(heroPhotos, heroIndex, heroIsAi)}
                 accessibilityRole="imagebutton"
                 accessibilityLabel={t("common.preview")}
               >
                 <RNImage
-                  source={{ uri: item.photos[0] }}
+                  source={{ uri: heroPhotos[heroIndex] }}
                   style={styles.cover}
                 />
-                {isAiPhoto(item.photos[0], item.aiPhotos) && <AiPhotoBadge />}
+                {isAiPhoto(heroPhotos[heroIndex], item.aiPhotos) && (
+                  <AiPhotoBadge />
+                )}
               </Pressable>
 
-              {/* 封面之外的图以前根本不展示 —— 用户生成完三视图就再也看不到。
-                  实拍和 AI 推测分两处摆：混在一排里只靠角标区分，缩略图一小
-                  就看不出来了，而这页是买家判断实物状况的依据。 */}
-              {shotPhotos.length > 1 && (
+              {heroPhotos.length > 1 && (
                 <HStack style={styles.thumbRow}>
-                  {shotPhotos.slice(1).map((url, i) => (
+                  {heroPhotos.map((url, i) => (
                     <Pressable
                       key={`${url}-${i}`}
-                      onPress={() => openPreview(shotPhotos, i + 1)}
-                      accessibilityRole="imagebutton"
-                      accessibilityLabel={t("common.preview")}
+                      onPress={() => setHeroIndex(i)}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: i === heroIndex }}
+                      style={[
+                        styles.heroThumb,
+                        i === heroIndex && styles.heroThumbActive,
+                      ]}
                     >
                       <RNImage source={{ uri: url }} style={styles.thumb} />
+                      {isAiPhoto(url, item.aiPhotos) && <AiPhotoBadge size="sm" />}
                     </Pressable>
                   ))}
                 </HStack>
               )}
 
-              {aiGenerated.length > 0 && (
-                <View style={styles.aiPanel}>
+              {heroIsAi && (
+                <Text style={styles.aiNote}>
+                  {t("trading.archiveDetail.aiPhotoNote")}
+                </Text>
+              )}
+
+              {/* 实拍降为次要区：三视图当主图后，实拍的作用变成「核对实物
+                  状况」，不再是第一眼看的东西。 */}
+              {shotPhotos.length > 0 && heroIsAi && (
+                <View style={styles.realPanel}>
                   <HStack style={styles.aiPanelHead}>
                     <Ionicons
-                      name="sparkles-outline"
+                      name="camera-outline"
                       size={13}
                       color={theme.colors.gray300}
                     />
                     <Text style={styles.aiPanelTitle}>
-                      {t("trading.archiveDetail.aiPhotosLabel")}
+                      {t("trading.archiveDetail.realPhotosLabel")}
                     </Text>
                   </HStack>
                   <HStack style={styles.thumbRow}>
-                    {aiGenerated.map((url, i) => (
+                    {shotPhotos.map((url, i) => (
                       <Pressable
                         key={`${url}-${i}`}
-                        onPress={() => openPreview(aiGenerated, i, true)}
+                        onPress={() => openPreview(shotPhotos, i)}
                         accessibilityRole="imagebutton"
                         accessibilityLabel={t("common.preview")}
                       >
                         <RNImage source={{ uri: url }} style={styles.thumb} />
-                        <AiPhotoBadge size="sm" />
                       </Pressable>
                     ))}
                   </HStack>
-                  <Text style={styles.aiNote}>
-                    {t("trading.archiveDetail.aiPhotoNote")}
-                  </Text>
                 </View>
+              )}
+
+              {/* 只有本人看得到这个开关。关掉之后实拍由服务端剔除，
+                  别人的响应里根本不含这些 URL。 */}
+              {isOwner && aiGenerated.length > 0 && (
+                <Pressable
+                  style={styles.photoDisplayRow}
+                  onPress={onTogglePhotoDisplay}
+                  disabled={photoDisplayLoading}
+                  accessibilityRole="switch"
+                  accessibilityState={{ checked: !showRealPhotos }}
+                >
+                  {photoDisplayLoading ? (
+                    <ActivityIndicator size="small" color={theme.colors.gray300} />
+                  ) : (
+                    <Ionicons
+                      name={showRealPhotos ? "eye-outline" : "eye-off-outline"}
+                      size={14}
+                      color={theme.colors.gray300}
+                    />
+                  )}
+                  <Text style={styles.photoDisplayText}>
+                    {showRealPhotos
+                      ? t("trading.archiveDetail.realPhotosShown")
+                      : t("trading.archiveDetail.realPhotosHidden")}
+                  </Text>
+                </Pressable>
               )}
             </View>
           ) : (
@@ -578,6 +712,34 @@ const makeStyles = (t: AppTheme) =>
       backgroundColor: t.colors.skeleton,
     },
     coverPlaceholder: { alignItems: "center", justifyContent: "center" },
+    // 主图缩略图：选中态用描边而不是变暗，白底三视图上变暗几乎看不出来。
+    heroThumb: {
+      borderRadius: 6,
+      borderWidth: 2,
+      borderColor: "transparent",
+    },
+    heroThumbActive: { borderColor: t.colors.text },
+    // 实拍次要区，和 AI 面板同一种收纳样式。
+    realPanel: {
+      marginTop: 12,
+      padding: 10,
+      borderRadius: 10,
+      backgroundColor: t.colors.surface,
+    },
+    photoDisplayRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      marginTop: 10,
+      paddingVertical: 6,
+    },
+    photoDisplayText: { fontSize: 12, color: t.colors.gray300 },
+    // 骨架屏主图：占位比例跟着真实封面（1:1），避免加载完成时高度跳变。
+    skeletonCover: {
+      width: "100%",
+      aspectRatio: 1,
+      backgroundColor: t.colors.gray200,
+    },
     thumbRow: { gap: 8, marginTop: 8, flexWrap: "wrap" },
     // AI 生成图单独圈起来，和实拍区拉开距离。
     aiPanel: {

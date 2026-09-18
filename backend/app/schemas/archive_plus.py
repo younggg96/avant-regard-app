@@ -44,6 +44,8 @@ class ArchiveItem(BaseModel):
     aiPhotos: List[str] = Field(default_factory=list)
     # 090：public = 进「世界」feed、他人可打开详情页；private = 仅本人可见。
     visibility: str = "public"
+    # 091：false = 他人只看到 AI 三视图，实拍不出现在响应里（本人不受影响）。
+    showRealPhotos: bool = True
     createdAt: Optional[str] = None
     updatedAt: Optional[str] = None
 
@@ -124,6 +126,11 @@ class ArchiveVisibilityUpdate(BaseModel):
     """本人切换藏品可见性。只此一个字段 —— 其余字段的编辑走各自的入口，
     别让一个「改可见性」的接口顺手成为万能更新接口。"""
     visibility: str = Field(..., pattern="^(public|private)$")
+
+
+class ArchivePhotoDisplayUpdate(BaseModel):
+    """本人切换「实拍是否给他人看」。"""
+    showRealPhotos: bool
 
 
 # ---------------- Plus ----------------

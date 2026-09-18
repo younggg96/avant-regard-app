@@ -2560,7 +2560,7 @@
     "archiveEmptyHint": "Upload your vintage pieces to build their digital passports",
     "archiveUpload": "Upload item",
     "worldEmpty": "No archives to explore yet",
-    "worldEmptyHint": "Public archives show up here, including yours. Private ones stay hidden"
+    "worldEmptyHint": "Public archives show up here, including yours. Private ones stay hidden",
     "admin": {
       "createTitle": "Publish Event",
       "editTitle": "Edit Event",
@@ -3819,6 +3819,12 @@
       "confirm": "OK",
       "addHoldingFailed": "Add entry failed",
       "aiPhotoNote": "Images marked “AI” are model-inferred from the real photo, not photographs of the item. Treat them as silhouette references only.",
+      "realPhotosLabel": "Real photos",
+      "realPhotosShown": "Real photos are visible to others — tap to show only the AI three-view",
+      "realPhotosHidden": "Others only see the AI three-view — tap to show real photos again",
+      "realPhotosNowShown": "Real photos are visible again",
+      "realPhotosNowHidden": "Real photos hidden — others will only see the AI three-view",
+      "photoDisplayFailed": "Couldn't save that. Please try again.",
       "ownerFallbackName": "Me",
       "authorFallbackName": "User",
       "visibilityPublic": "Public",

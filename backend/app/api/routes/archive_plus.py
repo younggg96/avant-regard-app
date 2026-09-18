@@ -15,6 +15,7 @@ from app.schemas.archive_plus import (
     ArchiveItemManualCreate,
     ArchiveHoldingCreate,
     ArchiveVisibilityUpdate,
+    ArchivePhotoDisplayUpdate,
 )
 from app.schemas.store_product import StoreProductCreate, SellerKind, ProductStatus, PhotoAngles
 
@@ -73,6 +74,26 @@ def update_archive_visibility(
         raise HTTPException(status_code=403, detail=str(e))
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
+    return success(item.dict())
+
+
+@archive_router.patch("/items/{archive_id}/photo-display")
+def update_archive_photo_display(
+    archive_id: int,
+    body: ArchivePhotoDisplayUpdate,
+    user_id: int = Depends(get_current_user),
+):
+    """本人切换「实拍是否对他人展示」。关掉后他人只看到 AI 三视图。"""
+    try:
+        item = archive_service.set_photo_display(
+            archive_id, user_id, body.showRealPhotos
+        )
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except LookupError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     return success(item.dict())
 
 

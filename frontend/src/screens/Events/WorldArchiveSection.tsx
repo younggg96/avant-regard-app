@@ -32,9 +32,12 @@ interface Props {
   onLoaded?: () => void;
 }
 
-const COLUMNS = 3;
-const GAP = 4;
-const CELL_W = (SCREEN_WIDTH - GAP * (COLUMNS + 1)) / COLUMNS;
+// 和帖子瀑布流同一套尺寸：两列、左右各 4、封面 3:4。
+// 见 TabContent 的 COLUMN_WIDTH / masonryItemStyles，以及 PostCard 的
+// FALLBACK_RATIO。改一边的时候另一边也要改，否则两个 tab 的卡片对不齐。
+const COLUMNS = 2;
+const CARD_PAD_H = 4;
+const CARD_WIDTH = SCREEN_WIDTH / COLUMNS;
 
 export const WorldArchiveSection: React.FC<Props> = ({ refreshSignal = 0, onLoaded }) => {
   const { t } = useTranslation();
@@ -137,7 +140,7 @@ export const WorldArchiveSection: React.FC<Props> = ({ refreshSignal = 0, onLoad
         <Pressable key={item.id} onPress={() => openItem(item)} style={s.cell}>
           {item.photos?.[0] ? (
             <View>
-              <OptimizedImage uri={item.photos[0]} size={ImageSize.THUMBNAIL} style={s.img} contentFit="cover" lazy />
+              <OptimizedImage uri={item.photos[0]} size={ImageSize.FEED_CARD} style={s.img} contentFit="cover" lazy />
               {isAiPhoto(item.photos[0], item.aiPhotos) && <AiPhotoBadge size="sm" />}
             </View>
           ) : (
@@ -155,11 +158,11 @@ export const WorldArchiveSection: React.FC<Props> = ({ refreshSignal = 0, onLoad
             ) : (
               <View style={[s.avatar, { backgroundColor: theme.colors.surface }]} />
             )}
-            <Text fontSize={11} numberOfLines={1} style={{ color: theme.colors.gray400, flex: 1 }}>
+            <Text fontSize={12} numberOfLines={1} style={{ color: theme.colors.gray600, flex: 1 }}>
               {item.author?.username || "—"}
             </Text>
           </Pressable>
-          <Text fontSize={11} numberOfLines={1} style={{ color: theme.colors.text }}>
+          <Text fontSize={14} fontWeight="$semibold" numberOfLines={2} style={s.title}>
             {item.title || item.brandName || "—"}
           </Text>
         </Pressable>
@@ -179,15 +182,31 @@ const makeStyles = (t: AppTheme) =>
     grid: {
       flexDirection: "row",
       flexWrap: "wrap",
-      paddingHorizontal: GAP,
-      paddingTop: GAP,
-      gap: GAP,
-      backgroundColor: t.colors.card,
+      backgroundColor: t.colors.background,
     },
-    cell: { width: CELL_W, marginBottom: 6 },
-    img: { width: CELL_W, height: CELL_W * 1.25, borderRadius: 4 },
-    authorRow: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4 },
-    avatar: { width: 14, height: 14, borderRadius: 7 },
+    cell: {
+      width: CARD_WIDTH,
+      paddingHorizontal: CARD_PAD_H,
+      marginBottom: 8,
+    },
+    img: {
+      width: "100%",
+      aspectRatio: 3 / 4,
+      borderRadius: t.borderRadius.md,
+      backgroundColor: t.colors.gray100,
+    },
+    title: {
+      color: t.colors.text,
+      marginTop: 4,
+      lineHeight: 20,
+    },
+    authorRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+      marginTop: 6,
+    },
+    avatar: { width: 20, height: 20, borderRadius: 10 },
   });
 
 export default WorldArchiveSection;

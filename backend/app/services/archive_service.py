@@ -103,6 +103,11 @@ class ArchiveService:
             # 090 之前建的行没有这一列，读到 None 时按 public 兜底 ——
             # 那正是它们在加列之前的实际可见性，不要凭空收紧。
             visibility=row.get("visibility") or "public",
+            showRealPhotos=(
+                True
+                if row.get("show_real_photos") is None
+                else bool(row["show_real_photos"])
+            ),
             createdAt=row.get("created_at"),
             updatedAt=row.get("updated_at"),
         )
@@ -338,6 +343,23 @@ class ArchiveService:
         res = execute_with_retry(lambda: q.execute(), label="archive.list")
         return [self._format(r) for r in (res.data or [])], (res.count or 0)
 
+    @staticmethod
+    def _apply_photo_display(item: ArchiveItem, *, is_owner: bool) -> ArchiveItem:
+        """按 show_real_photos 决定给外人看哪些图。
+
+        必须在这里（服务端）把实拍 URL 摘掉，而不是让前端不渲染 —— 后者
+        等于把地址照发出去再请客户端自觉别看。
+
+        没有 AI 生成图时忽略该开关：否则这件藏品对外就是一张图都没有，
+        比「实拍被看到」更糟。
+        """
+        if is_owner or item.showRealPhotos:
+            return item
+        ai = [u for u in item.photos if u in set(item.aiPhotos)]
+        if not ai:
+            return item
+        return item.copy(update={"photos": ai})
+
     def _authors_brief(self, user_ids: List[int]) -> Dict[int, Dict[str, Any]]:
         """批量取作者 username + 头像，供「世界」档案 feed 附带作者信息。"""
         out: Dict[int, Dict[str, Any]] = {}
@@ -395,7 +417,13 @@ class ArchiveService:
         author_map = self._authors_brief([r.get("user_id") for r in rows])
         items: List[Dict[str, Any]] = []
         for r in rows:
-            data = self._format(r).dict()
+            item = self._format(r)
+            # feed 的封面取 photos[0]，所以剥离必须在这里也做一遍，
+            # 否则藏在详情页后面的实拍会从列表缩略图漏出去。
+            item = self._apply_photo_display(
+                item, is_owner=item.userId == viewer_user_id
+            )
+            data = item.dict()
             data["author"] = author_map.get(r.get("user_id"))
             items.append(data)
         return items, (res.count or 0)
@@ -415,7 +443,7 @@ class ArchiveService:
         is_owner = item.userId == viewer_user_id
         if not is_owner and item.visibility != "public":
             return None
-        data = item.dict()
+        data = self._apply_photo_display(item, is_owner=is_owner).dict()
         data["author"] = self._authors_brief([item.userId]).get(item.userId)
         data["isOwner"] = is_owner
         return data
@@ -437,6 +465,33 @@ class ArchiveService:
         )
         if not res.data:
             raise ValueError("未找到该藏品")
+        return self._format(res.data[0])
+
+    def set_photo_display(
+        self, archive_id: int, user_id: int, show_real_photos: bool
+    ) -> ArchiveItem:
+        """本人切换「实拍是否给他人看」。
+
+        找不到抛 LookupError（→404），业务规则不满足抛 ValueError（→400）：
+        两者对客户端的含义不同，不该压成同一个状态码。
+        """
+        item = self.get(archive_id)
+        if not item:
+            raise LookupError("未找到该藏品")
+        if item.userId != user_id:
+            raise PermissionError("只能修改自己的藏品")
+        # 没有 AI 图却要藏实拍 = 这件藏品对外一张图都没有。挡在这里，
+        # 不要依赖前端不给点 —— 接口是公开的。
+        if not show_real_photos and not item.aiPhotos:
+            raise ValueError("这件藏品还没有 AI 三视图，隐藏实拍后将没有任何图片")
+        res = (
+            self.db.table("user_archive_items")
+            .update({"show_real_photos": show_real_photos})
+            .eq("id", archive_id)
+            .execute()
+        )
+        if not res.data:
+            raise LookupError("未找到该藏品")
         return self._format(res.data[0])
 
     def get(self, archive_id: int) -> Optional[ArchiveItem]:
