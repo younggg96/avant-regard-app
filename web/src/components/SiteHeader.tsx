@@ -28,13 +28,13 @@ export function SiteHeader() {
         >
           <Image
             src="/logo.jpg"
-            alt="Avant Regard"
+            alt="上海南特克实业有限公司"
             width={32}
             height={32}
             className="rounded-sm dark:invert"
           />
-          <span className="font-serif text-[1.05rem] tracking-[0.06em] text-black dark:text-white">
-            Avant Regard
+          <span className="whitespace-nowrap text-[0.95rem] tracking-normal text-black dark:text-white">
+            上海南特克实业有限公司
           </span>
         </Link>
 

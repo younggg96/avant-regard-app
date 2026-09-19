@@ -30,7 +30,7 @@ export async function generateMetadata(): Promise<Metadata> {
     metadataBase: new URL(config.siteUrl),
     title: {
       default: t("meta.siteTitle"),
-      template: "%s · Avant Regard",
+      template: "%s · 上海南特克实业有限公司",
     },
     description: t("meta.siteDescription"),
     keywords: [

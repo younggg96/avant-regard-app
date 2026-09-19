@@ -1,7 +1,8 @@
 {
   "cli": {
     "version": ">= 16.13.3",
-    "appVersionSource": "local"
+    "appVersionSource": "local",
+    "requireCommit": false
   },
   "build": {
     "development": {
@@ -35,7 +36,7 @@
     "production": {
       "ios": {
         "appleId": "avantregard6@gmail.com",
-        "ascAppId": "6769261192",
+        "ascAppId": "6756938671",
         "companyName": "Shanghai Nanteke Industrial Co., Ltd."
       }
     },

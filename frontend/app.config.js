@@ -3,7 +3,7 @@ const IS_NA = process.env.APP_VARIANT === "na";
 const config = {
   name: IS_NA ? "Avant Regard NA" : "Avant Regard",
   slug: "avant-regard",
-  version: "1.3.3",
+  version: "1.4.1",
   orientation: "portrait",
   icon: "./assets/images/logo.jpg",
   userInterfaceStyle: "automatic",
@@ -45,7 +45,7 @@ const config = {
     bundleIdentifier: IS_NA
       ? "com.yanggg96.avant-regard.na"
       : "com.yanggg96.avant-regard",
-    buildNumber: "35",
+    buildNumber: "36",
     associatedDomains: ["applinks:app.avantregard.com"],
   },
   android: {
@@ -119,15 +119,12 @@ const config = {
     // （expo-secure-store 同样被提升却没事，因为它 require 的是独立包
     //   "@expo/config-plugins"，那个在根目录。）
     // Stripe React Native config plugin
-    // - merchantIdentifier 在 Apple Developer Portal 创建,启用 Apple Pay 必填;
-    //   留空时 Apple Pay 走不通(收单依然可以,降级走 Card)。
-    // - enableGooglePay=true 在 Android 上启用 Google Pay 收单。
-    // 真正接入 Apple/Google Pay 还需要 PaymentSheet 配置 applePay/googlePay 选项,
-    // 这里仅提供原生侧的能力声明。
+    // merchantIdentifier 先不写。EAS 上现有的 App Store 描述文件没有 Apple Pay
+    // capability，写了这次 TestFlight 会在签名阶段直接失败。银行卡收单不依赖它。
+    // 要开 Apple Pay 时，先在描述文件里加上 merchant.com.yanggg96.avant-regard 再填回来。
     [
       "@stripe/stripe-react-native",
       {
-        merchantIdentifier: "merchant.com.yanggg96.avant-regard",
         enableGooglePay: true,
       },
     ],
